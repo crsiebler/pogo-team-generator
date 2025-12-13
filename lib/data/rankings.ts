@@ -152,6 +152,30 @@ export function getAllRankingsForPokemon(pokemonName: string): {
 }
 
 /**
+ * Convert CSV move name to move ID format
+ * Examples:
+ * - "Shadow Ball" -> "SHADOW_BALL"
+ * - "Weather Ball (Fire)" -> "WEATHER_BALL_FIRE"
+ * - "Play Rough" -> "PLAY_ROUGH"
+ */
+function moveNameToMoveId(moveName: string): string {
+  // Extract type from parentheses if present (e.g., "Weather Ball (Fire)")
+  const match = moveName.match(/^(.+?)\s*\((.+?)\)$/);
+
+  if (match) {
+    const baseName = match[1].trim();
+    const type = match[2].trim();
+    // Convert both parts to uppercase and join with underscore
+    const baseId = baseName.toUpperCase().replace(/\s+/g, '_');
+    const typeId = type.toUpperCase().replace(/\s+/g, '_');
+    return `${baseId}_${typeId}`;
+  }
+
+  // No type suffix, just convert to uppercase and replace spaces
+  return moveName.toUpperCase().replace(/\s+/g, '_');
+}
+
+/**
  * Get optimal moveset for a Pokémon from rankings
  * Returns the highest-ranked moveset (1 fast move + 2 charged moves)
  */
@@ -172,9 +196,13 @@ export function getOptimalMoveset(pokemonName: string): {
   }
 
   return {
-    fastMove: entry['Fast Move'] || null,
-    chargedMove1: entry['Charged Move 1'] || null,
-    chargedMove2: entry['Charged Move 2'] || null,
+    fastMove: entry['Fast Move'] ? moveNameToMoveId(entry['Fast Move']) : null,
+    chargedMove1: entry['Charged Move 1']
+      ? moveNameToMoveId(entry['Charged Move 1'])
+      : null,
+    chargedMove2: entry['Charged Move 2']
+      ? moveNameToMoveId(entry['Charged Move 2'])
+      : null,
   };
 }
 

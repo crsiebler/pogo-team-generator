@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTeam } from '@/lib/genetic/algorithm';
+import { speciesNameToId } from '@/lib/data/pokemon';
 import type { TournamentMode } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
@@ -18,13 +19,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert anchor Pokemon names to speciesIds
+    const anchorSpeciesIds: string[] = [];
+    if (anchorPokemon && anchorPokemon.length > 0) {
+      for (const name of anchorPokemon) {
+        const speciesId = speciesNameToId(name);
+        if (!speciesId) {
+          return NextResponse.json(
+            { error: `Invalid Pokémon name: ${name}` },
+            { status: 400 },
+          );
+        }
+        anchorSpeciesIds.push(speciesId);
+      }
+    }
+
+    console.log('Anchor Pokemon names:', anchorPokemon);
+    console.log('Anchor Species IDs:', anchorSpeciesIds);
+
     // Run genetic algorithm
     const result = await generateTeam({
       mode,
-      anchorPokemon: anchorPokemon || [],
+      anchorPokemon: anchorSpeciesIds,
       populationSize: 150,
       generations: 75,
     });
+
+    console.log('Generated team:', result.team);
+    console.log('Team size:', result.team.length);
+    console.log('Anchors preserved:', result.anchors);
 
     return NextResponse.json({
       team: result.team,

@@ -7,10 +7,12 @@ const allPokemon = pokemonData as Pokemon[];
 // Build O(1) lookup maps
 const pokemonBySpeciesId = new Map<string, Pokemon>();
 const pokemonByDex = new Map<number, Pokemon>();
+const pokemonBySpeciesName = new Map<string, Pokemon>();
 
 for (const pokemon of allPokemon) {
   pokemonBySpeciesId.set(pokemon.speciesId, pokemon);
   pokemonByDex.set(pokemon.dex, pokemon);
+  pokemonBySpeciesName.set(pokemon.speciesName, pokemon);
 }
 
 /**
@@ -25,6 +27,24 @@ export function getPokemonBySpeciesId(speciesId: string): Pokemon | undefined {
  */
 export function getPokemonByDex(dex: number): Pokemon | undefined {
   return pokemonByDex.get(dex);
+}
+
+/**
+ * Get Pokémon by species name (e.g., "Scizor (Shadow)")
+ */
+export function getPokemonBySpeciesName(
+  speciesName: string,
+): Pokemon | undefined {
+  return pokemonBySpeciesName.get(speciesName);
+}
+
+/**
+ * Convert species name to speciesId
+ * @example "Scizor (Shadow)" → "scizor_shadow"
+ */
+export function speciesNameToId(speciesName: string): string | undefined {
+  const pokemon = pokemonBySpeciesName.get(speciesName);
+  return pokemon?.speciesId;
 }
 
 /**
@@ -52,24 +72,38 @@ export function getBaseSpecies(speciesId: string): string {
 }
 
 /**
- * Check if two speciesIds are the same base species
- * Used for team validation (can't have marowak and marowak_alolan)
+ * Get the Dex number for a speciesId
+ * This is the true identifier for species uniqueness (scizor and scizor_shadow share dex 212)
+ */
+export function getDexNumber(speciesId: string): number | undefined {
+  const pokemon = getPokemonBySpeciesId(speciesId);
+  return pokemon?.dex;
+}
+
+/**
+ * Check if two speciesIds are the same base species (share the same Dex number)
+ * Used for team validation (can't have marowak and marowak_alolan, or scizor and scizor_shadow)
  */
 export function isSameBaseSpecies(
   speciesId1: string,
   speciesId2: string,
 ): boolean {
-  return getBaseSpecies(speciesId1) === getBaseSpecies(speciesId2);
+  const dex1 = getDexNumber(speciesId1);
+  const dex2 = getDexNumber(speciesId2);
+  if (!dex1 || !dex2) return false;
+  return dex1 === dex2;
 }
 
 /**
- * Validate team has unique base species
- * @returns true if valid, false if duplicate base species found
+ * Validate team has unique base species (unique Dex numbers)
+ * @returns true if valid, false if duplicate Dex numbers found
  */
 export function validateTeamUniqueness(team: string[]): boolean {
-  const baseSpecies = team.map(getBaseSpecies);
-  const uniqueBase = new Set(baseSpecies);
-  return uniqueBase.size === baseSpecies.length;
+  const dexNumbers = team
+    .map(getDexNumber)
+    .filter((dex): dex is number => dex !== undefined);
+  const uniqueDex = new Set(dexNumbers);
+  return uniqueDex.size === dexNumbers.length;
 }
 
 /**

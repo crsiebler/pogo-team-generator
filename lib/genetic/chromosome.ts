@@ -1,8 +1,18 @@
+import { calculateEffectiveness } from '../coverage/typeChart';
 import {
   validateTeamUniqueness,
   getPokemonBySpeciesId,
+  getDexNumber,
 } from '../data/pokemon';
-import { calculateEffectiveness } from '../coverage/typeChart';
+import {
+  speciesIdToRankingName,
+  getAllRankingsForPokemon,
+} from '../data/rankings';
+import {
+  getWorstMatchups,
+  countersThreats,
+  getMatchupQualityScore,
+} from '../data/simulations';
 import type { Chromosome, TournamentMode } from '../types';
 
 /**
@@ -88,7 +98,7 @@ export function createRandomChromosome(
 ): Chromosome {
   const team: string[] = Array(teamSize).fill('');
   const anchors: number[] = [];
-  const usedBaseSpecies = new Set<string>();
+  const usedDexNumbers = new Set<number>();
   const usedTypes = new Map<string, number>(); // Track type frequency
 
   // Place anchors first
@@ -96,7 +106,8 @@ export function createRandomChromosome(
     for (let i = 0; i < Math.min(anchorPokemon.length, teamSize); i++) {
       team[i] = anchorPokemon[i];
       anchors.push(i);
-      usedBaseSpecies.add(getBaseSpecies(anchorPokemon[i]));
+      const dex = getDexNumber(anchorPokemon[i]);
+      if (dex) usedDexNumbers.add(dex);
 
       // Track anchor types
       const anchorData = getPokemonBySpeciesId(anchorPokemon[i]);
@@ -116,16 +127,20 @@ export function createRandomChromosome(
     let selectedSpecies: string | null = null;
     let bestDiversityScore = -1;
 
-    // Try multiple candidates and pick the one with best type diversity
-    const candidateCount = Math.min(20, pokemonPool.length);
+    // For the first Pokemon (when team is empty and no anchors), use pure randomness for variety
+    // Otherwise, try multiple candidates and pick the one with best type diversity
+    const isFirstPokemon = slotIndex === 0 && anchors.length === 0;
+    const candidateCount = isFirstPokemon
+      ? 1
+      : Math.min(20, pokemonPool.length);
 
     for (let i = 0; i < candidateCount && attempts < 100; i++) {
       const candidateSpecies =
         pokemonPool[Math.floor(Math.random() * pokemonPool.length)];
-      const candidateBase = getBaseSpecies(candidateSpecies);
+      const candidateDex = getDexNumber(candidateSpecies);
 
-      // Skip if duplicate base species
-      if (usedBaseSpecies.has(candidateBase)) {
+      // Skip if duplicate Dex number
+      if (!candidateDex || usedDexNumbers.has(candidateDex)) {
         attempts++;
         continue;
       }
@@ -195,14 +210,29 @@ export function createRandomChromosome(
           diversityScore += 3; // Bonus if we don't have a tank yet
         }
       }
-      
+
       // Check for stacked weaknesses - avoid Pokemon that share weaknesses with existing team
       const candidateWeaknesses = new Set<string>();
-      
+
       for (const type of [
-        'normal', 'fire', 'water', 'electric', 'grass', 'ice',
-        'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug',
-        'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy',
+        'normal',
+        'fire',
+        'water',
+        'electric',
+        'grass',
+        'ice',
+        'fighting',
+        'poison',
+        'ground',
+        'flying',
+        'psychic',
+        'bug',
+        'rock',
+        'ghost',
+        'dragon',
+        'dark',
+        'steel',
+        'fairy',
       ]) {
         const effectiveness = calculateEffectiveness(
           type,
@@ -212,7 +242,7 @@ export function createRandomChromosome(
           candidateWeaknesses.add(type);
         }
       }
-      
+
       // Check how many existing team members share these weaknesses
       let sharedWeaknessCount = 0;
       for (let j = 0; j < slotIndex; j++) {
@@ -231,7 +261,7 @@ export function createRandomChromosome(
           }
         }
       }
-      
+
       // Heavily penalize stacked weaknesses
       if (sharedWeaknessCount >= 3) {
         diversityScore -= 6; // Very bad - would create triple weakness
@@ -239,6 +269,70 @@ export function createRandomChromosome(
         diversityScore -= 3; // Bad - double stacked weakness
       } else if (sharedWeaknessCount === 1) {
         diversityScore -= 1; // Minor penalty for one shared weakness
+      }
+
+      // SIMULATION-BASED SCORING: Reward Pokemon that counter existing team's worst matchups
+      // HEAVILY prioritize countering highly-ranked threats
+      if (slotIndex > 0 && !isFirstPokemon) {
+        const candidateName = speciesIdToRankingName(candidateSpecies);
+
+        // Collect all worst matchups from existing team members with RANKING WEIGHTS
+        const teamThreats = new Map<string, number>(); // threat -> weight based on rank
+
+        for (let j = 0; j < slotIndex; j++) {
+          if (team[j]) {
+            const memberName = speciesIdToRankingName(team[j]);
+            const worstMatchups = getWorstMatchups(memberName, 5); // Top 5 worst for each member
+
+            for (const threat of worstMatchups) {
+              // Get threat's ranking and calculate weight
+              const threatRankings = getAllRankingsForPokemon(threat);
+              const threatScore = threatRankings.overall;
+
+              // Exponential weight based on ranking
+              // Rank 95+: weight 15 (CRITICAL to counter top meta)
+              // Rank 90-95: weight 12
+              // Rank 85-90: weight 10
+              // Rank 80-85: weight 7
+              // Rank 75-80: weight 5
+              // Rank <75: weight 3
+              let weight = 3;
+              if (threatScore >= 95) {
+                weight = 15; // Top tier - MUST have answer
+              } else if (threatScore >= 90) {
+                weight = 12;
+              } else if (threatScore >= 85) {
+                weight = 10;
+              } else if (threatScore >= 80) {
+                weight = 7;
+              } else if (threatScore >= 75) {
+                weight = 5;
+              }
+
+              // Track highest weight for each threat
+              const currentWeight = teamThreats.get(threat) || 0;
+              if (weight > currentWeight) {
+                teamThreats.set(threat, weight);
+              }
+            }
+          }
+        }
+
+        // Calculate weighted bonus for countering threats
+        let weightedCounterBonus = 0;
+        for (const [threat, weight] of teamThreats.entries()) {
+          if (countersThreats(candidateName, [threat]) > 0) {
+            weightedCounterBonus += weight; // Add full weight if candidate beats this threat
+          }
+        }
+
+        diversityScore += weightedCounterBonus; // Weighted bonus (much higher for top meta)
+
+        // Additional bonus for overall matchup quality (consistency)
+        const qualityScore = getMatchupQualityScore(candidateName);
+        // Scale from 0.5 (neutral) to bonus/penalty
+        // 0.6 quality = +2, 0.4 quality = -2
+        diversityScore += (qualityScore - 0.5) * 20; // High weight for quality
       }
 
       // Pick candidate with best diversity score
@@ -256,19 +350,25 @@ export function createRandomChromosome(
       do {
         selectedSpecies =
           pokemonPool[Math.floor(Math.random() * pokemonPool.length)];
+        const selectedDex = getDexNumber(selectedSpecies);
         fallbackAttempts++;
 
         if (fallbackAttempts > 1000) {
           throw new Error(
-            `Failed to find unique Pokemon after 1000 attempts. Pool size: ${pokemonPool.length}, Used: ${usedBaseSpecies.size}`,
+            `Failed to find unique Pokemon after 1000 attempts. Pool size: ${pokemonPool.length}, Used: ${usedDexNumbers.size}`,
           );
         }
-      } while (usedBaseSpecies.has(getBaseSpecies(selectedSpecies)));
+
+        if (selectedDex && !usedDexNumbers.has(selectedDex)) {
+          break;
+        }
+      } while (true);
     }
 
     // Add selected Pokemon to team
     team[slotIndex] = selectedSpecies;
-    usedBaseSpecies.add(getBaseSpecies(selectedSpecies));
+    const selectedDex = getDexNumber(selectedSpecies);
+    if (selectedDex) usedDexNumbers.add(selectedDex);
 
     // Update type frequency
     const selectedPokemon = getPokemonBySpeciesId(selectedSpecies);
@@ -279,7 +379,25 @@ export function createRandomChromosome(
     }
   }
 
-  return { team, anchors, fitness: 0 };
+  // Validate the final team
+  const finalTeam = { team, anchors, fitness: 0 };
+
+  // CRITICAL: Verify anchors are still in the team
+  if (anchorPokemon && anchorPokemon.length > 0) {
+    console.log('Final team created:', team);
+    console.log('Anchor indices:', anchors);
+    for (let i = 0; i < anchorPokemon.length; i++) {
+      if (team[i] !== anchorPokemon[i]) {
+        console.error(
+          `❌ ANCHOR LOST: Expected ${anchorPokemon[i]} at index ${i}, got ${team[i]}`,
+        );
+      } else {
+        console.log(`✓ Anchor ${i} preserved: ${anchorPokemon[i]}`);
+      }
+    }
+  }
+
+  return finalTeam;
 }
 
 /**
@@ -335,7 +453,9 @@ export function getWorstChromosome(population: Chromosome[]): Chromosome {
  * Calculate population diversity (unique teams)
  */
 export function calculateDiversity(population: Chromosome[]): number {
-  const uniqueTeams = new Set(population.map((c) => c.team.sort().join(',')));
+  const uniqueTeams = new Set(
+    population.map((c) => [...c.team].sort().join(',')),
+  );
   return uniqueTeams.size / population.length;
 }
 

@@ -45,9 +45,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to use the t
 ### Team Composition
 - **6 Unique Pokémon**: No duplicate `speciesId` values allowed (Play! Pokémon tournaments)
 - **3 Pokémon**: For GO Battle League mode (GBL)
-- **Species Variants**: Shadow, Alolan, Galarian, and Hisuian forms count as distinct species
-  - ✅ Legal: `["marowak", "marowak_alolan"]`
-  - ❌ Illegal: `["marowak", "marowak"]`
+- **Species Variants**: Only ONE form of each base species allowed per team
+  - Shadow, Alolan, Galarian, and Hisuian forms are distinct `speciesId` values but share the same base species (Dex number)
+  - ✅ Legal: `["marowak_alolan", "pikachu", "azumarill"]` - different base species
+  - ❌ Illegal: `["marowak", "marowak_alolan"]` - both are Marowak variants (Dex #105)
+  - Validation: Extract base species by splitting on `_` (e.g., `marowak_alolan_shadow` → base is `marowak`)
 - **CP 1500 Limit**: All Pokémon must meet Great League requirements
 - **Open Team Sheets** (Play! Pokémon): Opponent sees your 6 Pokémon and all moves before match
   - No surprise factor - must win through strategy and execution

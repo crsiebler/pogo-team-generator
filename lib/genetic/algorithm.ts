@@ -6,6 +6,7 @@ import {
   getBestChromosome,
   hasConverged,
   calculateDiversity,
+  cloneChromosome,
 } from './chromosome';
 import { evaluatePopulation } from './fitness';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
@@ -51,6 +52,21 @@ export async function generateTeam(
   evaluatePopulation(population, mode);
 
   let bestOverall = getBestChromosome(population);
+
+  // Validate initial best has anchors
+  if (anchorPokemon.length > 0) {
+    for (let i = 0; i < anchorPokemon.length; i++) {
+      if (bestOverall.team[i] !== anchorPokemon[i]) {
+        console.error(
+          `❌ Initial best has corrupted anchor ${i}! This is a bug in chromosome creation.`,
+        );
+        throw new Error(
+          `Initial population has no valid chromosomes with anchors preserved`,
+        );
+      }
+    }
+  }
+
   let generationsWithoutImprovement = 0;
 
   // Evolution loop
@@ -71,10 +87,66 @@ export async function generateTeam(
     // Evaluate new population
     evaluatePopulation(population, mode);
 
+    // CRITICAL: Filter out any chromosomes that lost anchors
+    if (anchorPokemon.length > 0) {
+      const beforeCount = population.length;
+      population = population.filter((chromosome) => {
+        for (let i = 0; i < anchorPokemon.length; i++) {
+          if (chromosome.team[i] !== anchorPokemon[i]) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (population.length < beforeCount) {
+        console.warn(
+          `⚠️ Generation ${gen + 1}: Filtered out ${beforeCount - population.length} chromosomes with corrupted anchors`,
+        );
+
+        // If population is empty or too small, recreate valid chromosomes
+        if (population.length === 0) {
+          console.error(
+            '❌ All chromosomes lost anchors! Recreating population...',
+          );
+          population = initializePopulation(
+            populationSize,
+            pokemonPool,
+            teamSize,
+            anchorPokemon,
+          );
+          evaluatePopulation(population, mode);
+        } else {
+          // Refill population with clones of valid chromosomes
+          while (population.length < populationSize) {
+            const randomValid =
+              population[Math.floor(Math.random() * population.length)];
+            population.push(cloneChromosome(randomValid));
+          }
+          // Re-evaluate the cloned chromosomes
+          evaluatePopulation(population, mode);
+        }
+      }
+    }
+
     // Track best
     const currentBest = getBestChromosome(population);
 
-    if (currentBest.fitness > bestOverall.fitness) {
+    // Validate currentBest has anchors before comparing
+    let currentBestValid = true;
+    if (anchorPokemon.length > 0) {
+      for (let i = 0; i < anchorPokemon.length; i++) {
+        if (currentBest.team[i] !== anchorPokemon[i]) {
+          console.error(
+            `⚠️ Current best has corrupted anchor ${i}, skipping update`,
+          );
+          currentBestValid = false;
+          break;
+        }
+      }
+    }
+
+    if (currentBestValid && currentBest.fitness > bestOverall.fitness) {
       bestOverall = currentBest;
       generationsWithoutImprovement = 0;
     } else {
@@ -95,6 +167,26 @@ export async function generateTeam(
           `Diversity: ${(diversity * 100).toFixed(1)}%`,
       );
     }
+  }
+
+  console.log('=== FINAL BEST TEAM ===');
+  console.log('Team:', bestOverall.team);
+  console.log('Anchors:', bestOverall.anchors);
+  console.log('Fitness:', bestOverall.fitness);
+
+  // FINAL VALIDATION: Ensure anchors are preserved
+  if (anchorPokemon.length > 0) {
+    for (let i = 0; i < anchorPokemon.length; i++) {
+      if (bestOverall.team[i] !== anchorPokemon[i]) {
+        console.error(
+          `❌ FINAL BEST TEAM HAS CORRUPTED ANCHOR ${i}: Expected ${anchorPokemon[i]}, got ${bestOverall.team[i]}`,
+        );
+        throw new Error(
+          `Final team has corrupted anchors. This should never happen.`,
+        );
+      }
+    }
+    console.log('✅ All anchors verified in final team');
   }
 
   return bestOverall;

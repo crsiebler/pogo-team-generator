@@ -1,4 +1,4 @@
-import { getBaseSpecies, validateTeamUniqueness } from '../data/pokemon';
+import { getDexNumber, validateTeamUniqueness } from '../data/pokemon';
 import type { Chromosome, TournamentMode } from '../types';
 import { cloneChromosome, getMutableSlots, isAnchorSlot } from './chromosome';
 
@@ -44,19 +44,21 @@ export function crossover(
   const crossoverPoint =
     mutableSlots[Math.floor(Math.random() * mutableSlots.length)];
 
-  const usedBaseSpecies = new Set<string>();
+  const usedDexNumbers = new Set<number>();
 
-  // Add all anchor species to used set
+  // Add all anchor Dex numbers to used set
   for (let i = 0; i < teamSize; i++) {
     if (isAnchorSlot(i, child)) {
-      usedBaseSpecies.add(getBaseSpecies(child.team[i]));
+      const dex = getDexNumber(child.team[i]);
+      if (dex) usedDexNumbers.add(dex);
     }
   }
 
-  // Add parent1 species before crossover point
+  // Add parent1 Dex numbers before crossover point
   for (const slot of mutableSlots) {
     if (slot < crossoverPoint) {
-      usedBaseSpecies.add(getBaseSpecies(child.team[slot]));
+      const dex = getDexNumber(child.team[slot]);
+      if (dex) usedDexNumbers.add(dex);
     }
   }
 
@@ -64,11 +66,11 @@ export function crossover(
   for (const slot of mutableSlots) {
     if (slot >= crossoverPoint) {
       const parent2Species = parent2.team[slot];
-      const parent2Base = getBaseSpecies(parent2Species);
+      const parent2Dex = getDexNumber(parent2Species);
 
-      if (!usedBaseSpecies.has(parent2Base)) {
+      if (parent2Dex && !usedDexNumbers.has(parent2Dex)) {
         child.team[slot] = parent2Species;
-        usedBaseSpecies.add(parent2Base);
+        usedDexNumbers.add(parent2Dex);
       }
       // If duplicate, keep parent1's species (already set)
     }
@@ -78,6 +80,18 @@ export function crossover(
   if (!validateTeamUniqueness(child.team)) {
     // If crossover created duplicates, return parent1 unchanged
     return cloneChromosome(parent1);
+  }
+
+  // CRITICAL: Verify anchors are preserved
+  for (let i = 0; i < teamSize; i++) {
+    if (isAnchorSlot(i, child)) {
+      if (child.team[i] !== parent1.team[i]) {
+        console.error(
+          `CROSSOVER CORRUPTED ANCHOR at index ${i}: Expected ${parent1.team[i]}, got ${child.team[i]}`,
+        );
+        return cloneChromosome(parent1);
+      }
+    }
   }
 
   return child;
@@ -112,12 +126,17 @@ export function mutate(
   const slotToMutate =
     mutableSlots[Math.floor(Math.random() * mutableSlots.length)];
 
-  // Find species not in team
-  const usedBaseSpecies = new Set(mutated.team.map((s) => getBaseSpecies(s)));
-
-  const availablePool = pokemonPool.filter(
-    (s) => !usedBaseSpecies.has(getBaseSpecies(s)),
+  // Find species not in team (by Dex number)
+  const usedDexNumbers = new Set(
+    mutated.team
+      .map((s) => getDexNumber(s))
+      .filter((dex): dex is number => dex !== undefined),
   );
+
+  const availablePool = pokemonPool.filter((s) => {
+    const dex = getDexNumber(s);
+    return dex && !usedDexNumbers.has(dex);
+  });
 
   if (availablePool.length === 0) {
     return mutated; // No alternatives available
@@ -133,6 +152,18 @@ export function mutate(
   if (!validateTeamUniqueness(mutated.team)) {
     // If mutation created duplicates, return original
     return chromosome;
+  }
+
+  // CRITICAL: Verify anchors are preserved
+  for (let i = 0; i < teamSize; i++) {
+    if (isAnchorSlot(i, mutated)) {
+      if (mutated.team[i] !== chromosome.team[i]) {
+        console.error(
+          `MUTATION CORRUPTED ANCHOR at index ${i}: Expected ${chromosome.team[i]}, got ${mutated.team[i]}`,
+        );
+        return chromosome;
+      }
+    }
   }
 
   return mutated;
@@ -174,7 +205,7 @@ export function createNextGeneration(
   const elites = selectElites(population, eliteCount);
   nextGeneration.push(...elites);
 
-  // 2. Fill rest with crossover + mutation
+  //2. Fill rest with crossover + mutation
   while (nextGeneration.length < population.length) {
     const parent1 = tournamentSelection(population);
     const parent2 = tournamentSelection(population);
@@ -188,6 +219,24 @@ export function createNextGeneration(
     }
 
     child = mutate(child, pokemonPool, mutationRate, mode);
+
+    // CRITICAL: Validate child preserves anchors from parent1
+    if (parent1.anchors && parent1.anchors.length > 0) {
+      let anchorCorrupted = false;
+      for (const anchorIndex of parent1.anchors) {
+        if (child.team[anchorIndex] !== parent1.team[anchorIndex]) {
+          console.error(
+            `❌ NEXT_GEN CORRUPTED ANCHOR ${anchorIndex}: Expected ${parent1.team[anchorIndex]}, got ${child.team[anchorIndex]}`,
+          );
+          anchorCorrupted = true;
+          break;
+        }
+      }
+      // If anchor corrupted, use parent1 instead
+      if (anchorCorrupted) {
+        child = cloneChromosome(parent1);
+      }
+    }
 
     nextGeneration.push(child);
   }
