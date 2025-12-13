@@ -28,6 +28,16 @@ type MatchupMatrix = Map<string, Map<string, MatchupData>>;
 let matchupMatrix: MatchupMatrix | null = null;
 
 /**
+ * CSV record structure from simulation files
+ */
+interface SimulationCSVRecord {
+  Pokemon: string;
+  'Battle Rating': number;
+  'Energy Remaining': number;
+  'HP Remaining': number;
+}
+
+/**
  * Parse a simulation CSV file and extract matchup results
  */
 function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
@@ -47,18 +57,18 @@ function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
       }
       return value;
     },
-  });
+  }) as SimulationCSVRecord[];
 
   const matchups = new Map<string, MatchupResult>();
 
   for (const record of records) {
     // Extract Pokemon name and moveset (e.g., "Altaria DB+SA/Ft")
-    const pokemonFullName = record['Pokemon'] as string;
+    const pokemonFullName = record.Pokemon;
 
     matchups.set(pokemonFullName, {
-      battleRating: record['Battle Rating'] as number,
-      energyRemaining: record['Energy Remaining'] as number,
-      hpRemaining: record['HP Remaining'] as number,
+      battleRating: record['Battle Rating'],
+      energyRemaining: record['Energy Remaining'],
+      hpRemaining: record['HP Remaining'],
     });
   }
 
