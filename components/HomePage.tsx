@@ -81,9 +81,9 @@ export function HomePage({ pokemonList }: HomePageProps) {
 
           {/* Tournament Mode Selection */}
           <div className="mb-6 sm:mb-8">
-            <label className="mb-3 block text-sm font-semibold text-gray-700">
+            <span className="mb-3 block text-sm font-semibold text-gray-700">
               Tournament Format
-            </label>
+            </span>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <button
                 onClick={() => handleModeChange('PlayPokemon')}
