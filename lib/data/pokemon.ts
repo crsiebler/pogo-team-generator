@@ -10,9 +10,13 @@ const pokemonByDex = new Map<number, Pokemon>();
 const pokemonBySpeciesName = new Map<string, Pokemon>();
 
 for (const pokemon of allPokemon) {
-  pokemonBySpeciesId.set(pokemon.speciesId, pokemon);
-  pokemonByDex.set(pokemon.dex, pokemon);
-  pokemonBySpeciesName.set(pokemon.speciesName, pokemon);
+  const cleanedPokemon = {
+    ...pokemon,
+    types: pokemon.types.filter((t) => t !== 'none'),
+  };
+  pokemonBySpeciesId.set(pokemon.speciesId, cleanedPokemon);
+  pokemonByDex.set(pokemon.dex, cleanedPokemon);
+  pokemonBySpeciesName.set(pokemon.speciesName, cleanedPokemon);
 }
 
 /**
