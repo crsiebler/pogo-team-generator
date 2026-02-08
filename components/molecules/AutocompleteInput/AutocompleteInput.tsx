@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/atoms';
-import { useTheme } from '@/hooks/useTheme';
 
 interface AutocompleteInputProps {
   value: string;
@@ -21,7 +20,6 @@ export function AutocompleteInput({
 }: AutocompleteInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { theme } = useTheme();
 
   // Filter suggestions based on input value using useMemo
   const filteredSuggestions = useMemo(() => {
@@ -73,19 +71,13 @@ export function AutocompleteInput({
   };
 
   const clearButtonClasses =
-    theme === 'dark'
-      ? 'absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-gray-300 focus:outline-none'
-      : 'absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none';
+    'absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none dark:text-gray-500 dark:hover:text-gray-300';
 
   const dropdownClasses =
-    theme === 'dark'
-      ? 'absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-600 bg-gray-800 shadow-lg sm:max-h-60'
-      : 'absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg sm:max-h-60';
+    'absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg sm:max-h-60 dark:border-gray-600 dark:bg-gray-800';
 
   const suggestionClasses =
-    theme === 'dark'
-      ? 'block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-gray-700 focus:bg-gray-700 focus:outline-none sm:text-base dark:text-gray-100'
-      : 'block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-blue-50 focus:bg-blue-50 focus:outline-none sm:text-base';
+    'block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-blue-50 focus:bg-blue-50 focus:outline-none sm:text-base dark:text-gray-100 dark:hover:bg-gray-700 dark:focus:bg-gray-700';
 
   return (
     <div ref={containerRef} className="relative">

@@ -1,5 +1,56 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Base colors */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Pokemon Type Colors */
+  --color-normal: #a8a878;
+  --color-fire: #f08030;
+  --color-water: #6890f0;
+  --color-electric: #f8d030;
+  --color-grass: #78c850;
+  --color-ice: #98d8d8;
+  --color-fighting: #c03028;
+  --color-poison: #a040a0;
+  --color-ground: #e0c068;
+  --color-flying: #a890f0;
+  --color-psychic: #f85888;
+  --color-bug: #a8b820;
+  --color-rock: #b8a038;
+  --color-ghost: #705898;
+  --color-dragon: #7038f8;
+  --color-dark-type: #705848;
+  --color-steel: #b8b8d0;
+  --color-fairy: #ee99ac;
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -43,7 +94,6 @@
   --border: #334155;
   --input: #1e293b;
   --ring: #3b82f6;
-  --radius: 0.5rem;
 }
 
 body {

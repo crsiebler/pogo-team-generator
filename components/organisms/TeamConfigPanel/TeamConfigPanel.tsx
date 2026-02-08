@@ -4,7 +4,6 @@ import { useCallback } from 'react';
 import clsx from 'clsx';
 import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
-import { useTheme } from '@/hooks/useTheme';
 import { TournamentMode } from '@/lib/types';
 
 interface TeamConfigPanelProps {
@@ -26,7 +25,6 @@ export function TeamConfigPanel({
   onGenerate,
   isGenerating,
 }: TeamConfigPanelProps) {
-  const { theme } = useTheme();
   const handleAnchorsChange = useCallback(
     (anchors: string[]) => {
       onAnchorsChange(anchors);
@@ -44,16 +42,14 @@ export function TeamConfigPanel({
   return (
     <div
       className={clsx(
-        'rounded-2xl p-6 shadow-xl backdrop-blur-sm sm:p-8',
-        theme === 'dark'
-          ? 'bg-gradient-to-br from-gray-800/90 to-gray-900/90'
-          : 'bg-opacity-5 bg-white',
+        'rounded-2xl bg-white p-6 shadow-xl sm:p-8',
+        'dark:bg-transparent dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900',
       )}
     >
       <h2
         className={clsx(
           'mb-6 text-xl font-bold sm:text-2xl',
-          theme === 'dark' ? 'text-gray-100' : 'text-gray-950',
+          'text-gray-950 dark:text-gray-100',
         )}
       >
         Team Configuration
@@ -64,7 +60,7 @@ export function TeamConfigPanel({
         <span
           className={clsx(
             'mb-3 block text-sm font-semibold',
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
+            'text-gray-800 dark:text-gray-300',
           )}
         >
           Tournament Format
@@ -88,10 +84,10 @@ export function TeamConfigPanel({
         className={clsx(
           'w-full rounded-xl px-6 py-4 text-base font-bold transition-all sm:text-lg',
           isGenerating
-            ? 'cursor-not-allowed bg-gray-400 text-gray-200'
+            ? 'cursor-not-allowed bg-gray-400 text-gray-200 dark:bg-gray-600 dark:text-gray-400'
             : mode === 'PlayPokemon'
-              ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:shadow-xl'
-              : 'bg-purple-600 text-white shadow-lg hover:bg-purple-700 hover:shadow-xl',
+              ? 'bg-blue-600 text-white shadow-lg hover:bg-blue-700 hover:shadow-xl dark:bg-blue-700 dark:hover:bg-blue-800'
+              : 'bg-purple-600 text-white shadow-lg hover:bg-purple-700 hover:shadow-xl dark:bg-purple-700 dark:hover:bg-purple-800',
         )}
       >
         {isGenerating ? (

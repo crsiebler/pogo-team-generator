@@ -1,7 +1,6 @@
 // Atom: Typography (Text, Heading, etc.)
 'use client';
 import { ElementType, ReactNode } from 'react';
-import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';
 
 interface TypographyProps {
@@ -17,7 +16,6 @@ export const Typography = ({
   className,
   children,
 }: TypographyProps) => {
-  const { theme } = useTheme();
   return (
     <Tag
       className={clsx(
@@ -28,7 +26,7 @@ export const Typography = ({
         variant === 'h5' && 'text-base font-semibold',
         variant === 'h6' && 'text-sm font-semibold',
         variant === 'p' && 'text-base',
-        theme === 'dark' ? 'text-gray-100' : 'text-gray-900',
+        'text-gray-900 dark:text-gray-100',
         className,
       )}
     >

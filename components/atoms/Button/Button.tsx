@@ -1,8 +1,6 @@
 // Atom: Button
-// Origin: Adapted from corysiebler.com/components/atoms/Button
 'use client';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,7 +16,6 @@ export const Button = ({
   children,
   ...rest
 }: ButtonProps) => {
-  const { theme } = useTheme();
   return (
     <button
       className={clsx(
@@ -29,17 +26,11 @@ export const Button = ({
         size === 'lg' && 'px-6 py-3 text-lg',
         // Variant
         variant === 'primary' &&
-          (theme === 'dark'
-            ? 'bg-blue-700 text-white hover:bg-blue-800'
-            : 'bg-blue-600 text-white hover:bg-blue-700'),
+          'bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800',
         variant === 'secondary' &&
-          (theme === 'dark'
-            ? 'bg-gray-700 text-gray-100 hover:bg-gray-800'
-            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'),
+          'bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-800',
         variant === 'danger' &&
-          (theme === 'dark'
-            ? 'bg-red-700 text-white hover:bg-red-800'
-            : 'bg-red-600 text-white hover:bg-red-700'),
+          'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800',
         className,
       )}
       {...rest}

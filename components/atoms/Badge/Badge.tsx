@@ -1,29 +1,16 @@
 // Atom: Badge/Tag
 'use client';
 import { ReactNode } from 'react';
-import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';
 
 const COLOR_MAP = {
   // Predefined colors
-  primary: (theme: 'light' | 'dark') =>
-    theme === 'dark'
-      ? 'bg-blue-900 text-blue-100'
-      : 'bg-blue-100 text-blue-800',
-  green: (theme: 'light' | 'dark') =>
-    theme === 'dark'
-      ? 'bg-green-900 text-green-100'
-      : 'bg-green-100 text-green-800',
-  red: (theme: 'light' | 'dark') =>
-    theme === 'dark' ? 'bg-red-900 text-red-100' : 'bg-red-100 text-red-800',
-  purple: (theme: 'light' | 'dark') =>
-    theme === 'dark'
-      ? 'bg-purple-900 text-purple-100'
-      : 'bg-purple-100 text-purple-800',
-  gray: (theme: 'light' | 'dark') =>
-    theme === 'dark'
-      ? 'bg-gray-800 text-gray-100'
-      : 'bg-gray-200 text-gray-700',
+  primary: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
+  green: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100',
+  red: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
+  purple:
+    'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
+  gray: 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-100',
   // Pokemon type colors
   normal: 'bg-gray-500 text-white',
   fire: 'bg-orange-500 text-white',
@@ -58,11 +45,7 @@ export const Badge = ({
   color = 'default',
   className,
 }: BadgeProps) => {
-  const { theme } = useTheme();
-  const colorClass =
-    typeof COLOR_MAP[color] === 'function'
-      ? COLOR_MAP[color](theme)
-      : COLOR_MAP[color] || COLOR_MAP.default;
+  const colorClass = COLOR_MAP[color] || COLOR_MAP.default;
 
   return (
     <span

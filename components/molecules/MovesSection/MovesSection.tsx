@@ -1,6 +1,5 @@
 import { Typography } from '@/components/atoms';
 import { Badge } from '@/components/atoms';
-import { useTheme } from '@/hooks/useTheme';
 
 interface MovesSectionProps {
   fastMove?: string;
@@ -13,15 +12,10 @@ export function MovesSection({
   chargedMove1,
   chargedMove2,
 }: MovesSectionProps) {
-  const { theme } = useTheme();
-
   const labelClasses =
-    theme === 'dark'
-      ? 'mb-1 block text-xs font-semibold text-gray-400 sm:text-sm'
-      : 'mb-1 block text-xs font-semibold text-gray-600 sm:text-sm';
+    'mb-1 block text-xs font-semibold text-gray-600 sm:text-sm dark:text-gray-400';
 
-  const noRecommendationClasses =
-    theme === 'dark' ? 'text-xs text-gray-500' : 'text-xs text-gray-400';
+  const noRecommendationClasses = 'text-xs text-gray-400 dark:text-gray-500';
 
   return (
     <div className="space-y-2">

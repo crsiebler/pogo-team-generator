@@ -1,4 +1,3 @@
-import { ThemeProvider } from '@hooks/useTheme';
 import { render, screen } from '@testing-library/react';
 import { PokemonCard } from './PokemonCard';
 import type { Pokemon } from '@/lib/types';
@@ -29,30 +28,18 @@ const mockPokemon: Pokemon = {
 
 describe('PokemonCard', () => {
   it('renders pokemon name and dex number', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <PokemonCard pokemon={mockPokemon} />
-      </ThemeProvider>,
-    );
+    render(<PokemonCard pokemon={mockPokemon} />);
     expect(screen.getByText('Pikachu')).toBeInTheDocument();
     expect(screen.getByText('Dex #25')).toBeInTheDocument();
   });
 
   it('renders type badges', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <PokemonCard pokemon={mockPokemon} />
-      </ThemeProvider>,
-    );
+    render(<PokemonCard pokemon={mockPokemon} />);
     expect(screen.getByText('electric')).toBeInTheDocument();
   });
 
   it('renders stat cards', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <PokemonCard pokemon={mockPokemon} />
-      </ThemeProvider>,
-    );
+    render(<PokemonCard pokemon={mockPokemon} />);
     expect(screen.getByText('Attack')).toBeInTheDocument();
     expect(screen.getByText('112')).toBeInTheDocument();
     expect(screen.getByText('Defense')).toBeInTheDocument();
@@ -62,11 +49,7 @@ describe('PokemonCard', () => {
   });
 
   it('renders moves section', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <PokemonCard pokemon={mockPokemon} />
-      </ThemeProvider>,
-    );
+    render(<PokemonCard pokemon={mockPokemon} />);
     expect(screen.getByText('Recommended Fast Move')).toBeInTheDocument();
     expect(screen.getByText('⭐ Thunder Shock')).toBeInTheDocument();
     expect(screen.getByText('Recommended Charged Moves')).toBeInTheDocument();
@@ -76,30 +59,18 @@ describe('PokemonCard', () => {
 
   it('renders shadow badge when pokemon is shadow', () => {
     const shadowPokemon = { ...mockPokemon, tags: ['shadow'] };
-    render(
-      <ThemeProvider initialTheme="light">
-        <PokemonCard pokemon={shadowPokemon} />
-      </ThemeProvider>,
-    );
+    render(<PokemonCard pokemon={shadowPokemon} />);
     expect(screen.getByText('SHADOW')).toBeInTheDocument();
   });
 
   it('does not render shadow badge for non-shadow pokemon', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <PokemonCard pokemon={mockPokemon} />
-      </ThemeProvider>,
-    );
+    render(<PokemonCard pokemon={mockPokemon} />);
     expect(screen.queryByText('SHADOW')).not.toBeInTheDocument();
   });
 
   it('handles multiple types', () => {
     const dualTypePokemon = { ...mockPokemon, types: ['fire', 'flying'] };
-    render(
-      <ThemeProvider initialTheme="light">
-        <PokemonCard pokemon={dualTypePokemon} />
-      </ThemeProvider>,
-    );
+    render(<PokemonCard pokemon={dualTypePokemon} />);
     expect(screen.getByText('fire')).toBeInTheDocument();
     expect(screen.getByText('flying')).toBeInTheDocument();
   });

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { AutocompleteInput, PokemonTag } from '@/components/molecules';
-import { useTheme } from '@/hooks/useTheme';
 import { TournamentMode } from '@/lib/types';
 
 interface TeamGeneratorProps {
@@ -19,7 +18,6 @@ export function TeamGenerator({
   onAnchorsChange,
   onExclusionsChange,
 }: TeamGeneratorProps) {
-  const { theme } = useTheme();
   const maxAnchors = mode === 'GBL' ? 3 : 6;
   const [anchorInputs, setAnchorInputs] = useState<string[]>(
     Array(maxAnchors).fill(''),
@@ -80,7 +78,7 @@ export function TeamGenerator({
       <h3
         className={clsx(
           'mb-3 block text-sm font-semibold',
-          theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
+          'text-gray-800 dark:text-gray-300',
         )}
       >
         Anchor Pokémon (Optional)
@@ -88,7 +86,7 @@ export function TeamGenerator({
       <p
         className={clsx(
           'mb-4 text-xs sm:text-sm',
-          theme === 'dark' ? 'text-gray-400' : 'text-gray-700',
+          'text-gray-700 dark:text-gray-400',
         )}
       >
         Select up to {maxAnchors} Pokémon you want to use. The algorithm will
@@ -101,7 +99,7 @@ export function TeamGenerator({
             <span
               className={clsx(
                 'w-6 text-xs font-medium sm:w-8 sm:text-sm',
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600',
+                'text-gray-600 dark:text-gray-400',
               )}
             >
               #{index + 1}
@@ -124,7 +122,7 @@ export function TeamGenerator({
         <h3
           className={clsx(
             'mb-3 block text-sm font-semibold',
-            theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
+            'text-gray-800 dark:text-gray-300',
           )}
         >
           Exclude Pokémon (Optional)
@@ -132,7 +130,7 @@ export function TeamGenerator({
         <p
           className={clsx(
             'mb-4 text-xs sm:text-sm',
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-700',
+            'text-gray-700 dark:text-gray-400',
           )}
         >
           Exclude specific Pokémon from being selected in generated teams.
@@ -159,7 +157,7 @@ export function TeamGenerator({
               excludedPokemon.includes(exclusionInput) ||
               !pokemonList.includes(exclusionInput)
             }
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 sm:text-base"
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 sm:text-base dark:disabled:bg-gray-600 dark:disabled:text-gray-400"
           >
             Add
           </button>

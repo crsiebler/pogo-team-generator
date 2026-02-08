@@ -33,7 +33,7 @@ export function TeamDisplay({ team, mode }: TeamDisplayProps) {
 
   if (loading) {
     return (
-      <div className="text-center text-sm text-gray-500 sm:text-base">
+      <div className="text-center text-sm text-gray-500 sm:text-base dark:text-gray-400">
         Loading team data...
       </div>
     );
@@ -45,9 +45,11 @@ export function TeamDisplay({ team, mode }: TeamDisplayProps) {
         <PokemonCard key={index} pokemon={pokemon} />
       ))}
 
-      <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 sm:mt-6 sm:p-4">
-        <h4 className="mb-2 font-bold text-blue-900">💡 Team Notes</h4>
-        <ul className="space-y-1 text-xs text-blue-800 sm:text-sm">
+      <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 sm:mt-6 sm:p-4 dark:border-blue-800 dark:bg-blue-900/20">
+        <h4 className="mb-2 font-bold text-blue-900 dark:text-blue-100">
+          💡 Team Notes
+        </h4>
+        <ul className="space-y-1 text-xs text-blue-800 sm:text-sm dark:text-blue-200">
           <li>
             • This team is optimized for{' '}
             {mode === 'GBL' ? 'GO Battle League' : 'Play! Pokémon'} format

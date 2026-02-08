@@ -1,4 +1,3 @@
-import { ThemeProvider } from '@hooks/useTheme';
 import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { Badge } from './Badge';
@@ -34,20 +33,12 @@ describe('Badge', () => {
   });
 
   it('renders with default color', () => {
-    render(
-      <ThemeProvider>
-        <Badge>TEST</Badge>
-      </ThemeProvider>,
-    );
+    render(<Badge>TEST</Badge>);
     expect(screen.getByText('TEST')).toBeInTheDocument();
   });
 
   it('renders with color="green"', () => {
-    render(
-      <ThemeProvider>
-        <Badge color="green">SUCCESS</Badge>
-      </ThemeProvider>,
-    );
+    render(<Badge color="green">SUCCESS</Badge>);
     expect(screen.getByText('SUCCESS')).toBeInTheDocument();
   });
 });

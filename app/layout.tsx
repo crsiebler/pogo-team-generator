@@ -1,5 +1,4 @@
 import './globals.css';
-import { ThemeProvider } from '@hooks/useTheme';
 import type { Metadata } from 'next';
 import { ThemeToggle } from '@/components/atoms';
 
@@ -9,18 +8,35 @@ export const metadata: Metadata = {
     'Generate optimized teams for Play! Pokémon and GO Battle League tournaments',
 };
 
+const themeScript = `
+  (function() {
+    const theme = localStorage.getItem('theme') || 
+      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    
+    // Listen for system changes (only if no manual theme set)
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        document.documentElement.classList.toggle('dark', e.matches);
+      }
+    });
+  })()
+`;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-        <ThemeProvider>
-          <ThemeToggle />
-          {children}
-        </ThemeProvider>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="min-h-screen bg-white dark:from-gray-900 dark:to-gray-800">
+        <ThemeToggle />
+        {children}
       </body>
     </html>
   );

@@ -1,6 +1,5 @@
 // Atom: Spinner/Loader
 'use client';
-import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';
 
 export interface SpinnerProps {
@@ -9,15 +8,13 @@ export interface SpinnerProps {
 }
 
 export const Spinner = ({ size = 20, className }: SpinnerProps) => {
-  const { theme } = useTheme();
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
       className={clsx(
-        'animate-spin',
-        theme === 'dark' ? 'text-blue-300' : 'text-blue-600',
+        'animate-spin text-blue-600 dark:text-blue-300',
         className,
       )}
       fill="none"

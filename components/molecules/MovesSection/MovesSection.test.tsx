@@ -1,26 +1,19 @@
-import { ThemeProvider } from '@hooks/useTheme';
 import { render, screen } from '@testing-library/react';
 import { MovesSection } from './MovesSection';
 
 describe('MovesSection', () => {
   it('renders fast move recommendation', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <MovesSection fastMove="Tackle" />
-      </ThemeProvider>,
-    );
+    render(<MovesSection fastMove="Tackle" />);
     expect(screen.getByText('Recommended Fast Move')).toBeInTheDocument();
     expect(screen.getByText('⭐ Tackle')).toBeInTheDocument();
   });
 
   it('renders charged moves recommendations', () => {
     render(
-      <ThemeProvider initialTheme="light">
-        <MovesSection
-          chargedMove1="Power_Up_Punch"
-          chargedMove2="Dynamic_Punch"
-        />
-      </ThemeProvider>,
+      <MovesSection
+        chargedMove1="Power_Up_Punch"
+        chargedMove2="Dynamic_Punch"
+      />,
     );
     expect(screen.getByText('Recommended Charged Moves')).toBeInTheDocument();
     expect(screen.getByText('⭐ Power Up Punch')).toBeInTheDocument();
@@ -28,21 +21,13 @@ describe('MovesSection', () => {
   });
 
   it('renders no recommendation messages when moves are missing', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <MovesSection />
-      </ThemeProvider>,
-    );
+    render(<MovesSection />);
     expect(screen.getByText('No recommendation')).toBeInTheDocument();
     expect(screen.getByText('No recommendations')).toBeInTheDocument();
   });
 
   it('formats move names by replacing underscores', () => {
-    render(
-      <ThemeProvider initialTheme="light">
-        <MovesSection fastMove="Water_Gun" chargedMove1="Hydro_Pump" />
-      </ThemeProvider>,
-    );
+    render(<MovesSection fastMove="Water_Gun" chargedMove1="Hydro_Pump" />);
     expect(screen.getByText('⭐ Water Gun')).toBeInTheDocument();
     expect(screen.getByText('⭐ Hydro Pump')).toBeInTheDocument();
   });

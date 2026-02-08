@@ -1,8 +1,6 @@
 // Atom: Input
-// Origin: Adapted from local usage and atomic conventions
 'use client';
 import type { InputHTMLAttributes } from 'react';
-import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';
 
 export interface InputProps extends Omit<
@@ -13,7 +11,6 @@ export interface InputProps extends Omit<
 }
 
 export const Input = ({ size = 'base', className, ...props }: InputProps) => {
-  const { theme } = useTheme();
   return (
     <input
       className={clsx(
@@ -21,9 +18,7 @@ export const Input = ({ size = 'base', className, ...props }: InputProps) => {
         size === 'sm' && 'px-2 py-1 text-sm',
         size === 'base' && 'px-3 py-2 text-base',
         size === 'lg' && 'px-4 py-3 text-lg',
-        theme === 'dark'
-          ? 'border-gray-700 bg-gray-900 text-gray-100 placeholder:text-gray-400 focus:ring-blue-500'
-          : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:ring-blue-500',
+        'border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-400',
         className,
       )}
       {...props}

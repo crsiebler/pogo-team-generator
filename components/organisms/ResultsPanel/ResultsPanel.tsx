@@ -2,7 +2,6 @@
 
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
-import { useTheme } from '@/hooks/useTheme';
 import { TournamentMode } from '@/lib/types';
 
 interface ResultsPanelProps {
@@ -16,20 +15,17 @@ export function ResultsPanel({
   mode,
   isGenerating,
 }: ResultsPanelProps) {
-  const { theme } = useTheme();
   return (
     <div
       className={clsx(
-        'rounded-2xl p-6 shadow-xl backdrop-blur-sm sm:p-8',
-        theme === 'dark'
-          ? 'bg-gradient-to-br from-gray-800/90 to-gray-900/90'
-          : 'bg-opacity-5 bg-white',
+        'rounded-2xl bg-white p-6 shadow-xl sm:p-8',
+        'dark:bg-transparent dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900',
       )}
     >
       <h2
         className={clsx(
           'mb-6 text-xl font-bold sm:text-2xl',
-          theme === 'dark' ? 'text-gray-100' : 'text-gray-950',
+          'text-gray-950 dark:text-gray-100',
         )}
       >
         Generated Team
@@ -39,7 +35,7 @@ export function ResultsPanel({
         <div
           className={clsx(
             'flex h-64 items-center justify-center sm:h-96',
-            theme === 'dark' ? 'text-gray-500' : 'text-gray-600',
+            'text-gray-600 dark:text-gray-500',
           )}
         >
           <div className="text-center">
@@ -91,7 +87,7 @@ export function ResultsPanel({
             <p
               className={clsx(
                 'text-base font-medium sm:text-lg',
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-900',
+                'text-gray-900 dark:text-gray-300',
               )}
             >
               Running genetic algorithm...
@@ -99,7 +95,7 @@ export function ResultsPanel({
             <p
               className={clsx(
                 'mt-2 text-xs sm:text-sm',
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-600',
+                'text-gray-600 dark:text-gray-400',
               )}
             >
               This may take 10-30 seconds
