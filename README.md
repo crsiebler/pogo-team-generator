@@ -599,4 +599,5 @@ MIT License - see LICENSE file for details
 - **Niantic** - Pokémon GO game mechanics and data
 - **The Silph Arena** - Tournament format and ruleset documentation
 - **GO Stadium** - Competitive battle mechanics research
+
 # Test change for pre-commit hook

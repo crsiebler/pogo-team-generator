@@ -82,5 +82,14 @@ export default [
       ...reactHooksPlugin.configs.recommended.rules,
     },
   },
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+        project: './tsconfig.json',
+      },
+    },
+  },
   prettierConfig,
 ];

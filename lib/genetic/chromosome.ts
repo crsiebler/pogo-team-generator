@@ -1,18 +1,18 @@
-import { calculateEffectiveness } from '../coverage/typeChart';
 import {
   validateTeamUniqueness,
   getPokemonBySpeciesId,
   getDexNumber,
-} from '../data/pokemon';
+} from '@lib/data/pokemon';
 import {
   speciesIdToRankingName,
   getAllRankingsForPokemon,
-} from '../data/rankings';
+} from '@lib/data/rankings';
 import {
   getWorstMatchups,
   countersThreats,
   getMatchupQualityScore,
-} from '../data/simulations';
+} from '@lib/data/simulations';
+import { calculateEffectiveness } from '../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../types';
 
 /**

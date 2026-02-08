@@ -1,28 +1,10 @@
-import {
-  calculateOffensiveCoverage,
-  calculateDefensiveCoverage,
-  calculateEffectiveness,
-} from '../../coverage/typeChart';
-import {
-  getMoveByMoveId,
-  evaluateMoveSynergy,
-  calculatePressureScore,
-} from '../../data/moves';
 import { getPokemonBySpeciesId } from '../../data/pokemon';
 import {
   getAllRankingsForPokemon,
   speciesIdToRankingName,
-  getMetaThreats,
 } from '../../data/rankings';
-import {
-  calculateTeamCoverage,
-  getWeightedTeamWeaknesses,
-  getSingleCounterThreats,
-  getTopThreats,
-  getMatchupQualityScore,
-} from '../../data/simulations';
+import { calculateTeamCoverage, getTopThreats } from '../../data/simulations';
 import type { Chromosome, TournamentMode } from '../../types';
-import { getOptimalMovesetForTeam } from '../moveset';
 
 /**
  * Calculate team coverage matrix score (40% weight)

@@ -1,7 +1,7 @@
+import { getMoveByMoveId } from '@lib/data/moves';
+import { getPokemonBySpeciesId } from '@lib/data/pokemon';
+import { getOptimalMoveset } from '@lib/data/rankings';
 import { calculateEffectiveness } from '../coverage/typeChart';
-import { getMoveByMoveId } from '../data/moves';
-import { getPokemonBySpeciesId } from '../data/pokemon';
-import { getOptimalMoveset } from '../data/rankings';
 import type { Pokemon } from '../types';
 
 // Cache for optimal movesets to avoid recomputation

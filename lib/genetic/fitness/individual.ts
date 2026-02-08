@@ -1,26 +1,26 @@
 import {
-  calculateOffensiveCoverage,
-  calculateDefensiveCoverage,
-  calculateEffectiveness,
-} from '../../coverage/typeChart';
-import {
   getMoveByMoveId,
   evaluateMoveSynergy,
   calculatePressureScore,
-} from '../../data/moves';
-import { getPokemonBySpeciesId } from '../../data/pokemon';
+} from '@lib/data/moves';
+import { getPokemonBySpeciesId } from '@lib/data/pokemon';
 import {
   getAllRankingsForPokemon,
   speciesIdToRankingName,
   getMetaThreats,
-} from '../../data/rankings';
+} from '@lib/data/rankings';
 import {
   calculateTeamCoverage,
   getWeightedTeamWeaknesses,
   getSingleCounterThreats,
   getTopThreats,
   getMatchupQualityScore,
-} from '../../data/simulations';
+} from '@lib/data/simulations';
+import {
+  calculateOffensiveCoverage,
+  calculateDefensiveCoverage,
+  calculateEffectiveness,
+} from '../../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../../types';
 import { getOptimalMovesetForTeam } from '../moveset';
 import typeEffectiveness from '@/data/type-effectiveness.json';

@@ -1,5 +1,5 @@
-import { getRankedGreatLeaguePokemon } from '../data/pokemon';
-import { getTopRankedPokemonNames } from '../data/rankings';
+import { getRankedGreatLeaguePokemon } from '@lib/data/pokemon';
+import { getTopRankedPokemonNames } from '@lib/data/rankings';
 import type { Chromosome, GenerationOptions } from '../types';
 import {
   initializePopulation,

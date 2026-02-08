@@ -1,4 +1,4 @@
-import { getDexNumber, validateTeamUniqueness } from '../data/pokemon';
+import { getDexNumber, validateTeamUniqueness } from '@lib/data/pokemon';
 import type { Chromosome, TournamentMode } from '../types';
 import { cloneChromosome, getMutableSlots, isAnchorSlot } from './chromosome';
 

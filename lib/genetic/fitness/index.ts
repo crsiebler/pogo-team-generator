@@ -1,6 +1,6 @@
-import type { FitnessAlgorithm, Chromosome, TournamentMode } from '@/lib/types';
-import { calculateFitness as calculateFitnessTeamSynergy } from './teamSynergy';
 import { calculateFitness as calculateFitnessIndividual } from './individual';
+import { calculateFitness as calculateFitnessTeamSynergy } from './teamSynergy';
+import type { FitnessAlgorithm, Chromosome, TournamentMode } from '@/lib/types';
 
 export type { FitnessAlgorithm } from '@/lib/types';
 
