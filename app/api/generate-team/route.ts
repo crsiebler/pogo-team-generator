@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { speciesNameToId } from '@/lib/data/pokemon';
 import { generateTeam } from '@/lib/genetic/algorithm';
-import type { TournamentMode } from '@/lib/types';
+import type { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mode, anchorPokemon, excludedPokemon } = body as {
+    const { mode, anchorPokemon, excludedPokemon, algorithm } = body as {
       mode: TournamentMode;
       anchorPokemon?: string[];
       excludedPokemon?: string[];
+      algorithm?: FitnessAlgorithm;
     };
 
     // Validate mode
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
       excludedPokemon: excludedSpeciesIds,
       populationSize: 150,
       generations: 75,
+      algorithm: algorithm || 'individual',
     });
 
     console.log('Generated team:', result.team);

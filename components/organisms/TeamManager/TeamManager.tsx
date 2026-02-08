@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { TeamConfigPanel, ResultsPanel } from '@/components/organisms';
-import { TournamentMode } from '@/lib/types';
+import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
 interface TeamManagerProps {
   pokemonList: string[];
@@ -14,6 +14,8 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
   const [currentMode, setCurrentMode] = useState<TournamentMode>('PlayPokemon');
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
+  const [currentAlgorithm, setCurrentAlgorithm] =
+    useState<FitnessAlgorithm>('individual');
 
   const handleModeChange = useCallback((mode: TournamentMode) => {
     setCurrentMode(mode);
@@ -29,6 +31,10 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
     setExcludedPokemon(exclusions);
   }, []);
 
+  const handleAlgorithmChange = useCallback((algorithm: FitnessAlgorithm) => {
+    setCurrentAlgorithm(algorithm);
+  }, []);
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     setGeneratedTeam(null);
@@ -41,6 +47,7 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
           mode: currentMode,
           anchorPokemon: anchorPokemon.filter(Boolean),
           excludedPokemon: excludedPokemon,
+          algorithm: currentAlgorithm,
         }),
       });
 
@@ -66,6 +73,8 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
         onModeChange={handleModeChange}
         onAnchorsChange={handleAnchorsChange}
         onExclusionsChange={handleExclusionsChange}
+        algorithm={currentAlgorithm}
+        onAlgorithmChange={handleAlgorithmChange}
         onGenerate={handleGenerate}
         isGenerating={isGenerating}
       />

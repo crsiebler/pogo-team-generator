@@ -25,6 +25,7 @@ export async function generateTeam(
     excludedPokemon = [],
     populationSize = 150,
     generations = 75,
+    algorithm = 'individual',
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
@@ -55,7 +56,7 @@ export async function generateTeam(
   );
 
   // Evaluate initial population
-  evaluatePopulation(population, mode);
+  evaluatePopulation(population, mode, algorithm);
 
   let bestOverall = getBestChromosome(population);
 
@@ -91,7 +92,7 @@ export async function generateTeam(
     });
 
     // Evaluate new population
-    evaluatePopulation(population, mode);
+    evaluatePopulation(population, mode, algorithm);
 
     // CRITICAL: Filter out any chromosomes that lost anchors
     if (anchorPokemon.length > 0) {
@@ -121,7 +122,7 @@ export async function generateTeam(
             teamSize,
             anchorPokemon,
           );
-          evaluatePopulation(population, mode);
+          evaluatePopulation(population, mode, algorithm);
         } else {
           // Refill population with clones of valid chromosomes
           while (population.length < populationSize) {
@@ -130,7 +131,7 @@ export async function generateTeam(
             population.push(cloneChromosome(randomValid));
           }
           // Re-evaluate the cloned chromosomes
-          evaluatePopulation(population, mode);
+          evaluatePopulation(population, mode, algorithm);
         }
       }
     }

@@ -67,6 +67,8 @@ export interface RankedPokemon {
 
 export type TournamentMode = 'PlayPokemon' | 'GBL';
 
+export type FitnessAlgorithm = 'individual' | 'teamSynergy';
+
 export interface Chromosome {
   team: string[];
   anchors?: number[];
@@ -79,6 +81,7 @@ export interface GenerationOptions {
   excludedPokemon?: string[];
   populationSize?: number;
   generations?: number;
+  algorithm?: FitnessAlgorithm;
 }
 
 export interface TypeChart {

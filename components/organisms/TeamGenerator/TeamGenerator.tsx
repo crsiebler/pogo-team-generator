@@ -2,14 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
-import { AutocompleteInput, PokemonTag } from '@/components/molecules';
-import { TournamentMode } from '@/lib/types';
+import {
+  AutocompleteInput,
+  PokemonTag,
+  AlgorithmToggle,
+} from '@/components/molecules';
+import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
 interface TeamGeneratorProps {
   mode: TournamentMode;
   pokemonList: string[];
   onAnchorsChange: (anchors: string[]) => void;
   onExclusionsChange: (exclusions: string[]) => void;
+  algorithm: FitnessAlgorithm;
+  onAlgorithmChange: (algorithm: FitnessAlgorithm) => void;
 }
 
 export function TeamGenerator({
@@ -17,6 +23,8 @@ export function TeamGenerator({
   pokemonList,
   onAnchorsChange,
   onExclusionsChange,
+  algorithm,
+  onAlgorithmChange,
 }: TeamGeneratorProps) {
   const maxAnchors = mode === 'GBL' ? 3 : 6;
   const [anchorInputs, setAnchorInputs] = useState<string[]>(
@@ -175,6 +183,29 @@ export function TeamGenerator({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Algorithm Toggle Section */}
+      <div className="mt-6 border-t pt-6">
+        <h3
+          className={clsx(
+            'mb-3 block text-sm font-semibold',
+            'text-gray-800 dark:text-gray-300',
+          )}
+        >
+          Algorithm Selection
+        </h3>
+        <p
+          className={clsx(
+            'mb-4 text-xs sm:text-sm',
+            'text-gray-700 dark:text-gray-400',
+          )}
+        >
+          Choose between individual scoring (fast) or team synergy analysis
+          (comprehensive).
+        </p>
+
+        <AlgorithmToggle algorithm={algorithm} onChange={onAlgorithmChange} />
       </div>
     </div>
   );

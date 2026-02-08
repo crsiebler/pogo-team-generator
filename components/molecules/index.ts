@@ -5,3 +5,4 @@ export { MovesSection } from './MovesSection';
 export { PokemonCard } from './PokemonCard';
 export { AutocompleteInput } from './AutocompleteInput';
 export { ModeSelector } from './ModeSelector';
+export { AlgorithmToggle } from './AlgorithmToggle';

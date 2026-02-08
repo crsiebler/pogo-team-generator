@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import clsx from 'clsx';
 import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
-import { TournamentMode } from '@/lib/types';
+import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
 interface TeamConfigPanelProps {
   pokemonList: string[];
@@ -12,6 +12,8 @@ interface TeamConfigPanelProps {
   onModeChange: (mode: TournamentMode) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onExclusionsChange: (exclusions: string[]) => void;
+  algorithm: FitnessAlgorithm;
+  onAlgorithmChange: (algorithm: FitnessAlgorithm) => void;
   onGenerate: () => void;
   isGenerating: boolean;
 }
@@ -22,6 +24,8 @@ export function TeamConfigPanel({
   onModeChange,
   onAnchorsChange,
   onExclusionsChange,
+  algorithm,
+  onAlgorithmChange,
   onGenerate,
   isGenerating,
 }: TeamConfigPanelProps) {
@@ -37,6 +41,13 @@ export function TeamConfigPanel({
       onExclusionsChange(exclusions);
     },
     [onExclusionsChange],
+  );
+
+  const handleAlgorithmChange = useCallback(
+    (algorithm: FitnessAlgorithm) => {
+      onAlgorithmChange(algorithm);
+    },
+    [onAlgorithmChange],
   );
 
   return (
@@ -75,6 +86,8 @@ export function TeamConfigPanel({
         pokemonList={pokemonList}
         onAnchorsChange={handleAnchorsChange}
         onExclusionsChange={handleExclusionsChange}
+        algorithm={algorithm}
+        onAlgorithmChange={handleAlgorithmChange}
       />
 
       {/* Generate Button */}
