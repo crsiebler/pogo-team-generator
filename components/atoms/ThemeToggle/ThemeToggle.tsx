@@ -1,6 +1,6 @@
 // Atom: Theme Toggle Button
 'use client';
-import { toggleTheme } from '@utils/themeManager';
+import { toggleTheme } from '@/lib/utils/themeManager';
 
 export function ThemeToggle() {
   return (

@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { ThemeToggle } from '@/components/atoms';
+import { Toast } from '@/components/atoms/Toast';
 
 export const metadata: Metadata = {
   title: 'Pokémon GO PvP Team Generator',
@@ -36,6 +37,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-white dark:from-gray-900 dark:to-gray-800">
         <ThemeToggle />
+        <Toast />
         {children}
       </body>
     </html>

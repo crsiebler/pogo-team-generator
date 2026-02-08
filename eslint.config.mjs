@@ -82,8 +82,5 @@ export default [
       ...reactHooksPlugin.configs.recommended.rules,
     },
   },
-  {
-    ignores: ['.next/**', 'node_modules/**', 'dist/**', 'build/**'],
-  },
   prettierConfig,
 ];

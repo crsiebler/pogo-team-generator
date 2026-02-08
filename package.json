@@ -6,7 +6,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --turbopack",
-    "lint": "next lint",
+    "lint": "eslint app components lib --ext .ts,.tsx,.js,.jsx",
     "prepare": "husky install",
     "start": "next start",
     "test": "vitest run"

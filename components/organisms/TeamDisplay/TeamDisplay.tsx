@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { PokemonCard } from '@/components/molecules';
+import { ExportButton } from '@/components/molecules/ExportButton/ExportButton';
+import type { TeamMovesets } from '@/lib/export';
 import type { Pokemon, TournamentMode } from '@/lib/types';
 
 interface TeamDisplayProps {
@@ -39,6 +41,18 @@ export function TeamDisplay({ team, mode }: TeamDisplayProps) {
     );
   }
 
+  // Build movesets from pokemon data
+  const movesets: TeamMovesets = {};
+  pokemonData.forEach((pokemon) => {
+    if (pokemon.recommendedMoveset) {
+      movesets[pokemon.speciesId] = {
+        fastMove: pokemon.recommendedMoveset.fastMove,
+        chargedMove1: pokemon.recommendedMoveset.chargedMove1,
+        chargedMove2: pokemon.recommendedMoveset.chargedMove2,
+      };
+    }
+  });
+
   return (
     <div className="space-y-3 sm:space-y-4">
       {pokemonData.map((pokemon, index) => (
@@ -46,9 +60,12 @@ export function TeamDisplay({ team, mode }: TeamDisplayProps) {
       ))}
 
       <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 sm:mt-6 sm:p-4 dark:border-blue-800 dark:bg-blue-900/20">
-        <h4 className="mb-2 font-bold text-blue-900 dark:text-blue-100">
-          💡 Team Notes
-        </h4>
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="font-bold text-blue-900 dark:text-blue-100">
+            💡 Team Notes
+          </h4>
+          <ExportButton team={team} movesets={movesets} />
+        </div>
         <ul className="space-y-1 text-xs text-blue-800 sm:text-sm dark:text-blue-200">
           <li>
             • This team is optimized for{' '}
