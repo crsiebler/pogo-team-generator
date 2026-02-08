@@ -5,7 +5,6 @@ import {
 } from '../coverage/typeChart';
 import {
   getMoveByMoveId,
-  getMovesetTypes,
   evaluateMoveSynergy,
   calculatePressureScore,
 } from '../data/moves';
@@ -17,7 +16,6 @@ import {
 } from '../data/rankings';
 import {
   calculateTeamCoverage,
-  getTeamWeaknesses,
   getWeightedTeamWeaknesses,
   getSingleCounterThreats,
   getTopThreats,
@@ -420,7 +418,7 @@ function calculateTypeDiversity(team: string[]): number {
   // Calculate diversity score - penalize duplicate types heavily
   let diversityScore = 1.0;
 
-  for (const [_type, count] of typeCount.entries()) {
+  for (const [, count] of typeCount.entries()) {
     if (count >= 4) {
       diversityScore -= 1.0; // Devastating - 4+ of same type is never acceptable
     } else if (count === 3) {
@@ -463,8 +461,6 @@ function calculateStatBalance(team: string[]): number {
       attackCount++; // Attack-weighted (e.g., Scizor, Primeape)
     }
   }
-
-  const totalCount = teamPokemon.length;
 
   // Ideal distribution: 1-2 bulky, 2-4 balanced, 1-2 attack
   // Calculate score based on how close we are to ideal
@@ -755,7 +751,7 @@ function calculateTypeSynergy(team: string[]): number {
   let synergyScore = 1.0;
 
   // Penalize stacked weaknesses (CRITICAL for team diversity)
-  for (const [_type, count] of weaknessCounts.entries()) {
+  for (const [, count] of weaknessCounts.entries()) {
     if (count >= 4) {
       synergyScore -= 0.6; // Devastating - 4+ Pokemon weak to same type
     } else if (count === 3) {
@@ -859,7 +855,7 @@ function calculateSimulationCoverage(team: string[]): number {
   // Mid tier (80-85): -0.75 penalty
   // Lower tier (75-80): -0.5 penalty
   // Off-meta (<75): -0.25 penalty
-  for (const { opponent, weight } of weightedWeaknesses) {
+  for (const { weight } of weightedWeaknesses) {
     score -= weight * 0.5; // Base penalty multiplied by ranking weight
   }
 
@@ -870,7 +866,7 @@ function calculateSimulationCoverage(team: string[]): number {
   // Upper tier (85-90): -0.5 penalty
   // Mid tier (80-85): -0.35 penalty
   // Lower tier (75-80): -0.25 penalty
-  for (const { opponent, weight } of singleCounters) {
+  for (const { weight } of singleCounters) {
     score -= weight * 0.5; // Penalty for lack of redundancy
   }
 
