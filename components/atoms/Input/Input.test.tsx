@@ -5,7 +5,7 @@ import { Input } from './Input';
 describe('Input', () => {
   it('renders base input by default', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <Input placeholder="test input" />
       </ThemeProvider>,
     );
@@ -13,7 +13,7 @@ describe('Input', () => {
   });
   it('respects size prop', () => {
     render(
-      <ThemeProvider theme="dark">
+      <ThemeProvider initialTheme="dark">
         <Input size="lg" placeholder="large" />
       </ThemeProvider>,
     );

@@ -1,4 +1,5 @@
 // Atom: Badge/Tag
+'use client';
 import { ReactNode } from 'react';
 import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';

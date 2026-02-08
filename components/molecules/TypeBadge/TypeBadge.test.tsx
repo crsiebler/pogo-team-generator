@@ -5,7 +5,7 @@ import { TypeBadge } from './TypeBadge';
 describe('TypeBadge', () => {
   it('renders with correct fire type color', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <TypeBadge type="fire" />
       </ThemeProvider>,
     );
@@ -16,7 +16,7 @@ describe('TypeBadge', () => {
 
   it('renders with correct water type color', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <TypeBadge type="water" />
       </ThemeProvider>,
     );
@@ -25,7 +25,7 @@ describe('TypeBadge', () => {
 
   it('renders unknown type with default color', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <TypeBadge type="unknown" />
       </ThemeProvider>,
     );
@@ -34,7 +34,7 @@ describe('TypeBadge', () => {
 
   it('renders uppercase type text', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <TypeBadge type="grass" />
       </ThemeProvider>,
     );

@@ -5,7 +5,7 @@ import { Spinner } from './Spinner';
 describe('Spinner', () => {
   it('renders spinner in light mode', () => {
     const { container } = render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <Spinner />
       </ThemeProvider>,
     );
@@ -13,7 +13,7 @@ describe('Spinner', () => {
   });
   it('renders spinner in dark mode', () => {
     const { container } = render(
-      <ThemeProvider theme="dark">
+      <ThemeProvider initialTheme="dark">
         <Spinner size={32} />
       </ThemeProvider>,
     );

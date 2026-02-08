@@ -5,7 +5,7 @@ import { MovesSection } from './MovesSection';
 describe('MovesSection', () => {
   it('renders fast move recommendation', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <MovesSection fastMove="Tackle" />
       </ThemeProvider>,
     );
@@ -15,7 +15,7 @@ describe('MovesSection', () => {
 
   it('renders charged moves recommendations', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <MovesSection
           chargedMove1="Power_Up_Punch"
           chargedMove2="Dynamic_Punch"
@@ -29,7 +29,7 @@ describe('MovesSection', () => {
 
   it('renders no recommendation messages when moves are missing', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <MovesSection />
       </ThemeProvider>,
     );
@@ -39,7 +39,7 @@ describe('MovesSection', () => {
 
   it('formats move names by replacing underscores', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <MovesSection fastMove="Water_Gun" chargedMove1="Hydro_Pump" />
       </ThemeProvider>,
     );

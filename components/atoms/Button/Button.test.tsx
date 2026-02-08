@@ -5,7 +5,7 @@ import { Button } from './Button';
 describe('Button', () => {
   it('renders primary button by default', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <Button>Click me</Button>
       </ThemeProvider>,
     );
@@ -13,7 +13,7 @@ describe('Button', () => {
   });
   it('accepts variants and sizes', () => {
     render(
-      <ThemeProvider theme="dark">
+      <ThemeProvider initialTheme="dark">
         <Button variant="danger" size="lg">
           Danger
         </Button>

@@ -1,5 +1,6 @@
 // Atom: Button
 // Origin: Adapted from corysiebler.com/components/atoms/Button
+'use client';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';

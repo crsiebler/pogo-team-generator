@@ -30,7 +30,7 @@ const mockPokemon: Pokemon = {
 describe('PokemonCard', () => {
   it('renders pokemon name and dex number', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <PokemonCard pokemon={mockPokemon} />
       </ThemeProvider>,
     );
@@ -40,7 +40,7 @@ describe('PokemonCard', () => {
 
   it('renders type badges', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <PokemonCard pokemon={mockPokemon} />
       </ThemeProvider>,
     );
@@ -49,7 +49,7 @@ describe('PokemonCard', () => {
 
   it('renders stat cards', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <PokemonCard pokemon={mockPokemon} />
       </ThemeProvider>,
     );
@@ -63,7 +63,7 @@ describe('PokemonCard', () => {
 
   it('renders moves section', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <PokemonCard pokemon={mockPokemon} />
       </ThemeProvider>,
     );
@@ -77,7 +77,7 @@ describe('PokemonCard', () => {
   it('renders shadow badge when pokemon is shadow', () => {
     const shadowPokemon = { ...mockPokemon, tags: ['shadow'] };
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <PokemonCard pokemon={shadowPokemon} />
       </ThemeProvider>,
     );
@@ -86,7 +86,7 @@ describe('PokemonCard', () => {
 
   it('does not render shadow badge for non-shadow pokemon', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <PokemonCard pokemon={mockPokemon} />
       </ThemeProvider>,
     );
@@ -96,7 +96,7 @@ describe('PokemonCard', () => {
   it('handles multiple types', () => {
     const dualTypePokemon = { ...mockPokemon, types: ['fire', 'flying'] };
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <PokemonCard pokemon={dualTypePokemon} />
       </ThemeProvider>,
     );

@@ -98,7 +98,7 @@ function extractShieldCount(filename: string): number {
  */
 function loadSimulationData(): MatchupMatrix {
   const matrix: MatchupMatrix = new Map();
-  const simulationDir = `${process.cwd()}/data/simulation`;
+  const simulationDir = `${process.cwd()}/data/simulations`;
 
   try {
     const files = readdirSync(simulationDir);
@@ -151,8 +151,10 @@ function loadSimulationData(): MatchupMatrix {
         }
       }
     }
-  } catch (error) {
-    console.error('Error loading simulation data:', error);
+  } catch {
+    console.warn(
+      'Simulation data directory not found - falling back to ranking data only. Add simulation CSVs to data/simulation/ for enhanced matchup evaluation.',
+    );
   }
 
   return matrix;

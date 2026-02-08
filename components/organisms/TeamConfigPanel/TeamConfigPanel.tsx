@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 import clsx from 'clsx';
 import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
+import { useTheme } from '@/hooks/useTheme';
 import { TournamentMode } from '@/lib/types';
 
 interface TeamConfigPanelProps {
@@ -25,6 +26,7 @@ export function TeamConfigPanel({
   onGenerate,
   isGenerating,
 }: TeamConfigPanelProps) {
+  const { theme } = useTheme();
   const handleAnchorsChange = useCallback(
     (anchors: string[]) => {
       onAnchorsChange(anchors);
@@ -40,14 +42,31 @@ export function TeamConfigPanel({
   );
 
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
-      <h2 className="mb-6 text-xl font-bold text-gray-900 sm:text-2xl">
+    <div
+      className={clsx(
+        'rounded-2xl p-6 shadow-xl backdrop-blur-sm sm:p-8',
+        theme === 'dark'
+          ? 'bg-gradient-to-br from-gray-800/90 to-gray-900/90'
+          : 'bg-opacity-5 bg-white',
+      )}
+    >
+      <h2
+        className={clsx(
+          'mb-6 text-xl font-bold sm:text-2xl',
+          theme === 'dark' ? 'text-gray-100' : 'text-gray-950',
+        )}
+      >
         Team Configuration
       </h2>
 
       {/* Tournament Mode Selection */}
       <div className="mb-6 sm:mb-8">
-        <span className="mb-3 block text-sm font-semibold text-gray-700">
+        <span
+          className={clsx(
+            'mb-3 block text-sm font-semibold',
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
+          )}
+        >
           Tournament Format
         </span>
         <ModeSelector mode={mode} onModeChange={onModeChange} />

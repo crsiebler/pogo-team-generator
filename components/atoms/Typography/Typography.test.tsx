@@ -5,7 +5,7 @@ import { Typography } from './Typography';
 describe('Typography', () => {
   it('renders correct heading', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <Typography as="h1" variant="h1">
           Title
         </Typography>
@@ -15,7 +15,7 @@ describe('Typography', () => {
   });
   it('applies dark mode style', () => {
     render(
-      <ThemeProvider theme="dark">
+      <ThemeProvider initialTheme="dark">
         <Typography variant="h2">Subtitle</Typography>
       </ThemeProvider>,
     );

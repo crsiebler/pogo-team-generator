@@ -1,6 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
+import { useTheme } from '@/hooks/useTheme';
 import { TournamentMode } from '@/lib/types';
 
 interface ModeSelectorProps {
@@ -9,6 +10,7 @@ interface ModeSelectorProps {
 }
 
 export function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {
+  const { theme } = useTheme();
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
       <button
@@ -16,8 +18,12 @@ export function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {
         className={clsx(
           'rounded-xl border-2 p-4 transition-all',
           mode === 'PlayPokemon'
-            ? 'border-blue-600 bg-blue-50 text-blue-900'
-            : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400',
+            ? theme === 'dark'
+              ? 'border-blue-600 bg-blue-900/20 text-blue-100'
+              : 'border-blue-600 bg-blue-50 text-blue-900'
+            : theme === 'dark'
+              ? 'border-gray-600 bg-gray-800 text-gray-300 hover:border-blue-400'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400',
         )}
       >
         <div className="mb-1 text-base font-bold sm:text-lg">Play! Pokémon</div>
@@ -30,8 +36,12 @@ export function ModeSelector({ mode, onModeChange }: ModeSelectorProps) {
         className={clsx(
           'rounded-xl border-2 p-4 transition-all',
           mode === 'GBL'
-            ? 'border-purple-600 bg-purple-50 text-purple-900'
-            : 'border-gray-300 bg-white text-gray-700 hover:border-purple-400',
+            ? theme === 'dark'
+              ? 'border-purple-600 bg-purple-900/20 text-purple-100'
+              : 'border-purple-600 bg-purple-50 text-purple-900'
+            : theme === 'dark'
+              ? 'border-gray-600 bg-gray-800 text-gray-300 hover:border-purple-400'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-purple-400',
         )}
       >
         <div className="mb-1 text-base font-bold sm:text-lg">

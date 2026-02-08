@@ -21,7 +21,7 @@ const mockSuggestions = [
 describe('AutocompleteInput', () => {
   it('renders input with placeholder', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value=""
           onChange={() => {}}
@@ -36,7 +36,7 @@ describe('AutocompleteInput', () => {
 
   it('shows clear button when input has value', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value="Pikachu"
           onChange={() => {}}
@@ -50,7 +50,7 @@ describe('AutocompleteInput', () => {
 
   it('does not show suggestions for input less than 2 characters', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value="P"
           onChange={() => {}}
@@ -64,7 +64,7 @@ describe('AutocompleteInput', () => {
 
   it('shows filtered suggestions when typing 2+ characters', async () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value="Pi"
           onChange={() => {}}
@@ -83,7 +83,7 @@ describe('AutocompleteInput', () => {
   it('limits suggestions to 10 items', async () => {
     const manySuggestions = Array.from({ length: 15 }, (_, i) => `Pokemon${i}`);
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value="Pokemon"
           onChange={() => {}}
@@ -105,7 +105,7 @@ describe('AutocompleteInput', () => {
   it('calls onSelect when suggestion is clicked', async () => {
     const mockOnSelect = vi.fn();
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value="Pi"
           onChange={() => {}}
@@ -125,7 +125,7 @@ describe('AutocompleteInput', () => {
   it('calls onChange when input value changes', () => {
     const mockOnChange = vi.fn();
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value=""
           onChange={mockOnChange}
@@ -141,7 +141,7 @@ describe('AutocompleteInput', () => {
 
   it('closes suggestions on Escape key', async () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value="Pi"
           onChange={() => {}}
@@ -162,7 +162,7 @@ describe('AutocompleteInput', () => {
   it('clears input when clear button is clicked', () => {
     const mockOnChange = vi.fn();
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <AutocompleteInput
           value="Pikachu"
           onChange={mockOnChange}

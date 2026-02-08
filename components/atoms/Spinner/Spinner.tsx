@@ -1,4 +1,5 @@
 // Atom: Spinner/Loader
+'use client';
 import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';
 

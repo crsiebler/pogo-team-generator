@@ -1,5 +1,6 @@
 // Atom: Input
 // Origin: Adapted from local usage and atomic conventions
+'use client';
 import type { InputHTMLAttributes } from 'react';
 import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';

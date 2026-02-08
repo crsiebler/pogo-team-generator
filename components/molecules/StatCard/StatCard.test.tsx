@@ -5,7 +5,7 @@ import { StatCard } from './StatCard';
 describe('StatCard', () => {
   it('renders with red color scheme', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <StatCard label="Attack" value={150} color="red" />
       </ThemeProvider>,
     );
@@ -15,7 +15,7 @@ describe('StatCard', () => {
 
   it('renders with blue color scheme', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <StatCard label="Defense" value={120} color="blue" />
       </ThemeProvider>,
     );
@@ -25,7 +25,7 @@ describe('StatCard', () => {
 
   it('renders with green color scheme', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <StatCard label="HP" value={200} color="green" />
       </ThemeProvider>,
     );
@@ -35,7 +35,7 @@ describe('StatCard', () => {
 
   it('has correct styling structure', () => {
     render(
-      <ThemeProvider theme="light">
+      <ThemeProvider initialTheme="light">
         <StatCard label="Test" value={100} color="red" />
       </ThemeProvider>,
     );

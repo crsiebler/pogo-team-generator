@@ -1,4 +1,5 @@
 // Atom: Typography (Text, Heading, etc.)
+'use client';
 import { ElementType, ReactNode } from 'react';
 import { useTheme } from '@hooks/useTheme';
 import clsx from 'clsx';

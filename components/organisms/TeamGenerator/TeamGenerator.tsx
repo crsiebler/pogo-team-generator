@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import clsx from 'clsx';
 import { AutocompleteInput, PokemonTag } from '@/components/molecules';
+import { useTheme } from '@/hooks/useTheme';
 import { TournamentMode } from '@/lib/types';
 
 interface TeamGeneratorProps {
@@ -17,6 +19,7 @@ export function TeamGenerator({
   onAnchorsChange,
   onExclusionsChange,
 }: TeamGeneratorProps) {
+  const { theme } = useTheme();
   const maxAnchors = mode === 'GBL' ? 3 : 6;
   const [anchorInputs, setAnchorInputs] = useState<string[]>(
     Array(maxAnchors).fill(''),
@@ -74,10 +77,20 @@ export function TeamGenerator({
 
   return (
     <div className="mb-6 sm:mb-8">
-      <h3 className="mb-3 block text-sm font-semibold text-gray-700">
+      <h3
+        className={clsx(
+          'mb-3 block text-sm font-semibold',
+          theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
+        )}
+      >
         Anchor Pokémon (Optional)
       </h3>
-      <p className="mb-4 text-xs text-gray-600 sm:text-sm">
+      <p
+        className={clsx(
+          'mb-4 text-xs sm:text-sm',
+          theme === 'dark' ? 'text-gray-400' : 'text-gray-700',
+        )}
+      >
         Select up to {maxAnchors} Pokémon you want to use. The algorithm will
         build a team around them.
       </p>
@@ -85,7 +98,12 @@ export function TeamGenerator({
       <div className="space-y-2 sm:space-y-3">
         {anchorInputs.map((input, index) => (
           <div key={index} className="flex items-center gap-2">
-            <span className="w-6 text-xs font-medium text-gray-500 sm:w-8 sm:text-sm">
+            <span
+              className={clsx(
+                'w-6 text-xs font-medium sm:w-8 sm:text-sm',
+                theme === 'dark' ? 'text-gray-400' : 'text-gray-600',
+              )}
+            >
               #{index + 1}
             </span>
             <div className="flex-1">
@@ -103,10 +121,20 @@ export function TeamGenerator({
 
       {/* Exclusion Section */}
       <div className="mt-6 border-t pt-6">
-        <h3 className="mb-3 block text-sm font-semibold text-gray-700">
+        <h3
+          className={clsx(
+            'mb-3 block text-sm font-semibold',
+            theme === 'dark' ? 'text-gray-300' : 'text-gray-800',
+          )}
+        >
           Exclude Pokémon (Optional)
         </h3>
-        <p className="mb-4 text-xs text-gray-600 sm:text-sm">
+        <p
+          className={clsx(
+            'mb-4 text-xs sm:text-sm',
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-700',
+          )}
+        >
           Exclude specific Pokémon from being selected in generated teams.
         </p>
 

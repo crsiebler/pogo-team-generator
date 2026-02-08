@@ -7,11 +7,11 @@ export function PokemonTag({ pokemon, onRemove }: PokemonTagProps) {
   return (
     <button
       onClick={() => onRemove(pokemon)}
-      className="group inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-medium text-red-800 transition-all hover:bg-red-200 sm:text-sm"
+      className="group inline-flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-medium text-red-800 transition-all hover:bg-red-200 sm:text-sm dark:bg-red-900 dark:text-red-100 dark:hover:bg-red-800"
     >
       <span>{pokemon}</span>
       <svg
-        className="h-3 w-3 text-red-600 group-hover:text-red-800 sm:h-4 sm:w-4"
+        className="h-3 w-3 text-red-600 group-hover:text-red-800 sm:h-4 sm:w-4 dark:text-red-400 dark:group-hover:text-red-300"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

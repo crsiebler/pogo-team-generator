@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/atoms';
+import { useTheme } from '@/hooks/useTheme';
 
 interface AutocompleteInputProps {
   value: string;
@@ -20,6 +21,7 @@ export function AutocompleteInput({
 }: AutocompleteInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { theme } = useTheme();
 
   // Filter suggestions based on input value using useMemo
   const filteredSuggestions = useMemo(() => {
@@ -70,6 +72,21 @@ export function AutocompleteInput({
     }
   };
 
+  const clearButtonClasses =
+    theme === 'dark'
+      ? 'absolute top-1/2 right-2 -translate-y-1/2 text-gray-500 hover:text-gray-300 focus:outline-none'
+      : 'absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none';
+
+  const dropdownClasses =
+    theme === 'dark'
+      ? 'absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-600 bg-gray-800 shadow-lg sm:max-h-60'
+      : 'absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg sm:max-h-60';
+
+  const suggestionClasses =
+    theme === 'dark'
+      ? 'block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-gray-700 focus:bg-gray-700 focus:outline-none sm:text-base dark:text-gray-100'
+      : 'block w-full px-4 py-3 text-left text-sm transition-colors hover:bg-blue-50 focus:bg-blue-50 focus:outline-none sm:text-base';
+
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
@@ -85,7 +102,7 @@ export function AutocompleteInput({
         {value && !disabled && (
           <button
             onClick={handleClear}
-            className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+            className={clearButtonClasses}
             aria-label="Clear input"
             type="button"
           >
@@ -108,12 +125,12 @@ export function AutocompleteInput({
 
       {/* Suggestions Dropdown */}
       {showSuggestions && (
-        <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-gray-300 bg-white shadow-lg sm:max-h-60">
+        <div className={dropdownClasses}>
           {filteredSuggestions.map((suggestion, index) => (
             <button
               key={suggestion}
               onClick={() => handleSuggestionClick(suggestion)}
-              className={`block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-blue-50 focus:bg-blue-50 focus:outline-none sm:text-base ${
+              className={`${suggestionClasses} ${
                 index === 0 ? 'rounded-t-lg' : ''
               } ${
                 index === filteredSuggestions.length - 1 ? 'rounded-b-lg' : ''
