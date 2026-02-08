@@ -4,10 +4,11 @@
   "description": "A web application that generates optimized 6-Pokémon teams for Play! Pokémon Great League (CP 1500) tournaments using genetic algorithms. Analyzes type coverage, move synergy, and strategic lineup patterns (ABA/ABB/ABC) to create competitive teams.",
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "dev": "next dev --turbopack",
     "lint": "next lint",
+    "prepare": "husky install",
+    "start": "next start",
     "test": "vitest run"
   },
   "keywords": [],
@@ -51,5 +52,11 @@
     "typescript-eslint": "^8.49.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.0.15"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "next lint --fix"
+    ]
   }
 }
