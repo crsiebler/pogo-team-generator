@@ -409,14 +409,10 @@ describe('Type Effectiveness Calculator', () => {
       expect(calculateEffectiveness(['fire', 'rock'], 'water')).toBe(2.56);
 
       // Ice vs Dragon/Flying
-      expect(calculateEffectiveness(['dragon', 'flying'], 'ice')).toBe(
-        2.56,
-      );
+      expect(calculateEffectiveness(['dragon', 'flying'], 'ice')).toBe(2.56);
 
       // Ground vs Rock/Steel
-      expect(calculateEffectiveness(['rock', 'steel'], 'ground')).toBe(
-        2.56,
-      );
+      expect(calculateEffectiveness(['rock', 'steel'], 'ground')).toBe(2.56);
     });
 
     it('should calculate SE + NVE = Neutral (1.6×)', () => {

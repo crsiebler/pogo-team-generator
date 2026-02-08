@@ -1,0 +1,1 @@
+export { TeamGenerator } from './TeamGenerator';

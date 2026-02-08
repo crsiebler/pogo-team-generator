@@ -3,6 +3,7 @@
 ## Multiplier Values
 
 Pokémon GO uses the following damage multipliers:
+
 - **Super Effective**: 1.6×
 - **Neutral**: 1.0×
 - **Not Very Effective**: 0.625×
@@ -13,12 +14,14 @@ Pokémon GO uses the following damage multipliers:
 For dual-type defenders, **multiply the effectiveness values**:
 
 ### Single Type Examples
+
 - Water → Fire = 1.6× (super effective)
 - Dragon → Steel = 0.625× (not very effective)
 - Dragon → Fairy = 0.39× (immune, treated as 0.39× in GO)
 - Normal → Ghost = 0.39× (immune)
 
 ### Dual Type Examples
+
 - Water → Fire/Rock = 1.6 × 1.6 = **2.56×** (double super effective)
 - Water → Dragon/Fire = 1.0 × 1.6 = **1.6×** (neutral × super effective)
 - Dragon → Steel/Fairy = 0.625 × 0.39 = **0.24375×** (≈ 0.2457×)
@@ -40,15 +43,15 @@ import typeChart from './type-effectiveness.json';
 export function calculateEffectiveness(
   attackerTypes: string[],
   defenderTypes: string[],
-  moveType: string
+  moveType: string,
 ): number {
   let multiplier = 1.0;
-  
+
   for (const defenderType of defenderTypes) {
     const effectiveness = typeChart[moveType]?.[defenderType] ?? 1.0;
     multiplier *= effectiveness;
   }
-  
+
   return multiplier;
 }
 
@@ -72,9 +75,13 @@ export function getSTAB(pokemonTypes: string[], moveType: string): number {
 export function calculateTotalMultiplier(
   attackerTypes: string[],
   defenderTypes: string[],
-  moveType: string
+  moveType: string,
 ): number {
-  const effectiveness = calculateEffectiveness(attackerTypes, defenderTypes, moveType);
+  const effectiveness = calculateEffectiveness(
+    attackerTypes,
+    defenderTypes,
+    moveType,
+  );
   const stab = getSTAB(attackerTypes, moveType);
   return effectiveness * stab;
 }
@@ -138,6 +145,7 @@ calculateEffectiveness([], ['rock', 'flying'], 'ground');
 The type effectiveness matrix includes all 324 interactions (18 types × 18 types):
 
 ### Super Effective Interactions (1.6×)
+
 - Fire → Grass, Ice, Bug, Steel
 - Water → Fire, Ground, Rock
 - Electric → Water, Flying
@@ -157,6 +165,7 @@ The type effectiveness matrix includes all 324 interactions (18 types × 18 type
 - Fairy → Fighting, Dragon, Dark
 
 ### Not Very Effective Interactions (0.625×)
+
 - Fire → Fire, Water, Rock, Dragon
 - Water → Water, Grass, Dragon
 - Electric → Electric, Grass, Dragon
@@ -176,6 +185,7 @@ The type effectiveness matrix includes all 324 interactions (18 types × 18 type
 - Fairy → Fire, Poison, Steel
 
 ### Immune Interactions (0.39×)
+
 - Normal → Ghost
 - Electric → Ground
 - Fighting → Ghost
@@ -188,11 +198,13 @@ The type effectiveness matrix includes all 324 interactions (18 types × 18 type
 ## Validation
 
 Run unit tests to verify all 324 interactions:
+
 ```bash
 npm test type-effectiveness
 ```
 
 Tests validate:
+
 - All single-type interactions match Pokémon GO mechanics
 - Dual-type calculations multiply correctly
 - Edge cases (neutral, double resist, etc.)

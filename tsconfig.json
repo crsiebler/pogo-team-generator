@@ -13,14 +13,18 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "types": ["vitest/globals"],
+    "paths": {
+      "@/*": ["./*"],
+      "@hooks/*": ["./hooks/*"],
+      "@lib/*": ["./lib/*"],
+      "@components/*": ["./components/*"]
+    },
     "plugins": [
       {
         "name": "next"
       }
-    ],
-    "paths": {
-      "@/*": ["./*"]
-    }
+    ]
   },
   "include": [
     "next-env.d.ts",

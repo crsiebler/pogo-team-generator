@@ -4,6 +4,7 @@ description: Applies design patterns and maintains architectural boundaries duri
 ---
 
 ## What I do
+
 - Analyze current architecture for improvement opportunities
 - Apply design patterns (Strategy, CQRS, Factory)
 - Maintain dependency injection and repository patterns
@@ -11,9 +12,11 @@ description: Applies design patterns and maintains architectural boundaries duri
 - Validate changes with full test suite
 
 ## When to use me
+
 Use this when refactoring code to improve maintainability, applying patterns, or restructuring to follow Clean Architecture. This preserves architectural boundaries while improving code quality.
 
 ## Procedure
+
 1. Analyze current architecture and identify improvements
 2. Plan refactoring: State intent and approach
 3. Apply appropriate design patterns from AGENTS.md
@@ -23,6 +26,7 @@ Use this when refactoring code to improve maintainability, applying patterns, or
 7. Format and lint changes
 
 ## Related Guidelines
+
 - Follow system structure from AGENTS.md
 - Apply design patterns appropriately
 - Maintain Clean Architecture layers

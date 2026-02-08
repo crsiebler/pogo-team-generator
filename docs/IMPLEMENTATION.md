@@ -75,6 +75,7 @@
 ## Key Features Implemented
 
 ### Genetic Algorithm
+
 - **Population**: 150 teams
 - **Generations**: 75 iterations
 - **Selection**: Tournament selection (3-way)
@@ -86,35 +87,37 @@
 ### Fitness Components
 
 ```typescript
-fitness = (
-  typeCoverage * 0.30 +         // Offensive/defensive coverage
-  avgRankingScore * 0.25 +      // Average across 4 CSVs
-  strategyViability * 0.20 +    // Valid ABA/ABB/ABC lineups
-  metaThreatCoverage * 0.15 +   // Covers top 50 ranked
-  energyBreakpoints * 0.10      // Move synergy and timing
-);
+fitness =
+  typeCoverage * 0.3 + // Offensive/defensive coverage
+  avgRankingScore * 0.25 + // Average across 4 CSVs
+  strategyViability * 0.2 + // Valid ABA/ABB/ABC lineups
+  metaThreatCoverage * 0.15 + // Covers top 50 ranked
+  energyBreakpoints * 0.1; // Move synergy and timing
 
 // Mode adjustments
 if (mode === 'GBL') fitness += surpriseFactor * 0.15;
-if (mode === 'PlayPokemon') fitness += consistency * 0.10;
+if (mode === 'PlayPokemon') fitness += consistency * 0.1;
 if (hasAnchors) fitness += anchorSynergy * 0.15;
 ```
 
 ### Tournament Format Support
 
 **Play! Pokémon (Open Sheets)**:
+
 - 6 Pokémon team
 - Opponent sees all Pokémon and moves
 - Algorithm prioritizes consistency and generalist performance
 - 3 selected per battle from 6-team roster
 
 **GO Battle League (Blind)**:
+
 - 3 Pokémon team
 - Opponent doesn't see team until battle starts
 - Algorithm values surprise factor and off-meta picks
 - All 3 battle every match
 
 ### Anchor Pokémon Mode
+
 - User can lock 1-6 Pokémon slots
 - Algorithm fills remaining slots to optimize around anchors
 - Crossover and mutation respect locked slots
@@ -131,14 +134,14 @@ if (hasAnchors) fitness += anchorSynergy * 0.15;
 ✅ Type coverage calculations  
 ✅ Move synergy scoring  
 ✅ Meta threat coverage  
-✅ Strategic lineup validation (ABA/ABB/ABC)  
+✅ Strategic lineup validation (ABA/ABB/ABC)
 
 ## Configuration Files
 
 All files use ES modules (`"type": "module"` in package.json):
 
 - **package.json**: Bun scripts, dependencies
-- **tsconfig.json**: Path aliases (@/*), strict mode
+- **tsconfig.json**: Path aliases (@/\*), strict mode
 - **next.config.js**: Turbopack enabled (webpack disabled)
 - **tailwind.config.js**: Type colors, content paths
 - **postcss.config.js**: @tailwindcss/postcss plugin
@@ -153,12 +156,14 @@ All files use ES modules (`"type": "module"` in package.json):
 ## How to Use
 
 ### Start the Application
+
 ```bash
 cd /home/corys/repositories/play-pokemon-team-generator
 bun run dev
 ```
 
 ### Generate a Team
+
 1. Open http://localhost:3000
 2. Choose tournament format (Play! Pokémon or GBL)
 3. Optionally add anchor Pokémon (e.g., "Azumarill", "Bastiodon")
@@ -169,6 +174,7 @@ bun run dev
 ### Example Teams Generated
 
 **Play! Pokémon (6-team)**:
+
 - Galarian Corsola (Lead)
 - Azumarill (Switch)
 - Bastiodon (Closer)
@@ -177,6 +183,7 @@ bun run dev
 - Lickitung (Generalist)
 
 **GO Battle League (3-team)**:
+
 - Medicham (Lead - Fast Charge)
 - Registeel (Switch - Bulk + Coverage)
 - Altaria (Closer - Dragon + Fairy)
@@ -216,7 +223,7 @@ bun run dev
 ✅ **Anchor Pokémon mode operational**  
 ✅ **Both tournament formats supported**  
 ✅ **UI responsive and user-friendly**  
-✅ **API endpoints returning valid data**  
+✅ **API endpoints returning valid data**
 
 ---
 
