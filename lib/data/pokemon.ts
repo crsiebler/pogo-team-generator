@@ -16,7 +16,9 @@ for (const pokemon of allPokemon) {
   };
   pokemonBySpeciesId.set(pokemon.speciesId, cleanedPokemon);
   pokemonByDex.set(pokemon.dex, cleanedPokemon);
-  pokemonBySpeciesName.set(pokemon.speciesName, cleanedPokemon);
+  if (!pokemonBySpeciesName.has(pokemon.speciesName)) {
+    pokemonBySpeciesName.set(pokemon.speciesName, cleanedPokemon);
+  }
 }
 
 /**
