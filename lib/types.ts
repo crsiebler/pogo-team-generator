@@ -92,6 +92,7 @@ export interface GenerationAnalysis {
   threats: ThreatAnalysis;
   coreBreakers: CoreBreakerAnalysis;
   shieldScenarios: ShieldScenarioAnalysis;
+  pokemonContributions: PokemonContributionAnalysis;
 }
 
 export type ShieldScenarioKey = '0-0' | '1-1' | '2-2';
@@ -133,6 +134,22 @@ export interface CoreBreakerAnalysisEntry {
 export interface CoreBreakerAnalysis {
   threshold: number;
   entries: CoreBreakerAnalysisEntry[];
+}
+
+export type PokemonContributionRiskTier = 'low' | 'moderate' | 'high';
+
+export interface PokemonContributionAnalysisEntry {
+  speciesId: string;
+  pokemon: string;
+  threatsHandled: number;
+  coverageAdded: number;
+  highSeverityRelief: number;
+  fragilityRiskTier: PokemonContributionRiskTier;
+  rationale: string;
+}
+
+export interface PokemonContributionAnalysis {
+  entries: PokemonContributionAnalysisEntry[];
 }
 
 export interface TypeChart {

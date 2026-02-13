@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildCoreBreakerAnalysis } from '@/lib/analysis/coreBreakerAnalysis';
+import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContributionAnalysis';
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
@@ -97,6 +98,10 @@ export async function POST(request: NextRequest) {
       threats,
       coreBreakers: buildCoreBreakerAnalysis(teamSize, threats.entries),
       shieldScenarios: buildShieldScenarioAnalysis(
+        result.team,
+        threats.entries,
+      ),
+      pokemonContributions: buildPokemonContributionAnalysis(
         result.team,
         threats.entries,
       ),

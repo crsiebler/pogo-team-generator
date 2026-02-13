@@ -75,6 +75,30 @@ const analysisFixture: GenerationAnalysis = {
       coverageRate: 40,
     },
   },
+  pokemonContributions: {
+    entries: [
+      {
+        speciesId: 'azumarill',
+        pokemon: 'Azumarill',
+        threatsHandled: 19,
+        coverageAdded: 6,
+        highSeverityRelief: 7,
+        fragilityRiskTier: 'high',
+        rationale:
+          'Covers 19 ranked threats, adds 6 unique team answers, and stabilizes 7 high-pressure matchups. Replacement fragility is high.',
+      },
+      {
+        speciesId: 'gastrodon',
+        pokemon: 'Gastrodon',
+        threatsHandled: 16,
+        coverageAdded: 2,
+        highSeverityRelief: 5,
+        fragilityRiskTier: 'low',
+        rationale:
+          'Covers 16 ranked threats, adds 2 unique team answers, and stabilizes 5 high-pressure matchups. Replacement fragility is low.',
+      },
+    ],
+  },
 };
 
 describe('ResultsPanel', () => {
@@ -98,8 +122,14 @@ describe('ResultsPanel', () => {
         name: 'Fitness Contribution Categories',
       }),
     ).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.getByRole('button', {
+        name: 'Per-Pokemon Contribution',
+      }),
+    ).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Legend')).not.toBeInTheDocument();
     expect(screen.queryByText('Meta Coverage')).not.toBeInTheDocument();
+    expect(screen.queryByText('Azumarill')).not.toBeInTheDocument();
     expect(screen.getByText('TeamDisplay')).toBeInTheDocument();
   });
 
@@ -159,6 +189,36 @@ describe('ResultsPanel', () => {
     expect(
       screen.getByText(
         'Meta Coverage: how consistently the team has at least one answer into ranked threats.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('renders per-Pokemon contribution stats and rationale in drill-down section', () => {
+    render(
+      <ResultsPanel
+        generatedTeam={['azumarill', 'gastrodon', 'dunsparce']}
+        mode="GBL"
+        isGenerating={false}
+        fitness={123.456}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Per-Pokemon Contribution',
+      }),
+    );
+
+    expect(screen.getByText('Azumarill')).toBeInTheDocument();
+    expect(screen.getByText('Gastrodon')).toBeInTheDocument();
+    expect(screen.getByText('Threats Handled: 19')).toBeInTheDocument();
+    expect(screen.getByText('Coverage Added: 6')).toBeInTheDocument();
+    expect(screen.getByText('High-Pressure Relief: 7')).toBeInTheDocument();
+    expect(screen.getByText('Replacement Risk: High')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Covers 19 ranked threats, adds 6 unique team answers, and stabilizes 7 high-pressure matchups. Replacement fragility is high.',
       ),
     ).toBeInTheDocument();
   });

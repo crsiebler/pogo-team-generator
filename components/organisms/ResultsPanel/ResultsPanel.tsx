@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
 import {
   GenerationAnalysis,
+  PokemonContributionRiskTier,
   ShieldScenarioKey,
   TournamentMode,
 } from '@/lib/types';
@@ -34,6 +35,7 @@ interface ContributionCategoryMetric {
 const ANALYSIS_ACCORDION_SECTIONS = [
   'summaryStatistics',
   'fitnessContributionCategories',
+  'perPokemonContributions',
 ] as const;
 
 type AnalysisAccordionSectionId = (typeof ANALYSIS_ACCORDION_SECTIONS)[number];
@@ -59,6 +61,32 @@ const formatPercent = (value: number): string => `${Math.round(value)}%`;
 
 const formatImpactValue = (value: number): string =>
   value > 0 ? `+${value}` : `${value}`;
+
+const formatRiskTier = (riskTier: PokemonContributionRiskTier): string => {
+  if (riskTier === 'high') {
+    return 'High';
+  }
+
+  if (riskTier === 'moderate') {
+    return 'Moderate';
+  }
+
+  return 'Low';
+};
+
+const getRiskTierClassName = (
+  riskTier: PokemonContributionRiskTier,
+): string => {
+  if (riskTier === 'high') {
+    return 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200';
+  }
+
+  if (riskTier === 'moderate') {
+    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
+  }
+
+  return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200';
+};
 
 const getImpactDirection = (
   impactValue: number,
@@ -180,11 +208,15 @@ export function ResultsPanel({
   const contributionCategoryMetrics =
     analysis !== null ? buildContributionCategoryMetrics(analysis) : [];
 
+  const pokemonContributionEntries =
+    analysis?.pokemonContributions.entries ?? [];
+
   const [expandedSections, setExpandedSections] = useState<
     Record<AnalysisAccordionSectionId, boolean>
   >({
     summaryStatistics: false,
     fitnessContributionCategories: false,
+    perPokemonContributions: false,
   });
 
   const accordionButtonRefs = useRef<
@@ -192,6 +224,7 @@ export function ResultsPanel({
   >({
     summaryStatistics: null,
     fitnessContributionCategories: null,
+    perPokemonContributions: null,
   });
 
   const accordionIdPrefix = useId();
@@ -652,6 +685,144 @@ export function ResultsPanel({
                             </p>
                           ))}
                         </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  className={clsx(
+                    'rounded-lg border border-emerald-200 bg-white',
+                    'dark:border-emerald-700 dark:bg-gray-900/40',
+                  )}
+                >
+                  <h4>
+                    <button
+                      ref={(buttonElement) => {
+                        accordionButtonRefs.current.perPokemonContributions =
+                          buttonElement;
+                      }}
+                      type="button"
+                      aria-expanded={expandedSections.perPokemonContributions}
+                      aria-controls={`${accordionIdPrefix}-pokemon-contribution-panel`}
+                      id={`${accordionIdPrefix}-pokemon-contribution-trigger`}
+                      className={clsx(
+                        'flex w-full items-center justify-between rounded-lg p-3 text-left',
+                        'focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:outline-none',
+                      )}
+                      onClick={() => {
+                        toggleAccordionSection('perPokemonContributions');
+                      }}
+                      onKeyDown={(event) => {
+                        onAccordionHeaderKeyDown(
+                          event,
+                          'perPokemonContributions',
+                        );
+                      }}
+                    >
+                      <span
+                        className={clsx(
+                          'text-xs font-semibold tracking-wide uppercase sm:text-sm',
+                          'text-emerald-800 dark:text-emerald-200',
+                        )}
+                      >
+                        Per-Pokemon Contribution
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={clsx(
+                          'text-sm font-semibold',
+                          'text-emerald-700 dark:text-emerald-300',
+                        )}
+                      >
+                        {expandedSections.perPokemonContributions ? '-' : '+'}
+                      </span>
+                    </button>
+                  </h4>
+
+                  {expandedSections.perPokemonContributions && (
+                    <div
+                      id={`${accordionIdPrefix}-pokemon-contribution-panel`}
+                      role="region"
+                      aria-labelledby={`${accordionIdPrefix}-pokemon-contribution-trigger`}
+                      className="space-y-3 px-3 pb-3"
+                    >
+                      <p
+                        className={clsx(
+                          'text-xs leading-5 sm:text-sm',
+                          'text-gray-700 dark:text-gray-300',
+                        )}
+                      >
+                        Review each team member&apos;s direct coverage, unique
+                        threat answers, and replacement fragility before making
+                        swaps.
+                      </p>
+
+                      <div className="space-y-2">
+                        {pokemonContributionEntries.map((entry) => (
+                          <article
+                            key={entry.speciesId}
+                            className={clsx(
+                              'rounded-md border border-emerald-200 bg-emerald-50/70 p-3',
+                              'dark:border-emerald-700 dark:bg-emerald-900/20',
+                            )}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p
+                                className={clsx(
+                                  'text-sm font-bold sm:text-base',
+                                  'text-gray-900 dark:text-gray-100',
+                                )}
+                              >
+                                {entry.pokemon}
+                              </p>
+                              <span
+                                className={clsx(
+                                  'rounded-full px-2 py-1 text-xs font-semibold tracking-wide uppercase',
+                                  getRiskTierClassName(entry.fragilityRiskTier),
+                                )}
+                              >
+                                {`Replacement Risk: ${formatRiskTier(entry.fragilityRiskTier)}`}
+                              </span>
+                            </div>
+
+                            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                              <p
+                                className={clsx(
+                                  'rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs',
+                                  'text-gray-800 dark:border-emerald-700 dark:bg-gray-900/40 dark:text-gray-200',
+                                )}
+                              >
+                                Threats Handled: {entry.threatsHandled}
+                              </p>
+                              <p
+                                className={clsx(
+                                  'rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs',
+                                  'text-gray-800 dark:border-emerald-700 dark:bg-gray-900/40 dark:text-gray-200',
+                                )}
+                              >
+                                Coverage Added: {entry.coverageAdded}
+                              </p>
+                              <p
+                                className={clsx(
+                                  'rounded-md border border-emerald-200 bg-white px-2 py-1 text-xs',
+                                  'text-gray-800 dark:border-emerald-700 dark:bg-gray-900/40 dark:text-gray-200',
+                                )}
+                              >
+                                High-Pressure Relief: {entry.highSeverityRelief}
+                              </p>
+                            </div>
+
+                            <p
+                              className={clsx(
+                                'mt-2 text-xs leading-5 sm:text-sm',
+                                'text-emerald-900 dark:text-emerald-100/90',
+                              )}
+                            >
+                              {entry.rationale}
+                            </p>
+                          </article>
+                        ))}
                       </div>
                     </div>
                   )}

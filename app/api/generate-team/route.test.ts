@@ -8,6 +8,7 @@ const generateTeamMock = vi.fn();
 const buildThreatAnalysisMock = vi.fn();
 const buildCoreBreakerAnalysisMock = vi.fn();
 const buildShieldScenarioAnalysisMock = vi.fn();
+const buildPokemonContributionAnalysisMock = vi.fn();
 
 vi.mock('@/lib/data/pokemon', () => ({
   speciesNameToId: (name: string) => speciesNameToIdMock(name),
@@ -30,6 +31,11 @@ vi.mock('@/lib/analysis/coreBreakerAnalysis', () => ({
 vi.mock('@/lib/analysis/shieldScenarioAnalysis', () => ({
   buildShieldScenarioAnalysis: (team: string[], threats: unknown[]) =>
     buildShieldScenarioAnalysisMock(team, threats),
+}));
+
+vi.mock('@/lib/analysis/pokemonContributionAnalysis', () => ({
+  buildPokemonContributionAnalysis: (team: string[], threats: unknown[]) =>
+    buildPokemonContributionAnalysisMock(team, threats),
 }));
 
 describe('POST /api/generate-team', () => {
@@ -87,6 +93,20 @@ describe('POST /api/generate-team', () => {
         evaluatedThreats: 38,
         coverageRate: 0.3947,
       },
+    });
+    buildPokemonContributionAnalysisMock.mockReturnValue({
+      entries: [
+        {
+          speciesId: 'lanturn',
+          pokemon: 'Lanturn',
+          threatsHandled: 18,
+          coverageAdded: 5,
+          highSeverityRelief: 6,
+          fragilityRiskTier: 'moderate',
+          rationale:
+            'Covers 18 ranked threats, adds 5 unique team answers, and stabilizes 6 high-pressure matchups. Replacement fragility is moderate.',
+        },
+      ],
     });
 
     const request = new NextRequest('http://localhost/api/generate-team', {
@@ -146,6 +166,17 @@ describe('POST /api/generate-team', () => {
             coverageRate: number;
           };
         };
+        pokemonContributions: {
+          entries: Array<{
+            speciesId: string;
+            pokemon: string;
+            threatsHandled: number;
+            coverageAdded: number;
+            highSeverityRelief: number;
+            fragilityRiskTier: string;
+            rationale: string;
+          }>;
+        };
       };
     };
 
@@ -195,6 +226,20 @@ describe('POST /api/generate-team', () => {
           coverageRate: 0.3947,
         },
       },
+      pokemonContributions: {
+        entries: [
+          {
+            speciesId: 'lanturn',
+            pokemon: 'Lanturn',
+            threatsHandled: 18,
+            coverageAdded: 5,
+            highSeverityRelief: 6,
+            fragilityRiskTier: 'moderate',
+            rationale:
+              'Covers 18 ranked threats, adds 5 unique team answers, and stabilizes 6 high-pressure matchups. Replacement fragility is moderate.',
+          },
+        ],
+      },
     });
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
@@ -212,6 +257,17 @@ describe('POST /api/generate-team', () => {
       },
     ]);
     expect(buildShieldScenarioAnalysisMock).toHaveBeenCalledWith(
+      ['lanturn', 'dewgong', 'annihilape'],
+      [
+        {
+          pokemon: 'Feraligatr',
+          rank: 1,
+          teamAnswers: 2,
+          severityTier: 'high',
+        },
+      ],
+    );
+    expect(buildPokemonContributionAnalysisMock).toHaveBeenCalledWith(
       ['lanturn', 'dewgong', 'annihilape'],
       [
         {
