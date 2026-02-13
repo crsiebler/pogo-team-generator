@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - Keep `vitest.config.mts` `setupFiles` as an absolute path via `fileURLToPath(new URL(..., import.meta.url))` so tests resolve correctly in git worktrees.
+- Build generation threat analysis from ranking names (`speciesIdToRankingName`) and simulation outcomes (`winsMatchup`) so API payloads remain adapter-thin while core logic stays in `lib/`.
 
 ## 2026-02-13 02:28:40 MST - US-001
 Share Link: Unavailable in this environment (`/share` did not return a URL)
@@ -15,4 +16,20 @@ Share Link: Unavailable in this environment (`/share` did not return a URL)
     - In this worktree layout, relative Vitest `setupFiles` can resolve against the parent workspace root and break all tests.
   - Useful context (e.g., "the evaluation panel is in component X")
     - Team generation response shape is consumed in `components/organisms/TeamManager/TeamManager.tsx` via `fetch('/api/generate-team')`.
+---
+
+## 2026-02-13 02:32:12 MST - US-002
+Share Link: Unavailable in this environment (`/share` command is not executable here)
+- Implemented top-50 threat analysis generation with per-threat team answer counts and rank-aware severity tiering.
+- Wired threat analysis into `POST /api/generate-team` analysis payload as a dedicated `analysis.threats` structure.
+- Added unit tests for exact top-50 evaluation, answer counting, rank-sensitive severity, and rank>100 severity de-escalation.
+- Files changed: `lib/analysis/threatAnalysis.ts`, `lib/analysis/threatAnalysis.test.ts`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `lib/types.ts`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Keep analysis computation in `lib/analysis/*` and call it from app routes to preserve clean adapter boundaries.
+    - Use ranked CSV ordering (`getTopPokemon('overall', N)`) as the canonical source of threat priority.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - When `GenerationAnalysis` is extended, update both API route tests and the shared contract in `lib/types.ts` to avoid drift.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Threat analysis currently ships in the API response under `analysis.threats` and is ready for upcoming UI stories.
 ---

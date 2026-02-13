@@ -89,6 +89,21 @@ export interface GenerationAnalysis {
   algorithm: FitnessAlgorithm;
   teamSize: number;
   generatedAt: string;
+  threats: ThreatAnalysis;
+}
+
+export type ThreatSeverityTier = 'low' | 'medium' | 'high' | 'critical';
+
+export interface ThreatAnalysisEntry {
+  pokemon: string;
+  rank: number;
+  teamAnswers: number;
+  severityTier: ThreatSeverityTier;
+}
+
+export interface ThreatAnalysis {
+  evaluatedCount: number;
+  entries: ThreatAnalysisEntry[];
 }
 
 export interface TypeChart {

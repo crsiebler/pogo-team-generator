@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
 import { generateTeam } from '@/lib/genetic/algorithm';
 import type {
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
       algorithm: selectedAlgorithm,
       teamSize,
       generatedAt: new Date().toISOString(),
+      threats: buildThreatAnalysis(result.team),
     };
 
     console.log('Generated team:', result.team);

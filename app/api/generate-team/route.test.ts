@@ -5,6 +5,7 @@ import { POST } from './route';
 const speciesNameToIdMock = vi.fn();
 const validateTeamUniquenessMock = vi.fn();
 const generateTeamMock = vi.fn();
+const buildThreatAnalysisMock = vi.fn();
 
 vi.mock('@/lib/data/pokemon', () => ({
   speciesNameToId: (name: string) => speciesNameToIdMock(name),
@@ -13,6 +14,10 @@ vi.mock('@/lib/data/pokemon', () => ({
 
 vi.mock('@/lib/genetic/algorithm', () => ({
   generateTeam: (options: unknown) => generateTeamMock(options),
+}));
+
+vi.mock('@/lib/analysis/threatAnalysis', () => ({
+  buildThreatAnalysis: (team: string[]) => buildThreatAnalysisMock(team),
 }));
 
 describe('POST /api/generate-team', () => {
@@ -31,6 +36,17 @@ describe('POST /api/generate-team', () => {
     generateTeamMock.mockResolvedValue({
       team: ['lanturn', 'dewgong', 'annihilape'],
       fitness: 0.8123,
+    });
+    buildThreatAnalysisMock.mockReturnValue({
+      evaluatedCount: 50,
+      entries: [
+        {
+          pokemon: 'Feraligatr',
+          rank: 1,
+          teamAnswers: 2,
+          severityTier: 'high',
+        },
+      ],
     });
 
     const request = new NextRequest('http://localhost/api/generate-team', {
@@ -55,6 +71,15 @@ describe('POST /api/generate-team', () => {
         algorithm: string;
         teamSize: number;
         generatedAt: string;
+        threats: {
+          evaluatedCount: number;
+          entries: Array<{
+            pokemon: string;
+            rank: number;
+            teamAnswers: number;
+            severityTier: string;
+          }>;
+        };
       };
     };
 
@@ -65,8 +90,24 @@ describe('POST /api/generate-team', () => {
       mode: 'GBL',
       algorithm: 'teamSynergy',
       teamSize: 3,
+      threats: {
+        evaluatedCount: 50,
+        entries: [
+          {
+            pokemon: 'Feraligatr',
+            rank: 1,
+            teamAnswers: 2,
+            severityTier: 'high',
+          },
+        ],
+      },
     });
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
+    expect(buildThreatAnalysisMock).toHaveBeenCalledWith([
+      'lanturn',
+      'dewgong',
+      'annihilape',
+    ]);
   });
 });
