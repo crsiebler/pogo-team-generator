@@ -1,0 +1,18 @@
+## Codebase Patterns
+- Keep `vitest.config.mts` `setupFiles` as an absolute path via `fileURLToPath(new URL(..., import.meta.url))` so tests resolve correctly in git worktrees.
+
+## 2026-02-13 02:28:40 MST - US-001
+Share Link: Unavailable in this environment (`/share` did not return a URL)
+- Implemented top-level `analysis` payload in `POST /api/generate-team` while keeping `team` and `fitness` fields unchanged.
+- Added a typed `GenerationAnalysis` contract and API test coverage validating backward compatibility plus independent analysis payload shape.
+- Updated Vitest config to use an absolute setup file path so quality checks run in this worktree.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `lib/types.ts`, `vitest.config.mts`, `AGENTS.md`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - API routes should remain thin adapters and expose additive fields for backward-compatible response evolution.
+    - Shared response contracts belong in `lib/types.ts` to keep route and UI typing consistent.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - In this worktree layout, relative Vitest `setupFiles` can resolve against the parent workspace root and break all tests.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Team generation response shape is consumed in `components/organisms/TeamManager/TeamManager.tsx` via `fetch('/api/generate-team')`.
+---

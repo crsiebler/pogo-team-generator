@@ -38,6 +38,8 @@ All code must be built, linted, and tested with full compliance to these steps:
   - `npm test -- --coverage` or `npx vitest run --coverage`
 - **Run Single Test File:**
   - `npx vitest run path/to/file.test.ts`
+- **Vitest setup path:**
+  - Keep `setupFiles` in `vitest.config.mts` as an absolute path (via `fileURLToPath`) so tests run correctly in git worktrees.
 
 > **Note:** All PRs/commits must **pass lint, format, and tests**. Pre-commit hooks and CI checks are strictly enforced.
 

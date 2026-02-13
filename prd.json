@@ -1,0 +1,131 @@
+{
+  "project": "Pokemon GO PvP Team Generator",
+  "branchName": "ralph/team-analysis-explainability-panel",
+  "description": "Add a Team Analysis and Explainability Panel that surfaces threat coverage, shield scenarios, core breakers, and per-Pokemon contribution to improve competitive team decisions.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Include analysis payload in generation response",
+      "description": "As a frontend developer, I want analysis included in the generation response as a separate field so the UI can render immediately without a second request.",
+      "acceptanceCriteria": [
+        "Generation API response includes a separate top-level `analysis` field",
+        "Existing generated team fields remain backward-compatible and unchanged",
+        "Analysis payload is structurally independent from `team` and `fitness` fields",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Compute top-50 threat analysis and severity model",
+      "description": "As a user, I want threat analysis based on the top 50 ranked threats so I can identify realistic matchup risks.",
+      "acceptanceCriteria": [
+        "Threat analysis evaluates exactly the top 50 ranked threats",
+        "Each threat includes number of team answers and severity tier",
+        "Severity increases for higher-ranked threats",
+        "Threats ranked >100 reduce severity tier",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Classify and rank core breakers by team size rules",
+      "description": "As a user, I want explicit core breaker identification so I can quickly see matchups that collapse team reliability.",
+      "acceptanceCriteria": [
+        "Team size 3: core breaker classification applies when answers <= 1",
+        "Team size 6: core breaker classification applies when answers <= 2",
+        "High severity applies for team size 3 when answers = 0",
+        "High severity applies for team size 6 when answers <= 1",
+        "Core breakers are sorted by best (highest) threat rank first",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Expose shield scenario statistics",
+      "description": "As a user, I want 0-0, 1-1, and 2-2 shield scenario stats so I can evaluate team consistency under common battle states.",
+      "acceptanceCriteria": [
+        "Analysis includes `0-0`, `1-1`, and `2-2` shield scenario statistics",
+        "Shield scenario statistics are available in response data for UI rendering",
+        "Missing matchup data does not break analysis generation",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Display analysis summary stats panel",
+      "description": "As a PvP player, I want summary analysis metrics so I can quickly decide whether to use or reject a generated team.",
+      "acceptanceCriteria": [
+        "Results page displays summary statistics for overall fitness, threat handling, shield stability, and core-breaker risk",
+        "Summary works consistently for both `individual` and `teamSynergy` algorithms",
+        "No formulas or algorithm internals are shown",
+        "Legend text explains the meaning of displayed statistics",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Render fitness contribution categories without formulas",
+      "description": "As a user, I want category-level contribution stats so I can understand strengths and weaknesses without seeing internal scoring formulas.",
+      "acceptanceCriteria": [
+        "Analysis UI shows category-level impact values that indicate positive or negative contribution",
+        "UI does not expose formulas, coefficients, or algorithm implementation details",
+        "Legend includes concise technical definitions for each category",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Add accordion-based drill-down sections",
+      "description": "As a user, I want expandable analysis sections so I can scan key stats first and dive deeper only when needed.",
+      "acceptanceCriteria": [
+        "Analysis panel is organized into accordion sections with detailed areas collapsed by default",
+        "Sections support keyboard interaction and proper accessible semantics",
+        "Accordion behavior follows the provided component interaction pattern",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Show per-Pokemon contribution and rationale",
+      "description": "As a user, I want each Pokemon's contribution and rationale so I can understand selection tradeoffs and replacement risk.",
+      "acceptanceCriteria": [
+        "Each selected Pokemon shows contribution statistics and technical rationale",
+        "Detail includes coverage added and risk/fragility implications",
+        "Per-Pokemon details are accessible through accordion drill-down",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
