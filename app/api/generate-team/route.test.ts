@@ -9,6 +9,7 @@ import {
 } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
+import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 
 vi.mock('@/lib/data/pokemon', async () => {
   const actual = await vi.importActual('@/lib/data/pokemon');
@@ -33,6 +34,10 @@ vi.mock('@/lib/data/rankings', async () => {
   };
 });
 
+vi.mock('@/lib/analysis/threatAnalysis', () => ({
+  buildThreatAnalysis: vi.fn(),
+}));
+
 describe('POST /api/generate-team', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,6 +53,17 @@ describe('POST /api/generate-team', () => {
       team: ['azumarill'],
       fitness: 1,
       anchors: [],
+    });
+    vi.mocked(buildThreatAnalysis).mockReturnValue({
+      evaluatedCount: 50,
+      entries: [
+        {
+          pokemon: 'Feraligatr',
+          rank: 1,
+          teamAnswers: 2,
+          severityTier: 'high',
+        },
+      ],
     });
   });
 
@@ -146,6 +162,15 @@ describe('POST /api/generate-team', () => {
         algorithm: string;
         teamSize: number;
         generatedAt: string;
+        threats: {
+          evaluatedCount: number;
+          entries: Array<{
+            pokemon: string;
+            rank: number;
+            teamAnswers: number;
+            severityTier: string;
+          }>;
+        };
       };
     };
 
@@ -156,9 +181,25 @@ describe('POST /api/generate-team', () => {
       mode: 'GBL',
       algorithm: 'teamSynergy',
       teamSize: 3,
+      threats: {
+        evaluatedCount: 50,
+        entries: [
+          {
+            pokemon: 'Feraligatr',
+            rank: 1,
+            teamAnswers: 2,
+            severityTier: 'high',
+          },
+        ],
+      },
     });
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
+    expect(buildThreatAnalysis).toHaveBeenCalledWith([
+      'lanturn',
+      'dewgong',
+      'annihilape',
+    ]);
   });
 
   it('returns 400 for invalid formatId', async () => {

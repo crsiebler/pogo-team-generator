@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
@@ -8,14 +9,16 @@ import {
   speciesNameToId,
   validateTeamUniqueness,
 } from '@/lib/data/pokemon';
-import { MissingRankingDataError } from '@/lib/data/rankings';
-import { getRankedSpeciesIds } from '@/lib/data/rankings';
+import {
+  getRankedSpeciesIds,
+  MissingRankingDataError,
+} from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
 import type {
-  TournamentMode,
   FitnessAlgorithm,
   GenerationAnalysis,
+  TournamentMode,
 } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -41,7 +44,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate mode
     if (!mode || (mode !== 'PlayPokemon' && mode !== 'GBL')) {
       return NextResponse.json(
         { error: 'Invalid tournament mode' },
@@ -49,7 +51,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert anchor Pokemon names to speciesIds
     const anchorSpeciesIds: string[] = [];
     const rankedSpeciesIds = getRankedSpeciesIds(resolvedFormatId);
     if (anchorPokemon && anchorPokemon.length > 0) {
@@ -89,7 +90,6 @@ export async function POST(request: NextRequest) {
     console.log('Anchor Pokemon names:', anchorPokemon);
     console.log('Anchor Species IDs:', anchorSpeciesIds);
 
-    // Convert excluded Pokemon names to speciesIds
     const excludedSpeciesIds: string[] = [];
     if (excludedPokemon && excludedPokemon.length > 0) {
       for (const name of excludedPokemon) {
@@ -121,7 +121,6 @@ export async function POST(request: NextRequest) {
     const selectedAlgorithm = algorithm || 'individual';
     const teamSize = mode === 'GBL' ? 3 : 6;
 
-    // Run genetic algorithm
     const result = await generateTeam({
       formatId: resolvedFormatId,
       mode,
@@ -137,6 +136,7 @@ export async function POST(request: NextRequest) {
       algorithm: selectedAlgorithm,
       teamSize,
       generatedAt: new Date().toISOString(),
+      threats: buildThreatAnalysis(result.team),
     };
 
     console.log('Generated team:', result.team);
