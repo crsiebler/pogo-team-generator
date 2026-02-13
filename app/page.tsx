@@ -3,7 +3,9 @@ import { getGreatLeaguePokemon } from '@/lib/data/pokemon';
 
 export default function Page() {
   const availablePokemon = getGreatLeaguePokemon();
-  const pokemonNames = availablePokemon.map((p) => p.speciesName);
+  const pokemonNames = Array.from(
+    new Set(availablePokemon.map((pokemon) => pokemon.speciesName)),
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
