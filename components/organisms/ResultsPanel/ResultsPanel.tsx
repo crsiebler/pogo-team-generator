@@ -22,6 +22,14 @@ interface SummaryMetric {
   hint: string;
 }
 
+type ContributionImpactDirection = 'Positive' | 'Neutral' | 'Negative';
+
+interface ContributionCategoryMetric {
+  label: string;
+  impactValue: number;
+  definition: string;
+}
+
 const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
 
 const getCoreBreakerRiskLabel = (
@@ -40,6 +48,23 @@ const getCoreBreakerRiskLabel = (
 };
 
 const formatPercent = (value: number): string => `${Math.round(value)}%`;
+
+const formatImpactValue = (value: number): string =>
+  value > 0 ? `+${value}` : `${value}`;
+
+const getImpactDirection = (
+  impactValue: number,
+): ContributionImpactDirection => {
+  if (impactValue > 0) {
+    return 'Positive';
+  }
+
+  if (impactValue < 0) {
+    return 'Negative';
+  }
+
+  return 'Neutral';
+};
 
 const buildSummaryMetrics = (
   fitness: number,
@@ -89,6 +114,49 @@ const buildSummaryMetrics = (
   ];
 };
 
+const buildContributionCategoryMetrics = (
+  analysis: GenerationAnalysis,
+): ContributionCategoryMetric[] => {
+  const evaluatedThreats = analysis.threats.evaluatedCount;
+  const coveredThreats = analysis.threats.entries.filter(
+    (threat) => threat.teamAnswers > 0,
+  ).length;
+
+  const threatCoverageRate =
+    evaluatedThreats > 0 ? (coveredThreats / evaluatedThreats) * 100 : 0;
+
+  const averageShieldCoverageRate =
+    SHIELD_SCENARIO_ORDER.reduce((sum, scenario) => {
+      return sum + analysis.shieldScenarios[scenario].coverageRate;
+    }, 0) / SHIELD_SCENARIO_ORDER.length;
+
+  const coreBreakerExposureRate =
+    evaluatedThreats > 0
+      ? (analysis.coreBreakers.entries.length / evaluatedThreats) * 100
+      : 0;
+
+  return [
+    {
+      label: 'Meta Coverage',
+      impactValue: Math.round(threatCoverageRate - 50),
+      definition:
+        'Meta Coverage: how consistently the team has at least one answer into ranked threats.',
+    },
+    {
+      label: 'Shield Reliability',
+      impactValue: Math.round(averageShieldCoverageRate - 50),
+      definition:
+        'Shield Reliability: how stable the team remains across 0-0, 1-1, and 2-2 shield states.',
+    },
+    {
+      label: 'Core Stability',
+      impactValue: -Math.round(coreBreakerExposureRate),
+      definition:
+        'Core Stability: how often ranked threats can pressure most team members with limited counterplay.',
+    },
+  ];
+};
+
 export function ResultsPanel({
   generatedTeam,
   mode,
@@ -100,6 +168,9 @@ export function ResultsPanel({
     fitness !== null && analysis !== null
       ? buildSummaryMetrics(fitness, analysis)
       : [];
+
+  const contributionCategoryMetrics =
+    analysis !== null ? buildContributionCategoryMetrics(analysis) : [];
 
   return (
     <div
@@ -281,6 +352,95 @@ export function ResultsPanel({
                   Risk highlights collapse-prone matchups.
                 </p>
               </div>
+
+              <section
+                aria-labelledby="contribution-categories-heading"
+                className={clsx(
+                  'mt-4 rounded-lg border border-emerald-200 bg-white p-3',
+                  'dark:border-emerald-700 dark:bg-gray-900/40',
+                )}
+              >
+                <h4
+                  id="contribution-categories-heading"
+                  className={clsx(
+                    'text-xs font-semibold tracking-wide uppercase sm:text-sm',
+                    'text-emerald-800 dark:text-emerald-200',
+                  )}
+                >
+                  Fitness Contribution Categories
+                </h4>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {contributionCategoryMetrics.map((category) => {
+                    const impactDirection = getImpactDirection(
+                      category.impactValue,
+                    );
+
+                    return (
+                      <article
+                        key={category.label}
+                        className={clsx(
+                          'rounded-md border p-2',
+                          'border-emerald-200 bg-emerald-50/70',
+                          'dark:border-emerald-700 dark:bg-emerald-900/20',
+                        )}
+                      >
+                        <p
+                          className={clsx(
+                            'text-xs font-semibold tracking-wide uppercase',
+                            'text-emerald-800 dark:text-emerald-200',
+                          )}
+                        >
+                          {category.label}
+                        </p>
+                        <p
+                          className={clsx(
+                            'mt-1 text-sm font-bold sm:text-base',
+                            'text-gray-900 dark:text-gray-100',
+                          )}
+                        >
+                          {formatImpactValue(category.impactValue)}
+                        </p>
+                        <p
+                          className={clsx(
+                            'text-xs font-medium',
+                            'text-gray-700 dark:text-gray-300',
+                          )}
+                        >
+                          {impactDirection}
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+                <div
+                  className={clsx(
+                    'mt-3 rounded-md border border-emerald-300 bg-emerald-100/80 p-2',
+                    'dark:border-emerald-700 dark:bg-emerald-900/30',
+                  )}
+                >
+                  <p
+                    className={clsx(
+                      'text-xs font-semibold tracking-wide uppercase',
+                      'text-emerald-800 dark:text-emerald-200',
+                    )}
+                  >
+                    Category Definitions
+                  </p>
+                  <div className="mt-1 space-y-1">
+                    {contributionCategoryMetrics.map((category) => (
+                      <p
+                        key={category.label}
+                        className={clsx(
+                          'text-xs leading-5 sm:text-sm',
+                          'text-emerald-900 dark:text-emerald-100/90',
+                        )}
+                      >
+                        {category.definition}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </section>
             </section>
           )}
 

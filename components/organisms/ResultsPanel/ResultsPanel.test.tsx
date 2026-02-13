@@ -98,6 +98,39 @@ describe('ResultsPanel', () => {
     expect(screen.getByText('TeamDisplay')).toBeInTheDocument();
   });
 
+  it('renders category-level contribution impacts with concise definitions', () => {
+    render(
+      <ResultsPanel
+        generatedTeam={['azumarill', 'gastrodon', 'dunsparce']}
+        mode="GBL"
+        isGenerating={false}
+        fitness={123.456}
+        analysis={analysisFixture}
+      />,
+    );
+
+    expect(
+      screen.getByText('Fitness Contribution Categories'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Meta Coverage')).toBeInTheDocument();
+    expect(screen.getByText('Shield Reliability')).toBeInTheDocument();
+    expect(screen.getByText('Core Stability')).toBeInTheDocument();
+
+    expect(screen.getByText('+25')).toBeInTheDocument();
+    expect(screen.getByText('-9')).toBeInTheDocument();
+    expect(screen.getByText('-50')).toBeInTheDocument();
+
+    expect(screen.getByText('Positive')).toBeInTheDocument();
+    expect(screen.getAllByText('Negative')).toHaveLength(2);
+
+    expect(screen.getByText('Category Definitions')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Meta Coverage: how consistently the team has at least one answer into ranked threats.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('hides summary panel when analysis payload is missing', () => {
     render(
       <ResultsPanel

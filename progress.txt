@@ -4,6 +4,7 @@
 - Derive downstream analysis sections from `analysis.threats.entries` in `lib/analysis/*` (instead of re-running matchup simulation) to keep API response assembly consistent and inexpensive.
 - For shield-specific metrics, use `getShieldScenarioMatchupResult` and treat `null` as unevaluated data (not a hard loss) so analysis is stable when simulation coverage is partial.
 - Results UI should treat `analysis`/`fitness` as optional and render fallbacks cleanly to preserve compatibility with stale or partial generation responses.
+- Explainability UI should express contribution impact as user-facing positive/neutral/negative categories derived from normalized analysis fields, without exposing algorithm formulas or weights.
 
 ## 2026-02-13 02:28:40 MST - US-001
 Share Link: Unavailable in this environment (`/share` did not return a URL)
@@ -48,7 +49,7 @@ Share Link: Unavailable in this environment (`/share` command is not executable 
     - Compute additional analysis sections from `ThreatAnalysisEntry[]` to avoid duplicate simulation work and preserve a single threat-evaluation source of truth.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W")
     - When extending `GenerationAnalysis`, update API tests and mocked analysis builders in `app/api/generate-team/route.test.ts` together, or the route contract tests drift.
-- Useful context (e.g., "the evaluation panel is in component X")
+  - Useful context (e.g., "the evaluation panel is in component X")
     - Core-breaker output now ships under `analysis.coreBreakers` with `threshold` and sorted entries for upcoming UI stories.
 ---
 
@@ -80,6 +81,22 @@ Share Link: Unavailable in this environment (`/share` is client-only and does no
   - Gotchas encountered (e.g., "don't forget to update Z when changing W")
     - When extending `ResultsPanel` props, update `TeamManager` response state wiring and add/adjust organism tests to keep UI contracts stable.
     - Browser verification tooling may be unavailable in headless environments; record the exact blocker in progress notes.
-  - Useful context (e.g., "the evaluation panel is in component X")
+- Useful context (e.g., "the evaluation panel is in component X")
     - The explainability summary is rendered in `components/organisms/ResultsPanel/ResultsPanel.tsx` before `TeamDisplay` when generation data includes analysis.
+---
+
+## 2026-02-13 02:49:42 MST - US-006
+Share Link: Unavailable in this environment (`/share` command is not executable here)
+- Implemented a new "Fitness Contribution Categories" section in Results that shows category-level impact values and direction (Positive/Negative/Neutral) for Meta Coverage, Shield Reliability, and Core Stability.
+- Added concise category definitions in-panel so users can interpret each metric without revealing formulas, coefficients, or algorithm internals.
+- Added focused ResultsPanel tests covering category labels, signed impact values, direction labels, and definitions rendering.
+- Browser verification required for this frontend story was attempted, but blocked because browser tooling is unavailable in this environment (`playwright` requires Chrome at `/opt/google/chrome/chrome`, and `playwright_browser_install` timed out).
+- Files changed: `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/ResultsPanel/ResultsPanel.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Keep explainability categories derived from existing analysis payload fields so UI remains adapter-thin and consistent across generation algorithms.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - Frontend browser verification may be blocked in this environment when Chrome is missing; record the exact failure and fallback to unit/integration coverage.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Contribution categories and their definitions are rendered in `components/organisms/ResultsPanel/ResultsPanel.tsx` inside the Team Analysis Summary section.
 ---
