@@ -218,6 +218,34 @@ export function getMatchupResult(
 }
 
 /**
+ * Get matchup result for a specific Pokemon vs opponent at a specific shield
+ * scenario.
+ */
+export function getShieldScenarioMatchupResult(
+  pokemon: string,
+  opponent: string,
+  shields: 0 | 1 | 2,
+): number | null {
+  const matrix = getMatchupMatrix();
+  const pokemonMatchups = matrix.get(pokemon);
+
+  if (!pokemonMatchups) return null;
+
+  const matchupData = pokemonMatchups.get(opponent);
+  if (!matchupData) return null;
+
+  if (shields === 0) {
+    return matchupData.shields0?.battleRating ?? null;
+  }
+
+  if (shields === 1) {
+    return matchupData.shields1?.battleRating ?? null;
+  }
+
+  return matchupData.shields2?.battleRating ?? null;
+}
+
+/**
  * Check if Pokemon wins matchup (battle rating > 500)
  */
 export function winsMatchup(pokemon: string, opponent: string): boolean {

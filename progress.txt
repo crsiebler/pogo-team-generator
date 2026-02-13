@@ -2,6 +2,7 @@
 - Keep `vitest.config.mts` `setupFiles` as an absolute path via `fileURLToPath(new URL(..., import.meta.url))` so tests resolve correctly in git worktrees.
 - Build generation threat analysis from ranking names (`speciesIdToRankingName`) and simulation outcomes (`winsMatchup`) so API payloads remain adapter-thin while core logic stays in `lib/`.
 - Derive downstream analysis sections from `analysis.threats.entries` in `lib/analysis/*` (instead of re-running matchup simulation) to keep API response assembly consistent and inexpensive.
+- For shield-specific metrics, use `getShieldScenarioMatchupResult` and treat `null` as unevaluated data (not a hard loss) so analysis is stable when simulation coverage is partial.
 
 ## 2026-02-13 02:28:40 MST - US-001
 Share Link: Unavailable in this environment (`/share` did not return a URL)
@@ -46,6 +47,21 @@ Share Link: Unavailable in this environment (`/share` command is not executable 
     - Compute additional analysis sections from `ThreatAnalysisEntry[]` to avoid duplicate simulation work and preserve a single threat-evaluation source of truth.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W")
     - When extending `GenerationAnalysis`, update API tests and mocked analysis builders in `app/api/generate-team/route.test.ts` together, or the route contract tests drift.
-  - Useful context (e.g., "the evaluation panel is in component X")
+- Useful context (e.g., "the evaluation panel is in component X")
     - Core-breaker output now ships under `analysis.coreBreakers` with `threshold` and sorted entries for upcoming UI stories.
+---
+
+## 2026-02-13 02:38:17 MST - US-004
+Share Link: Unavailable in this environment (`/share` command cannot run from this chat session)
+- Implemented shield scenario analysis for `0-0`, `1-1`, and `2-2` with per-scenario coverage statistics and resilience to missing matchup rows.
+- Added `analysis.shieldScenarios` to the generation API response contract and route assembly so UI can render scenario stats directly.
+- Added tests for per-scenario aggregation behavior and missing-data handling, plus route contract coverage for the new analysis section.
+- Files changed: `lib/analysis/shieldScenarioAnalysis.ts`, `lib/analysis/shieldScenarioAnalysis.test.ts`, `lib/data/simulations.ts`, `lib/types.ts`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Scenario-level analysis should reuse `analysis.threats.entries` and only query simulation ratings per shield scenario to keep new metrics additive and cheap.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - When adding new analysis sections, update both API route mocks and response assertions in `app/api/generate-team/route.test.ts` or tests can pass partial contracts accidentally.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Shield scenario stats are now available under `analysis.shieldScenarios` with keys `0-0`, `1-1`, and `2-2`.
 ---

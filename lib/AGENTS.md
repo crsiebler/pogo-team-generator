@@ -4,6 +4,7 @@
 
 Core domain logic only; pure functions, no UI. Follow Clean Architecture: lib/ as core, app/components as thin adapters. Genetic algorithms and data loaders here—unit-test everything.
 When adding new analysis sections, derive them from existing analysis outputs (for example `ThreatAnalysisEntry[]`) before introducing additional simulation passes.
+For shield-scenario analysis, treat missing simulation rows (`null` results) as unevaluated matchups instead of forced losses so partial simulation coverage does not skew metrics.
 
 ## Code Style
 

@@ -7,6 +7,7 @@ const validateTeamUniquenessMock = vi.fn();
 const generateTeamMock = vi.fn();
 const buildThreatAnalysisMock = vi.fn();
 const buildCoreBreakerAnalysisMock = vi.fn();
+const buildShieldScenarioAnalysisMock = vi.fn();
 
 vi.mock('@/lib/data/pokemon', () => ({
   speciesNameToId: (name: string) => speciesNameToIdMock(name),
@@ -24,6 +25,11 @@ vi.mock('@/lib/analysis/threatAnalysis', () => ({
 vi.mock('@/lib/analysis/coreBreakerAnalysis', () => ({
   buildCoreBreakerAnalysis: (teamSize: number, threats: unknown[]) =>
     buildCoreBreakerAnalysisMock(teamSize, threats),
+}));
+
+vi.mock('@/lib/analysis/shieldScenarioAnalysis', () => ({
+  buildShieldScenarioAnalysis: (team: string[], threats: unknown[]) =>
+    buildShieldScenarioAnalysisMock(team, threats),
 }));
 
 describe('POST /api/generate-team', () => {
@@ -64,6 +70,23 @@ describe('POST /api/generate-team', () => {
           severityTier: 'medium',
         },
       ],
+    });
+    buildShieldScenarioAnalysisMock.mockReturnValue({
+      '0-0': {
+        coveredThreats: 12,
+        evaluatedThreats: 40,
+        coverageRate: 0.3,
+      },
+      '1-1': {
+        coveredThreats: 18,
+        evaluatedThreats: 42,
+        coverageRate: 0.4286,
+      },
+      '2-2': {
+        coveredThreats: 15,
+        evaluatedThreats: 38,
+        coverageRate: 0.3947,
+      },
     });
 
     const request = new NextRequest('http://localhost/api/generate-team', {
@@ -106,6 +129,23 @@ describe('POST /api/generate-team', () => {
             severityTier: string;
           }>;
         };
+        shieldScenarios: {
+          '0-0': {
+            coveredThreats: number;
+            evaluatedThreats: number;
+            coverageRate: number;
+          };
+          '1-1': {
+            coveredThreats: number;
+            evaluatedThreats: number;
+            coverageRate: number;
+          };
+          '2-2': {
+            coveredThreats: number;
+            evaluatedThreats: number;
+            coverageRate: number;
+          };
+        };
       };
     };
 
@@ -138,6 +178,23 @@ describe('POST /api/generate-team', () => {
           },
         ],
       },
+      shieldScenarios: {
+        '0-0': {
+          coveredThreats: 12,
+          evaluatedThreats: 40,
+          coverageRate: 0.3,
+        },
+        '1-1': {
+          coveredThreats: 18,
+          evaluatedThreats: 42,
+          coverageRate: 0.4286,
+        },
+        '2-2': {
+          coveredThreats: 15,
+          evaluatedThreats: 38,
+          coverageRate: 0.3947,
+        },
+      },
     });
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
@@ -154,5 +211,16 @@ describe('POST /api/generate-team', () => {
         severityTier: 'high',
       },
     ]);
+    expect(buildShieldScenarioAnalysisMock).toHaveBeenCalledWith(
+      ['lanturn', 'dewgong', 'annihilape'],
+      [
+        {
+          pokemon: 'Feraligatr',
+          rank: 1,
+          teamAnswers: 2,
+          severityTier: 'high',
+        },
+      ],
+    );
   });
 });

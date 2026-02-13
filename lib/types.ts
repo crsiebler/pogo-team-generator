@@ -91,7 +91,21 @@ export interface GenerationAnalysis {
   generatedAt: string;
   threats: ThreatAnalysis;
   coreBreakers: CoreBreakerAnalysis;
+  shieldScenarios: ShieldScenarioAnalysis;
 }
+
+export type ShieldScenarioKey = '0-0' | '1-1' | '2-2';
+
+export interface ShieldScenarioStats {
+  coveredThreats: number;
+  evaluatedThreats: number;
+  coverageRate: number;
+}
+
+export type ShieldScenarioAnalysis = Record<
+  ShieldScenarioKey,
+  ShieldScenarioStats
+>;
 
 export type ThreatSeverityTier = 'low' | 'medium' | 'high' | 'critical';
 
