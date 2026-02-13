@@ -3,6 +3,7 @@
 - Build generation threat analysis from ranking names (`speciesIdToRankingName`) and simulation outcomes (`winsMatchup`) so API payloads remain adapter-thin while core logic stays in `lib/`.
 - Derive downstream analysis sections from `analysis.threats.entries` in `lib/analysis/*` (instead of re-running matchup simulation) to keep API response assembly consistent and inexpensive.
 - For shield-specific metrics, use `getShieldScenarioMatchupResult` and treat `null` as unevaluated data (not a hard loss) so analysis is stable when simulation coverage is partial.
+- Results UI should treat `analysis`/`fitness` as optional and render fallbacks cleanly to preserve compatibility with stale or partial generation responses.
 
 ## 2026-02-13 02:28:40 MST - US-001
 Share Link: Unavailable in this environment (`/share` did not return a URL)
@@ -62,6 +63,23 @@ Share Link: Unavailable in this environment (`/share` command cannot run from th
     - Scenario-level analysis should reuse `analysis.threats.entries` and only query simulation ratings per shield scenario to keep new metrics additive and cheap.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W")
     - When adding new analysis sections, update both API route mocks and response assertions in `app/api/generate-team/route.test.ts` or tests can pass partial contracts accidentally.
-  - Useful context (e.g., "the evaluation panel is in component X")
+- Useful context (e.g., "the evaluation panel is in component X")
     - Shield scenario stats are now available under `analysis.shieldScenarios` with keys `0-0`, `1-1`, and `2-2`.
+---
+
+## 2026-02-13 02:45:44 MST - US-005
+Share Link: Unavailable in this environment (`/share` is client-only and does not return a URL in this session)
+- Implemented an analysis summary panel in Results with four metrics: Overall Fitness, Threat Handling, Shield Stability, and Core-Breaker Risk plus legend text for interpretation.
+- Wired generation response `fitness` and `analysis` through `TeamManager` state into `ResultsPanel`, with graceful fallback when these fields are unavailable.
+- Added UI tests that verify summary rendering, metric values, legend text, and fallback behavior when analysis data is missing.
+- Browser verification attempted per requirement, but local browser tooling is unavailable in this environment (Chrome binary missing and Playwright Chrome install timed out), so verification is documented as blocked.
+- Files changed: `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/ResultsPanel/ResultsPanel.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Summary-level UI metrics can be computed from existing `analysis` payload fields without exposing algorithm formulas.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - When extending `ResultsPanel` props, update `TeamManager` response state wiring and add/adjust organism tests to keep UI contracts stable.
+    - Browser verification tooling may be unavailable in headless environments; record the exact blocker in progress notes.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - The explainability summary is rendered in `components/organisms/ResultsPanel/ResultsPanel.tsx` before `TeamDisplay` when generation data includes analysis.
 ---

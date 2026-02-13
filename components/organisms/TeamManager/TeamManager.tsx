@@ -3,7 +3,11 @@
 import { useState, useCallback } from 'react';
 import { TeamConfigPanel, ResultsPanel } from '@/components/organisms';
 import { useToast } from '@/lib/hooks/useToast';
-import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
+import {
+  TournamentMode,
+  FitnessAlgorithm,
+  GenerationAnalysis,
+} from '@/lib/types';
 
 interface TeamManagerProps {
   pokemonList: string[];
@@ -12,6 +16,8 @@ interface TeamManagerProps {
 export function TeamManager({ pokemonList }: TeamManagerProps) {
   const { showToast } = useToast();
   const [generatedTeam, setGeneratedTeam] = useState<string[] | null>(null);
+  const [fitness, setFitness] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState<GenerationAnalysis | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentMode, setCurrentMode] = useState<TournamentMode>('PlayPokemon');
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
@@ -65,6 +71,8 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
   const handleGenerate = async () => {
     setIsGenerating(true);
     setGeneratedTeam(null);
+    setFitness(null);
+    setAnalysis(null);
 
     try {
       const selectedAnchors = anchorPokemon.filter(Boolean);
@@ -94,8 +102,15 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
         throw new Error(errorData?.error ?? 'Failed to generate team');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as {
+        team: string[];
+        fitness?: number;
+        analysis?: GenerationAnalysis;
+      };
+
       setGeneratedTeam(data.team);
+      setFitness(data.fitness ?? null);
+      setAnalysis(data.analysis ?? null);
     } catch (error) {
       console.error('Error generating team:', error);
       const message =
@@ -125,6 +140,8 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
         generatedTeam={generatedTeam}
         mode={currentMode}
         isGenerating={isGenerating}
+        fitness={fitness}
+        analysis={analysis}
       />
     </div>
   );

@@ -2,19 +2,105 @@
 
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
-import { TournamentMode } from '@/lib/types';
+import {
+  GenerationAnalysis,
+  ShieldScenarioKey,
+  TournamentMode,
+} from '@/lib/types';
 
 interface ResultsPanelProps {
   generatedTeam: string[] | null;
   mode: TournamentMode;
   isGenerating: boolean;
+  fitness: number | null;
+  analysis: GenerationAnalysis | null;
 }
+
+interface SummaryMetric {
+  label: string;
+  value: string;
+  hint: string;
+}
+
+const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
+
+const getCoreBreakerRiskLabel = (
+  coreBreakerCount: number,
+  highSeverityCount: number,
+): string => {
+  if (coreBreakerCount === 0) {
+    return 'Low';
+  }
+
+  if (highSeverityCount >= 2 || coreBreakerCount >= 5) {
+    return 'High';
+  }
+
+  return 'Moderate';
+};
+
+const formatPercent = (value: number): string => `${Math.round(value)}%`;
+
+const buildSummaryMetrics = (
+  fitness: number,
+  analysis: GenerationAnalysis,
+): SummaryMetric[] => {
+  const evaluatedThreats = analysis.threats.evaluatedCount;
+  const coveredThreats = analysis.threats.entries.filter(
+    (threat) => threat.teamAnswers > 0,
+  ).length;
+
+  const threatCoverageRate =
+    evaluatedThreats > 0 ? (coveredThreats / evaluatedThreats) * 100 : 0;
+
+  const averageShieldCoverageRate =
+    SHIELD_SCENARIO_ORDER.reduce((sum, scenario) => {
+      return sum + analysis.shieldScenarios[scenario].coverageRate;
+    }, 0) / SHIELD_SCENARIO_ORDER.length;
+
+  const highSeverityCoreBreakers = analysis.coreBreakers.entries.filter(
+    (entry) => entry.severityTier === 'high',
+  ).length;
+
+  return [
+    {
+      label: 'Overall Fitness',
+      value: fitness.toFixed(1),
+      hint: 'Composite team score from the selected generation algorithm.',
+    },
+    {
+      label: 'Threat Handling',
+      value: `${coveredThreats}/${evaluatedThreats} (${formatPercent(threatCoverageRate)})`,
+      hint: 'How many ranked threats have at least one practical team answer.',
+    },
+    {
+      label: 'Shield Stability',
+      value: formatPercent(averageShieldCoverageRate),
+      hint: 'Average threat coverage across 0-0, 1-1, and 2-2 shield states.',
+    },
+    {
+      label: 'Core-Breaker Risk',
+      value: getCoreBreakerRiskLabel(
+        analysis.coreBreakers.entries.length,
+        highSeverityCoreBreakers,
+      ),
+      hint: 'Higher risk means more threats can overwhelm most team members.',
+    },
+  ];
+};
 
 export function ResultsPanel({
   generatedTeam,
   mode,
   isGenerating,
+  fitness,
+  analysis,
 }: ResultsPanelProps) {
+  const summaryMetrics =
+    fitness !== null && analysis !== null
+      ? buildSummaryMetrics(fitness, analysis)
+      : [];
+
   return (
     <div
       className={clsx(
@@ -104,7 +190,103 @@ export function ResultsPanel({
         </div>
       )}
 
-      {generatedTeam && <TeamDisplay team={generatedTeam} mode={mode} />}
+      {generatedTeam && (
+        <div className="space-y-4 sm:space-y-6">
+          {summaryMetrics.length > 0 && (
+            <section
+              aria-labelledby="analysis-summary-heading"
+              className={clsx(
+                'rounded-xl border border-emerald-200 bg-emerald-50/70 p-4',
+                'dark:border-emerald-700 dark:bg-emerald-900/20',
+              )}
+            >
+              <h3
+                id="analysis-summary-heading"
+                className={clsx(
+                  'text-sm font-bold tracking-wide sm:text-base',
+                  'text-emerald-900 dark:text-emerald-100',
+                )}
+              >
+                Team Analysis Summary
+              </h3>
+              <p
+                className={clsx(
+                  'mt-1 text-xs sm:text-sm',
+                  'text-emerald-800/90 dark:text-emerald-100/80',
+                )}
+              >
+                Snapshot metrics for quick go/no-go decisions. Values are
+                normalized for both individual and team synergy generation
+                modes.
+              </p>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {summaryMetrics.map((metric) => (
+                  <article
+                    key={metric.label}
+                    className={clsx(
+                      'rounded-lg border border-emerald-200 bg-white p-3',
+                      'dark:border-emerald-700 dark:bg-gray-900/40',
+                    )}
+                  >
+                    <p
+                      className={clsx(
+                        'text-xs font-semibold tracking-wide uppercase',
+                        'text-emerald-700 dark:text-emerald-300',
+                      )}
+                    >
+                      {metric.label}
+                    </p>
+                    <p
+                      className={clsx(
+                        'mt-1 text-base font-bold sm:text-lg',
+                        'text-gray-900 dark:text-gray-100',
+                      )}
+                    >
+                      {metric.value}
+                    </p>
+                    <p
+                      className={clsx(
+                        'mt-1 text-xs leading-5',
+                        'text-gray-700 dark:text-gray-300',
+                      )}
+                    >
+                      {metric.hint}
+                    </p>
+                  </article>
+                ))}
+              </div>
+              <div
+                className={clsx(
+                  'mt-4 rounded-md border border-emerald-300 bg-emerald-100/80 p-3',
+                  'dark:border-emerald-700 dark:bg-emerald-900/30',
+                )}
+              >
+                <p
+                  className={clsx(
+                    'text-xs font-semibold tracking-wide uppercase',
+                    'text-emerald-800 dark:text-emerald-200',
+                  )}
+                >
+                  Legend
+                </p>
+                <p
+                  className={clsx(
+                    'mt-1 text-xs leading-5 sm:text-sm',
+                    'text-emerald-900 dark:text-emerald-100/90',
+                  )}
+                >
+                  Overall Fitness ranks total team quality, Threat Handling
+                  tracks coverage of ranked meta threats, Shield Stability shows
+                  consistency across standard shield states, and Core-Breaker
+                  Risk highlights collapse-prone matchups.
+                </p>
+              </div>
+            </section>
+          )}
+
+          <TeamDisplay team={generatedTeam} mode={mode} />
+        </div>
+      )}
     </div>
   );
 }
