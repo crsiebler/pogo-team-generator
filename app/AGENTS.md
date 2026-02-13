@@ -15,3 +15,4 @@ When generation fails due to missing format datasets, map `MissingRankingDataErr
 ## Testing
 
 Integration tests for APIs; run vitest on changes. Propagate errors/rejections.
+When API response contracts evolve, update route mocks and response-shape assertions in the same test to keep adapter behavior locked.
