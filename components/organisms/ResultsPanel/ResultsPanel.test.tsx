@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { ResultsPanel } from './ResultsPanel';
 import type { GenerationAnalysis } from '@/lib/types';
@@ -78,7 +78,7 @@ const analysisFixture: GenerationAnalysis = {
 };
 
 describe('ResultsPanel', () => {
-  it('renders analysis summary metrics with legend text', () => {
+  it('renders accordion sections collapsed by default', () => {
     render(
       <ResultsPanel
         generatedTeam={['azumarill', 'gastrodon', 'dunsparce']}
@@ -90,6 +90,32 @@ describe('ResultsPanel', () => {
     );
 
     expect(screen.getByText('Team Analysis Summary')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Summary Statistics' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.getByRole('button', {
+        name: 'Fitness Contribution Categories',
+      }),
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Legend')).not.toBeInTheDocument();
+    expect(screen.queryByText('Meta Coverage')).not.toBeInTheDocument();
+    expect(screen.getByText('TeamDisplay')).toBeInTheDocument();
+  });
+
+  it('renders analysis summary metrics with legend text after expanding section', () => {
+    render(
+      <ResultsPanel
+        generatedTeam={['azumarill', 'gastrodon', 'dunsparce']}
+        mode="GBL"
+        isGenerating={false}
+        fitness={123.456}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
+
     expect(screen.getByText('123.5')).toBeInTheDocument();
     expect(screen.getByText('3/4 (75%)')).toBeInTheDocument();
     expect(screen.getByText('41%')).toBeInTheDocument();
@@ -107,6 +133,12 @@ describe('ResultsPanel', () => {
         fitness={123.456}
         analysis={analysisFixture}
       />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Fitness Contribution Categories',
+      }),
     );
 
     expect(
@@ -129,6 +161,33 @@ describe('ResultsPanel', () => {
         'Meta Coverage: how consistently the team has at least one answer into ranked threats.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('supports keyboard navigation between accordion headers', () => {
+    render(
+      <ResultsPanel
+        generatedTeam={['azumarill', 'gastrodon', 'dunsparce']}
+        mode="GBL"
+        isGenerating={false}
+        fitness={123.456}
+        analysis={analysisFixture}
+      />,
+    );
+
+    const summaryButton = screen.getByRole('button', {
+      name: 'Summary Statistics',
+    });
+
+    const contributionButton = screen.getByRole('button', {
+      name: 'Fitness Contribution Categories',
+    });
+
+    summaryButton.focus();
+    fireEvent.keyDown(summaryButton, { key: 'ArrowDown' });
+    expect(contributionButton).toHaveFocus();
+
+    fireEvent.keyDown(contributionButton, { key: 'ArrowUp' });
+    expect(summaryButton).toHaveFocus();
   });
 
   it('hides summary panel when analysis payload is missing', () => {

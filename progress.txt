@@ -5,6 +5,7 @@
 - For shield-specific metrics, use `getShieldScenarioMatchupResult` and treat `null` as unevaluated data (not a hard loss) so analysis is stable when simulation coverage is partial.
 - Results UI should treat `analysis`/`fitness` as optional and render fallbacks cleanly to preserve compatibility with stale or partial generation responses.
 - Explainability UI should express contribution impact as user-facing positive/neutral/negative categories derived from normalized analysis fields, without exposing algorithm formulas or weights.
+- For analysis drill-down sections, prefer semantic accordion headers (`button` + `aria-expanded` + `aria-controls`) and support ArrowUp/ArrowDown/Home/End keyboard navigation across triggers.
 
 ## 2026-02-13 02:28:40 MST - US-001
 Share Link: Unavailable in this environment (`/share` did not return a URL)
@@ -97,6 +98,24 @@ Share Link: Unavailable in this environment (`/share` command is not executable 
     - Keep explainability categories derived from existing analysis payload fields so UI remains adapter-thin and consistent across generation algorithms.
   - Gotchas encountered (e.g., "don't forget to update Z when changing W")
     - Frontend browser verification may be blocked in this environment when Chrome is missing; record the exact failure and fallback to unit/integration coverage.
-  - Useful context (e.g., "the evaluation panel is in component X")
+- Useful context (e.g., "the evaluation panel is in component X")
     - Contribution categories and their definitions are rendered in `components/organisms/ResultsPanel/ResultsPanel.tsx` inside the Team Analysis Summary section.
+---
+
+## 2026-02-13 02:55:18 MST - US-007
+Share Link: Unavailable in this environment (`/share` did not return a share URL in this session)
+- Implemented accordion-based drill-down sections for Team Analysis Summary details with sections collapsed by default.
+- Added accessible accordion semantics (`aria-expanded`, `aria-controls`, `role="region"`) and keyboard navigation across headers using ArrowUp, ArrowDown, Home, and End.
+- Updated ResultsPanel tests to verify collapsed default state, expansion behavior, and keyboard navigation interaction.
+- Browser verification was attempted but blocked because local browser tooling is unavailable (`chrome_new_page` target closed, Playwright Chrome missing at `/opt/google/chrome/chrome`, and `playwright_browser_install` timed out).
+- Files changed: `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/ResultsPanel/ResultsPanel.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - ResultsPanel drill-down content should stay collapsed initially and rely on explicit user expansion to keep scanability high.
+    - Keyboard focus management for accordion triggers can be handled locally in the organism with trigger refs and key handlers.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - When converting existing always-visible content into an accordion, remove duplicated pre-existing sections or test assertions may pass against the wrong DOM nodes.
+    - Frontend browser verification can still be blocked in this environment; record concrete tooling errors in progress.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Accordion drill-down sections for summary statistics and contribution categories are implemented in `components/organisms/ResultsPanel/ResultsPanel.tsx`.
 ---

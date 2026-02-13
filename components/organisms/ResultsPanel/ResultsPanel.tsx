@@ -1,5 +1,6 @@
 'use client';
 
+import { KeyboardEvent, useId, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
 import {
@@ -29,6 +30,13 @@ interface ContributionCategoryMetric {
   impactValue: number;
   definition: string;
 }
+
+const ANALYSIS_ACCORDION_SECTIONS = [
+  'summaryStatistics',
+  'fitnessContributionCategories',
+] as const;
+
+type AnalysisAccordionSectionId = (typeof ANALYSIS_ACCORDION_SECTIONS)[number];
 
 const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
 
@@ -172,6 +180,77 @@ export function ResultsPanel({
   const contributionCategoryMetrics =
     analysis !== null ? buildContributionCategoryMetrics(analysis) : [];
 
+  const [expandedSections, setExpandedSections] = useState<
+    Record<AnalysisAccordionSectionId, boolean>
+  >({
+    summaryStatistics: false,
+    fitnessContributionCategories: false,
+  });
+
+  const accordionButtonRefs = useRef<
+    Record<AnalysisAccordionSectionId, HTMLButtonElement | null>
+  >({
+    summaryStatistics: null,
+    fitnessContributionCategories: null,
+  });
+
+  const accordionIdPrefix = useId();
+
+  const toggleAccordionSection = (
+    sectionId: AnalysisAccordionSectionId,
+  ): void => {
+    setExpandedSections((currentSections) => ({
+      ...currentSections,
+      [sectionId]: !currentSections[sectionId],
+    }));
+  };
+
+  const focusAccordionSection = (
+    sectionId: AnalysisAccordionSectionId,
+  ): void => {
+    accordionButtonRefs.current[sectionId]?.focus();
+  };
+
+  const onAccordionHeaderKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    sectionId: AnalysisAccordionSectionId,
+  ): void => {
+    const currentIndex = ANALYSIS_ACCORDION_SECTIONS.indexOf(sectionId);
+
+    if (currentIndex === -1) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const nextIndex = (currentIndex + 1) % ANALYSIS_ACCORDION_SECTIONS.length;
+      focusAccordionSection(ANALYSIS_ACCORDION_SECTIONS[nextIndex]);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const previousIndex =
+        (currentIndex - 1 + ANALYSIS_ACCORDION_SECTIONS.length) %
+        ANALYSIS_ACCORDION_SECTIONS.length;
+      focusAccordionSection(ANALYSIS_ACCORDION_SECTIONS[previousIndex]);
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      focusAccordionSection(ANALYSIS_ACCORDION_SECTIONS[0]);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      focusAccordionSection(
+        ANALYSIS_ACCORDION_SECTIONS[ANALYSIS_ACCORDION_SECTIONS.length - 1],
+      );
+    }
+  };
+
   return (
     <div
       className={clsx(
@@ -290,42 +369,6 @@ export function ResultsPanel({
                 normalized for both individual and team synergy generation
                 modes.
               </p>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {summaryMetrics.map((metric) => (
-                  <article
-                    key={metric.label}
-                    className={clsx(
-                      'rounded-lg border border-emerald-200 bg-white p-3',
-                      'dark:border-emerald-700 dark:bg-gray-900/40',
-                    )}
-                  >
-                    <p
-                      className={clsx(
-                        'text-xs font-semibold tracking-wide uppercase',
-                        'text-emerald-700 dark:text-emerald-300',
-                      )}
-                    >
-                      {metric.label}
-                    </p>
-                    <p
-                      className={clsx(
-                        'mt-1 text-base font-bold sm:text-lg',
-                        'text-gray-900 dark:text-gray-100',
-                      )}
-                    >
-                      {metric.value}
-                    </p>
-                    <p
-                      className={clsx(
-                        'mt-1 text-xs leading-5',
-                        'text-gray-700 dark:text-gray-300',
-                      )}
-                    >
-                      {metric.hint}
-                    </p>
-                  </article>
-                ))}
-              </div>
               <div
                 className={clsx(
                   'mt-4 rounded-md border border-emerald-300 bg-emerald-100/80 p-3',
@@ -338,7 +381,7 @@ export function ResultsPanel({
                     'text-emerald-800 dark:text-emerald-200',
                   )}
                 >
-                  Legend
+                  Analysis Sections
                 </p>
                 <p
                   className={clsx(
@@ -346,42 +389,111 @@ export function ResultsPanel({
                     'text-emerald-900 dark:text-emerald-100/90',
                   )}
                 >
-                  Overall Fitness ranks total team quality, Threat Handling
-                  tracks coverage of ranked meta threats, Shield Stability shows
-                  consistency across standard shield states, and Core-Breaker
-                  Risk highlights collapse-prone matchups.
+                  Open each section for details. All sections start collapsed by
+                  default so you can scan first and drill down only where
+                  needed.
                 </p>
               </div>
 
               <section
-                aria-labelledby="contribution-categories-heading"
-                className={clsx(
-                  'mt-4 rounded-lg border border-emerald-200 bg-white p-3',
-                  'dark:border-emerald-700 dark:bg-gray-900/40',
-                )}
+                aria-label="Team analysis drill-down sections"
+                className="mt-4 space-y-3"
               >
-                <h4
-                  id="contribution-categories-heading"
+                <div
                   className={clsx(
-                    'text-xs font-semibold tracking-wide uppercase sm:text-sm',
-                    'text-emerald-800 dark:text-emerald-200',
+                    'rounded-lg border border-emerald-200 bg-white',
+                    'dark:border-emerald-700 dark:bg-gray-900/40',
                   )}
                 >
-                  Fitness Contribution Categories
-                </h4>
-                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {contributionCategoryMetrics.map((category) => {
-                    const impactDirection = getImpactDirection(
-                      category.impactValue,
-                    );
-
-                    return (
-                      <article
-                        key={category.label}
+                  <h4>
+                    <button
+                      ref={(buttonElement) => {
+                        accordionButtonRefs.current.summaryStatistics =
+                          buttonElement;
+                      }}
+                      type="button"
+                      aria-expanded={expandedSections.summaryStatistics}
+                      aria-controls={`${accordionIdPrefix}-summary-statistics-panel`}
+                      id={`${accordionIdPrefix}-summary-statistics-trigger`}
+                      className={clsx(
+                        'flex w-full items-center justify-between rounded-lg p-3 text-left',
+                        'focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:outline-none',
+                      )}
+                      onClick={() => {
+                        toggleAccordionSection('summaryStatistics');
+                      }}
+                      onKeyDown={(event) => {
+                        onAccordionHeaderKeyDown(event, 'summaryStatistics');
+                      }}
+                    >
+                      <span
                         className={clsx(
-                          'rounded-md border p-2',
-                          'border-emerald-200 bg-emerald-50/70',
-                          'dark:border-emerald-700 dark:bg-emerald-900/20',
+                          'text-xs font-semibold tracking-wide uppercase sm:text-sm',
+                          'text-emerald-800 dark:text-emerald-200',
+                        )}
+                      >
+                        Summary Statistics
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={clsx(
+                          'text-sm font-semibold',
+                          'text-emerald-700 dark:text-emerald-300',
+                        )}
+                      >
+                        {expandedSections.summaryStatistics ? '-' : '+'}
+                      </span>
+                    </button>
+                  </h4>
+
+                  {expandedSections.summaryStatistics && (
+                    <div
+                      id={`${accordionIdPrefix}-summary-statistics-panel`}
+                      role="region"
+                      aria-labelledby={`${accordionIdPrefix}-summary-statistics-trigger`}
+                      className="px-3 pb-3"
+                    >
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {summaryMetrics.map((metric) => (
+                          <article
+                            key={metric.label}
+                            className={clsx(
+                              'rounded-lg border border-emerald-200 bg-emerald-50/70 p-3',
+                              'dark:border-emerald-700 dark:bg-emerald-900/20',
+                            )}
+                          >
+                            <p
+                              className={clsx(
+                                'text-xs font-semibold tracking-wide uppercase',
+                                'text-emerald-700 dark:text-emerald-300',
+                              )}
+                            >
+                              {metric.label}
+                            </p>
+                            <p
+                              className={clsx(
+                                'mt-1 text-base font-bold sm:text-lg',
+                                'text-gray-900 dark:text-gray-100',
+                              )}
+                            >
+                              {metric.value}
+                            </p>
+                            <p
+                              className={clsx(
+                                'mt-1 text-xs leading-5',
+                                'text-gray-700 dark:text-gray-300',
+                              )}
+                            >
+                              {metric.hint}
+                            </p>
+                          </article>
+                        ))}
+                      </div>
+
+                      <div
+                        className={clsx(
+                          'mt-3 rounded-md border border-emerald-300 bg-emerald-100/80 p-2',
+                          'dark:border-emerald-700 dark:bg-emerald-900/30',
                         )}
                       >
                         <p
@@ -390,55 +502,159 @@ export function ResultsPanel({
                             'text-emerald-800 dark:text-emerald-200',
                           )}
                         >
-                          {category.label}
+                          Legend
                         </p>
                         <p
                           className={clsx(
-                            'mt-1 text-sm font-bold sm:text-base',
-                            'text-gray-900 dark:text-gray-100',
+                            'mt-1 text-xs leading-5 sm:text-sm',
+                            'text-emerald-900 dark:text-emerald-100/90',
                           )}
                         >
-                          {formatImpactValue(category.impactValue)}
+                          Overall Fitness ranks total team quality, Threat
+                          Handling tracks coverage of ranked meta threats,
+                          Shield Stability shows consistency across standard
+                          shield states, and Core-Breaker Risk highlights
+                          collapse-prone matchups.
                         </p>
-                        <p
-                          className={clsx(
-                            'text-xs font-medium',
-                            'text-gray-700 dark:text-gray-300',
-                          )}
-                        >
-                          {impactDirection}
-                        </p>
-                      </article>
-                    );
-                  })}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
                 <div
                   className={clsx(
-                    'mt-3 rounded-md border border-emerald-300 bg-emerald-100/80 p-2',
-                    'dark:border-emerald-700 dark:bg-emerald-900/30',
+                    'rounded-lg border border-emerald-200 bg-white',
+                    'dark:border-emerald-700 dark:bg-gray-900/40',
                   )}
                 >
-                  <p
-                    className={clsx(
-                      'text-xs font-semibold tracking-wide uppercase',
-                      'text-emerald-800 dark:text-emerald-200',
-                    )}
-                  >
-                    Category Definitions
-                  </p>
-                  <div className="mt-1 space-y-1">
-                    {contributionCategoryMetrics.map((category) => (
-                      <p
-                        key={category.label}
+                  <h4>
+                    <button
+                      ref={(buttonElement) => {
+                        accordionButtonRefs.current.fitnessContributionCategories =
+                          buttonElement;
+                      }}
+                      type="button"
+                      aria-expanded={
+                        expandedSections.fitnessContributionCategories
+                      }
+                      aria-controls={`${accordionIdPrefix}-fitness-contribution-panel`}
+                      id={`${accordionIdPrefix}-fitness-contribution-trigger`}
+                      className={clsx(
+                        'flex w-full items-center justify-between rounded-lg p-3 text-left',
+                        'focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:outline-none',
+                      )}
+                      onClick={() => {
+                        toggleAccordionSection('fitnessContributionCategories');
+                      }}
+                      onKeyDown={(event) => {
+                        onAccordionHeaderKeyDown(
+                          event,
+                          'fitnessContributionCategories',
+                        );
+                      }}
+                    >
+                      <span
                         className={clsx(
-                          'text-xs leading-5 sm:text-sm',
-                          'text-emerald-900 dark:text-emerald-100/90',
+                          'text-xs font-semibold tracking-wide uppercase sm:text-sm',
+                          'text-emerald-800 dark:text-emerald-200',
                         )}
                       >
-                        {category.definition}
-                      </p>
-                    ))}
-                  </div>
+                        Fitness Contribution Categories
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={clsx(
+                          'text-sm font-semibold',
+                          'text-emerald-700 dark:text-emerald-300',
+                        )}
+                      >
+                        {expandedSections.fitnessContributionCategories
+                          ? '-'
+                          : '+'}
+                      </span>
+                    </button>
+                  </h4>
+
+                  {expandedSections.fitnessContributionCategories && (
+                    <div
+                      id={`${accordionIdPrefix}-fitness-contribution-panel`}
+                      role="region"
+                      aria-labelledby={`${accordionIdPrefix}-fitness-contribution-trigger`}
+                      className="px-3 pb-3"
+                    >
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        {contributionCategoryMetrics.map((category) => {
+                          const impactDirection = getImpactDirection(
+                            category.impactValue,
+                          );
+
+                          return (
+                            <article
+                              key={category.label}
+                              className={clsx(
+                                'rounded-md border p-2',
+                                'border-emerald-200 bg-emerald-50/70',
+                                'dark:border-emerald-700 dark:bg-emerald-900/20',
+                              )}
+                            >
+                              <p
+                                className={clsx(
+                                  'text-xs font-semibold tracking-wide uppercase',
+                                  'text-emerald-800 dark:text-emerald-200',
+                                )}
+                              >
+                                {category.label}
+                              </p>
+                              <p
+                                className={clsx(
+                                  'mt-1 text-sm font-bold sm:text-base',
+                                  'text-gray-900 dark:text-gray-100',
+                                )}
+                              >
+                                {formatImpactValue(category.impactValue)}
+                              </p>
+                              <p
+                                className={clsx(
+                                  'text-xs font-medium',
+                                  'text-gray-700 dark:text-gray-300',
+                                )}
+                              >
+                                {impactDirection}
+                              </p>
+                            </article>
+                          );
+                        })}
+                      </div>
+                      <div
+                        className={clsx(
+                          'mt-3 rounded-md border border-emerald-300 bg-emerald-100/80 p-2',
+                          'dark:border-emerald-700 dark:bg-emerald-900/30',
+                        )}
+                      >
+                        <p
+                          className={clsx(
+                            'text-xs font-semibold tracking-wide uppercase',
+                            'text-emerald-800 dark:text-emerald-200',
+                          )}
+                        >
+                          Category Definitions
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {contributionCategoryMetrics.map((category) => (
+                            <p
+                              key={category.label}
+                              className={clsx(
+                                'text-xs leading-5 sm:text-sm',
+                                'text-emerald-900 dark:text-emerald-100/90',
+                              )}
+                            >
+                              {category.definition}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
             </section>
