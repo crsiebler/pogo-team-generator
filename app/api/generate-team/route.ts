@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { buildCoreBreakerAnalysis } from '@/lib/analysis/coreBreakerAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
 import { generateTeam } from '@/lib/genetic/algorithm';
@@ -85,12 +86,15 @@ export async function POST(request: NextRequest) {
       algorithm: selectedAlgorithm,
     });
 
+    const threats = buildThreatAnalysis(result.team);
+
     const analysis: GenerationAnalysis = {
       mode,
       algorithm: selectedAlgorithm,
       teamSize,
       generatedAt: new Date().toISOString(),
-      threats: buildThreatAnalysis(result.team),
+      threats,
+      coreBreakers: buildCoreBreakerAnalysis(teamSize, threats.entries),
     };
 
     console.log('Generated team:', result.team);

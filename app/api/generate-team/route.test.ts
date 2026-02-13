@@ -6,6 +6,7 @@ const speciesNameToIdMock = vi.fn();
 const validateTeamUniquenessMock = vi.fn();
 const generateTeamMock = vi.fn();
 const buildThreatAnalysisMock = vi.fn();
+const buildCoreBreakerAnalysisMock = vi.fn();
 
 vi.mock('@/lib/data/pokemon', () => ({
   speciesNameToId: (name: string) => speciesNameToIdMock(name),
@@ -18,6 +19,11 @@ vi.mock('@/lib/genetic/algorithm', () => ({
 
 vi.mock('@/lib/analysis/threatAnalysis', () => ({
   buildThreatAnalysis: (team: string[]) => buildThreatAnalysisMock(team),
+}));
+
+vi.mock('@/lib/analysis/coreBreakerAnalysis', () => ({
+  buildCoreBreakerAnalysis: (teamSize: number, threats: unknown[]) =>
+    buildCoreBreakerAnalysisMock(teamSize, threats),
 }));
 
 describe('POST /api/generate-team', () => {
@@ -45,6 +51,17 @@ describe('POST /api/generate-team', () => {
           rank: 1,
           teamAnswers: 2,
           severityTier: 'high',
+        },
+      ],
+    });
+    buildCoreBreakerAnalysisMock.mockReturnValue({
+      threshold: 1,
+      entries: [
+        {
+          pokemon: 'Feraligatr',
+          rank: 1,
+          teamAnswers: 1,
+          severityTier: 'medium',
         },
       ],
     });
@@ -80,6 +97,15 @@ describe('POST /api/generate-team', () => {
             severityTier: string;
           }>;
         };
+        coreBreakers: {
+          threshold: number;
+          entries: Array<{
+            pokemon: string;
+            rank: number;
+            teamAnswers: number;
+            severityTier: string;
+          }>;
+        };
       };
     };
 
@@ -101,6 +127,17 @@ describe('POST /api/generate-team', () => {
           },
         ],
       },
+      coreBreakers: {
+        threshold: 1,
+        entries: [
+          {
+            pokemon: 'Feraligatr',
+            rank: 1,
+            teamAnswers: 1,
+            severityTier: 'medium',
+          },
+        ],
+      },
     });
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
@@ -108,6 +145,14 @@ describe('POST /api/generate-team', () => {
       'lanturn',
       'dewgong',
       'annihilape',
+    ]);
+    expect(buildCoreBreakerAnalysisMock).toHaveBeenCalledWith(3, [
+      {
+        pokemon: 'Feraligatr',
+        rank: 1,
+        teamAnswers: 2,
+        severityTier: 'high',
+      },
     ]);
   });
 });

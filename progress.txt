@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - Keep `vitest.config.mts` `setupFiles` as an absolute path via `fileURLToPath(new URL(..., import.meta.url))` so tests resolve correctly in git worktrees.
 - Build generation threat analysis from ranking names (`speciesIdToRankingName`) and simulation outcomes (`winsMatchup`) so API payloads remain adapter-thin while core logic stays in `lib/`.
+- Derive downstream analysis sections from `analysis.threats.entries` in `lib/analysis/*` (instead of re-running matchup simulation) to keep API response assembly consistent and inexpensive.
 
 ## 2026-02-13 02:28:40 MST - US-001
 Share Link: Unavailable in this environment (`/share` did not return a URL)
@@ -32,4 +33,19 @@ Share Link: Unavailable in this environment (`/share` command is not executable 
     - When `GenerationAnalysis` is extended, update both API route tests and the shared contract in `lib/types.ts` to avoid drift.
   - Useful context (e.g., "the evaluation panel is in component X")
     - Threat analysis currently ships in the API response under `analysis.threats` and is ready for upcoming UI stories.
+---
+
+## 2026-02-13 02:34:48 MST - US-003
+Share Link: Unavailable in this environment (`/share` command is not executable here)
+- Implemented core-breaker classification and ranking with team-size thresholds (3v3: answers <= 1, 6v6: answers <= 2) and severity rules for high-risk threats.
+- Extended generation response analysis with `analysis.coreBreakers` derived from existing threat entries.
+- Added focused unit tests for classification, severity, and rank ordering plus API route coverage for the new analysis field.
+- Files changed: `lib/analysis/coreBreakerAnalysis.ts`, `lib/analysis/coreBreakerAnalysis.test.ts`, `lib/types.ts`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `prd.json`, `progress.txt`.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Compute additional analysis sections from `ThreatAnalysisEntry[]` to avoid duplicate simulation work and preserve a single threat-evaluation source of truth.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - When extending `GenerationAnalysis`, update API tests and mocked analysis builders in `app/api/generate-team/route.test.ts` together, or the route contract tests drift.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Core-breaker output now ships under `analysis.coreBreakers` with `threshold` and sorted entries for upcoming UI stories.
 ---

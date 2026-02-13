@@ -90,6 +90,7 @@ export interface GenerationAnalysis {
   teamSize: number;
   generatedAt: string;
   threats: ThreatAnalysis;
+  coreBreakers: CoreBreakerAnalysis;
 }
 
 export type ThreatSeverityTier = 'low' | 'medium' | 'high' | 'critical';
@@ -104,6 +105,20 @@ export interface ThreatAnalysisEntry {
 export interface ThreatAnalysis {
   evaluatedCount: number;
   entries: ThreatAnalysisEntry[];
+}
+
+export type CoreBreakerSeverityTier = 'medium' | 'high';
+
+export interface CoreBreakerAnalysisEntry {
+  pokemon: string;
+  rank: number;
+  teamAnswers: number;
+  severityTier: CoreBreakerSeverityTier;
+}
+
+export interface CoreBreakerAnalysis {
+  threshold: number;
+  entries: CoreBreakerAnalysisEntry[];
 }
 
 export interface TypeChart {

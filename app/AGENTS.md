@@ -11,3 +11,4 @@ API routes in TypeScript; error objects well-typed. Import order: external, inte
 ## Testing
 
 Integration tests for APIs; run vitest on changes. Propagate errors/rejections.
+When API response contracts evolve, update route mocks and response-shape assertions in the same test to keep adapter behavior locked.
