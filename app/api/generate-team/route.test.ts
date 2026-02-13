@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
 import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
@@ -33,7 +33,7 @@ vi.mock('@/lib/data/rankings', async () => {
   };
 });
 
-describe('POST /api/generate-team format validation', () => {
+describe('POST /api/generate-team', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -116,6 +116,49 @@ describe('POST /api/generate-team format validation', () => {
     expect(generateTeam).toHaveBeenCalledWith(
       expect.objectContaining({ formatId: DEFAULT_BATTLE_FORMAT_ID }),
     );
+  });
+
+  it('returns team and fitness unchanged with top-level analysis', async () => {
+    vi.mocked(generateTeam).mockResolvedValue({
+      team: ['lanturn', 'dewgong', 'annihilape'],
+      fitness: 0.8123,
+      anchors: [],
+    });
+
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'GBL',
+        formatId: 'great-league',
+        anchorPokemon: ['Marowak'],
+        excludedPokemon: ['Azumarill'],
+        algorithm: 'teamSynergy',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      team: string[];
+      fitness: number;
+      analysis: {
+        mode: string;
+        algorithm: string;
+        teamSize: number;
+        generatedAt: string;
+      };
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.team).toEqual(['lanturn', 'dewgong', 'annihilape']);
+    expect(payload.fitness).toBe(0.8123);
+    expect(payload.analysis).toMatchObject({
+      mode: 'GBL',
+      algorithm: 'teamSynergy',
+      teamSize: 3,
+    });
+    expect(typeof payload.analysis.generatedAt).toBe('string');
+    expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
   });
 
   it('returns 400 for invalid formatId', async () => {

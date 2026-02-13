@@ -12,7 +12,11 @@ import { MissingRankingDataError } from '@/lib/data/rankings';
 import { getRankedSpeciesIds } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
-import type { TournamentMode, FitnessAlgorithm } from '@/lib/types';
+import type {
+  TournamentMode,
+  FitnessAlgorithm,
+  GenerationAnalysis,
+} from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -114,6 +118,9 @@ export async function POST(request: NextRequest) {
     console.log('Excluded Pokemon names:', excludedPokemon);
     console.log('Excluded Species IDs:', excludedSpeciesIds);
 
+    const selectedAlgorithm = algorithm || 'individual';
+    const teamSize = mode === 'GBL' ? 3 : 6;
+
     // Run genetic algorithm
     const result = await generateTeam({
       formatId: resolvedFormatId,
@@ -122,8 +129,15 @@ export async function POST(request: NextRequest) {
       excludedPokemon: excludedSpeciesIds,
       populationSize: 150,
       generations: 75,
-      algorithm: algorithm || 'individual',
+      algorithm: selectedAlgorithm,
     });
+
+    const analysis: GenerationAnalysis = {
+      mode,
+      algorithm: selectedAlgorithm,
+      teamSize,
+      generatedAt: new Date().toISOString(),
+    };
 
     console.log('Generated team:', result.team);
     console.log('Team size:', result.team.length);
@@ -132,6 +146,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       team: result.team,
       fitness: result.fitness,
+      analysis,
     });
   } catch (error) {
     if (

@@ -87,6 +87,13 @@ export interface GenerationOptions {
   algorithm?: FitnessAlgorithm;
 }
 
+export interface GenerationAnalysis {
+  mode: TournamentMode;
+  algorithm: FitnessAlgorithm;
+  teamSize: number;
+  generatedAt: string;
+}
+
 export interface TypeChart {
   [attackType: string]: {
     [defenseType: string]: number;
