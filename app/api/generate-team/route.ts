@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { speciesNameToId } from '@/lib/data/pokemon';
+import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
 import { generateTeam } from '@/lib/genetic/algorithm';
 import type { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
@@ -33,6 +33,16 @@ export async function POST(request: NextRequest) {
           );
         }
         anchorSpeciesIds.push(speciesId);
+      }
+
+      if (!validateTeamUniqueness(anchorSpeciesIds)) {
+        return NextResponse.json(
+          {
+            error:
+              'Team cannot be generated due to multiple identical species.',
+          },
+          { status: 400 },
+        );
       }
     }
 

@@ -7,6 +7,7 @@ import {
   PokemonTag,
   AlgorithmToggle,
 } from '@/components/molecules';
+import { useToast } from '@/lib/hooks/useToast';
 import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
 interface TeamGeneratorProps {
@@ -26,6 +27,7 @@ export function TeamGenerator({
   algorithm,
   onAlgorithmChange,
 }: TeamGeneratorProps) {
+  const { showToast } = useToast();
   const maxAnchors = mode === 'GBL' ? 3 : 6;
   const [anchorInputs, setAnchorInputs] = useState<string[]>(
     Array(maxAnchors).fill(''),
@@ -50,7 +52,43 @@ export function TeamGenerator({
     setAnchorInputs(newInputs);
   };
 
+  const getBaseSpeciesName = (pokemonName: string): string =>
+    pokemonName
+      .replace(/\s*\([^)]*\)\s*/g, '')
+      .trim()
+      .toLowerCase();
+
+  const hasDuplicateBaseSpecies = (
+    anchors: string[],
+    nextAnchor: string,
+    nextIndex: number,
+  ): boolean => {
+    const nextBase = getBaseSpeciesName(nextAnchor);
+    if (!nextBase) {
+      return false;
+    }
+
+    return anchors.some((anchor, index) => {
+      if (!anchor || index === nextIndex) {
+        return false;
+      }
+
+      return getBaseSpeciesName(anchor) === nextBase;
+    });
+  };
+
   const handleSuggestionClick = (index: number, suggestion: string) => {
+    if (hasDuplicateBaseSpecies(anchorInputs, suggestion, index)) {
+      const newInputs = [...anchorInputs];
+      newInputs[index] = '';
+      setAnchorInputs(newInputs);
+      showToast(
+        'Invalid anchor: duplicate species or variant is not allowed.',
+        'error',
+      );
+      return;
+    }
+
     const newInputs = [...anchorInputs];
     newInputs[index] = suggestion;
     setAnchorInputs(newInputs);

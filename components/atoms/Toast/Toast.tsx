@@ -20,6 +20,7 @@ export function Toast() {
         <ToastMessage
           key={toast.id}
           message={toast.message}
+          type={toast.type}
           onDismiss={() => hideToast(toast.id)}
         />
       ))}
