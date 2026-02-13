@@ -107,7 +107,6 @@ if (hasAnchors) fitness += anchorSynergy * 0.15;
 - 6 Pokémon team
 - Opponent sees all Pokémon and moves
 - Algorithm prioritizes consistency and generalist performance
-- 3 selected per battle from 6-team roster
 
 **GO Battle League (Blind)**:
 

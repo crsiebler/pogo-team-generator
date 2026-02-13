@@ -72,12 +72,6 @@ export function TeamDisplay({ team, mode }: TeamDisplayProps) {
             {mode === 'GBL' ? 'GO Battle League' : 'Play! Pokémon'} format
           </li>
           <li>• Check type coverage and adjust movesets as needed</li>
-          {mode === 'PlayPokemon' && (
-            <li>
-              • Remember to select 3 Pokémon for each battle from your 6-team
-              roster
-            </li>
-          )}
         </ul>
       </div>
     </div>
