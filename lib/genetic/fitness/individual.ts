@@ -807,8 +807,6 @@ function calculateTypeSynergy(team: string[]): number {
  * Uses battle simulation data to evaluate team performance against meta threats
  */
 function calculateSimulationCoverage(team: string[]): number {
-  const teamNames = team.map((id) => speciesIdToRankingName(id));
-
   // Get top 50 threats from simulation data (now sorted by ranking)
   const topThreats = getTopThreats(50);
 
@@ -826,8 +824,8 @@ function calculateSimulationCoverage(team: string[]): number {
   let totalMatchupQuality = 0;
   let pokemonWithData = 0;
 
-  for (const pokemonName of teamNames) {
-    const qualityScore = getMatchupQualityScore(pokemonName);
+  for (const speciesId of team) {
+    const qualityScore = getMatchupQualityScore(speciesId);
     // Only count if we have simulation data (score != 0.5 which is default)
     if (qualityScore !== 0.5) {
       totalMatchupQuality += qualityScore;

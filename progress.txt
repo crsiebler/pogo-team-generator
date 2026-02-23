@@ -1,0 +1,206 @@
+## Codebase Patterns
+- Resolve local PvPoke source in strict order: `PVPOKE_PATH` first, then `vendor/pvpoke`.
+- Keep PvPoke source-layout paths behind `lib/pvpokeAdapter` and consume adapter APIs from scraper modules.
+- For gamemaster sync, use adapter-specific readers (`readPokemonJson`/`readMovesJson`) rather than passing raw source-relative paths from scraper modules.
+- Validate phase input files before running a phase; for phase 1 this is `src/data/gamemaster/pokemon.json` and `src/data/gamemaster/moves.json`.
+- Lint should exclude the vendored PvPoke tree (`vendor/**`) to avoid third-party source violations.
+- Keep phase-1 gamemaster validation tests in parity: cover both pokemon and moves invalid-shape failures in `lib/scraper/github.test.ts`.
+- Phase-2 rankings sync should read local JSON via adapter category paths (`src/data/rankings/all/<category>/rankings-1500.json`) and derive CSV rows using phase-1 outputs (`data/pokemon.json`, `data/moves.json`) for species/move metadata.
+- Phase-3 simulation sync should execute PvPoke engine scripts in a Node `vm` runtime (with minimal jQuery data-loader stubs) and call `TeamRanker` to produce simulation CSV contracts without Playwright.
+- User-facing pipeline command surface now maps to `npm run sync` with entrypoint `lib/scripts/sync.ts`; avoid adding new scrape-named commands in package scripts.
+- When stubbing PvPoke `$.ajax` in Node VM mode, queue callback retries and flush them after `GameMaster.getInstance()` so method initialization completes before `createSearchMaps` runs.
+
+## 2026-02-23 14:02:29 MST - US-001
+- What was implemented
+  - Verified and retained deterministic source-path resolution (`PVPOKE_PATH` then `vendor/pvpoke`) with clear fail-fast errors.
+  - Verified and retained pre-phase required-file checks for phase-1 gamemaster source files.
+  - Updated PRD tracking to mark US-001 as passing.
+- Files changed: `prd.json`, `progress.txt`, `tasks/prd-local-pvpoke-data-sync.md`
+- Commit: `<short-hash>`
+- Checks:
+  - `npx tsc --noEmit --pretty false` (pass)
+  - `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Kept US-001 implementation unchanged because acceptance criteria are already satisfied in `lib/scraper/source.ts` and covered by existing unit tests.
+  - Ran ESLint with explicit `vendor/**` exclusion because vendored submodule code is third-party and not repository-owned lint scope.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Source-path and required-file preconditions are centralized in `lib/scraper/source.ts`; future phases should follow the same helper-based boundary.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - `npm run lint` currently errors in this environment with Next.js 16 argument handling; use direct ESLint invocation for reliable checks.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Existing US-001 tests live in `lib/scraper/source.test.ts` and should be extended when source-resolution rules change.
+- Known issues / follow-ups:
+  - `npm run lint` script behavior should be normalized in a later housekeeping story so CI/local commands match.
+- Next iteration start:
+  - Implement US-002 by ensuring env scaffolding and startup source-path logging contracts remain aligned with fallback-to-submodule behavior.
+---
+
+## 2026-02-23 14:40:17 MST - US-003
+- What was implemented
+  - Expanded `lib/pvpokeAdapter` with stable gamemaster/ranking APIs (`getGamemasterRelativePaths`, `readPokemonJson`, `readMovesJson`, `readRankingJson`) to isolate PvPoke source-layout details.
+  - Refactored gamemaster sync in `lib/scraper/github.ts` to consume adapter methods instead of hardcoded PvPoke source-relative file paths.
+  - Updated adapter/scraper tests to assert the new compatibility boundary and behavior.
+  - Updated PRD tracking to mark US-003 as passing.
+- Files changed: `lib/pvpokeAdapter/index.ts`, `lib/pvpokeAdapter/index.test.ts`, `lib/scraper/github.ts`, `lib/scraper/github.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<short-hash>`
+- Checks:
+  - `npx tsc --noEmit --pretty false` (pass)
+  - `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Added purpose-specific adapter read methods instead of keeping only `readJsonFile` so scraper code no longer needs to know PvPoke internal file layout.
+  - Kept existing generic adapter methods for backward compatibility and incremental migration across later stories.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - `lib/scraper/github.ts` should describe source inputs semantically (e.g., "gamemaster pokemon JSON") while adapter owns concrete source paths.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - If adapter method contracts change, update both `lib/pvpokeAdapter/index.test.ts` and `lib/scraper/github.test.ts` together because scraper tests use mocked adapter boundaries.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Current lint command in this environment remains `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` rather than `npm run lint`.
+- Known issues / follow-ups:
+  - Adapter now exposes ranking-read APIs, but phase-2 implementation still uses Playwright; consume adapter ranking APIs during US-005.
+- Next iteration start:
+  - Implement US-004 by wiring phase-1 syncing to adapter-driven local gamemaster sources end-to-end and validating generated outputs.
+---
+
+## 2026-02-23 14:42:44 MST - US-004
+- What was implemented
+  - Added explicit phase-1 failure-path coverage for moves gamemaster JSON validation to complement existing pokemon validation coverage.
+  - Verified phase-1 local sync contract remains deterministic: adapter reads gamemaster JSON from resolved local source and writes normalized outputs to `data/pokemon.json` and `data/moves.json`.
+  - Updated PRD tracking to mark US-004 as passing.
+- Files changed: `lib/scraper/github.test.ts`, `prd.json`, `progress.txt`
+- Commit: `<short-hash>`
+- Checks:
+  - `npx tsc --noEmit --pretty false` (pass)
+  - `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Added targeted test coverage instead of refactoring sync runtime logic because production code already satisfies source-read/write and validation acceptance criteria.
+  - Kept scope to phase-1 only to honor the one-story-per-iteration constraint and avoid pulling phase-2/phase-3 changes early.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - `lib/scraper/github.ts` uses a shared `syncGamemasterJson` pipeline, so validation/error-path behavior should be asserted for both pokemon and moves adapters when adding phase-1 logic.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - Expected validation failures log to stderr in tests via `logValidationErrors` and `logError`; this is normal and does not indicate test failure.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Existing phase-1 tests in `lib/scraper/github.test.ts` mock adapter boundaries directly, which keeps tests fast and independent from local PvPoke filesystem availability.
+- Known issues / follow-ups:
+  - `lib/scripts/scraper.ts` messaging still references "scraping" wording and GitHub semantics; command-surface rename work remains for US-007.
+- Next iteration start:
+  - Implement US-005 by consuming adapter ranking JSON APIs to generate cp1500 rankings CSV outputs without browser scraping.
+---
+
+## 2026-02-23 14:50:10 MST - US-005
+- What was implemented
+  - Replaced Playwright-based rankings scraping with deterministic local JSON-to-CSV sync in `lib/scraper/rankings.ts`, reading `overall`/`leads`/`switches`/`closers` ranking JSON from local PvPoke source.
+  - Added ranking conversion logic that maps species/move IDs from phase-1 outputs (`data/pokemon.json`, `data/moves.json`) and writes validated CSV files to `data/cp1500_all_<category>_rankings.csv`.
+  - Updated the PvPoke adapter ranking path contract to use category directories (`.../all/<category>/rankings-1500.json`) and aligned adapter tests.
+  - Added focused unit coverage for rankings sync success and failure paths in `lib/scraper/rankings.test.ts`.
+  - Updated PRD tracking to mark US-005 as passing.
+- Files changed: `lib/scraper/rankings.ts`, `lib/scraper/rankings.test.ts`, `lib/scraper/index.ts`, `lib/scraper/types.ts`, `lib/pvpokeAdapter/index.ts`, `lib/pvpokeAdapter/index.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<short-hash>`
+- Checks:
+  - `npx tsc --noEmit --pretty false` (pass)
+  - `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Chose adapter-driven local ranking reads over direct filesystem paths in scraper code to preserve the compatibility boundary introduced in US-003.
+  - Chose deriving CSV move names/counts from phase-1 outputs so phase-2 stays deterministic without browser state or UI export behavior.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Ranking sync depends on phase-1 artifacts (`data/pokemon.json` and `data/moves.json`), so phase ordering must remain gamemaster sync before rankings sync.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - PvPoke rankings now live under `src/data/rankings/all/<category>/rankings-1500.json`; adapter tests must be updated if this path contract changes.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Rankings CSV validation is strict on column order/shape in `lib/scraper/validation.ts`, so all generated CSVs should be validated before writing/using downstream.
+- Known issues / follow-ups:
+  - `runScraper` and script messaging still use "scrape" terminology and command names; this remains for US-007 command-surface rename.
+- Next iteration start:
+  - Implement US-006 by replacing Playwright-based simulation generation with local PvPoke engine execution while preserving existing simulation CSV contracts and resume behavior.
+---
+
+## 2026-02-23 14:57:06 MST - US-006
+- What was implemented
+  - Replaced Playwright-driven simulation generation in `lib/scraper/simulations.ts` with deterministic local PvPoke engine execution using `TeamRanker` in a Node `vm` runtime.
+  - Added minimal jQuery runtime stubs (`$.ajax`, `$.getJSON`, `$.each`) that load local `src/data/**` JSON so PvPoke scripts can run without browser automation.
+  - Preserved simulation output contracts: generated per-Pokemon CSVs for `1-1`, `0-0`, and `2-2` shield scenarios, validated with existing simulation CSV validator, and retained resume-mode reuse of valid existing files.
+  - Updated pipeline wiring to pass resolved source path into simulation generation and marked US-006 as passing in PRD.
+- Files changed: `lib/scraper/simulations.ts`, `lib/scraper/index.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<short-hash>`
+- Checks:
+  - `npx tsc --noEmit --pretty false` (pass)
+  - `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Chose PvPoke `TeamRanker` VM execution over a custom simulator so simulation outputs stay aligned with upstream engine logic while removing Playwright from the simulation path.
+  - Kept the existing CSV filename/header/resume contracts intact to avoid downstream behavior changes in simulation consumers.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - PvPoke simulation engine code can run headlessly in Node as long as data-loading globals (`webRoot`, `host`, jQuery JSON helpers) are stubbed to local files.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - `TeamRanker` depends on `getDefaultMultiBattleSettings` and global `settings.matrixDirection`; missing either causes runtime failures even for non-matrix simulation paths.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - `TeamRanker.rank([selectedPokemon], 1500, cup, [], 'battle')` emits the same CSV header contract expected by `validateSimulationsCsv` and downstream simulation loaders.
+- Known issues / follow-ups:
+  - Command surface and dependency cleanup are still pending in US-007 and US-008 (`scrape` naming and Playwright package removal).
+- Next iteration start:
+  - Implement US-007 by renaming command/script surface from `scrape` to `sync` and updating docs references.
+---
+
+## 2026-02-23 15:00:01 MST - US-007
+- What was implemented
+  - Renamed the package command surface from `scrape`/`scrape:view` to a single `sync` command.
+  - Replaced the script entrypoint file with `lib/scripts/sync.ts` and updated script messaging/docs text from scraping language to sync language.
+  - Updated PRD tracking to mark US-007 as passing.
+- Files changed: `package.json`, `lib/scripts/sync.ts`, `prd.json`, `progress.txt`
+- Commit: `<short-hash>`
+- Checks:
+  - `npx tsc --noEmit --pretty false` (pass)
+  - `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Kept the orchestrator call as `runScraper` for this story to keep scope limited to user-facing command/entrypoint renaming; internal module renaming can be done safely in later cleanup.
+  - Removed `scrape:view` instead of adding `sync:view` because the acceptance criteria only require the deterministic `sync` command surface.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Command-surface changes should update both `package.json` scripts and the script-entrypoint header usage text so CLI guidance stays consistent.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - `npm run lint` remains unreliable in this environment due to Next.js 16 CLI argument handling; direct ESLint invocation is still the stable quality check path.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - The deterministic sync command now resolves through `bun run lib/scripts/sync.ts`; existing test coverage validates underlying phase logic independently.
+- Known issues / follow-ups:
+  - US-008 still needs to remove deprecated scraper internals and Playwright dependencies from `package.json`.
+- Next iteration start:
+  - Implement US-008 by removing Playwright packages and any remaining deprecated scraper/browser code paths.
+---
+
+## 2026-02-23 15:07:23 MST - US-008
+- What was implemented
+  - Removed `playwright` and `@playwright/test` from `package.json` dev dependencies.
+  - Removed leftover Playwright/browser utility code from `lib/scraper/utils.ts` and dropped deprecated `headless` sync options from scraper run types/scripts.
+  - Fixed PvPoke VM `$.ajax` stub sequencing in `lib/scraper/simulations.ts` by queuing callback retries and flushing after `GameMaster.getInstance()` so `npm run sync` completes end-to-end without browser tooling.
+  - Added reusable module guidance in `lib/AGENTS.md` and marked US-008 as passing in PRD.
+- Files changed: `package.json`, `lib/scraper/utils.ts`, `lib/scraper/types.ts`, `lib/scripts/sync.ts`, `lib/scripts/test-simulations.ts`, `lib/scraper/simulations.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<short-hash>`
+- Checks:
+  - `npx tsc --noEmit --pretty false` (pass)
+  - `npx eslint . --ignore-pattern .next --ignore-pattern vendor/**` (pass)
+  - `npm test` (pass)
+  - `npm run sync` (pass)
+- Decisions (why):
+  - Removed browser-only helpers and options rather than preserving no-op Playwright compatibility to keep the sync surface aligned with deterministic local execution.
+  - Patched VM callback ordering instead of vendor code so upstream PvPoke scripts remain unchanged while local runtime behavior matches expected async initialization.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - PvPoke VM runtime bootstrapping is sensitive to callback timing; flush queued ajax callbacks immediately after singleton creation before constructing `Pokemon` instances.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - Running `npm run sync` without `--resume` can generate many simulation files and very large logs; revert generated data outputs before committing code-only stories.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - `npm run sync` now completes in this environment and reports final counts (`Pokemon`, `Moves`, `Rankings`, `Simulations`) from the sync pipeline summary line.
+- Known issues / follow-ups:
+  - Sync output currently emits many upstream `Ranking data not loaded yet` console lines from vendor logic; noisy but non-blocking.
+- Next iteration start:
+  - Verify all PRD stories are passing and return completion signal.
+---

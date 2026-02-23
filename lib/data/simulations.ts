@@ -1,6 +1,11 @@
 import { readFileSync, readdirSync } from 'fs';
 import { parse } from 'csv-parse/sync';
-import { speciesIdToRankingName, getAllRankingsForPokemon } from './rankings';
+import {
+  normalizeToChoosableSpeciesId,
+  speciesIdToSpeciesName,
+  speciesNameToChoosableId,
+} from './pokemon';
+import { getAllRankingsForPokemon } from './rankings';
 
 /**
  * Simulation matchup result for a specific shield scenario
@@ -21,7 +26,7 @@ interface MatchupData {
 }
 
 /**
- * Matchup matrix: Pokemon -> Opponent -> Shield Scenario -> Result
+ * Matchup matrix keyed by speciesId.
  */
 type MatchupMatrix = Map<string, Map<string, MatchupData>>;
 
@@ -38,7 +43,34 @@ interface SimulationCSVRecord {
 }
 
 /**
- * Parse a simulation CSV file and extract matchup results
+ * Extract the display species name from simulation row value.
+ * Example: "Aegislash (Shield) AS+FC/GB" -> "Aegislash (Shield)"
+ */
+function extractSpeciesNameFromSimulationCell(value: string): string {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return '';
+  }
+
+  const lastSpaceIndex = trimmedValue.lastIndexOf(' ');
+  if (lastSpaceIndex === -1) {
+    return trimmedValue;
+  }
+
+  const trailingToken = trimmedValue.slice(lastSpaceIndex + 1);
+  const isMovesetToken = /^[A-Za-z0-9]+\+[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)+$/.test(
+    trailingToken,
+  );
+
+  if (!isMovesetToken) {
+    return trimmedValue;
+  }
+
+  return trimmedValue.slice(0, lastSpaceIndex).trim();
+}
+
+/**
+ * Parse a simulation CSV file and extract matchup results by opponent speciesId.
  */
 function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
   const fileContent = readFileSync(filePath, 'utf-8');
@@ -62,10 +94,15 @@ function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
   const matchups = new Map<string, MatchupResult>();
 
   for (const record of records) {
-    // Extract Pokemon name and moveset (e.g., "Altaria DB+SA/Ft")
-    const pokemonFullName = record.Pokemon;
+    const speciesDisplayName = extractSpeciesNameFromSimulationCell(
+      record.Pokemon,
+    );
+    const opponentSpeciesId = speciesNameToChoosableId(speciesDisplayName);
+    if (!opponentSpeciesId) {
+      continue;
+    }
 
-    matchups.set(pokemonFullName, {
+    matchups.set(opponentSpeciesId, {
       battleRating: record['Battle Rating'],
       energyRemaining: record['Energy Remaining'],
       hpRemaining: record['HP Remaining'],
@@ -76,25 +113,28 @@ function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
 }
 
 /**
- * Extract Pokemon name from filename
- * Example: "Corsola (Galarian) A+NSh_PG vs Open League 0-0 shields.csv" -> "Corsola (Galarian)"
+ * Extract speciesId from filename.
+ * Example: "cp1500_marowak_shadow_0-0.csv" -> "marowak_shadow"
  */
-function extractPokemonFromFilename(filename: string): string {
-  const match = filename.match(/^(.+?)\s+\w+\+.+?\s+vs\s+Open\s+League/);
-  return match ? match[1].trim() : '';
+function extractSpeciesIdFromFilename(filename: string): string {
+  const match = filename.match(/^cp1500_(.+)_(\d+-\d+)\.csv$/);
+  if (!match) {
+    return '';
+  }
+
+  return normalizeToChoosableSpeciesId(match[1]);
 }
 
 /**
- * Extract shield count from filename
- * Example: "0-0 shields.csv" -> 0, "1-1 shields.csv" -> 1
+ * Extract shield count from filename.
  */
 function extractShieldCount(filename: string): number {
-  const match = filename.match(/(\d+)-\1\s+shields\.csv$/);
+  const match = filename.match(/^cp1500_.+_(\d+)-\d+\.csv$/);
   return match ? parseInt(match[1]) : -1;
 }
 
 /**
- * Load all simulation data from data/simulation/ directory
+ * Load all simulation data from data/simulations/ directory.
  */
 function loadSimulationData(): MatchupMatrix {
   const matrix: MatchupMatrix = new Map();
@@ -104,44 +144,37 @@ function loadSimulationData(): MatchupMatrix {
     const files = readdirSync(simulationDir);
 
     for (const filename of files) {
-      if (!filename.endsWith('.csv')) continue;
+      if (!filename.endsWith('.csv')) {
+        continue;
+      }
 
-      const pokemonName = extractPokemonFromFilename(filename);
+      const speciesId = extractSpeciesIdFromFilename(filename);
       const shieldCount = extractShieldCount(filename);
 
-      if (!pokemonName || shieldCount === -1) continue;
+      if (!speciesId || shieldCount === -1) {
+        continue;
+      }
 
       const filePath = `${simulationDir}/${filename}`;
       const matchups = parseSimulationCSV(filePath);
 
-      // Ensure Pokemon entry exists in matrix
-      if (!matrix.has(pokemonName)) {
-        matrix.set(pokemonName, new Map());
+      if (!matrix.has(speciesId)) {
+        matrix.set(speciesId, new Map());
       }
 
-      const pokemonMatchups = matrix.get(pokemonName)!;
+      const pokemonMatchups = matrix.get(speciesId)!;
 
-      // Add matchup data for each opponent
-      for (const [opponentFullName, result] of matchups.entries()) {
-        // Extract just the Pokemon name without moveset
-        const opponentName = opponentFullName.split(' ')[0];
-        const variantMatch = opponentFullName.match(/\(([^)]+)\)/g);
-        const variant = variantMatch ? variantMatch.join(' ') : '';
-        const cleanOpponentName = variant
-          ? `${opponentName} ${variant}`
-          : opponentName;
-
-        if (!pokemonMatchups.has(cleanOpponentName)) {
-          pokemonMatchups.set(cleanOpponentName, {
+      for (const [opponentSpeciesId, result] of matchups.entries()) {
+        if (!pokemonMatchups.has(opponentSpeciesId)) {
+          pokemonMatchups.set(opponentSpeciesId, {
             shields0: null,
             shields1: null,
             shields2: null,
           });
         }
 
-        const matchupData = pokemonMatchups.get(cleanOpponentName)!;
+        const matchupData = pokemonMatchups.get(opponentSpeciesId)!;
 
-        // Store result in appropriate shield scenario
         if (shieldCount === 0) {
           matchupData.shields0 = result;
         } else if (shieldCount === 1) {
@@ -153,7 +186,7 @@ function loadSimulationData(): MatchupMatrix {
     }
   } catch {
     console.warn(
-      'Simulation data directory not found - falling back to ranking data only. Add simulation CSVs to data/simulation/ for enhanced matchup evaluation.',
+      'Simulation data directory not found - falling back to ranking data only. Add simulation CSVs to data/simulations/ for enhanced matchup evaluation.',
     );
   }
 
@@ -161,56 +194,64 @@ function loadSimulationData(): MatchupMatrix {
 }
 
 /**
- * Get the matchup matrix (lazy loaded)
+ * Get the matchup matrix (lazy loaded).
  */
 export function getMatchupMatrix(): MatchupMatrix {
   if (!matchupMatrix) {
     matchupMatrix = loadSimulationData();
   }
+
   return matchupMatrix;
 }
 
 /**
- * Get matchup result for a specific Pokemon vs opponent
- * Averages across shield scenarios with weighting: 1-1 shields = 50%, 0-0 = 25%, 2-2 = 25%
+ * Get matchup result for a specific speciesId vs opponent speciesId.
+ * Averages across shield scenarios with weighting: 1-1 shields = 50%, 0-0 = 30%, 2-2 = 20%.
  */
 export function getMatchupResult(
-  pokemon: string,
-  opponent: string,
+  speciesId: string,
+  opponentSpeciesId: string,
 ): number | null {
   const matrix = getMatchupMatrix();
-  const pokemonMatchups = matrix.get(pokemon);
+  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const canonicalOpponentSpeciesId =
+    normalizeToChoosableSpeciesId(opponentSpeciesId);
+  const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
-  if (!pokemonMatchups) return null;
+  if (!pokemonMatchups) {
+    return null;
+  }
 
-  const matchupData = pokemonMatchups.get(opponent);
-  if (!matchupData) return null;
+  const matchupData = pokemonMatchups.get(canonicalOpponentSpeciesId);
+  if (!matchupData) {
+    return null;
+  }
 
-  // Calculate weighted average battle rating
   const ratings: number[] = [];
   const weights: number[] = [];
 
   if (matchupData.shields0) {
     ratings.push(matchupData.shields0.battleRating);
-    weights.push(0.3); // 0-shield: 30% weight (fast move pressure)
+    weights.push(0.3);
   }
 
   if (matchupData.shields1) {
     ratings.push(matchupData.shields1.battleRating);
-    weights.push(0.5); // 1-shield: 50% weight (most common scenario)
+    weights.push(0.5);
   }
 
   if (matchupData.shields2) {
     ratings.push(matchupData.shields2.battleRating);
-    weights.push(0.2); // 2-shield: 20% weight (longer battles)
+    weights.push(0.2);
   }
 
-  if (ratings.length === 0) return null;
+  if (ratings.length === 0) {
+    return null;
+  }
 
-  // Weighted average
-  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
   const weightedSum = ratings.reduce(
-    (sum, rating, i) => sum + rating * weights[i],
+    (sum, rating, index) => sum + rating * weights[index],
     0,
   );
 
@@ -218,28 +259,34 @@ export function getMatchupResult(
 }
 
 /**
- * Check if Pokemon wins matchup (battle rating > 500)
+ * Check if speciesId wins matchup (battle rating > 500).
  */
-export function winsMatchup(pokemon: string, opponent: string): boolean {
-  const rating = getMatchupResult(pokemon, opponent);
+export function winsMatchup(
+  speciesId: string,
+  opponentSpeciesId: string,
+): boolean {
+  const rating = getMatchupResult(speciesId, opponentSpeciesId);
   return rating !== null && rating > 500;
 }
 
 /**
- * Get all opponents that a Pokemon loses to
+ * Get all opponent speciesIds that a speciesId loses to.
  */
-export function getLosses(pokemon: string): string[] {
+export function getLosses(speciesId: string): string[] {
   const matrix = getMatchupMatrix();
-  const pokemonMatchups = matrix.get(pokemon);
+  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
-  if (!pokemonMatchups) return [];
+  if (!pokemonMatchups) {
+    return [];
+  }
 
   const losses: string[] = [];
 
-  for (const opponent of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(pokemon, opponent);
+  for (const opponentSpeciesId of pokemonMatchups.keys()) {
+    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
     if (rating !== null && rating < 500) {
-      losses.push(opponent);
+      losses.push(opponentSpeciesId);
     }
   }
 
@@ -247,20 +294,19 @@ export function getLosses(pokemon: string): string[] {
 }
 
 /**
- * Calculate team coverage against a list of threats
- * Returns the percentage of threats that at least one team member can beat
+ * Calculate team coverage against a list of threat speciesIds.
  */
 export function calculateTeamCoverage(
   team: string[],
   threats: string[],
 ): number {
-  const teamNames = team.map((id) => speciesIdToRankingName(id));
+  const canonicalTeam = team.map(normalizeToChoosableSpeciesId);
+  const canonicalThreats = threats.map(normalizeToChoosableSpeciesId);
   let coveredThreats = 0;
 
-  for (const threat of threats) {
-    // Check if any team member beats this threat
-    const hasCounter = teamNames.some((pokemon) =>
-      winsMatchup(pokemon, threat),
+  for (const threatSpeciesId of canonicalThreats) {
+    const hasCounter = canonicalTeam.some((speciesId) =>
+      winsMatchup(speciesId, threatSpeciesId),
     );
 
     if (hasCounter) {
@@ -268,38 +314,39 @@ export function calculateTeamCoverage(
     }
   }
 
-  return threats.length > 0 ? coveredThreats / threats.length : 0;
+  return canonicalThreats.length > 0
+    ? coveredThreats / canonicalThreats.length
+    : 0;
 }
 
 /**
- * Get common threats that the entire team loses to
- * These are major weaknesses that need to be addressed
+ * Get common threats that the entire team loses to.
  */
 export function getTeamWeaknesses(team: string[]): string[] {
   const matrix = getMatchupMatrix();
-  const teamNames = team.map((id) => speciesIdToRankingName(id));
+  const canonicalTeam = team.map(normalizeToChoosableSpeciesId);
 
-  // Get all possible opponents
   const allOpponents = new Set<string>();
-  for (const pokemon of teamNames) {
-    const matchups = matrix.get(pokemon);
-    if (matchups) {
-      for (const opponent of matchups.keys()) {
-        allOpponents.add(opponent);
-      }
+  for (const speciesId of canonicalTeam) {
+    const matchups = matrix.get(speciesId);
+    if (!matchups) {
+      continue;
+    }
+
+    for (const opponentSpeciesId of matchups.keys()) {
+      allOpponents.add(opponentSpeciesId);
     }
   }
 
-  // Find opponents that beat ALL team members
   const teamWeaknesses: string[] = [];
 
-  for (const opponent of allOpponents) {
-    const beatsAll = teamNames.every(
-      (pokemon) => !winsMatchup(pokemon, opponent),
+  for (const opponentSpeciesId of allOpponents) {
+    const beatsAll = canonicalTeam.every(
+      (speciesId) => !winsMatchup(speciesId, opponentSpeciesId),
     );
 
     if (beatsAll) {
-      teamWeaknesses.push(opponent);
+      teamWeaknesses.push(opponentSpeciesId);
     }
   }
 
@@ -307,49 +354,41 @@ export function getTeamWeaknesses(team: string[]): string[] {
 }
 
 /**
- * Get top N threats from the meta (based on availability in simulation data)
- * Sorted by overall ranking score (highest first)
+ * Get top N threat speciesIds from simulation matrix, ranked by overall ranking score.
  */
 export function getTopThreats(count: number = 50): string[] {
   const matrix = getMatchupMatrix();
-  const allPokemon = Array.from(matrix.keys());
+  const allSpeciesIds = Array.from(matrix.keys());
 
-  // Sort by overall ranking score (highest first)
-  const rankedPokemon = allPokemon
-    .map((name) => {
-      const rankings = getAllRankingsForPokemon(name);
-      return { name, score: rankings.overall };
+  const rankedSpecies = allSpeciesIds
+    .map((speciesId) => {
+      const displayName = speciesIdToSpeciesName(speciesId);
+      const rankings = getAllRankingsForPokemon(displayName);
+      return { speciesId, score: rankings.overall };
     })
-    .filter((p) => p.score > 0) // Only include Pokemon with ranking data
-    .sort((a, b) => b.score - a.score); // Highest score first
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
 
-  return rankedPokemon.slice(0, count).map((p) => p.name);
+  return rankedSpecies.slice(0, count).map((entry) => entry.speciesId);
 }
 
 /**
- * Get team weaknesses weighted by the ranking of the threatening Pokemon
- * Returns array of {opponent, weight} where weight is based on ranking
- * Higher ranked threats get much higher weight (exponential scaling)
+ * Get team weaknesses weighted by threatening Pokemon ranking.
  */
 export function getWeightedTeamWeaknesses(
   team: string[],
 ): Array<{ opponent: string; weight: number }> {
   const weaknesses = getTeamWeaknesses(team);
 
-  return weaknesses.map((opponent) => {
-    const rankings = getAllRankingsForPokemon(opponent);
+  return weaknesses.map((opponentSpeciesId) => {
+    const rankings = getAllRankingsForPokemon(
+      speciesIdToSpeciesName(opponentSpeciesId),
+    );
     const score = rankings.overall;
 
-    // Exponential weight based on ranking
-    // Rank 95+: weight 3.0 (devastating)
-    // Rank 90-95: weight 2.5
-    // Rank 85-90: weight 2.0
-    // Rank 80-85: weight 1.5
-    // Rank 75-80: weight 1.0
-    // Rank <75: weight 0.5 (less concerning)
     let weight = 0.5;
     if (score >= 95) {
-      weight = 3.0; // Top tier meta threat - CRITICAL to handle
+      weight = 3.0;
     } else if (score >= 90) {
       weight = 2.5;
     } else if (score >= 85) {
@@ -360,20 +399,18 @@ export function getWeightedTeamWeaknesses(
       weight = 1.0;
     }
 
-    return { opponent, weight };
+    return { opponent: opponentSpeciesId, weight };
   });
 }
 
 /**
- * Get threats that only ONE team member can beat (single point of failure)
- * Returns array of {opponent, weight} where weight is based on ranking
- * These are critical weaknesses - if that one Pokemon is eliminated, team loses
+ * Get threats that only one team member can beat.
  */
 export function getSingleCounterThreats(
   team: string[],
   topN: number = 50,
 ): Array<{ opponent: string; weight: number; counter: string }> {
-  const teamNames = team.map((id) => speciesIdToRankingName(id));
+  const canonicalTeam = team.map(normalizeToChoosableSpeciesId);
   const topThreats = getTopThreats(topN);
   const singleCounters: Array<{
     opponent: string;
@@ -381,24 +418,23 @@ export function getSingleCounterThreats(
     counter: string;
   }> = [];
 
-  for (const threat of topThreats) {
-    // Count how many team members beat this threat
+  for (const threatSpeciesId of topThreats) {
     const counters: string[] = [];
-    for (const pokemon of teamNames) {
-      if (winsMatchup(pokemon, threat)) {
-        counters.push(pokemon);
+    for (const speciesId of canonicalTeam) {
+      if (winsMatchup(speciesId, threatSpeciesId)) {
+        counters.push(speciesId);
       }
     }
 
-    // If exactly 1 counter, this is a single point of failure
     if (counters.length === 1) {
-      const rankings = getAllRankingsForPokemon(threat);
+      const rankings = getAllRankingsForPokemon(
+        speciesIdToSpeciesName(threatSpeciesId),
+      );
       const score = rankings.overall;
 
-      // Weight based on threat ranking
       let weight = 0.3;
       if (score >= 95) {
-        weight = 1.5; // Critical - need backup for top threats
+        weight = 1.5;
       } else if (score >= 90) {
         weight = 1.2;
       } else if (score >= 85) {
@@ -409,7 +445,11 @@ export function getSingleCounterThreats(
         weight = 0.5;
       }
 
-      singleCounters.push({ opponent: threat, weight, counter: counters[0] });
+      singleCounters.push({
+        opponent: threatSpeciesId,
+        weight,
+        counter: counters[0],
+      });
     }
   }
 
@@ -417,98 +457,104 @@ export function getSingleCounterThreats(
 }
 
 /**
- * Calculate mean battle rating for a Pokemon across all matchups
- * Higher mean = generally wins more matchups
+ * Calculate mean battle rating across all known matchups.
  */
-export function getMeanBattleRating(pokemon: string): number {
+export function getMeanBattleRating(speciesId: string): number {
   const matrix = getMatchupMatrix();
-  const pokemonMatchups = matrix.get(pokemon);
+  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
-  if (!pokemonMatchups) return 500; // Neutral if no data
+  if (!pokemonMatchups) {
+    return 500;
+  }
 
   const ratings: number[] = [];
 
-  for (const opponent of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(pokemon, opponent);
+  for (const opponentSpeciesId of pokemonMatchups.keys()) {
+    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
     if (rating !== null) {
       ratings.push(rating);
     }
   }
 
-  if (ratings.length === 0) return 500;
+  if (ratings.length === 0) {
+    return 500;
+  }
 
-  return ratings.reduce((sum, r) => sum + r, 0) / ratings.length;
+  return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
 }
 
 /**
- * Calculate median battle rating for a Pokemon across all matchups
- * Higher median = more consistent, fewer terrible matchups
+ * Calculate median battle rating across all known matchups.
  */
-export function getMedianBattleRating(pokemon: string): number {
+export function getMedianBattleRating(speciesId: string): number {
   const matrix = getMatchupMatrix();
-  const pokemonMatchups = matrix.get(pokemon);
+  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
-  if (!pokemonMatchups) return 500; // Neutral if no data
+  if (!pokemonMatchups) {
+    return 500;
+  }
 
   const ratings: number[] = [];
 
-  for (const opponent of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(pokemon, opponent);
+  for (const opponentSpeciesId of pokemonMatchups.keys()) {
+    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
     if (rating !== null) {
       ratings.push(rating);
     }
   }
 
-  if (ratings.length === 0) return 500;
+  if (ratings.length === 0) {
+    return 500;
+  }
 
-  // Sort ratings to find median
   ratings.sort((a, b) => a - b);
-  const mid = Math.floor(ratings.length / 2);
+  const midpoint = Math.floor(ratings.length / 2);
 
   if (ratings.length % 2 === 0) {
-    return (ratings[mid - 1] + ratings[mid]) / 2;
-  } else {
-    return ratings[mid];
+    return (ratings[midpoint - 1] + ratings[midpoint]) / 2;
   }
+
+  return ratings[midpoint];
 }
 
 /**
- * Get the worst matchups for a Pokemon (losses with lowest battle ratings)
- * Returns array of opponent names sorted by how badly this Pokemon loses
+ * Get worst matchup speciesIds for a speciesId.
  */
 export function getWorstMatchups(
-  pokemon: string,
+  speciesId: string,
   count: number = 10,
 ): string[] {
   const matrix = getMatchupMatrix();
-  const pokemonMatchups = matrix.get(pokemon);
+  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
-  if (!pokemonMatchups) return [];
+  if (!pokemonMatchups) {
+    return [];
+  }
 
   const losses: Array<{ opponent: string; rating: number }> = [];
 
-  for (const opponent of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(pokemon, opponent);
+  for (const opponentSpeciesId of pokemonMatchups.keys()) {
+    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
     if (rating !== null && rating < 500) {
-      losses.push({ opponent, rating });
+      losses.push({ opponent: opponentSpeciesId, rating });
     }
   }
 
-  // Sort by rating (lowest = worst loss)
   losses.sort((a, b) => a.rating - b.rating);
-
-  return losses.slice(0, count).map((l) => l.opponent);
+  return losses.slice(0, count).map((loss) => loss.opponent);
 }
 
 /**
- * Check if a Pokemon counters any of the specified threats
- * Returns count of threats this Pokemon beats
+ * Count how many listed threat speciesIds this speciesId beats.
  */
-export function countersThreats(pokemon: string, threats: string[]): number {
+export function countersThreats(speciesId: string, threats: string[]): number {
   let counterCount = 0;
 
-  for (const threat of threats) {
-    if (winsMatchup(pokemon, threat)) {
+  for (const threatSpeciesId of threats) {
+    if (winsMatchup(speciesId, threatSpeciesId)) {
       counterCount++;
     }
   }
@@ -517,18 +563,13 @@ export function countersThreats(pokemon: string, threats: string[]): number {
 }
 
 /**
- * Calculate matchup quality score for a Pokemon (0-1 scale)
- * Combines mean and median battle ratings
+ * Calculate matchup quality score (0-1 scale).
  */
-export function getMatchupQualityScore(pokemon: string): number {
-  const mean = getMeanBattleRating(pokemon);
-  const median = getMedianBattleRating(pokemon);
-
-  // Normalize from 0-1000 scale to 0-1
-  // 500 = 0.5 (neutral), >500 = positive, <500 = negative
+export function getMatchupQualityScore(speciesId: string): number {
+  const mean = getMeanBattleRating(speciesId);
+  const median = getMedianBattleRating(speciesId);
   const meanScore = mean / 1000;
   const medianScore = median / 1000;
 
-  // Weight both equally - mean for overall performance, median for consistency
   return (meanScore + medianScore) / 2;
 }

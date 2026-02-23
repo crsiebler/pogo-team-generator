@@ -26,8 +26,8 @@ function calculateTeamCoverageMatrix(team: string[]): number {
     // Check how many team members beat this threat
     for (const pokemon of teamPokemon) {
       const threatName = threat; // threat is already a string (Pokemon name)
-      const teamName = speciesIdToRankingName(pokemon!.speciesId);
-      const coverage = calculateTeamCoverage([teamName], [threatName]);
+      const teamSpeciesId = pokemon!.speciesId;
+      const coverage = calculateTeamCoverage([teamSpeciesId], [threatName]);
 
       if (coverage > 0.5) {
         // > 500 rating = win
@@ -53,9 +53,9 @@ function calculateShieldScenarioBalance(team: string[]): number {
 
   for (const threat of metaThreats) {
     const threatName = threat; // threat is already a string (Pokemon name)
-    const teamNames = team.map((id) => speciesIdToRankingName(id));
+    const teamSpeciesIds = team;
 
-    const coverage = calculateTeamCoverage(teamNames, [threatName]);
+    const coverage = calculateTeamCoverage(teamSpeciesIds, [threatName]);
 
     // Weight coverage (any win is good, but consistency across scenarios matters)
     totalBalance += Math.min(coverage, 1.0);
@@ -74,9 +74,9 @@ function calculateCoreBreakPenalty(team: string[]): number {
 
   for (const threat of topThreats) {
     const threatName = threat; // threat is already a string (Pokemon name)
-    const teamNames = team.map((id) => speciesIdToRankingName(id));
+    const teamSpeciesIds = team;
 
-    const coverage = calculateTeamCoverage(teamNames, [threatName]);
+    const coverage = calculateTeamCoverage(teamSpeciesIds, [threatName]);
 
     // If threat beats most of team (low coverage), add penalty
     if (coverage < 0.4) {

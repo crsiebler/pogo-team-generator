@@ -1,6 +1,10 @@
 import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
 import type { RankedPokemon } from '../types';
+import {
+  normalizeToChoosableSpeciesName,
+  speciesIdToSpeciesName,
+} from './pokemon';
 
 // Lazy-loaded rankings
 let overallRankings: RankedPokemon[] | null = null;
@@ -46,7 +50,12 @@ function parseRankingCSV(filename: string): RankedPokemon[] {
     },
   });
 
-  return records as RankedPokemon[];
+  return (records as RankedPokemon[]).map((record) => {
+    return {
+      ...record,
+      Pokemon: normalizeToChoosableSpeciesName(record.Pokemon),
+    };
+  });
 }
 
 /**
@@ -96,6 +105,7 @@ export function getRankingScore(
   pokemonName: string,
   role: 'overall' | 'leads' | 'switches' | 'closers',
 ): number {
+  const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
   let rankings: RankedPokemon[];
 
   switch (role) {
@@ -113,7 +123,7 @@ export function getRankingScore(
       break;
   }
 
-  const entry = rankings.find((r) => r.Pokemon === pokemonName);
+  const entry = rankings.find((r) => r.Pokemon === canonicalPokemonName);
   return entry ? entry.Score : 0;
 }
 
@@ -121,10 +131,11 @@ export function getRankingScore(
  * Get average ranking score across all roles
  */
 export function getAverageRankingScore(pokemonName: string): number {
-  const overall = getRankingScore(pokemonName, 'overall');
-  const leads = getRankingScore(pokemonName, 'leads');
-  const switches = getRankingScore(pokemonName, 'switches');
-  const closers = getRankingScore(pokemonName, 'closers');
+  const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
+  const overall = getRankingScore(canonicalPokemonName, 'overall');
+  const leads = getRankingScore(canonicalPokemonName, 'leads');
+  const switches = getRankingScore(canonicalPokemonName, 'switches');
+  const closers = getRankingScore(canonicalPokemonName, 'closers');
 
   const scores = [overall, leads, switches, closers].filter((s) => s > 0);
   if (scores.length === 0) return 0;
@@ -142,12 +153,13 @@ export function getAllRankingsForPokemon(pokemonName: string): {
   closers: number;
   average: number;
 } {
+  const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
   return {
-    overall: getRankingScore(pokemonName, 'overall'),
-    leads: getRankingScore(pokemonName, 'leads'),
-    switches: getRankingScore(pokemonName, 'switches'),
-    closers: getRankingScore(pokemonName, 'closers'),
-    average: getAverageRankingScore(pokemonName),
+    overall: getRankingScore(canonicalPokemonName, 'overall'),
+    leads: getRankingScore(canonicalPokemonName, 'leads'),
+    switches: getRankingScore(canonicalPokemonName, 'switches'),
+    closers: getRankingScore(canonicalPokemonName, 'closers'),
+    average: getAverageRankingScore(canonicalPokemonName),
   };
 }
 
@@ -184,8 +196,9 @@ export function getOptimalMoveset(pokemonName: string): {
   chargedMove1: string | null;
   chargedMove2: string | null;
 } {
+  const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
   const overall = getOverallRankings();
-  const entry = overall.find((r) => r.Pokemon === pokemonName);
+  const entry = overall.find((r) => r.Pokemon === canonicalPokemonName);
 
   if (!entry) {
     return {
@@ -275,28 +288,7 @@ export function isMetaPokemon(pokemonName: string): boolean {
  * Example: "marowak_alolan" → "Alolan Marowak"
  */
 export function speciesIdToRankingName(speciesId: string): string {
-  const parts = speciesId.split('_');
-
-  // Handle forms
-  let name = parts[0];
-  let prefix = '';
-
-  if (parts.includes('shadow')) {
-    prefix = 'Shadow ';
-  }
-
-  if (parts.includes('alolan')) {
-    prefix = 'Alolan ' + prefix;
-  } else if (parts.includes('galarian')) {
-    prefix = 'Galarian ' + prefix;
-  } else if (parts.includes('hisuian')) {
-    prefix = 'Hisuian ' + prefix;
-  }
-
-  // Capitalize first letter
-  name = name.charAt(0).toUpperCase() + name.slice(1);
-
-  return prefix + name;
+  return speciesIdToSpeciesName(speciesId);
 }
 
 /**
