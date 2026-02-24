@@ -4,10 +4,31 @@ import pokemonData from '@/data/pokemon.json';
 // Type-safe cast
 const allPokemon = pokemonData as Pokemon[];
 
+const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
+  morpeko_hangry: 'morpeko_full_belly',
+  aegislash_blade: 'aegislash_shield',
+  lanturnw: 'lanturn',
+  cradily_b: 'cradily',
+  golisopodsh: 'golisopod',
+};
+
+const NON_CHOOSABLE_DISPLAY_NAME_ALIASES: Record<string, string> = {
+  'Morpeko (Hangry)': 'Morpeko (Full Belly)',
+  'Aegislash (Blade)': 'Aegislash (Shield)',
+};
+
+/**
+ * Normalize a Pokemon identifier/display name into a comparison-safe key.
+ */
+function normalizePokemonKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 // Build O(1) lookup maps
 const pokemonBySpeciesId = new Map<string, Pokemon>();
 const pokemonByDex = new Map<number, Pokemon>();
 const pokemonBySpeciesName = new Map<string, Pokemon>();
+const pokemonByNormalizedSpeciesName = new Map<string, Pokemon>();
 
 for (const pokemon of allPokemon) {
   const cleanedPokemon = {
@@ -19,6 +40,10 @@ for (const pokemon of allPokemon) {
   if (!pokemonBySpeciesName.has(pokemon.speciesName)) {
     pokemonBySpeciesName.set(pokemon.speciesName, cleanedPokemon);
   }
+  pokemonByNormalizedSpeciesName.set(
+    normalizePokemonKey(pokemon.speciesName),
+    cleanedPokemon,
+  );
 }
 
 /**
@@ -51,6 +76,52 @@ export function getPokemonBySpeciesName(
 export function speciesNameToId(speciesName: string): string | undefined {
   const pokemon = pokemonBySpeciesName.get(speciesName);
   return pokemon?.speciesId;
+}
+
+/**
+ * Resolve a speciesId to a choosable form speciesId.
+ * Non-choosable battle-state forms are mapped to their selectable form.
+ */
+export function normalizeToChoosableSpeciesId(speciesId: string): string {
+  return NON_CHOOSABLE_FORM_ALIASES[speciesId] ?? speciesId;
+}
+
+/**
+ * Resolve a display species name to a choosable form display name.
+ */
+export function normalizeToChoosableSpeciesName(speciesName: string): string {
+  return NON_CHOOSABLE_DISPLAY_NAME_ALIASES[speciesName] ?? speciesName;
+}
+
+/**
+ * Convert any display species name to a choosable speciesId.
+ */
+export function speciesNameToChoosableId(
+  speciesName: string,
+): string | undefined {
+  const canonicalName = normalizeToChoosableSpeciesName(speciesName);
+  const exactMatch = pokemonBySpeciesName.get(canonicalName);
+  if (exactMatch) {
+    return normalizeToChoosableSpeciesId(exactMatch.speciesId);
+  }
+
+  const normalizedMatch = pokemonByNormalizedSpeciesName.get(
+    normalizePokemonKey(canonicalName),
+  );
+  if (!normalizedMatch) {
+    return undefined;
+  }
+
+  return normalizeToChoosableSpeciesId(normalizedMatch.speciesId);
+}
+
+/**
+ * Convert a speciesId to canonical display name from Pokemon data.
+ */
+export function speciesIdToSpeciesName(speciesId: string): string {
+  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const pokemon = pokemonBySpeciesId.get(canonicalSpeciesId);
+  return pokemon?.speciesName ?? speciesId;
 }
 
 /**

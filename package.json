@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "build": "next build",
-    "dev": "next dev --turbopack",
-    "lint": "eslint app components lib --ext .ts,.tsx,.js,.jsx",
-    "prepare": "husky install",
+    "dev": "next dev",
+    "format": "prettier --write .",
+    "lint": "next lint",
+    "sync": "bun run lib/scripts/sync.ts",
     "start": "next start",
     "test": "vitest run",
-    "validate-simulations": "bun run --typescript lib/scripts/validate-simulations.ts"
+    "test:ci": "bun run test -- --config vitest.config.mts --environment jsdom --globals --maxWorkers 1 --no-file-parallelism"
   },
   "keywords": [],
   "author": "",

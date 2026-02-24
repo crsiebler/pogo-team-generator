@@ -4,8 +4,8 @@ import {
   getDexNumber,
 } from '@lib/data/pokemon';
 import {
-  speciesIdToRankingName,
   getAllRankingsForPokemon,
+  speciesIdToRankingName,
 } from '@lib/data/rankings';
 import {
   getWorstMatchups,
@@ -274,19 +274,21 @@ export function createRandomChromosome(
       // SIMULATION-BASED SCORING: Reward Pokemon that counter existing team's worst matchups
       // HEAVILY prioritize countering highly-ranked threats
       if (slotIndex > 0 && !isFirstPokemon) {
-        const candidateName = speciesIdToRankingName(candidateSpecies);
+        const candidateSpeciesId = candidateSpecies;
 
         // Collect all worst matchups from existing team members with RANKING WEIGHTS
         const teamThreats = new Map<string, number>(); // threat -> weight based on rank
 
         for (let j = 0; j < slotIndex; j++) {
           if (team[j]) {
-            const memberName = speciesIdToRankingName(team[j]);
-            const worstMatchups = getWorstMatchups(memberName, 5); // Top 5 worst for each member
+            const memberSpeciesId = team[j];
+            const worstMatchups = getWorstMatchups(memberSpeciesId, 5); // Top 5 worst for each member
 
             for (const threat of worstMatchups) {
               // Get threat's ranking and calculate weight
-              const threatRankings = getAllRankingsForPokemon(threat);
+              const threatRankings = getAllRankingsForPokemon(
+                speciesIdToRankingName(threat),
+              );
               const threatScore = threatRankings.overall;
 
               // Exponential weight based on ranking
@@ -321,7 +323,7 @@ export function createRandomChromosome(
         // Calculate weighted bonus for countering threats
         let weightedCounterBonus = 0;
         for (const [threat, weight] of teamThreats.entries()) {
-          if (countersThreats(candidateName, [threat]) > 0) {
+          if (countersThreats(candidateSpeciesId, [threat]) > 0) {
             weightedCounterBonus += weight; // Add full weight if candidate beats this threat
           }
         }
@@ -329,7 +331,7 @@ export function createRandomChromosome(
         diversityScore += weightedCounterBonus; // Weighted bonus (much higher for top meta)
 
         // Additional bonus for overall matchup quality (consistency)
-        const qualityScore = getMatchupQualityScore(candidateName);
+        const qualityScore = getMatchupQualityScore(candidateSpeciesId);
         // Scale from 0.5 (neutral) to bonus/penalty
         // 0.6 quality = +2, 0.4 quality = -2
         diversityScore += (qualityScore - 0.5) * 20; // High weight for quality

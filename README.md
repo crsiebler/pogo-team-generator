@@ -403,12 +403,22 @@ pokemon-team-generator/
 
 When Niantic releases a game balance patch or PvPoke updates rankings:
 
-1. **Download Updated Rankings**:
+1. **Sync Rankings from PvPoke** (recommended):
 
    ```bash
-   # Navigate to https://pvpoke.com/rankings/all/1500/overall/
-   # Export CSV for each ranking category
-   # Replace files in data/ directory
+   # Ensure PvPoke submodule is initialized:
+   git submodule update --init --recursive
+
+   # Run the sync script to pull latest rankings:
+   bun run sync
+   ```
+
+   Alternatively, download rankings manually:
+
+   ```bash
+   # Source rankings from https://pvpoke.com/rankings/ (recommended),
+   # or from your local checkout at vendor/pvpoke/src/rankings/
+   # Export CSV for each ranking category and replace files in data/
    ```
 
 2. **Update Pokémon/Moves Data**:
@@ -521,7 +531,8 @@ export const revalidate = 604800;
 
 ## External Dependencies & Data Sources
 
-- **Rankings**: PvPoke.com (https://pvpoke.com/rankings/) - Community-maintained simulator
+- **Rankings**: [PvPoke.com rankings](https://pvpoke.com/rankings/) - Community-maintained simulator
+  (optional local sync source: `vendor/pvpoke/src/rankings/`)
 - **Game Data**: Niantic Game Master file via PvPoke's processed data
 - **Type Chart**: Standard Pokémon type effectiveness (official game mechanics)
 - **Shadow Multipliers**: 1.2× attack, 0.833× defense (applied to base stats)
