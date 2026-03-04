@@ -5,7 +5,10 @@ import {
   speciesIdToSpeciesName,
   speciesNameToChoosableId,
 } from './pokemon';
-import { getAllRankingsForPokemon } from './rankings';
+import {
+  getAllRankingsForPokemon,
+  getRoleBasedThreatSpeciesIds,
+} from './rankings';
 
 /**
  * Simulation matchup result for a specific shield scenario
@@ -373,6 +376,26 @@ export function getTopThreats(count: number = 50): string[] {
 }
 
 /**
+ * Get a deduplicated threat pool built from top N of each role ranking.
+ * Filters to species that exist in simulation data when available.
+ */
+export function getTopThreatsByRole(topPerRole: number = 100): string[] {
+  const matrix = getMatchupMatrix();
+  const threats = getRoleBasedThreatSpeciesIds(topPerRole).map(
+    normalizeToChoosableSpeciesId,
+  );
+
+  if (matrix.size === 0) {
+    return Array.from(new Set(threats));
+  }
+
+  const availableSpecies = new Set(matrix.keys());
+  return Array.from(
+    new Set(threats.filter((speciesId) => availableSpecies.has(speciesId))),
+  );
+}
+
+/**
  * Get team weaknesses weighted by threatening Pokemon ranking.
  */
 export function getWeightedTeamWeaknesses(
@@ -409,9 +432,10 @@ export function getWeightedTeamWeaknesses(
 export function getSingleCounterThreats(
   team: string[],
   topN: number = 50,
+  threats?: string[],
 ): Array<{ opponent: string; weight: number; counter: string }> {
   const canonicalTeam = team.map(normalizeToChoosableSpeciesId);
-  const topThreats = getTopThreats(topN);
+  const topThreats = threats ?? getTopThreats(topN);
   const singleCounters: Array<{
     opponent: string;
     weight: number;

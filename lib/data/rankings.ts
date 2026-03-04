@@ -3,6 +3,7 @@ import { parse } from 'csv-parse/sync';
 import type { RankedPokemon } from '../types';
 import {
   normalizeToChoosableSpeciesName,
+  speciesNameToChoosableId,
   speciesIdToSpeciesName,
 } from './pokemon';
 
@@ -273,6 +274,36 @@ export function getTopPokemon(
  */
 export function getMetaThreats(): RankedPokemon[] {
   return getTopPokemon('overall', 50);
+}
+
+/**
+ * Get a deduplicated threat pool built from top N of each role ranking.
+ * Returns canonical choosable speciesIds.
+ */
+export function getRoleBasedThreatSpeciesIds(
+  topPerRole: number = 100,
+): string[] {
+  const roles: Array<'overall' | 'leads' | 'switches' | 'closers'> = [
+    'overall',
+    'leads',
+    'switches',
+    'closers',
+  ];
+
+  const threatSpeciesIds = new Set<string>();
+
+  for (const role of roles) {
+    const roleRankings = getTopPokemon(role, topPerRole);
+
+    for (const ranking of roleRankings) {
+      const speciesId = speciesNameToChoosableId(ranking.Pokemon);
+      if (speciesId) {
+        threatSpeciesIds.add(speciesId);
+      }
+    }
+  }
+
+  return Array.from(threatSpeciesIds);
 }
 
 /**
