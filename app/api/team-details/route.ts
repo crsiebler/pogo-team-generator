@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
-import { getOptimalMovesetForTeam } from '@/lib/genetic/moveset';
+import { getRecommendedMovesetForPokemon } from '@/lib/genetic/moveset';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid team data' }, { status: 400 });
     }
 
-    // Fetch full Pokémon data for each team member with optimal movesets
+    // Fetch full Pokemon data for each team member with strict recommended movesets
     const pokemonData = team
       .map((speciesId) => {
         const pokemon = getPokemonBySpeciesId(speciesId);
@@ -23,8 +23,7 @@ export async function POST(request: NextRequest) {
           return null;
         }
 
-        // Get optimal moveset based on team context
-        const moveset = getOptimalMovesetForTeam(pokemon, team);
+        const moveset = getRecommendedMovesetForPokemon(pokemon);
 
         return {
           ...pokemon,

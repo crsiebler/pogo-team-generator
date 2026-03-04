@@ -232,9 +232,7 @@ function createJqueryRuntime(sourcePath: string): {
 
   jquery.getJSON = (url: string, success: (data: unknown) => void): void => {
     const data = readJsonFromUrl(url);
-    setTimeout(() => {
-      success(data);
-    }, 0);
+    success(data);
   };
 
   jquery.each = (
@@ -297,14 +295,6 @@ function createPvpokeVmRuntime(sourcePath: string): PvpokeVmRuntime {
   const vmConsole = {
     ...console,
     log: (...args: unknown[]): void => {
-      const firstArg = args[0];
-      if (
-        typeof firstArg === 'string' &&
-        firstArg.includes('Ranking data not loaded yet')
-      ) {
-        return;
-      }
-
       console.log(...args);
     },
   };
@@ -414,6 +404,14 @@ function generateScenarioCsvFromEngine(
     `(() => {
       const gm = GameMaster.getInstance();
       globalThis.__flushPvpokeAjax();
+
+      // Ensure recommended movesets are available for both selected Pokemon
+      // and opponents in TeamRanker.
+      const rankingKey = 'alloverall1500';
+      if (!gm.rankings[rankingKey]) {
+        gm.loadRankingData({}, 'overall', 1500, 'all');
+      }
+
       const cup = gm.getCupById('all');
       const battle = new Battle();
       const ranker = RankerMaster.getInstance();
@@ -427,9 +425,11 @@ function generateScenarioCsvFromEngine(
       ranker.applySettings(settingsB, 1);
       ranker.setShieldMode('single');
       ranker.setTargets([]);
+      ranker.setRecommendMoveUsage(true);
 
       const selectedPokemon = new Pokemon(globalThis.__speciesId, 0, battle);
       selectedPokemon.initialize(1500);
+      selectedPokemon.selectRecommendedMoveset('overall');
 
       const result = ranker.rank([selectedPokemon], 1500, cup, [], 'battle');
       return result.csv;

@@ -15,6 +15,27 @@ const movesetCache = new Map<
 >();
 
 /**
+ * Get strict recommended moveset from rankings for a Pokemon.
+ * Falls back to the Pokemon's first available moves when ranking data is missing.
+ */
+export function getRecommendedMovesetForPokemon(pokemon: Pokemon): {
+  fastMove: string;
+  chargedMove1: string;
+  chargedMove2: string;
+} {
+  const rankedMoves = getOptimalMoveset(pokemon.speciesName);
+
+  return {
+    fastMove: rankedMoves.fastMove || pokemon.fastMoves[0],
+    chargedMove1: rankedMoves.chargedMove1 || pokemon.chargedMoves[0],
+    chargedMove2:
+      rankedMoves.chargedMove2 ||
+      pokemon.chargedMoves[1] ||
+      pokemon.chargedMoves[0],
+  };
+}
+
+/**
  * Analyze team's defensive weaknesses
  * Returns map of type -> count of Pokemon weak to it
  */
