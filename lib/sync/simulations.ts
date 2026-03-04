@@ -22,6 +22,27 @@ interface RecommendedMoveIds {
   chargedMove2: string | null;
 }
 
+interface SyncPokemonEntry {
+  speciesId: string;
+  speciesName: string;
+  released: boolean;
+}
+
+interface SimulationTargetSelectionCounts {
+  overall: number;
+  leads: number;
+  switches: number;
+  closers: number;
+  nameUnion: number;
+  speciesUnion: number;
+}
+
+interface SimulationTargetSelectionResult {
+  speciesIds: string[];
+  unresolvedPokemonNames: string[];
+  counts: SimulationTargetSelectionCounts;
+}
+
 interface PvpokeVmRuntime {
   context: vm.Context & Record<string, unknown>;
 }
@@ -40,6 +61,13 @@ const SIMULATION_SCENARIOS = [
   { scenario: '0-0', shields: 0 },
   { scenario: '2-2', shields: 2 },
 ] as const;
+
+const SIMULATION_TARGET_LIMITS = {
+  overall: 200,
+  leads: 100,
+  switches: 100,
+  closers: 100,
+} as const;
 
 const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
   morpeko_hangry: 'morpeko_full_belly',
@@ -178,15 +206,18 @@ function getSimulationOutputPath(
 }
 
 /**
- * Build output path for one format's overall rankings CSV.
+ * Build output path for one format/category rankings CSV.
  */
-function getOverallRankingsPath(format: BattleFormat): string {
+function getRankingsPath(
+  format: BattleFormat,
+  category: 'overall' | 'leads' | 'switches' | 'closers',
+): string {
   return path.join(
     syncConfig.outputDir,
     'rankings',
     `cp${format.cp}`,
     format.cup,
-    'overall_rankings.csv',
+    `${category}_rankings.csv`,
   );
 }
 
@@ -195,6 +226,122 @@ function getOverallRankingsPath(format: BattleFormat): string {
  */
 function normalizeSpeciesName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Build simulation target speciesIds from rankings super union.
+ * Uses top 200 overall + top 100 of leads/switches/closers and deduplicates.
+ */
+export function selectSimulationTargetSpeciesIds(params: {
+  overallCsvText: string;
+  leadsCsvText: string;
+  switchesCsvText: string;
+  closersCsvText: string;
+  pokemonData: SyncPokemonEntry[];
+}): SimulationTargetSelectionResult {
+  const overallEntries = parseRankingsCsv(params.overallCsvText);
+  const leadEntries = parseRankingsCsv(params.leadsCsvText);
+  const switchEntries = parseRankingsCsv(params.switchesCsvText);
+  const closerEntries = parseRankingsCsv(params.closersCsvText);
+
+  const overallTopNames = overallEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.overall)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+  const leadTopNames = leadEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.leads)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+  const switchTopNames = switchEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.switches)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+  const closerTopNames = closerEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.closers)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+
+  const orderedNameUnion = Array.from(
+    new Set([
+      ...overallTopNames,
+      ...leadTopNames,
+      ...switchTopNames,
+      ...closerTopNames,
+    ]),
+  );
+
+  const speciesByNormalizedName = new Map<string, string>();
+  params.pokemonData.forEach((pokemon) => {
+    const canonicalSpeciesId = normalizeToChoosableSpeciesId(pokemon.speciesId);
+    speciesByNormalizedName.set(
+      normalizeSpeciesName(pokemon.speciesName),
+      canonicalSpeciesId,
+    );
+  });
+
+  const resolvedSpecies = new Set<string>();
+  const unresolvedPokemonNames: string[] = [];
+
+  for (const pokemonName of orderedNameUnion) {
+    const speciesId = speciesByNormalizedName.get(
+      normalizeSpeciesName(pokemonName),
+    );
+    if (!speciesId) {
+      unresolvedPokemonNames.push(pokemonName);
+      continue;
+    }
+
+    resolvedSpecies.add(speciesId);
+  }
+
+  return {
+    speciesIds: Array.from(resolvedSpecies),
+    unresolvedPokemonNames,
+    counts: {
+      overall: overallTopNames.length,
+      leads: leadTopNames.length,
+      switches: switchTopNames.length,
+      closers: closerTopNames.length,
+      nameUnion: orderedNameUnion.length,
+      speciesUnion: resolvedSpecies.size,
+    },
+  };
+}
+
+/**
+ * Build the preferred ranking row for each speciesId.
+ * Prefers overall, then leads, switches, and closers.
+ */
+function buildPreferredRankingEntryBySpeciesId(params: {
+  overallEntries: RankingsCsvEntry[];
+  leadEntries: RankingsCsvEntry[];
+  switchEntries: RankingsCsvEntry[];
+  closerEntries: RankingsCsvEntry[];
+  speciesByNormalizedName: Map<string, string>;
+}): Map<string, RankingsCsvEntry> {
+  const rankingEntryBySpeciesId = new Map<string, RankingsCsvEntry>();
+  const rankingGroups = [
+    params.overallEntries,
+    params.leadEntries,
+    params.switchEntries,
+    params.closerEntries,
+  ];
+
+  for (const rankings of rankingGroups) {
+    for (const ranking of rankings) {
+      const speciesId = params.speciesByNormalizedName.get(
+        normalizeSpeciesName(ranking.Pokemon),
+      );
+
+      if (!speciesId || rankingEntryBySpeciesId.has(speciesId)) {
+        continue;
+      }
+
+      rankingEntryBySpeciesId.set(speciesId, ranking);
+    }
+  }
+
+  return rankingEntryBySpeciesId;
 }
 
 /**
@@ -605,16 +752,28 @@ export async function generateSimulations(
 
     const battleFormats = getBattleFormats();
 
-    const missingOverallRankings = battleFormats.filter((format) => {
-      return !resolvedDependencies.fileExists(getOverallRankingsPath(format));
-    });
+    const missingRankingsByFormat = battleFormats
+      .map((format) => {
+        const missingCategories = (
+          ['overall', 'leads', 'switches', 'closers'] as const
+        ).filter((category) => {
+          return !resolvedDependencies.fileExists(
+            getRankingsPath(format, category),
+          );
+        });
 
-    if (missingOverallRankings.length > 0) {
-      const missingFormats = missingOverallRankings
-        .map((format) => `${format.label} (cp${format.cp} ${format.cup})`)
+        return { format, missingCategories };
+      })
+      .filter(({ missingCategories }) => missingCategories.length > 0);
+
+    if (missingRankingsByFormat.length > 0) {
+      const missingFormats = missingRankingsByFormat
+        .map(({ format, missingCategories }) => {
+          return `${format.label} (cp${format.cp} ${format.cup}: ${missingCategories.join(', ')})`;
+        })
         .join(', ');
       throw new Error(
-        `[sync-simulations] Overall rankings CSV not found for formats: ${missingFormats}. Run rankings sync first.`,
+        `[sync-simulations] Rankings CSV not found for formats: ${missingFormats}. Run rankings sync first.`,
       );
     }
 
@@ -622,11 +781,7 @@ export async function generateSimulations(
       path.join(syncConfig.outputDir, 'pokemon.json'),
     );
 
-    const pokemonData = JSON.parse(pokemonJsonText) as Array<{
-      speciesId: string;
-      speciesName: string;
-      released: boolean;
-    }>;
+    const pokemonData = JSON.parse(pokemonJsonText) as SyncPokemonEntry[];
 
     const speciesByNormalizedName = new Map<string, string>();
     const speciesNameById = new Map<string, string>();
@@ -648,38 +803,51 @@ export async function generateSimulations(
     const allSimulations: SimulationsCsv = [];
 
     for (const format of battleFormats) {
-      const overallCsvPath = getOverallRankingsPath(format);
-      const overallCsvText =
-        await resolvedDependencies.readFile(overallCsvPath);
-      const allRankings = parseRankingsCsv(overallCsvText);
-      const topPokemonNames = allRankings
-        .slice(0, 150)
-        .map((ranking) => ranking.Pokemon)
-        .filter((name): name is string => typeof name === 'string' && !!name);
+      const [overallCsvText, leadsCsvText, switchesCsvText, closersCsvText] =
+        await Promise.all([
+          resolvedDependencies.readFile(getRankingsPath(format, 'overall')),
+          resolvedDependencies.readFile(getRankingsPath(format, 'leads')),
+          resolvedDependencies.readFile(getRankingsPath(format, 'switches')),
+          resolvedDependencies.readFile(getRankingsPath(format, 'closers')),
+        ]);
+
+      const overallEntries = parseRankingsCsv(overallCsvText);
+      const leadEntries = parseRankingsCsv(leadsCsvText);
+      const switchEntries = parseRankingsCsv(switchesCsvText);
+      const closerEntries = parseRankingsCsv(closersCsvText);
+
+      const simulationTargets = selectSimulationTargetSpeciesIds({
+        overallCsvText,
+        leadsCsvText,
+        switchesCsvText,
+        closersCsvText,
+        pokemonData,
+      });
+
+      const rankingEntryBySpeciesId = buildPreferredRankingEntryBySpeciesId({
+        overallEntries,
+        leadEntries,
+        switchEntries,
+        closerEntries,
+        speciesByNormalizedName,
+      });
 
       console.log(
-        `[sync-simulations] Generating ${format.label} simulations from ${overallCsvPath}`,
+        `[sync-simulations] ${format.label} target pool: overall=${simulationTargets.counts.overall}, leads=${simulationTargets.counts.leads}, switches=${simulationTargets.counts.switches}, closers=${simulationTargets.counts.closers}, unionNames=${simulationTargets.counts.nameUnion}, unionSpecies=${simulationTargets.counts.speciesUnion}`,
       );
 
-      for (let i = 0; i < topPokemonNames.length; i++) {
-        const pokemonName = topPokemonNames[i];
-        const ranking = allRankings[i];
-        const normalizedName = normalizeSpeciesName(pokemonName);
-        const resolvedSpeciesId = speciesByNormalizedName.get(normalizedName);
-        const speciesId = resolvedSpeciesId
-          ? normalizeToChoosableSpeciesId(resolvedSpeciesId)
-          : undefined;
+      for (const unresolvedName of simulationTargets.unresolvedPokemonNames) {
+        console.warn(
+          `[sync-simulations] Skipping ${unresolvedName} for ${format.label}: no matching speciesId in pokemon.json`,
+        );
+      }
 
-        if (!speciesId) {
-          console.warn(
-            `[sync-simulations] Skipping ${pokemonName}: no matching speciesId in pokemon.json`,
-          );
-          continue;
-        }
-
-        const displayName = speciesNameById.get(speciesId) ?? pokemonName;
+      for (let i = 0; i < simulationTargets.speciesIds.length; i++) {
+        const speciesId = simulationTargets.speciesIds[i];
+        const ranking = rankingEntryBySpeciesId.get(speciesId);
+        const displayName = speciesNameById.get(speciesId) ?? speciesId;
         console.log(
-          `[sync-simulations] Processing ${displayName} for ${format.label} (${i + 1}/${topPokemonNames.length})`,
+          `[sync-simulations] Processing ${displayName} for ${format.label} (${i + 1}/${simulationTargets.speciesIds.length})`,
         );
 
         for (const scenario of SIMULATION_SCENARIOS) {

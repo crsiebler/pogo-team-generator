@@ -4,14 +4,138 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   generateScenarioCsvFromEngine,
   generateSimulations,
+  selectSimulationTargetSpeciesIds,
 } from './simulations';
 
 const VALID_SIMULATION_CSV =
   'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nIvysaur,500,0,0\n';
 
-function isOverallRankingPath(filePath: string): boolean {
-  return filePath.endsWith(path.join('overall_rankings.csv'));
+const RANKING_CATEGORIES = ['overall', 'leads', 'switches', 'closers'] as const;
+
+function isRankingsPath(
+  filePath: string,
+  category?: (typeof RANKING_CATEGORIES)[number],
+): boolean {
+  if (category) {
+    return filePath.endsWith(path.join(`${category}_rankings.csv`));
+  }
+
+  return RANKING_CATEGORIES.some((rankingCategory) => {
+    return filePath.endsWith(path.join(`${rankingCategory}_rankings.csv`));
+  });
 }
+
+function toRankingsCsv(pokemonNames: string[]): string {
+  const rows = pokemonNames.map((name) => `${name},100`);
+  return ['Pokemon,Score', ...rows].join('\n');
+}
+
+function toSpeciesId(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
+describe('selectSimulationTargetSpeciesIds', () => {
+  it('includes role-specific targets outside overall top 200', () => {
+    const overallNames = Array.from(
+      { length: 200 },
+      (_, i) => `Overall ${i + 1}`,
+    );
+    const roleOnlyLead = 'Role Lead Specialist';
+    const leadNames = [roleOnlyLead];
+
+    const allNames = [...overallNames, ...leadNames];
+    const pokemonData = allNames.map((name) => ({
+      speciesId: toSpeciesId(name),
+      speciesName: name,
+      released: true,
+    }));
+
+    const result = selectSimulationTargetSpeciesIds({
+      overallCsvText: toRankingsCsv(overallNames),
+      leadsCsvText: toRankingsCsv(leadNames),
+      switchesCsvText: toRankingsCsv([]),
+      closersCsvText: toRankingsCsv([]),
+      pokemonData,
+    });
+
+    expect(result.speciesIds).toContain(toSpeciesId(roleOnlyLead));
+  });
+
+  it('deduplicates targets after canonical form normalization', () => {
+    const pokemonData = [
+      {
+        speciesId: 'morpeko_hangry',
+        speciesName: 'Morpeko (Hangry)',
+        released: true,
+      },
+      {
+        speciesId: 'morpeko_full_belly',
+        speciesName: 'Morpeko (Full Belly)',
+        released: true,
+      },
+    ];
+
+    const result = selectSimulationTargetSpeciesIds({
+      overallCsvText: toRankingsCsv(['Morpeko (Hangry)']),
+      leadsCsvText: toRankingsCsv(['Morpeko (Full Belly)']),
+      switchesCsvText: toRankingsCsv([]),
+      closersCsvText: toRankingsCsv([]),
+      pokemonData,
+    });
+
+    expect(result.speciesIds).toEqual(['morpeko_full_belly']);
+    expect(result.counts.speciesUnion).toBe(1);
+  });
+
+  it('applies per-role limits before building the union', () => {
+    const overallNames = Array.from(
+      { length: 250 },
+      (_, i) => `Overall ${i + 1}`,
+    );
+    const leadNames = Array.from({ length: 120 }, (_, i) => `Lead ${i + 1}`);
+    const switchNames = Array.from(
+      { length: 120 },
+      (_, i) => `Switch ${i + 1}`,
+    );
+    const closerNames = Array.from(
+      { length: 120 },
+      (_, i) => `Closer ${i + 1}`,
+    );
+
+    const allNames = [
+      ...overallNames,
+      ...leadNames,
+      ...switchNames,
+      ...closerNames,
+    ];
+    const pokemonData = allNames.map((name) => ({
+      speciesId: toSpeciesId(name),
+      speciesName: name,
+      released: true,
+    }));
+
+    const result = selectSimulationTargetSpeciesIds({
+      overallCsvText: toRankingsCsv(overallNames),
+      leadsCsvText: toRankingsCsv(leadNames),
+      switchesCsvText: toRankingsCsv(switchNames),
+      closersCsvText: toRankingsCsv(closerNames),
+      pokemonData,
+    });
+
+    expect(result.counts.overall).toBe(200);
+    expect(result.counts.leads).toBe(100);
+    expect(result.counts.switches).toBe(100);
+    expect(result.counts.closers).toBe(100);
+
+    expect(result.speciesIds).not.toContain(toSpeciesId('Overall 250'));
+    expect(result.speciesIds).not.toContain(toSpeciesId('Lead 120'));
+    expect(result.speciesIds).not.toContain(toSpeciesId('Switch 120'));
+    expect(result.speciesIds).not.toContain(toSpeciesId('Closer 120'));
+  });
+});
 
 describe('generateSimulations', () => {
   it('forces the selected Pokemon onto the format-specific recommended moveset', () => {
@@ -125,12 +249,12 @@ describe('generateSimulations', () => {
         getRuntime: () => ({ context: {} as never }),
         fileExists: (filePath: string) => {
           return (
-            isOverallRankingPath(filePath) ||
+            isRankingsPath(filePath) ||
             filePath.endsWith(path.join('data', 'pokemon.json'))
           );
         },
         readFile: async (filePath: string) => {
-          if (isOverallRankingPath(filePath)) {
+          if (isRankingsPath(filePath)) {
             return 'Pokemon\nBulbasaur\n';
           }
 
@@ -275,7 +399,7 @@ describe('generateSimulations', () => {
 
   it('in resume mode reuses only valid format-specific files', async () => {
     const readFile = vi.fn(async (filePath: string) => {
-      if (isOverallRankingPath(filePath)) {
+      if (isRankingsPath(filePath)) {
         return 'Pokemon\nBulbasaur\n';
       }
 
@@ -327,7 +451,7 @@ describe('generateSimulations', () => {
       {
         getRuntime: () => ({ context: {} as never }),
         fileExists: (filePath: string) => {
-          if (isOverallRankingPath(filePath)) {
+          if (isRankingsPath(filePath)) {
             return true;
           }
 
