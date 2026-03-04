@@ -22,7 +22,7 @@ import {
   calculateEffectiveness,
 } from '../../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../../types';
-import { getOptimalMovesetForTeam } from '../moveset';
+import { getRecommendedMovesetForPokemon } from '../moveset';
 import typeEffectiveness from '@/data/type-effectiveness.json';
 
 /**
@@ -235,8 +235,7 @@ function calculateEnergyScore(team: string[]): number {
   for (const pokemon of teamPokemon) {
     if (!pokemon) continue;
 
-    // Get optimal moveset based on team context
-    const optimalMoves = getOptimalMovesetForTeam(pokemon, team);
+    const optimalMoves = getRecommendedMovesetForPokemon(pokemon);
     const chargedMoves = [
       optimalMoves.chargedMove1,
       optimalMoves.chargedMove2,
@@ -546,8 +545,7 @@ function calculateMoveCoverage(team: string[]): number {
   for (const pokemon of teamPokemon) {
     if (!pokemon) continue;
 
-    // Get optimal moveset based on team context
-    const optimalMoves = getOptimalMovesetForTeam(pokemon, team);
+    const optimalMoves = getRecommendedMovesetForPokemon(pokemon);
     const chargedMoves = [
       optimalMoves.chargedMove1,
       optimalMoves.chargedMove2,
