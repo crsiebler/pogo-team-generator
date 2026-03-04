@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { ThemeToggle } from '@/components/atoms';
 import { Toast } from '@/components/atoms/Toast';
+import { Footer } from '@/components/organisms/Footer';
 
 export const metadata: Metadata = {
   title: 'Pokémon GO PvP Team Generator',
@@ -36,9 +37,12 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen bg-white dark:from-gray-900 dark:to-gray-800">
-        <ThemeToggle />
-        <Toast />
-        {children}
+        <div className="flex min-h-screen flex-col">
+          <ThemeToggle />
+          <Toast />
+          <div className="flex-1">{children}</div>
+          <Footer />
+        </div>
       </body>
     </html>
   );
