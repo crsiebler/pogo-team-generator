@@ -5,3 +5,4 @@ export * from './Spinner/Spinner';
 export * from './Badge/Badge';
 export * from './ThemeToggle/ThemeToggle';
 export * from './Switch/Switch';
+export * from './Icons';

@@ -13,6 +13,21 @@ import {
 } from './validation';
 
 /**
+ * Persist successful sync metadata for UI freshness indicators.
+ */
+function writeSyncMetadata(): void {
+  const syncMetadataPath = path.join(
+    syncConfig.outputDir,
+    'sync-metadata.json',
+  );
+  const syncMetadata = {
+    lastSuccessfulSyncAt: new Date().toISOString(),
+  };
+
+  fs.writeFileSync(syncMetadataPath, JSON.stringify(syncMetadata, null, 2));
+}
+
+/**
  * Run the complete data sync pipeline
  */
 export async function runSync(options: SyncRunOptions = {}): Promise<void> {
@@ -97,6 +112,9 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
         `Cross-validation failed: ${crossValidation.errors.join(', ')}`,
       );
     }
+
+    writeSyncMetadata();
+    console.log('[sync] Wrote sync-metadata.json');
 
     console.log('[sync] Pipeline completed successfully');
     const simMessage = `Simulations: ${simulations.length}`;
