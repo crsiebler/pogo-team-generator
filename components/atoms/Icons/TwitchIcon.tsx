@@ -2,22 +2,31 @@ import { IconProps } from './types';
 
 export function TwitchIcon({
   className,
-  fill = '#6441a4',
-  size = 64,
+  fill = 'currentColor',
+  title,
+  'aria-label': ariaLabel,
+  'aria-hidden': ariaHidden,
+  role,
+  size = 50,
 }: IconProps) {
+  const resolvedAriaHidden = ariaHidden ?? (!title && !ariaLabel);
+
   return (
     <svg
-      xmlns="http://www.w3.org/2000/svg"
       className={className}
       fill={fill}
-      height={size}
       width={size}
-      viewBox="0 0 64 64"
+      height={size}
+      viewBox="0 0 512 512"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label={ariaLabel}
+      aria-hidden={resolvedAriaHidden}
+      role={role}
     >
-      <path
-        d="M5.7 0L1.4 10.985V55.88h15.284V64h8.597l8.12-8.12h12.418l16.716-16.716V0H5.7zm51.104 36.3L47.25 45.85H31.967l-8.12 8.12v-8.12H10.952V5.73h45.85V36.3zM47.25 16.716v16.716h-5.73V16.716h5.73zm-15.284 0v16.716h-5.73V16.716h5.73z"
-        fillRule="evenodd"
-      />
+      {title ? <title>{title}</title> : null}
+      <path d="M80,32,48,112V416h96v64h64l64-64h80L464,304V32ZM416,288l-64,64H256l-64,64V352H112V80H416Z" />
+      <rect x="320" y="143" width="48" height="129" />
+      <rect x="208" y="143" width="48" height="129" />
     </svg>
   );
 }

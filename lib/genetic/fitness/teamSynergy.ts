@@ -3,15 +3,20 @@ import {
   getAllRankingsForPokemon,
   speciesIdToRankingName,
 } from '../../data/rankings';
-import { calculateTeamCoverage, getTopThreats } from '../../data/simulations';
+import {
+  calculateTeamCoverage,
+  getTopThreatsByRole,
+} from '../../data/simulations';
 import type { Chromosome, TournamentMode } from '../../types';
+
+const THREATS_PER_ROLE = 100;
 
 /**
  * Calculate team coverage matrix score (40% weight)
  * Ensures team has 2+ counters for each meta threat across shield scenarios
  */
 function calculateTeamCoverageMatrix(team: string[]): number {
-  const metaThreats = getTopThreats(100); // Sample top 100 threats
+  const metaThreats = getTopThreatsByRole(THREATS_PER_ROLE);
   const teamPokemon = team
     .map((id) => getPokemonBySpeciesId(id))
     .filter(Boolean);
@@ -48,7 +53,9 @@ function calculateTeamCoverageMatrix(team: string[]): number {
  * Ensures team performs well across all shield scenarios using weighted average
  */
 function calculateShieldScenarioBalance(team: string[]): number {
-  const metaThreats = getTopThreats(50); // Sample top 50 threats
+  const metaThreats = getTopThreatsByRole(THREATS_PER_ROLE);
+
+  if (metaThreats.length === 0) return 0;
   let totalBalance = 0;
 
   for (const threat of metaThreats) {
@@ -69,7 +76,9 @@ function calculateShieldScenarioBalance(team: string[]): number {
  * Penalizes if top-ranked threats beat 2/3 of the team
  */
 function calculateCoreBreakPenalty(team: string[]): number {
-  const topThreats = getTopThreats(30); // Top 30 threats
+  const topThreats = getTopThreatsByRole(THREATS_PER_ROLE);
+
+  if (topThreats.length === 0) return 1;
   let penalty = 0;
 
   for (const threat of topThreats) {

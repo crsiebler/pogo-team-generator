@@ -7,13 +7,13 @@ import { getPokemonBySpeciesId } from '@lib/data/pokemon';
 import {
   getAllRankingsForPokemon,
   speciesIdToRankingName,
-  getMetaThreats,
+  getRoleBasedThreatSpeciesIds,
 } from '@lib/data/rankings';
 import {
   calculateTeamCoverage,
   getWeightedTeamWeaknesses,
   getSingleCounterThreats,
-  getTopThreats,
+  getTopThreatsByRole,
   getMatchupQualityScore,
 } from '@lib/data/simulations';
 import {
@@ -186,36 +186,52 @@ function evaluateBestLineup(team: string[]): number {
  * How well team handles top 50 meta Pokémon
  */
 function calculateMetaThreatScore(team: string[]): number {
-  const metaThreats = getMetaThreats();
+  const metaThreatSpeciesIds = getRoleBasedThreatSpeciesIds(100);
   const teamPokemon = team
     .map((id) => getPokemonBySpeciesId(id))
     .filter(Boolean);
 
-  if (teamPokemon.length === 0) return 0;
+  if (teamPokemon.length === 0 || metaThreatSpeciesIds.length === 0) return 0;
 
   let coveredThreats = 0;
+  let evaluatedThreats = 0;
 
-  for (const threat of metaThreats.slice(0, 50)) {
-    const threatTypes = [threat['Type 1'], threat['Type 2']].filter(
-      (t) => t !== 'none',
-    );
+  for (const threatSpeciesId of metaThreatSpeciesIds) {
+    const threatPokemon = getPokemonBySpeciesId(threatSpeciesId);
+    if (!threatPokemon) {
+      continue;
+    }
+
+    evaluatedThreats++;
+    let hasSuperEffectiveCoverage = false;
 
     // Check if any team member has super effective move against threat
     for (const pokemon of teamPokemon) {
       for (const moveId of pokemon!.chargedMoves) {
         const move = getMoveByMoveId(moveId);
         if (move) {
-          const effectiveness = calculateEffectiveness(threatTypes, move.type);
+          const effectiveness = calculateEffectiveness(
+            threatPokemon.types,
+            move.type,
+          );
           if (effectiveness >= 1.6) {
-            coveredThreats++;
+            hasSuperEffectiveCoverage = true;
             break;
           }
         }
       }
+
+      if (hasSuperEffectiveCoverage) {
+        break;
+      }
+    }
+
+    if (hasSuperEffectiveCoverage) {
+      coveredThreats++;
     }
   }
 
-  return coveredThreats / 50;
+  return evaluatedThreats > 0 ? coveredThreats / evaluatedThreats : 0;
 }
 
 /**
@@ -805,8 +821,8 @@ function calculateTypeSynergy(team: string[]): number {
  * Uses battle simulation data to evaluate team performance against meta threats
  */
 function calculateSimulationCoverage(team: string[]): number {
-  // Get top 50 threats from simulation data (now sorted by ranking)
-  const topThreats = getTopThreats(50);
+  // Build threat pool from top role performers (top 100 per role)
+  const topThreats = getTopThreatsByRole(100);
 
   // Calculate what % of threats the team can beat
   const coverageRatio = calculateTeamCoverage(team, topThreats);
@@ -815,7 +831,11 @@ function calculateSimulationCoverage(team: string[]): number {
   const weightedWeaknesses = getWeightedTeamWeaknesses(team);
 
   // Find threats that only ONE team member can beat (single point of failure)
-  const singleCounters = getSingleCounterThreats(team, 50);
+  const singleCounters = getSingleCounterThreats(
+    team,
+    topThreats.length,
+    topThreats,
+  );
 
   // Calculate average matchup quality for the team
   // Prefer Pokemon with high mean/median battle ratings (generally win more matchups)
