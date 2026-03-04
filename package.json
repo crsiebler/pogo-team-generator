@@ -7,11 +7,11 @@
     "build": "next build",
     "dev": "next dev",
     "format": "prettier --write .",
-    "lint": "next lint",
+    "lint": "eslint .",
     "sync": "bun run lib/scripts/sync.ts",
     "start": "next start",
-    "test": "vitest run",
-    "test:ci": "bun run test -- --config vitest.config.mts --environment jsdom --globals --maxWorkers 1 --no-file-parallelism"
+    "test": "vitest run --maxWorkers 1 --no-file-parallelism",
+    "test:ci": "vitest run --config vitest.config.mts --environment jsdom --globals --maxWorkers 1 --no-file-parallelism"
   },
   "keywords": [],
   "author": "",
