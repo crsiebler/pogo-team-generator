@@ -1,4 +1,9 @@
 import type { Pokemon } from '../types';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  getBattleFormatById,
+  type BattleFormatId,
+} from './battleFormats';
 import pokemonData from '@/data/pokemon.json';
 
 // Type-safe cast
@@ -197,12 +202,37 @@ export function getGreatLeaguePokemon(): Pokemon[] {
 export function getRankedGreatLeaguePokemon(
   rankedNames: Set<string>,
 ): Pokemon[] {
-  return filterPokemon(
-    (p) =>
-      p.released &&
-      p.defaultIVs.cp1500 !== undefined &&
-      rankedNames.has(p.speciesName),
-  );
+  return getRankedPokemonForFormat(rankedNames, 'great-league');
+}
+
+/**
+ * Get ranked Pokémon eligible for a selected battle format.
+ */
+export function getRankedPokemonForFormat(
+  rankedNames: Set<string>,
+  formatId: BattleFormatId = DEFAULT_BATTLE_FORMAT_ID,
+): Pokemon[] {
+  const battleFormat = getBattleFormatById(formatId);
+
+  if (!battleFormat) {
+    throw new Error(`Unsupported battle format id: ${formatId}`);
+  }
+
+  return filterPokemon((pokemon) => {
+    if (!pokemon.released || !rankedNames.has(pokemon.speciesName)) {
+      return false;
+    }
+
+    if (battleFormat.cp === 1500) {
+      return pokemon.defaultIVs.cp1500 !== undefined;
+    }
+
+    if (battleFormat.cp === 2500) {
+      return pokemon.defaultIVs.cp2500 !== undefined;
+    }
+
+    return true;
+  });
 }
 
 /**

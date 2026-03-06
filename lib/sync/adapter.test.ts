@@ -24,6 +24,9 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 1500, 'kanto')).toBe(
+      '/source/pvpoke/src/data/rankings/kanto/overall/rankings-1500.json',
+    );
   });
 
   it('reads and parses JSON through the adapter boundary', async () => {
@@ -47,6 +50,30 @@ describe('createPvpokeAdapter', () => {
       Array<{ speciesName: string }>
     >('overall', 1500);
     expect(rankings).toEqual([{ speciesName: 'Azumarill' }]);
+  });
+
+  it('reads cup-specific rankings JSON files', async () => {
+    const sourcePath = '/source/pvpoke';
+    const rankingRelativePath =
+      'src/data/rankings/kanto/overall/rankings-1500.json';
+    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== rankingAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesName":"Wigglytuff"}]';
+      },
+    });
+
+    const rankings = await adapter.readRankingJson<
+      Array<{ speciesName: string }>
+    >('overall', 1500, 'kanto');
+
+    expect(rankings).toEqual([{ speciesName: 'Wigglytuff' }]);
   });
 
   it('reads gamemaster JSON via stable adapter methods', async () => {

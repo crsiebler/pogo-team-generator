@@ -1,12 +1,26 @@
 import { NextResponse } from 'next/server';
-import { getGreatLeaguePokemon } from '@/lib/data/pokemon';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  isBattleFormatId,
+} from '@/lib/data/battleFormats';
+import { getRankedPokemonNames } from '@/lib/data/rankings';
 
-export async function GET() {
+export const runtime = 'nodejs';
+
+export async function GET(request: Request) {
   try {
-    const availablePokemon = getGreatLeaguePokemon();
+    const url = new URL(request.url);
+    const formatParam = url.searchParams.get('formatId');
+    const formatId = formatParam ?? DEFAULT_BATTLE_FORMAT_ID;
 
-    // Return list of speciesNames for autocomplete
-    const pokemonNames = availablePokemon.map((p) => p.speciesName);
+    if (!isBattleFormatId(formatId)) {
+      return NextResponse.json(
+        { error: `Invalid battle format: ${formatId}` },
+        { status: 400 },
+      );
+    }
+
+    const pokemonNames = Array.from(getRankedPokemonNames(formatId));
 
     return NextResponse.json({
       pokemon: pokemonNames,

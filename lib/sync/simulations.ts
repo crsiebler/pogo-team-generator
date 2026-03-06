@@ -7,6 +7,7 @@ import { resolvePvpokeSourcePath } from './source';
 import { SyncRunOptions, SimulationData, SimulationsCsv } from './types';
 import { logError } from './utils';
 import { logValidationErrors, validateSimulationsCsv } from './validation';
+import { BattleFormat, getBattleFormats } from '@/lib/data/battleFormats';
 
 interface RankingsCsvEntry {
   Pokemon: string;
@@ -115,12 +116,31 @@ function normalizeToChoosableSpeciesId(speciesId: string): string {
 /**
  * Build output CSV path for one Pokemon + shield scenario.
  */
-function getSimulationOutputPath(speciesId: string, scenario: string): string {
+function getSimulationOutputPath(
+  format: BattleFormat,
+  speciesId: string,
+  scenario: string,
+): string {
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   return path.join(
     syncConfig.outputDir,
     'simulations',
-    `cp1500_${canonicalSpeciesId}_${scenario}.csv`,
+    `cp${format.cp}`,
+    format.cup,
+    `${canonicalSpeciesId}_${scenario}.csv`,
+  );
+}
+
+/**
+ * Build output path for one format's overall rankings CSV.
+ */
+function getOverallRankingsPath(format: BattleFormat): string {
+  return path.join(
+    syncConfig.outputDir,
+    'rankings',
+    `cp${format.cp}`,
+    format.cup,
+    'overall_rankings.csv',
   );
 }
 
@@ -394,11 +414,16 @@ function getPvpokeVmRuntime(sourcePath: string): PvpokeVmRuntime {
  */
 function generateScenarioCsvFromEngine(
   runtime: PvpokeVmRuntime,
+  format: BattleFormat,
   speciesId: string,
   shields: number,
 ): string {
+  const rankingKey = `${format.cup}overall${format.cp}`;
   runtime.context.__speciesId = speciesId;
   runtime.context.__shields = shields;
+  runtime.context.__leagueCp = format.cp;
+  runtime.context.__cup = format.cup;
+  runtime.context.__rankingKey = rankingKey;
 
   const script = new vm.Script(
     `(() => {
@@ -407,12 +432,12 @@ function generateScenarioCsvFromEngine(
 
       // Ensure recommended movesets are available for both selected Pokemon
       // and opponents in TeamRanker.
-      const rankingKey = 'alloverall1500';
+      const rankingKey = globalThis.__rankingKey;
       if (!gm.rankings[rankingKey]) {
-        gm.loadRankingData({}, 'overall', 1500, 'all');
+        gm.loadRankingData({}, 'overall', globalThis.__leagueCp, globalThis.__cup);
       }
 
-      const cup = gm.getCupById('all');
+      const cup = gm.getCupById(globalThis.__cup);
       const battle = new Battle();
       const ranker = RankerMaster.getInstance();
 
@@ -428,10 +453,16 @@ function generateScenarioCsvFromEngine(
       ranker.setRecommendMoveUsage(true);
 
       const selectedPokemon = new Pokemon(globalThis.__speciesId, 0, battle);
-      selectedPokemon.initialize(1500);
+      selectedPokemon.initialize(globalThis.__leagueCp);
       selectedPokemon.selectRecommendedMoveset('overall');
 
-      const result = ranker.rank([selectedPokemon], 1500, cup, [], 'battle');
+      const result = ranker.rank(
+        [selectedPokemon],
+        globalThis.__leagueCp,
+        cup,
+        [],
+        'battle'
+      );
       return result.csv;
     })()`,
   );
@@ -446,40 +477,75 @@ function generateScenarioCsvFromEngine(
   return result;
 }
 
+interface SimulationSyncDependencies {
+  getRuntime: (sourcePath: string) => PvpokeVmRuntime;
+  fileExists: (filePath: string) => boolean;
+  readFile: (filePath: string) => Promise<string>;
+  mkdir: (directoryPath: string) => Promise<void>;
+  writeFile: (filePath: string, content: string) => Promise<void>;
+  generateScenarioCsv: (
+    runtime: PvpokeVmRuntime,
+    format: BattleFormat,
+    speciesId: string,
+    shields: number,
+  ) => string;
+}
+
+const defaultDependencies: SimulationSyncDependencies = {
+  getRuntime: (sourcePath: string) => getPvpokeVmRuntime(sourcePath),
+  fileExists: (filePath: string) => fs.existsSync(filePath),
+  readFile: async (filePath: string) => fsAsync.readFile(filePath, 'utf8'),
+  mkdir: async (directoryPath: string) => {
+    await fsAsync.mkdir(directoryPath, { recursive: true });
+  },
+  writeFile: async (filePath: string, content: string) => {
+    await fsAsync.writeFile(filePath, content, 'utf8');
+  },
+  generateScenarioCsv: (
+    runtime: PvpokeVmRuntime,
+    format: BattleFormat,
+    speciesId: string,
+    shields: number,
+  ) => generateScenarioCsvFromEngine(runtime, format, speciesId, shields),
+};
+
 /**
  * Generate simulation data using local PvPoke engine logic (no browser automation).
  */
 export async function generateSimulations(
   options: SyncRunOptions = {},
+  dependencies: Partial<SimulationSyncDependencies> = {},
 ): Promise<SimulationsCsv> {
+  const resolvedDependencies: SimulationSyncDependencies = {
+    ...defaultDependencies,
+    ...dependencies,
+  };
+
   try {
     console.log('[sync-simulations] Starting simulation generation');
 
     const resolvedSourcePath =
       options.sourcePath ?? resolvePvpokeSourcePath().sourcePath;
-    const runtime = getPvpokeVmRuntime(resolvedSourcePath);
+    const runtime = resolvedDependencies.getRuntime(resolvedSourcePath);
 
-    const overallCsvPath = path.join(
-      syncConfig.outputDir,
-      'cp1500_all_overall_rankings.csv',
-    );
+    const battleFormats = getBattleFormats();
 
-    if (!fs.existsSync(overallCsvPath)) {
+    const missingOverallRankings = battleFormats.filter((format) => {
+      return !resolvedDependencies.fileExists(getOverallRankingsPath(format));
+    });
+
+    if (missingOverallRankings.length > 0) {
+      const missingFormats = missingOverallRankings
+        .map((format) => `${format.label} (cp${format.cp} ${format.cup})`)
+        .join(', ');
       throw new Error(
-        '[sync-simulations] Overall rankings CSV not found. Run rankings sync first.',
+        `[sync-simulations] Overall rankings CSV not found for formats: ${missingFormats}. Run rankings sync first.`,
       );
     }
 
-    const [overallCsvText, pokemonJsonText] = await Promise.all([
-      fsAsync.readFile(overallCsvPath, 'utf8'),
-      fsAsync.readFile(path.join(syncConfig.outputDir, 'pokemon.json'), 'utf8'),
-    ]);
-
-    const allRankings = parseRankingsCsv(overallCsvText);
-    const topPokemonNames = allRankings
-      .slice(0, 150)
-      .map((ranking) => ranking.Pokemon)
-      .filter((name): name is string => typeof name === 'string' && !!name);
+    const pokemonJsonText = await resolvedDependencies.readFile(
+      path.join(syncConfig.outputDir, 'pokemon.json'),
+    );
 
     const pokemonData = JSON.parse(pokemonJsonText) as Array<{
       speciesId: string;
@@ -506,77 +572,94 @@ export async function generateSimulations(
 
     const allSimulations: SimulationsCsv = [];
 
-    for (let i = 0; i < topPokemonNames.length; i++) {
-      const pokemonName = topPokemonNames[i];
-      const normalizedName = normalizeSpeciesName(pokemonName);
-      const resolvedSpeciesId = speciesByNormalizedName.get(normalizedName);
-      const speciesId = resolvedSpeciesId
-        ? normalizeToChoosableSpeciesId(resolvedSpeciesId)
-        : undefined;
+    for (const format of battleFormats) {
+      const overallCsvPath = getOverallRankingsPath(format);
+      const overallCsvText =
+        await resolvedDependencies.readFile(overallCsvPath);
+      const allRankings = parseRankingsCsv(overallCsvText);
+      const topPokemonNames = allRankings
+        .slice(0, 150)
+        .map((ranking) => ranking.Pokemon)
+        .filter((name): name is string => typeof name === 'string' && !!name);
 
-      if (!speciesId) {
-        console.warn(
-          `[sync-simulations] Skipping ${pokemonName}: no matching speciesId in pokemon.json`,
-        );
-        continue;
-      }
-
-      const displayName = speciesNameById.get(speciesId) ?? pokemonName;
       console.log(
-        `[sync-simulations] Processing ${displayName} (${i + 1}/${topPokemonNames.length})`,
+        `[sync-simulations] Generating ${format.label} simulations from ${overallCsvPath}`,
       );
 
-      for (const scenario of SIMULATION_SCENARIOS) {
-        const outputPath = getSimulationOutputPath(
-          speciesId,
-          scenario.scenario,
-        );
+      for (let i = 0; i < topPokemonNames.length; i++) {
+        const pokemonName = topPokemonNames[i];
+        const normalizedName = normalizeSpeciesName(pokemonName);
+        const resolvedSpeciesId = speciesByNormalizedName.get(normalizedName);
+        const speciesId = resolvedSpeciesId
+          ? normalizeToChoosableSpeciesId(resolvedSpeciesId)
+          : undefined;
 
-        if (options.resume && fs.existsSync(outputPath)) {
-          const existingCsv = await fsAsync.readFile(outputPath, 'utf8');
-          const existingValidation = validateSimulationsCsv(existingCsv);
-          if (existingValidation.valid) {
-            logValidationErrors(
-              `${displayName} ${scenario.scenario} simulations CSV`,
-              existingValidation.errors,
-            );
-            allSimulations.push(
-              ...parseSimulationsCsv(
-                existingCsv,
-                displayName,
-                scenario.scenario,
-              ),
-            );
-            console.log(
-              `[sync-simulations] Reused ${displayName} ${scenario.scenario} from existing CSV`,
-            );
-            continue;
-          }
+        if (!speciesId) {
+          console.warn(
+            `[sync-simulations] Skipping ${pokemonName}: no matching speciesId in pokemon.json`,
+          );
+          continue;
         }
 
-        const csvText = generateScenarioCsvFromEngine(
-          runtime,
-          speciesId,
-          scenario.shields,
-        );
-        const validation = validateSimulationsCsv(csvText);
-        logValidationErrors(
-          `${displayName} ${scenario.scenario} simulations CSV`,
-          validation.errors,
+        const displayName = speciesNameById.get(speciesId) ?? pokemonName;
+        console.log(
+          `[sync-simulations] Processing ${displayName} for ${format.label} (${i + 1}/${topPokemonNames.length})`,
         );
 
-        if (!validation.valid) {
-          throw new Error(
-            `[sync-simulations] ${displayName} ${scenario.scenario} validation failed: ${validation.errors.join(', ')}`,
+        for (const scenario of SIMULATION_SCENARIOS) {
+          const outputPath = getSimulationOutputPath(
+            format,
+            speciesId,
+            scenario.scenario,
+          );
+
+          if (options.resume && resolvedDependencies.fileExists(outputPath)) {
+            const existingCsv = await resolvedDependencies.readFile(outputPath);
+            const existingValidation = validateSimulationsCsv(existingCsv);
+            if (existingValidation.valid) {
+              logValidationErrors(
+                `${displayName} ${scenario.scenario} ${format.label} simulations CSV`,
+                existingValidation.errors,
+              );
+              allSimulations.push(
+                ...parseSimulationsCsv(
+                  existingCsv,
+                  displayName,
+                  scenario.scenario,
+                ),
+              );
+              console.log(
+                `[sync-simulations] Reused ${displayName} ${scenario.scenario} ${format.label} from existing CSV`,
+              );
+              continue;
+            }
+          }
+
+          const csvText = resolvedDependencies.generateScenarioCsv(
+            runtime,
+            format,
+            speciesId,
+            scenario.shields,
+          );
+          const validation = validateSimulationsCsv(csvText);
+          logValidationErrors(
+            `${displayName} ${scenario.scenario} ${format.label} simulations CSV`,
+            validation.errors,
+          );
+
+          if (!validation.valid) {
+            throw new Error(
+              `[sync-simulations] ${displayName} ${scenario.scenario} ${format.label} validation failed: ${validation.errors.join(', ')}`,
+            );
+          }
+
+          await resolvedDependencies.mkdir(path.dirname(outputPath));
+          await resolvedDependencies.writeFile(outputPath, csvText);
+
+          allSimulations.push(
+            ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
           );
         }
-
-        await fsAsync.mkdir(path.dirname(outputPath), { recursive: true });
-        await fsAsync.writeFile(outputPath, csvText, 'utf8');
-
-        allSimulations.push(
-          ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
-        );
       }
     }
 

@@ -1,18 +1,18 @@
 {
   "project": "pogo-team-generator",
-  "branchName": "ralph/local-pvpoke-data-sync",
-  "description": "Replace the browser scraper with a deterministic local PvPoke data sync pipeline sourced from vendor/pvpoke (submodule) or PVPOKE_PATH, while preserving existing output contracts.",
+  "branchName": "ralph/multi-league-cup-support",
+  "description": "Add league and cup selection so team generation uses format-specific PvPoke rankings and simulations for Great, Ultra, Master, and Kanto Cup.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Resolve local PvPoke source path",
-      "description": "As a developer, I want the sync pipeline to resolve a local PvPoke source path so execution is deterministic and environment-aware.",
+      "title": "Create battle format catalog",
+      "description": "As a developer, I want a typed battle format catalog so UI, API, algorithm, and sync layers share one source of truth for supported formats.",
       "acceptanceCriteria": [
-        "Resolve source in order: PVPOKE_PATH then vendor/pvpoke",
-        "Support vendor/pvpoke as git submodule source path",
-        "Fail fast with clear error when no valid source path exists",
-        "Validate required source files exist before phase execution",
-        "Typecheck passes"
+        "Add a typed format catalog with ids, labels, cup, and cp for Great League, Ultra League, Master League, and Kanto Cup",
+        "Add a default format id for Great League",
+        "Add helper validation/lookup utilities for format ids",
+        "Typecheck passes",
+        "Tests pass"
       ],
       "priority": 1,
       "passes": true,
@@ -20,13 +20,16 @@
     },
     {
       "id": "US-002",
-      "title": "Add env scaffolding for source path",
-      "description": "As a developer, I want env templates for PVPOKE_PATH so local setup is explicit and repeatable.",
+      "title": "Add Select and Option atoms with chevron icons",
+      "description": "As a user, I want a reusable select component with clear affordance so format selection is consistent with project styling.",
       "acceptanceCriteria": [
-        "Add .env.example with PVPOKE_PATH=<local-pvpoke-directory>",
-        "Add .env with optional PVPOKE_PATH override (leave unset to use vendor/pvpoke)",
-        "Log the resolved PvPoke source path at startup",
-        "Typecheck passes"
+        "Create Select atom with floating label behavior adapted to this project's theme classes",
+        "Create Option atom for option rendering",
+        "Add ChevronDownIcon and ChevronUpIcon to atom icons and export them",
+        "Select renders correctly in light and dark themes",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
       "passes": true,
@@ -34,13 +37,16 @@
     },
     {
       "id": "US-003",
-      "title": "Create PvPoke compatibility layer",
-      "description": "As a developer, I want a compatibility layer for PvPoke integration so this project is insulated from PvPoke internal changes.",
+      "title": "Add format dropdown to Team Configuration",
+      "description": "As a user, I want to select a battle format at the top of Team Configuration so team generation targets the right league or cup.",
       "acceptanceCriteria": [
-        "Create lib/sync/adapter.ts module with focused source access APIs",
-        "Expose stable adapter methods for gamemaster, rankings, and simulations",
-        "Avoid direct PvPoke internals imports outside the adapter",
-        "Typecheck passes"
+        "Place format selector at the top of Team Configuration above tournament mode",
+        "Dropdown options are exactly Great League, Ultra League, Master League, and Kanto Cup",
+        "Default selected option is Great League",
+        "TeamManager stores selected format state and passes it to config panel",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
       "passes": true,
@@ -48,14 +54,15 @@
     },
     {
       "id": "US-004",
-      "title": "Sync gamemaster JSON from local source",
-      "description": "As a developer, I want phase 1 to read local pokemon and move JSON files so base data generation is deterministic.",
+      "title": "Send and validate formatId in generate-team API",
+      "description": "As a user, I want my selected format sent to the backend so generated teams use the requested data context.",
       "acceptanceCriteria": [
-        "Read src/data/gamemaster/pokemon.json from resolved source",
-        "Read src/data/gamemaster/moves.json from resolved source",
-        "Write outputs to data/pokemon.json and data/moves.json",
-        "Existing JSON validators pass",
-        "Typecheck passes"
+        "Client generate-team request payload includes formatId",
+        "API validates formatId against supported format catalog",
+        "Invalid formatId returns HTTP 400 with a clear message",
+        "API passes validated formatId into generation options",
+        "Typecheck passes",
+        "Tests pass"
       ],
       "priority": 4,
       "passes": true,
@@ -63,14 +70,15 @@
     },
     {
       "id": "US-005",
-      "title": "Generate rankings CSV from local ranking JSON",
-      "description": "As a developer, I want phase 2 to convert local PvPoke ranking JSON into current CSV outputs.",
+      "title": "Load rankings by selected format",
+      "description": "As a user, I want ranking-based scoring to come from the selected format so results reflect the correct meta.",
       "acceptanceCriteria": [
-        "Read all/overall rankings-1500.json and all/leads|switches|closers rankings-1500.json",
-        "Transform ranking JSON into existing CSV schema",
-        "Write cp1500_all_overall/leads/switches/closers ranking CSV files",
-        "Existing rankings CSV validator passes",
-        "Typecheck passes"
+        "Rankings loader resolves CSV paths by selected cup/cp/category",
+        "Ranking helper APIs accept an optional formatId and default to Great League",
+        "Ranking caches are isolated by format to prevent cross-format contamination",
+        "Missing ranking files for selected format raise handled errors",
+        "Typecheck passes",
+        "Tests pass"
       ],
       "priority": 5,
       "passes": true,
@@ -78,15 +86,15 @@
     },
     {
       "id": "US-006",
-      "title": "Generate simulation CSVs from PvPoke engine",
-      "description": "As a developer, I want phase 3 simulations generated by PvPoke engine logic without browser automation so runs complete reliably.",
+      "title": "Use format-aware Pokemon pool in algorithm",
+      "description": "As a user, I want candidate Pokemon chosen from selected format rankings so generation honors league and cup restrictions.",
       "acceptanceCriteria": [
-        "Remove Playwright dependency from simulation generation path",
-        "Generate 1-1, 0-0, and 2-2 simulation CSVs per selected Pokemon",
-        "Preserve simulation CSV headers and filename contract",
-        "Resume mode skips valid existing simulation CSV files",
-        "Existing simulation CSV validator passes",
-        "Typecheck passes"
+        "Algorithm obtains top-ranked names from selected format",
+        "Pokemon eligibility filtering uses selected format context",
+        "Kanto Cup generation is restricted to Kanto ranking pool",
+        "Genetic operators and fitness formulas remain unchanged",
+        "Typecheck passes",
+        "Tests pass"
       ],
       "priority": 6,
       "passes": true,
@@ -94,14 +102,15 @@
     },
     {
       "id": "US-007",
-      "title": "Rename command surface to sync",
-      "description": "As a developer, I want command naming to reflect deterministic local synchronization instead of scraping.",
+      "title": "Load simulations by selected format and block missing data",
+      "description": "As a user, I want matchup analysis tied to the selected format and clear failure behavior when required data is missing.",
       "acceptanceCriteria": [
-        "Remove scrape and scrape:view commands from package.json",
-        "Add sync command in package.json",
-        "Add/update script entrypoint to lib/scripts/sync.ts",
-        "Update docs references from scrape to sync",
-        "Typecheck passes"
+        "Simulation loader parses and indexes files by format-aware naming",
+        "Simulation helper APIs accept an optional formatId and default to Great League",
+        "Team generation blocks with a clear error when selected format simulations are missing",
+        "No silent fallback to Great League when non-Great format is selected",
+        "Typecheck passes",
+        "Tests pass"
       ],
       "priority": 7,
       "passes": true,
@@ -109,16 +118,51 @@
     },
     {
       "id": "US-008",
-      "title": "Remove deprecated scraper and Playwright dependencies",
-      "description": "As a developer, I want obsolete browser-scraping code removed so maintenance and failure surface are reduced.",
+      "title": "Sync rankings for all supported formats",
+      "description": "As a maintainer, I want rankings sync to generate outputs for all supported formats so runtime lookups have complete data.",
       "acceptanceCriteria": [
-        "Remove deprecated Playwright-driven scraper paths",
-        "Remove playwright and @playwright/test dependencies from package.json",
-        "Remove Playwright imports from scraper utilities/modules",
-        "npm run sync completes without browser tooling",
-        "Typecheck passes"
+        "Rankings sync iterates formats all/1500, all/2500, all/10000, and kanto/1500",
+        "Generate overall, leads, switches, and closers CSVs for each supported format",
+        "Output filenames encode cup/cp/category deterministically",
+        "Validation runs for each generated CSV",
+        "Typecheck passes",
+        "Tests pass"
       ],
       "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Sync simulations for all supported formats",
+      "description": "As a maintainer, I want simulation sync to run PvPoke TeamRanker per format so coverage and threat analysis are format-correct.",
+      "acceptanceCriteria": [
+        "Simulation sync runs TeamRanker with correct cup and cp per selected format",
+        "Generate 0-0, 1-1, and 2-2 CSVs per target species for each supported format",
+        "Resume mode reuses valid files only for the same format",
+        "Output filenames encode format, species, and scenario deterministically",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Validate end-to-end generation for all four formats",
+      "description": "As a user, I want confidence that all supported formats generate valid teams so I can use the app for multiple metas.",
+      "acceptanceCriteria": [
+        "Great League generates using all/1500 data",
+        "Ultra League generates using all/2500 data",
+        "Master League generates using all/10000 data",
+        "Kanto Cup generates using kanto/1500 data",
+        "Missing format data shows clear error and blocks generation",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
       "passes": true,
       "notes": ""
     }

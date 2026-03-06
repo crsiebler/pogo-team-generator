@@ -1,13 +1,22 @@
 'use client';
 
 import { useCallback } from 'react';
+import type { ChangeEvent } from 'react';
 import clsx from 'clsx';
+import { Option, Select } from '@/components/atoms';
 import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
+import {
+  getBattleFormats,
+  isBattleFormatId,
+  type BattleFormatId,
+} from '@/lib/data/battleFormats';
 import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
 interface TeamConfigPanelProps {
   pokemonList: string[];
+  selectedFormatId: BattleFormatId;
+  onFormatChange: (formatId: BattleFormatId) => void;
   mode: TournamentMode;
   onModeChange: (mode: TournamentMode) => void;
   onAnchorsChange: (anchors: string[]) => void;
@@ -20,6 +29,8 @@ interface TeamConfigPanelProps {
 
 export function TeamConfigPanel({
   pokemonList,
+  selectedFormatId,
+  onFormatChange,
   mode,
   onModeChange,
   onAnchorsChange,
@@ -50,6 +61,18 @@ export function TeamConfigPanel({
     [onAlgorithmChange],
   );
 
+  const handleFormatChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const { value } = event.target;
+      if (!isBattleFormatId(value)) {
+        return;
+      }
+
+      onFormatChange(value);
+    },
+    [onFormatChange],
+  );
+
   return (
     <div
       className={clsx(
@@ -65,6 +88,21 @@ export function TeamConfigPanel({
       >
         Team Configuration
       </h2>
+
+      <div className="mb-6 sm:mb-8">
+        <Select
+          id="battle-format"
+          label="Battle Format"
+          value={selectedFormatId}
+          onChange={handleFormatChange}
+        >
+          {getBattleFormats().map((format) => (
+            <Option key={format.id} value={format.id}>
+              {format.label}
+            </Option>
+          ))}
+        </Select>
+      </div>
 
       {/* Tournament Mode Selection */}
       <div className="mb-6 sm:mb-8">

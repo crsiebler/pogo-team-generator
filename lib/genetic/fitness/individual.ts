@@ -1,3 +1,4 @@
+import type { BattleFormatId } from '@lib/data/battleFormats';
 import {
   getMoveByMoveId,
   evaluateMoveSynergy,
@@ -66,13 +67,16 @@ function calculateTypeCoverageScore(team: string[]): number {
  * Calculate average ranking score (35% weight)
  * Uses all four ranking CSVs with strong penalties for low-ranked Pokemon
  */
-function calculateRankingScore(team: string[]): number {
+function calculateRankingScore(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
   let totalScore = 0;
   let validCount = 0;
 
   for (const speciesId of team) {
     const rankingName = speciesIdToRankingName(speciesId);
-    const rankings = getAllRankingsForPokemon(rankingName);
+    const rankings = getAllRankingsForPokemon(rankingName, formatId);
 
     if (rankings.average > 0) {
       let score = rankings.average / 100; // Normalize to 0-1
@@ -185,8 +189,11 @@ function evaluateBestLineup(team: string[]): number {
  * Calculate meta threat coverage (15% weight)
  * How well team handles top 50 meta Pokémon
  */
-function calculateMetaThreatScore(team: string[]): number {
-  const metaThreatSpeciesIds = getRoleBasedThreatSpeciesIds(100);
+function calculateMetaThreatScore(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
+  const metaThreatSpeciesIds = getRoleBasedThreatSpeciesIds(100, formatId);
   const teamPokemon = team
     .map((id) => getPokemonBySpeciesId(id))
     .filter(Boolean);
@@ -281,12 +288,15 @@ function calculateEnergyScore(team: string[]): number {
  * Calculate surprise factor (GBL bonus, +15%)
  * Rewards off-meta picks and unexpected movesets
  */
-function calculateSurpriseFactor(team: string[]): number {
+function calculateSurpriseFactor(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
   let surpriseScore = 0;
 
   for (const speciesId of team) {
     const rankingName = speciesIdToRankingName(speciesId);
-    const rankings = getAllRankingsForPokemon(rankingName);
+    const rankings = getAllRankingsForPokemon(rankingName, formatId);
 
     // Off-meta bonus (score 60-79)
     if (rankings.overall >= 60 && rankings.overall < 80) {
@@ -306,12 +316,15 @@ function calculateSurpriseFactor(team: string[]): number {
  * Calculate consistency (Play! Pokémon bonus, +10%)
  * Rewards generalist Pokémon that handle many matchups
  */
-function calculateConsistency(team: string[]): number {
+function calculateConsistency(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
   let consistencyScore = 0;
 
   for (const speciesId of team) {
     const rankingName = speciesIdToRankingName(speciesId);
-    const rankings = getAllRankingsForPokemon(rankingName);
+    const rankings = getAllRankingsForPokemon(rankingName, formatId);
 
     // High average across all roles = consistent
     if (rankings.average >= 85) {
@@ -820,21 +833,25 @@ function calculateTypeSynergy(team: string[]): number {
  * Calculate simulation-based matchup coverage (CRITICAL for competitive viability)
  * Uses battle simulation data to evaluate team performance against meta threats
  */
-function calculateSimulationCoverage(team: string[]): number {
+function calculateSimulationCoverage(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
   // Build threat pool from top role performers (top 100 per role)
-  const topThreats = getTopThreatsByRole(100);
+  const topThreats = getTopThreatsByRole(100, formatId);
 
   // Calculate what % of threats the team can beat
-  const coverageRatio = calculateTeamCoverage(team, topThreats);
+  const coverageRatio = calculateTeamCoverage(team, topThreats, formatId);
 
   // Find threats that beat the entire team with RANKING WEIGHTS
-  const weightedWeaknesses = getWeightedTeamWeaknesses(team);
+  const weightedWeaknesses = getWeightedTeamWeaknesses(team, formatId);
 
   // Find threats that only ONE team member can beat (single point of failure)
   const singleCounters = getSingleCounterThreats(
     team,
     topThreats.length,
     topThreats,
+    formatId,
   );
 
   // Calculate average matchup quality for the team
@@ -843,7 +860,7 @@ function calculateSimulationCoverage(team: string[]): number {
   let pokemonWithData = 0;
 
   for (const speciesId of team) {
-    const qualityScore = getMatchupQualityScore(speciesId);
+    const qualityScore = getMatchupQualityScore(speciesId, formatId);
     // Only count if we have simulation data (score != 0.5 which is default)
     if (qualityScore !== 0.5) {
       totalMatchupQuality += qualityScore;
@@ -896,14 +913,15 @@ function calculateSimulationCoverage(team: string[]): number {
 export function calculateFitness(
   chromosome: Chromosome,
   mode: TournamentMode,
+  formatId?: BattleFormatId,
 ): number {
   const { team, anchors } = chromosome;
 
   // Base fitness components - simulation coverage is now dominant
   const typeCoverage = calculateTypeCoverageScore(team) * 0.05;
-  const avgRanking = calculateRankingScore(team) * 0.21; // Reduced to make room for stat balance
+  const avgRanking = calculateRankingScore(team, formatId) * 0.21; // Reduced to make room for stat balance
   const strategyViability = calculateStrategyScore(team, mode) * 0.03;
-  const metaThreatCoverage = calculateMetaThreatScore(team) * 0.02;
+  const metaThreatCoverage = calculateMetaThreatScore(team, formatId) * 0.02;
   const energyBreakpoints = calculateEnergyScore(team) * 0.02;
 
   // Type diversity bonus (penalize teams with too many of same type)
@@ -925,7 +943,7 @@ export function calculateFitness(
   // Now includes single-counter penalties for fragile coverage
   // With 6 team weaknesses at -0.5 each = -3.0, this becomes -0.9 overall penalty (30% * 3.0)
   // Plus single-counter penalties for lack of redundancy
-  const simulationCoverage = calculateSimulationCoverage(team) * 0.3; // DOMINANT factor!
+  const simulationCoverage = calculateSimulationCoverage(team, formatId) * 0.3; // DOMINANT factor!
 
   let fitness =
     typeCoverage +
@@ -942,12 +960,12 @@ export function calculateFitness(
 
   // Mode-specific adjustments
   if (mode === 'GBL') {
-    const surpriseFactor = calculateSurpriseFactor(team) * 0.15;
+    const surpriseFactor = calculateSurpriseFactor(team, formatId) * 0.15;
     fitness += surpriseFactor;
   }
 
   if (mode === 'PlayPokemon') {
-    const consistency = calculateConsistency(team) * 0.1;
+    const consistency = calculateConsistency(team, formatId) * 0.1;
     fitness += consistency;
   }
 
@@ -967,8 +985,9 @@ export function calculateFitness(
 export function evaluatePopulation(
   population: Chromosome[],
   mode: TournamentMode,
+  formatId?: BattleFormatId,
 ): void {
   for (const chromosome of population) {
-    chromosome.fitness = calculateFitness(chromosome, mode);
+    chromosome.fitness = calculateFitness(chromosome, mode, formatId);
   }
 }
