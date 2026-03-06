@@ -2,10 +2,55 @@ import { speciesNameToChoosableId } from './pokemon';
 import {
   getClosersRankings,
   getLeadsRankings,
+  getMetaThreats,
   getOverallRankings,
+  getRankingScore,
   getRoleBasedThreatSpeciesIds,
   getSwitchesRankings,
 } from './rankings';
+
+describe('format-aware rankings loading', () => {
+  it('supports default and explicit Great League lookups', () => {
+    const defaultRankings = getOverallRankings();
+    const explicitRankings = getOverallRankings('great-league');
+
+    expect(defaultRankings).toBe(explicitRankings);
+
+    const defaultScore = getRankingScore('Azumarill', 'overall');
+    const explicitScore = getRankingScore(
+      'Azumarill',
+      'overall',
+      'great-league',
+    );
+
+    expect(defaultScore).toBe(explicitScore);
+
+    const defaultThreats = getMetaThreats();
+    const explicitThreats = getMetaThreats('great-league');
+
+    expect(defaultThreats).toEqual(explicitThreats);
+  });
+
+  it('loads overall rankings for all supported battle formats', () => {
+    const greatLeagueRankings = getOverallRankings('great-league');
+    const ultraLeagueRankings = getOverallRankings('ultra-league');
+    const masterLeagueRankings = getOverallRankings('master-league');
+    const kantoCupRankings = getOverallRankings('kanto-cup');
+
+    expect(greatLeagueRankings.length).toBeGreaterThan(0);
+    expect(ultraLeagueRankings.length).toBeGreaterThan(0);
+    expect(masterLeagueRankings.length).toBeGreaterThan(0);
+    expect(kantoCupRankings.length).toBeGreaterThan(0);
+  });
+
+  it('keeps Great League cache stable after loading other formats', () => {
+    const beforeFailure = getOverallRankings();
+    getOverallRankings('master-league');
+
+    const afterFailure = getOverallRankings();
+    expect(afterFailure).toBe(beforeFailure);
+  });
+});
 
 describe('getRoleBasedThreatSpeciesIds', () => {
   it('builds a deduplicated union of top entries across all roles', () => {

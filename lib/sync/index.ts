@@ -41,14 +41,7 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     validatePhase1SourceFiles(sourceResolution.sourcePath);
 
     // Wipe existing data files
-    const filesToDelete = [
-      'pokemon.json',
-      'moves.json',
-      'cp1500_all_overall_rankings.csv',
-      'cp1500_all_leads_rankings.csv',
-      'cp1500_all_switches_rankings.csv',
-      'cp1500_all_closers_rankings.csv',
-    ];
+    const filesToDelete = ['pokemon.json', 'moves.json'];
     filesToDelete.forEach((file) => {
       const filePath = path.join(syncConfig.outputDir, file);
       if (fs.existsSync(filePath)) {
@@ -57,18 +50,28 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
       }
     });
 
+    const legacyRankingFiles = fs
+      .readdirSync(syncConfig.outputDir)
+      .filter((file) => /^cp\d+_(all|kanto)_.+_rankings\.csv$/.test(file));
+    legacyRankingFiles.forEach((file) => {
+      const filePath = path.join(syncConfig.outputDir, file);
+      fs.unlinkSync(filePath);
+      console.log(`[sync] Deleted legacy ranking file ${file}`);
+    });
+
+    const rankingsDir = path.join(syncConfig.outputDir, 'rankings');
+    if (fs.existsSync(rankingsDir)) {
+      fs.rmSync(rankingsDir, { recursive: true, force: true });
+      console.log('[sync] Deleted existing rankings directory');
+    }
+
     // Wipe existing simulations CSV files unless running in resume mode
     const simDir = path.join(syncConfig.outputDir, 'simulations');
     if (options.resume) {
       console.log('[sync] Resume mode: keeping existing simulation CSV files');
     } else if (fs.existsSync(simDir)) {
-      const csvFiles = fs
-        .readdirSync(simDir)
-        .filter((file) => file.endsWith('.csv'));
-      csvFiles.forEach((file) => {
-        fs.unlinkSync(path.join(simDir, file));
-        console.log(`[sync] Deleted existing simulation ${file}`);
-      });
+      fs.rmSync(simDir, { recursive: true, force: true });
+      console.log('[sync] Deleted existing simulations directory');
     }
 
     // Sync gamemaster JSON data

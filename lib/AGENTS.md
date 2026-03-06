@@ -8,11 +8,23 @@ For local PvPoke sync work, keep source-layout knowledge behind `lib/sync/adapte
 
 When syncing gamemaster JSON, call adapter `readPokemonJson`/`readMovesJson`, validate with `lib/sync/validation.ts`, then write normalized JSON outputs to `data/`.
 
-When syncing rankings, read local PvPoke ranking JSON via adapter `readRankingJson(category, 1500)` from `src/data/rankings/all/<category>/rankings-1500.json`, then map move IDs and species IDs using `data/moves.json` and `data/pokemon.json` produced by phase 1 before writing `cp1500_all_<category>_rankings.csv`.
+When syncing rankings, iterate all supported battle formats from `lib/data/battleFormats.ts` and read local PvPoke ranking JSON via adapter `readRankingJson(category, cp, cup)` from `src/data/rankings/<cup>/<category>/rankings-<cp>.json` before writing deterministic outputs under `data/rankings/cp<cp>/<cup>/<category>_rankings.csv`.
 
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 
+Simulation sync must iterate every format from `getBattleFormats()`, loading rankings from `data/rankings/cp<cp>/<cup>/overall_rankings.csv`, and write deterministic outputs as `data/simulations/cp<cp>/<cup>/<speciesId>_<scenario>.csv`; in resume mode only reuse existing files at that exact format-specific path.
+
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
+
+Use `lib/data/battleFormats.ts` as the single source of truth for supported format ids, labels, cup, and CP. UI, API, data loaders, and sync code should import catalog values from there instead of hardcoding format strings.
+
+For runtime ranking lookups in `lib/data/rankings.ts`, build file paths from format metadata (`rankings/cp{cp}/{cup}/{category}_rankings.csv`) and cache parsed CSV data per format id to avoid cross-format contamination.
+
+When format-specific ranking CSVs are missing, throw `MissingRankingDataError` (not a generic `Error`) so API adapters can return deterministic HTTP 400 messages with sync guidance.
+
+For genetic candidate pool construction, always pass `formatId` into `getTopRankedPokemonNames(...)` and filter species via `getRankedPokemonForFormat(...)` so league/cup eligibility stays aligned with the selected battle format.
+
+For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` before generation and pass `formatId` through simulation helpers so non-Great formats never silently reuse Great League matchups.
 
 ## Code Style
 

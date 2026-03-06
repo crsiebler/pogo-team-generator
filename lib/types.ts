@@ -1,3 +1,5 @@
+import type { BattleFormatId } from '@/lib/data/battleFormats';
+
 export interface Pokemon {
   dex: number;
   speciesName: string;
@@ -76,6 +78,7 @@ export interface Chromosome {
 }
 
 export interface GenerationOptions {
+  formatId?: BattleFormatId;
   mode: TournamentMode;
   anchorPokemon?: string[];
   excludedPokemon?: string[];

@@ -1,25 +1,37 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { TeamManager } from './TeamManager';
+import { type BattleFormatId } from '@/lib/data/battleFormats';
 
 const showToastMock = vi.fn();
 
 interface MockTeamConfigPanelProps {
+  selectedFormatId: BattleFormatId;
+  onFormatChange: (formatId: BattleFormatId) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onGenerate: () => void;
 }
 
 vi.mock('@/components/organisms', () => ({
   TeamConfigPanel: ({
+    selectedFormatId,
+    onFormatChange,
     onAnchorsChange,
     onGenerate,
   }: MockTeamConfigPanelProps) => (
     <div>
+      <div>Selected Format: {selectedFormatId}</div>
+      <button type="button" onClick={() => onFormatChange('ultra-league')}>
+        Set Ultra League
+      </button>
       <button
         type="button"
         onClick={() => onAnchorsChange(['Marowak', 'Marowak (Shadow)'])}
       >
         Set Invalid Anchors
+      </button>
+      <button type="button" onClick={() => onAnchorsChange(['Marowak'])}>
+        Set Single Anchor
       </button>
       <button type="button" onClick={onGenerate}>
         Generate Team
@@ -36,26 +48,167 @@ vi.mock('@/lib/hooks/useToast', () => ({
 }));
 
 describe('TeamManager', () => {
+  const pokemonListResponse = {
+    ok: true,
+    json: vi.fn().mockResolvedValue({
+      pokemon: ['Marowak', 'Marowak (Shadow)', 'Azumarill', 'Skarmory'],
+      count: 4,
+    }),
+  };
+
   beforeEach(() => {
     showToastMock.mockClear();
     vi.clearAllMocks();
+
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (typeof input === 'string' && input.startsWith('/api/pokemon-list')) {
+        return Promise.resolve(pokemonListResponse);
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ team: ['Azumarill'] }),
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('blocks generation when anchors contain duplicate base species', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = vi.mocked(fetch);
 
-    render(<TeamManager pokemonList={['Marowak', 'Marowak (Shadow)']} />);
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
 
     fireEvent.click(screen.getByText('Set Invalid Anchors'));
     fireEvent.click(screen.getByText('Generate Team'));
 
     await waitFor(() => {
-      expect(fetchMock).not.toHaveBeenCalled();
       expect(showToastMock).toHaveBeenCalledWith(
         'Team cannot be generated due to multiple identical species.',
         'error',
       );
     });
+
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/generate-team',
+      expect.anything(),
+    );
+  });
+
+  it('stores selected battle format in TeamManager state', () => {
+    render(<TeamManager />);
+
+    expect(
+      screen.getByText('Selected Format: great-league'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Set Ultra League'));
+
+    expect(
+      screen.getByText('Selected Format: ultra-league'),
+    ).toBeInTheDocument();
+  });
+
+  it('sends selected format id in generate-team request payload', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Set Ultra League'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=ultra-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/generate-team',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    const postCall = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/generate-team',
+    );
+
+    expect(postCall).toBeDefined();
+
+    const [, options] = postCall as [string, RequestInit & { body: string }];
+    const payload = JSON.parse(options.body) as {
+      formatId: string;
+    };
+
+    expect(payload.formatId).toBe('ultra-league');
+  });
+
+  it('blocks generation when anchor is not eligible for selected format', async () => {
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (
+        typeof input === 'string' &&
+        input.startsWith('/api/pokemon-list?formatId=great-league')
+      ) {
+        return Promise.resolve({
+          ok: true,
+          json: vi.fn().mockResolvedValue({
+            pokemon: ['Azumarill'],
+            count: 1,
+          }),
+        });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ team: ['Azumarill'] }),
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Set Single Anchor'));
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(showToastMock).toHaveBeenCalledWith(
+        'Selected anchor is not eligible for great-league: Marowak',
+        'error',
+      );
+    });
+
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/generate-team',
+      expect.anything(),
+    );
   });
 });

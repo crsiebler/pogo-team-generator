@@ -11,8 +11,10 @@ const GAMEMASTER_RELATIVE_PATHS = {
 } as const;
 
 const RANKING_CATEGORIES = ['overall', 'leads', 'switches', 'closers'] as const;
+const RANKING_CUPS = ['all', 'kanto'] as const;
 
 export type RankingCategory = (typeof RANKING_CATEGORIES)[number];
+export type RankingCup = (typeof RANKING_CUPS)[number];
 
 export interface PvpokeAdapter {
   getRequiredGamemasterRelativePaths(): readonly string[];
@@ -20,8 +22,16 @@ export interface PvpokeAdapter {
   getGamemasterFilePaths(): { pokemon: string; moves: string };
   readPokemonJson<T>(): Promise<T>;
   readMovesJson<T>(): Promise<T>;
-  getRankingFilePath(category: RankingCategory, leagueCp: number): string;
-  readRankingJson<T>(category: RankingCategory, leagueCp: number): Promise<T>;
+  getRankingFilePath(
+    category: RankingCategory,
+    leagueCp: number,
+    cup?: RankingCup,
+  ): string;
+  readRankingJson<T>(
+    category: RankingCategory,
+    leagueCp: number,
+    cup?: RankingCup,
+  ): Promise<T>;
   getSimulationAssetPath(relativePath: string): string;
   readJsonFile<T>(relativePath: string): Promise<T>;
 }
@@ -91,20 +101,29 @@ export function createPvpokeAdapter(
     readMovesJson<T>(): Promise<T> {
       return readJsonFile<T>(GAMEMASTER_RELATIVE_PATHS.moves);
     },
-    getRankingFilePath(category: RankingCategory, leagueCp: number): string {
+    getRankingFilePath(
+      category: RankingCategory,
+      leagueCp: number,
+      cup: RankingCup = 'all',
+    ): string {
       if (!RANKING_CATEGORIES.includes(category)) {
         throw new Error(
           `[pvpoke-adapter] Unsupported ranking category: ${category}`,
         );
       }
 
+      if (!RANKING_CUPS.includes(cup)) {
+        throw new Error(`[pvpoke-adapter] Unsupported ranking cup: ${cup}`);
+      }
+
       return resolveUnderSource(
-        `src/data/rankings/all/${category}/rankings-${leagueCp}.json`,
+        `src/data/rankings/${cup}/${category}/rankings-${leagueCp}.json`,
       );
     },
     readRankingJson<T>(
       category: RankingCategory,
       leagueCp: number,
+      cup: RankingCup = 'all',
     ): Promise<T> {
       if (!RANKING_CATEGORIES.includes(category)) {
         throw new Error(
@@ -112,8 +131,12 @@ export function createPvpokeAdapter(
         );
       }
 
+      if (!RANKING_CUPS.includes(cup)) {
+        throw new Error(`[pvpoke-adapter] Unsupported ranking cup: ${cup}`);
+      }
+
       return readJsonFile<T>(
-        `src/data/rankings/all/${category}/rankings-${leagueCp}.json`,
+        `src/data/rankings/${cup}/${category}/rankings-${leagueCp}.json`,
       );
     },
     getSimulationAssetPath(relativePath: string): string {

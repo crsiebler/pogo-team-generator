@@ -1,5 +1,7 @@
-import { getRankedGreatLeaguePokemon } from '@lib/data/pokemon';
+import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
+import { getRankedPokemonForFormat } from '@lib/data/pokemon';
 import { getTopRankedPokemonNames } from '@lib/data/rankings';
+import { ensureSimulationDataAvailable } from '@lib/data/simulations';
 import type { Chromosome, GenerationOptions } from '../types';
 import {
   initializePopulation,
@@ -26,13 +28,16 @@ export async function generateTeam(
     populationSize = 150,
     generations = 75,
     algorithm = 'individual',
+    formatId = DEFAULT_BATTLE_FORMAT_ID,
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
 
+  ensureSimulationDataAvailable(formatId);
+
   // Get available Pokémon pool (only top 150 ranked Pokemon for competitive viability)
-  const topRankedNames = getTopRankedPokemonNames(80, 150);
-  const availablePokemon = getRankedGreatLeaguePokemon(topRankedNames);
+  const topRankedNames = getTopRankedPokemonNames(80, 150, formatId);
+  const availablePokemon = getRankedPokemonForFormat(topRankedNames, formatId);
 
   // Filter out excluded Pokemon
   const filteredPokemon = availablePokemon.filter(
@@ -53,10 +58,11 @@ export async function generateTeam(
     pokemonPool,
     teamSize,
     anchorPokemon,
+    formatId,
   );
 
   // Evaluate initial population
-  evaluatePopulation(population, mode, algorithm);
+  evaluatePopulation(population, mode, algorithm, formatId);
 
   let bestOverall = getBestChromosome(population);
 
@@ -92,7 +98,7 @@ export async function generateTeam(
     });
 
     // Evaluate new population
-    evaluatePopulation(population, mode, algorithm);
+    evaluatePopulation(population, mode, algorithm, formatId);
 
     // CRITICAL: Filter out any chromosomes that lost anchors
     if (anchorPokemon.length > 0) {
@@ -121,8 +127,9 @@ export async function generateTeam(
             pokemonPool,
             teamSize,
             anchorPokemon,
+            formatId,
           );
-          evaluatePopulation(population, mode, algorithm);
+          evaluatePopulation(population, mode, algorithm, formatId);
         } else {
           // Refill population with clones of valid chromosomes
           while (population.length < populationSize) {
@@ -131,7 +138,7 @@ export async function generateTeam(
             population.push(cloneChromosome(randomValid));
           }
           // Re-evaluate the cloned chromosomes
-          evaluatePopulation(population, mode, algorithm);
+          evaluatePopulation(population, mode, algorithm, formatId);
         }
       }
     }
