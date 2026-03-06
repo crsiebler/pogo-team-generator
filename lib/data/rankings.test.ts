@@ -2,10 +2,52 @@ import { speciesNameToChoosableId } from './pokemon';
 import {
   getClosersRankings,
   getLeadsRankings,
+  getMetaThreats,
   getOverallRankings,
+  getRankingScore,
   getRoleBasedThreatSpeciesIds,
   getSwitchesRankings,
 } from './rankings';
+
+describe('format-aware rankings loading', () => {
+  it('supports default and explicit Great League lookups', () => {
+    const defaultRankings = getOverallRankings();
+    const explicitRankings = getOverallRankings('great-league');
+
+    expect(defaultRankings).toBe(explicitRankings);
+
+    const defaultScore = getRankingScore('Azumarill', 'overall');
+    const explicitScore = getRankingScore(
+      'Azumarill',
+      'overall',
+      'great-league',
+    );
+
+    expect(defaultScore).toBe(explicitScore);
+
+    const defaultThreats = getMetaThreats();
+    const explicitThreats = getMetaThreats('great-league');
+
+    expect(defaultThreats).toEqual(explicitThreats);
+  });
+
+  it('throws a clear error when selected format ranking files are missing', () => {
+    expect(() => getOverallRankings('ultra-league')).toThrow(
+      /Ranking file missing for Ultra League \(all\/2500\), category overall: cp2500_all_overall_rankings\.csv/,
+    );
+  });
+
+  it('keeps Great League cache valid after a missing format load failure', () => {
+    const beforeFailure = getOverallRankings();
+
+    expect(() => getOverallRankings('master-league')).toThrow(
+      /cp10000_all_overall_rankings\.csv/,
+    );
+
+    const afterFailure = getOverallRankings();
+    expect(afterFailure).toBe(beforeFailure);
+  });
+});
 
 describe('getRoleBasedThreatSpeciesIds', () => {
   it('builds a deduplicated union of top entries across all roles', () => {

@@ -1,24 +1,111 @@
 import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
 import type { RankedPokemon } from '../types';
+import type { BattleFormatId } from './battleFormats';
+import { DEFAULT_BATTLE_FORMAT_ID, getBattleFormatById } from './battleFormats';
 import {
   normalizeToChoosableSpeciesName,
   speciesNameToChoosableId,
   speciesIdToSpeciesName,
 } from './pokemon';
 
-// Lazy-loaded rankings
-let overallRankings: RankedPokemon[] | null = null;
-let leadsRankings: RankedPokemon[] | null = null;
-let switchesRankings: RankedPokemon[] | null = null;
-let closersRankings: RankedPokemon[] | null = null;
+type RankingCategory = 'overall' | 'leads' | 'switches' | 'closers';
+
+interface FormatRankingsCache {
+  overall: RankedPokemon[] | null;
+  leads: RankedPokemon[] | null;
+  switches: RankedPokemon[] | null;
+  closers: RankedPokemon[] | null;
+}
+
+const formatRankingsCache: Map<BattleFormatId, FormatRankingsCache> = new Map();
+
+/**
+ * Resolve a valid format id with default fallback.
+ */
+function resolveFormatId(formatId?: BattleFormatId): BattleFormatId {
+  return formatId ?? DEFAULT_BATTLE_FORMAT_ID;
+}
+
+/**
+ * Build deterministic ranking CSV filename by format and category.
+ */
+function getRankingFilename(
+  category: RankingCategory,
+  formatId?: BattleFormatId,
+): string {
+  const resolvedFormatId = resolveFormatId(formatId);
+  const battleFormat = getBattleFormatById(resolvedFormatId);
+
+  if (!battleFormat) {
+    throw new Error(`Unsupported battle format id: ${resolvedFormatId}`);
+  }
+
+  return `cp${battleFormat.cp}_${battleFormat.cup}_${category}_rankings.csv`;
+}
+
+/**
+ * Get or initialize rankings cache bucket for a battle format.
+ */
+function getFormatRankingsCache(
+  formatId?: BattleFormatId,
+): FormatRankingsCache {
+  const resolvedFormatId = resolveFormatId(formatId);
+  const existingCache = formatRankingsCache.get(resolvedFormatId);
+
+  if (existingCache) {
+    return existingCache;
+  }
+
+  const newCache: FormatRankingsCache = {
+    overall: null,
+    leads: null,
+    switches: null,
+    closers: null,
+  };
+
+  formatRankingsCache.set(resolvedFormatId, newCache);
+  return newCache;
+}
 
 /**
  * Parse CSV file to RankedPokemon array
  */
-function parseRankingCSV(filename: string): RankedPokemon[] {
+function parseRankingCSV(
+  category: RankingCategory,
+  formatId?: BattleFormatId,
+): RankedPokemon[] {
+  const filename = getRankingFilename(category, formatId);
   const filePath = `${process.cwd()}/data/${filename}`;
-  const fileContent = readFileSync(filePath, 'utf-8');
+  let fileContent: string;
+
+  try {
+    fileContent = readFileSync(filePath, 'utf-8');
+  } catch (error) {
+    const resolvedFormatId = resolveFormatId(formatId);
+    const battleFormat = getBattleFormatById(resolvedFormatId);
+    const formatDescriptor = battleFormat
+      ? `${battleFormat.label} (${battleFormat.cup}/${battleFormat.cp})`
+      : resolvedFormatId;
+
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === 'ENOENT'
+    ) {
+      throw new Error(
+        `Ranking file missing for ${formatDescriptor}, category ${category}: ${filename}`,
+      );
+    }
+
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown file read error';
+
+    throw new Error(
+      `Failed to load rankings file ${filename} for ${formatDescriptor}, category ${category}: ${errorMessage}`,
+    );
+  }
 
   const records = parse(fileContent, {
     columns: true,
@@ -62,41 +149,55 @@ function parseRankingCSV(filename: string): RankedPokemon[] {
 /**
  * Get overall rankings (lazy loaded)
  */
-export function getOverallRankings(): RankedPokemon[] {
-  if (!overallRankings) {
-    overallRankings = parseRankingCSV('cp1500_all_overall_rankings.csv');
+export function getOverallRankings(formatId?: BattleFormatId): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.overall) {
+    cache.overall = parseRankingCSV('overall', formatId);
   }
-  return overallRankings;
+
+  return cache.overall;
 }
 
 /**
  * Get leads rankings (lazy loaded)
  */
-export function getLeadsRankings(): RankedPokemon[] {
-  if (!leadsRankings) {
-    leadsRankings = parseRankingCSV('cp1500_all_leads_rankings.csv');
+export function getLeadsRankings(formatId?: BattleFormatId): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.leads) {
+    cache.leads = parseRankingCSV('leads', formatId);
   }
-  return leadsRankings;
+
+  return cache.leads;
 }
 
 /**
  * Get switches rankings (lazy loaded)
  */
-export function getSwitchesRankings(): RankedPokemon[] {
-  if (!switchesRankings) {
-    switchesRankings = parseRankingCSV('cp1500_all_switches_rankings.csv');
+export function getSwitchesRankings(
+  formatId?: BattleFormatId,
+): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.switches) {
+    cache.switches = parseRankingCSV('switches', formatId);
   }
-  return switchesRankings;
+
+  return cache.switches;
 }
 
 /**
  * Get closers rankings (lazy loaded)
  */
-export function getClosersRankings(): RankedPokemon[] {
-  if (!closersRankings) {
-    closersRankings = parseRankingCSV('cp1500_all_closers_rankings.csv');
+export function getClosersRankings(formatId?: BattleFormatId): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.closers) {
+    cache.closers = parseRankingCSV('closers', formatId);
   }
-  return closersRankings;
+
+  return cache.closers;
 }
 
 /**
@@ -105,22 +206,23 @@ export function getClosersRankings(): RankedPokemon[] {
 export function getRankingScore(
   pokemonName: string,
   role: 'overall' | 'leads' | 'switches' | 'closers',
+  formatId?: BattleFormatId,
 ): number {
   const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
   let rankings: RankedPokemon[];
 
   switch (role) {
     case 'overall':
-      rankings = getOverallRankings();
+      rankings = getOverallRankings(formatId);
       break;
     case 'leads':
-      rankings = getLeadsRankings();
+      rankings = getLeadsRankings(formatId);
       break;
     case 'switches':
-      rankings = getSwitchesRankings();
+      rankings = getSwitchesRankings(formatId);
       break;
     case 'closers':
-      rankings = getClosersRankings();
+      rankings = getClosersRankings(formatId);
       break;
   }
 
@@ -131,12 +233,15 @@ export function getRankingScore(
 /**
  * Get average ranking score across all roles
  */
-export function getAverageRankingScore(pokemonName: string): number {
+export function getAverageRankingScore(
+  pokemonName: string,
+  formatId?: BattleFormatId,
+): number {
   const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
-  const overall = getRankingScore(canonicalPokemonName, 'overall');
-  const leads = getRankingScore(canonicalPokemonName, 'leads');
-  const switches = getRankingScore(canonicalPokemonName, 'switches');
-  const closers = getRankingScore(canonicalPokemonName, 'closers');
+  const overall = getRankingScore(canonicalPokemonName, 'overall', formatId);
+  const leads = getRankingScore(canonicalPokemonName, 'leads', formatId);
+  const switches = getRankingScore(canonicalPokemonName, 'switches', formatId);
+  const closers = getRankingScore(canonicalPokemonName, 'closers', formatId);
 
   const scores = [overall, leads, switches, closers].filter((s) => s > 0);
   if (scores.length === 0) return 0;
@@ -145,9 +250,12 @@ export function getAverageRankingScore(pokemonName: string): number {
 }
 
 /**
- * Get all rankings for a Pokémon
+ * Get all rankings for a Pokémon.
  */
-export function getAllRankingsForPokemon(pokemonName: string): {
+export function getAllRankingsForPokemon(
+  pokemonName: string,
+  formatId?: BattleFormatId,
+): {
   overall: number;
   leads: number;
   switches: number;
@@ -156,11 +264,11 @@ export function getAllRankingsForPokemon(pokemonName: string): {
 } {
   const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
   return {
-    overall: getRankingScore(canonicalPokemonName, 'overall'),
-    leads: getRankingScore(canonicalPokemonName, 'leads'),
-    switches: getRankingScore(canonicalPokemonName, 'switches'),
-    closers: getRankingScore(canonicalPokemonName, 'closers'),
-    average: getAverageRankingScore(canonicalPokemonName),
+    overall: getRankingScore(canonicalPokemonName, 'overall', formatId),
+    leads: getRankingScore(canonicalPokemonName, 'leads', formatId),
+    switches: getRankingScore(canonicalPokemonName, 'switches', formatId),
+    closers: getRankingScore(canonicalPokemonName, 'closers', formatId),
+    average: getAverageRankingScore(canonicalPokemonName, formatId),
   };
 }
 
@@ -189,16 +297,19 @@ function moveNameToMoveId(moveName: string): string {
 }
 
 /**
- * Get optimal moveset for a Pokémon from rankings
- * Returns the highest-ranked moveset (1 fast move + 2 charged moves)
+ * Get optimal moveset for a Pokémon from rankings.
+ * Returns the highest-ranked moveset (1 fast move + 2 charged moves).
  */
-export function getOptimalMoveset(pokemonName: string): {
+export function getOptimalMoveset(
+  pokemonName: string,
+  formatId?: BattleFormatId,
+): {
   fastMove: string | null;
   chargedMove1: string | null;
   chargedMove2: string | null;
 } {
   const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
-  const overall = getOverallRankings();
+  const overall = getOverallRankings(formatId);
   const entry = overall.find((r) => r.Pokemon === canonicalPokemonName);
 
   if (!entry) {
@@ -223,8 +334,8 @@ export function getOptimalMoveset(pokemonName: string): {
 /**
  * Get all unique Pokemon names from overall rankings
  */
-export function getRankedPokemonNames(): Set<string> {
-  const rankings = getOverallRankings();
+export function getRankedPokemonNames(formatId?: BattleFormatId): Set<string> {
+  const rankings = getOverallRankings(formatId);
   return new Set(rankings.map((r) => r.Pokemon));
 }
 
@@ -236,8 +347,9 @@ export function getRankedPokemonNames(): Set<string> {
 export function getTopRankedPokemonNames(
   minScore: number = 80,
   maxCount: number = 150,
+  formatId?: BattleFormatId,
 ): Set<string> {
-  const rankings = getOverallRankings()
+  const rankings = getOverallRankings(formatId)
     .filter((r) => r.Score >= minScore)
     .slice(0, maxCount);
   return new Set(rankings.map((r) => r.Pokemon));
@@ -248,21 +360,22 @@ export function getTopRankedPokemonNames(
 export function getTopPokemon(
   role: 'overall' | 'leads' | 'switches' | 'closers',
   count: number,
+  formatId?: BattleFormatId,
 ): RankedPokemon[] {
   let rankings: RankedPokemon[];
 
   switch (role) {
     case 'overall':
-      rankings = getOverallRankings();
+      rankings = getOverallRankings(formatId);
       break;
     case 'leads':
-      rankings = getLeadsRankings();
+      rankings = getLeadsRankings(formatId);
       break;
     case 'switches':
-      rankings = getSwitchesRankings();
+      rankings = getSwitchesRankings(formatId);
       break;
     case 'closers':
-      rankings = getClosersRankings();
+      rankings = getClosersRankings(formatId);
       break;
   }
 
@@ -272,8 +385,8 @@ export function getTopPokemon(
 /**
  * Get meta threats (top 50 overall rankings)
  */
-export function getMetaThreats(): RankedPokemon[] {
-  return getTopPokemon('overall', 50);
+export function getMetaThreats(formatId?: BattleFormatId): RankedPokemon[] {
+  return getTopPokemon('overall', 50, formatId);
 }
 
 /**
@@ -282,6 +395,7 @@ export function getMetaThreats(): RankedPokemon[] {
  */
 export function getRoleBasedThreatSpeciesIds(
   topPerRole: number = 100,
+  formatId?: BattleFormatId,
 ): string[] {
   const roles: Array<'overall' | 'leads' | 'switches' | 'closers'> = [
     'overall',
@@ -293,7 +407,7 @@ export function getRoleBasedThreatSpeciesIds(
   const threatSpeciesIds = new Set<string>();
 
   for (const role of roles) {
-    const roleRankings = getTopPokemon(role, topPerRole);
+    const roleRankings = getTopPokemon(role, topPerRole, formatId);
 
     for (const ranking of roleRankings) {
       const speciesId = speciesNameToChoosableId(ranking.Pokemon);
@@ -309,8 +423,11 @@ export function getRoleBasedThreatSpeciesIds(
 /**
  * Check if Pokémon is in meta (top 100 overall)
  */
-export function isMetaPokemon(pokemonName: string): boolean {
-  const score = getRankingScore(pokemonName, 'overall');
+export function isMetaPokemon(
+  pokemonName: string,
+  formatId?: BattleFormatId,
+): boolean {
+  const score = getRankingScore(pokemonName, 'overall', formatId);
   return score >= 80;
 }
 
@@ -328,6 +445,7 @@ export function speciesIdToRankingName(speciesId: string): string {
 export function getRankingForSpeciesId(
   speciesId: string,
   role: 'overall' | 'leads' | 'switches' | 'closers',
+  formatId?: BattleFormatId,
 ): RankedPokemon | undefined {
   const rankingName = speciesIdToRankingName(speciesId);
 
@@ -335,16 +453,16 @@ export function getRankingForSpeciesId(
 
   switch (role) {
     case 'overall':
-      rankings = getOverallRankings();
+      rankings = getOverallRankings(formatId);
       break;
     case 'leads':
-      rankings = getLeadsRankings();
+      rankings = getLeadsRankings(formatId);
       break;
     case 'switches':
-      rankings = getSwitchesRankings();
+      rankings = getSwitchesRankings(formatId);
       break;
     case 'closers':
-      rankings = getClosersRankings();
+      rankings = getClosersRankings(formatId);
       break;
   }
 
