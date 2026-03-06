@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST } from './route';
 import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
 import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
+import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
 
 vi.mock('@/lib/data/pokemon', () => ({
@@ -81,5 +82,28 @@ describe('POST /api/generate-team format validation', () => {
     expect(response.status).toBe(400);
     expect(responseBody.error).toBe('Invalid battle format: little-cup');
     expect(generateTeam).not.toHaveBeenCalled();
+  });
+
+  it('returns a clear error when selected format simulation data is missing', async () => {
+    vi.mocked(generateTeam).mockRejectedValue(
+      new MissingSimulationDataError('ultra-league'),
+    );
+
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'ultra-league',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const responseBody = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(responseBody.error).toMatch(
+      /Simulation data missing for Ultra League \(all\/2500\)/,
+    );
   });
 });

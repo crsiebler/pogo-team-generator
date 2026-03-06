@@ -1,5 +1,11 @@
 import { readFileSync, readdirSync } from 'fs';
 import { parse } from 'csv-parse/sync';
+import type { BattleFormatId } from './battleFormats';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  getBattleFormatById,
+  getBattleFormats,
+} from './battleFormats';
 import {
   normalizeToChoosableSpeciesId,
   speciesIdToSpeciesName,
@@ -33,7 +39,27 @@ interface MatchupData {
  */
 type MatchupMatrix = Map<string, Map<string, MatchupData>>;
 
-let matchupMatrix: MatchupMatrix | null = null;
+const formatMatchupCache: Map<BattleFormatId, MatchupMatrix> = new Map();
+
+/**
+ * Raised when requested format simulation files are unavailable.
+ */
+export class MissingSimulationDataError extends Error {
+  readonly formatId: BattleFormatId;
+
+  constructor(formatId: BattleFormatId) {
+    const battleFormat = getBattleFormatById(formatId);
+    const formatDescriptor = battleFormat
+      ? `${battleFormat.label} (${battleFormat.cup}/${battleFormat.cp})`
+      : formatId;
+
+    super(
+      `Simulation data missing for ${formatDescriptor}. Run simulation sync for this format before generating teams.`,
+    );
+    this.name = 'MissingSimulationDataError';
+    this.formatId = formatId;
+  }
+}
 
 /**
  * CSV record structure from simulation files
@@ -116,30 +142,81 @@ function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
 }
 
 /**
- * Extract speciesId from filename.
- * Example: "cp1500_marowak_shadow_0-0.csv" -> "marowak_shadow"
+ * Resolve selected format id with Great League fallback.
  */
-function extractSpeciesIdFromFilename(filename: string): string {
-  const match = filename.match(/^cp1500_(.+)_(\d+-\d+)\.csv$/);
-  if (!match) {
-    return '';
+function resolveFormatId(formatId?: BattleFormatId): BattleFormatId {
+  return formatId ?? DEFAULT_BATTLE_FORMAT_ID;
+}
+
+/**
+ * Parsed simulation filename metadata.
+ */
+interface ParsedSimulationFilename {
+  formatId: BattleFormatId;
+  speciesId: string;
+  shieldCount: number;
+}
+
+/**
+ * Parse simulation CSV filename with support for both legacy and format-aware names.
+ * Legacy: cp1500_{speciesId}_{shields}.csv
+ * Format-aware: cp{cp}_{cup}_{speciesId}_{shields}.csv
+ */
+function parseSimulationFilename(
+  filename: string,
+): ParsedSimulationFilename | null {
+  const formatAwareMatch = filename.match(
+    /^cp(\d+)_(all|kanto)_(.+)_(\d+)-\d+\.csv$/,
+  );
+
+  if (formatAwareMatch) {
+    const cp = parseInt(formatAwareMatch[1]);
+    const cup = formatAwareMatch[2] as 'all' | 'kanto';
+    const speciesId = normalizeToChoosableSpeciesId(formatAwareMatch[3]);
+    const shieldCount = parseInt(formatAwareMatch[4]);
+    const matchingFormat = getBattleFormats().find(
+      (format) => format.cp === cp && format.cup === cup,
+    );
+
+    if (!matchingFormat || !speciesId) {
+      return null;
+    }
+
+    return {
+      formatId: matchingFormat.id,
+      speciesId,
+      shieldCount,
+    };
   }
 
-  return normalizeToChoosableSpeciesId(match[1]);
+  const legacyMatch = filename.match(/^cp(\d+)_(.+)_(\d+)-\d+\.csv$/);
+  if (!legacyMatch) {
+    return null;
+  }
+
+  const cp = parseInt(legacyMatch[1]);
+  const speciesId = normalizeToChoosableSpeciesId(legacyMatch[2]);
+  const shieldCount = parseInt(legacyMatch[3]);
+  const matchingFormat = getBattleFormats().find(
+    (format) => format.cp === cp && format.cup === 'all',
+  );
+
+  if (!matchingFormat || !speciesId) {
+    return null;
+  }
+
+  return {
+    formatId: matchingFormat.id,
+    speciesId,
+    shieldCount,
+  };
 }
 
 /**
- * Extract shield count from filename.
+ * Load all simulation data for a selected battle format.
  */
-function extractShieldCount(filename: string): number {
-  const match = filename.match(/^cp1500_.+_(\d+)-\d+\.csv$/);
-  return match ? parseInt(match[1]) : -1;
-}
-
-/**
- * Load all simulation data from data/simulations/ directory.
- */
-function loadSimulationData(): MatchupMatrix {
+function loadSimulationData(formatId?: BattleFormatId): MatchupMatrix {
+  const resolvedFormatId = resolveFormatId(formatId);
   const matrix: MatchupMatrix = new Map();
   const simulationDir = `${process.cwd()}/data/simulations`;
 
@@ -151,13 +228,12 @@ function loadSimulationData(): MatchupMatrix {
         continue;
       }
 
-      const speciesId = extractSpeciesIdFromFilename(filename);
-      const shieldCount = extractShieldCount(filename);
-
-      if (!speciesId || shieldCount === -1) {
+      const parsedFilename = parseSimulationFilename(filename);
+      if (!parsedFilename || parsedFilename.formatId !== resolvedFormatId) {
         continue;
       }
 
+      const { speciesId, shieldCount } = parsedFilename;
       const filePath = `${simulationDir}/${filename}`;
       const matchups = parseSimulationCSV(filePath);
 
@@ -188,9 +264,7 @@ function loadSimulationData(): MatchupMatrix {
       }
     }
   } catch {
-    console.warn(
-      'Simulation data directory not found - falling back to ranking data only. Add simulation CSVs to data/simulations/ for enhanced matchup evaluation.',
-    );
+    return matrix;
   }
 
   return matrix;
@@ -199,12 +273,29 @@ function loadSimulationData(): MatchupMatrix {
 /**
  * Get the matchup matrix (lazy loaded).
  */
-export function getMatchupMatrix(): MatchupMatrix {
-  if (!matchupMatrix) {
-    matchupMatrix = loadSimulationData();
+export function getMatchupMatrix(formatId?: BattleFormatId): MatchupMatrix {
+  const resolvedFormatId = resolveFormatId(formatId);
+  const cachedMatrix = formatMatchupCache.get(resolvedFormatId);
+
+  if (cachedMatrix) {
+    return cachedMatrix;
   }
 
-  return matchupMatrix;
+  const matrix = loadSimulationData(resolvedFormatId);
+  formatMatchupCache.set(resolvedFormatId, matrix);
+  return matrix;
+}
+
+/**
+ * Ensure simulation data exists for the selected format.
+ */
+export function ensureSimulationDataAvailable(formatId?: BattleFormatId): void {
+  const resolvedFormatId = resolveFormatId(formatId);
+  const matrix = getMatchupMatrix(resolvedFormatId);
+
+  if (matrix.size === 0) {
+    throw new MissingSimulationDataError(resolvedFormatId);
+  }
 }
 
 /**
@@ -214,8 +305,9 @@ export function getMatchupMatrix(): MatchupMatrix {
 export function getMatchupResult(
   speciesId: string,
   opponentSpeciesId: string,
+  formatId?: BattleFormatId,
 ): number | null {
-  const matrix = getMatchupMatrix();
+  const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const canonicalOpponentSpeciesId =
     normalizeToChoosableSpeciesId(opponentSpeciesId);
@@ -267,16 +359,20 @@ export function getMatchupResult(
 export function winsMatchup(
   speciesId: string,
   opponentSpeciesId: string,
+  formatId?: BattleFormatId,
 ): boolean {
-  const rating = getMatchupResult(speciesId, opponentSpeciesId);
+  const rating = getMatchupResult(speciesId, opponentSpeciesId, formatId);
   return rating !== null && rating > 500;
 }
 
 /**
  * Get all opponent speciesIds that a speciesId loses to.
  */
-export function getLosses(speciesId: string): string[] {
-  const matrix = getMatchupMatrix();
+export function getLosses(
+  speciesId: string,
+  formatId?: BattleFormatId,
+): string[] {
+  const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
@@ -287,7 +383,11 @@ export function getLosses(speciesId: string): string[] {
   const losses: string[] = [];
 
   for (const opponentSpeciesId of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
+    const rating = getMatchupResult(
+      canonicalSpeciesId,
+      opponentSpeciesId,
+      formatId,
+    );
     if (rating !== null && rating < 500) {
       losses.push(opponentSpeciesId);
     }
@@ -302,6 +402,7 @@ export function getLosses(speciesId: string): string[] {
 export function calculateTeamCoverage(
   team: string[],
   threats: string[],
+  formatId?: BattleFormatId,
 ): number {
   const canonicalTeam = team.map(normalizeToChoosableSpeciesId);
   const canonicalThreats = threats.map(normalizeToChoosableSpeciesId);
@@ -309,7 +410,7 @@ export function calculateTeamCoverage(
 
   for (const threatSpeciesId of canonicalThreats) {
     const hasCounter = canonicalTeam.some((speciesId) =>
-      winsMatchup(speciesId, threatSpeciesId),
+      winsMatchup(speciesId, threatSpeciesId, formatId),
     );
 
     if (hasCounter) {
@@ -325,8 +426,11 @@ export function calculateTeamCoverage(
 /**
  * Get common threats that the entire team loses to.
  */
-export function getTeamWeaknesses(team: string[]): string[] {
-  const matrix = getMatchupMatrix();
+export function getTeamWeaknesses(
+  team: string[],
+  formatId?: BattleFormatId,
+): string[] {
+  const matrix = getMatchupMatrix(formatId);
   const canonicalTeam = team.map(normalizeToChoosableSpeciesId);
 
   const allOpponents = new Set<string>();
@@ -345,7 +449,7 @@ export function getTeamWeaknesses(team: string[]): string[] {
 
   for (const opponentSpeciesId of allOpponents) {
     const beatsAll = canonicalTeam.every(
-      (speciesId) => !winsMatchup(speciesId, opponentSpeciesId),
+      (speciesId) => !winsMatchup(speciesId, opponentSpeciesId, formatId),
     );
 
     if (beatsAll) {
@@ -359,14 +463,17 @@ export function getTeamWeaknesses(team: string[]): string[] {
 /**
  * Get top N threat speciesIds from simulation matrix, ranked by overall ranking score.
  */
-export function getTopThreats(count: number = 50): string[] {
-  const matrix = getMatchupMatrix();
+export function getTopThreats(
+  count: number = 50,
+  formatId?: BattleFormatId,
+): string[] {
+  const matrix = getMatchupMatrix(formatId);
   const allSpeciesIds = Array.from(matrix.keys());
 
   const rankedSpecies = allSpeciesIds
     .map((speciesId) => {
       const displayName = speciesIdToSpeciesName(speciesId);
-      const rankings = getAllRankingsForPokemon(displayName);
+      const rankings = getAllRankingsForPokemon(displayName, formatId);
       return { speciesId, score: rankings.overall };
     })
     .filter((entry) => entry.score > 0)
@@ -379,9 +486,12 @@ export function getTopThreats(count: number = 50): string[] {
  * Get a deduplicated threat pool built from top N of each role ranking.
  * Filters to species that exist in simulation data when available.
  */
-export function getTopThreatsByRole(topPerRole: number = 100): string[] {
-  const matrix = getMatchupMatrix();
-  const threats = getRoleBasedThreatSpeciesIds(topPerRole).map(
+export function getTopThreatsByRole(
+  topPerRole: number = 100,
+  formatId?: BattleFormatId,
+): string[] {
+  const matrix = getMatchupMatrix(formatId);
+  const threats = getRoleBasedThreatSpeciesIds(topPerRole, formatId).map(
     normalizeToChoosableSpeciesId,
   );
 
@@ -400,12 +510,14 @@ export function getTopThreatsByRole(topPerRole: number = 100): string[] {
  */
 export function getWeightedTeamWeaknesses(
   team: string[],
+  formatId?: BattleFormatId,
 ): Array<{ opponent: string; weight: number }> {
-  const weaknesses = getTeamWeaknesses(team);
+  const weaknesses = getTeamWeaknesses(team, formatId);
 
   return weaknesses.map((opponentSpeciesId) => {
     const rankings = getAllRankingsForPokemon(
       speciesIdToSpeciesName(opponentSpeciesId),
+      formatId,
     );
     const score = rankings.overall;
 
@@ -433,9 +545,10 @@ export function getSingleCounterThreats(
   team: string[],
   topN: number = 50,
   threats?: string[],
+  formatId?: BattleFormatId,
 ): Array<{ opponent: string; weight: number; counter: string }> {
   const canonicalTeam = team.map(normalizeToChoosableSpeciesId);
-  const topThreats = threats ?? getTopThreats(topN);
+  const topThreats = threats ?? getTopThreats(topN, formatId);
   const singleCounters: Array<{
     opponent: string;
     weight: number;
@@ -445,7 +558,7 @@ export function getSingleCounterThreats(
   for (const threatSpeciesId of topThreats) {
     const counters: string[] = [];
     for (const speciesId of canonicalTeam) {
-      if (winsMatchup(speciesId, threatSpeciesId)) {
+      if (winsMatchup(speciesId, threatSpeciesId, formatId)) {
         counters.push(speciesId);
       }
     }
@@ -453,6 +566,7 @@ export function getSingleCounterThreats(
     if (counters.length === 1) {
       const rankings = getAllRankingsForPokemon(
         speciesIdToSpeciesName(threatSpeciesId),
+        formatId,
       );
       const score = rankings.overall;
 
@@ -483,8 +597,11 @@ export function getSingleCounterThreats(
 /**
  * Calculate mean battle rating across all known matchups.
  */
-export function getMeanBattleRating(speciesId: string): number {
-  const matrix = getMatchupMatrix();
+export function getMeanBattleRating(
+  speciesId: string,
+  formatId?: BattleFormatId,
+): number {
+  const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
@@ -495,7 +612,11 @@ export function getMeanBattleRating(speciesId: string): number {
   const ratings: number[] = [];
 
   for (const opponentSpeciesId of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
+    const rating = getMatchupResult(
+      canonicalSpeciesId,
+      opponentSpeciesId,
+      formatId,
+    );
     if (rating !== null) {
       ratings.push(rating);
     }
@@ -511,8 +632,11 @@ export function getMeanBattleRating(speciesId: string): number {
 /**
  * Calculate median battle rating across all known matchups.
  */
-export function getMedianBattleRating(speciesId: string): number {
-  const matrix = getMatchupMatrix();
+export function getMedianBattleRating(
+  speciesId: string,
+  formatId?: BattleFormatId,
+): number {
+  const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
@@ -523,7 +647,11 @@ export function getMedianBattleRating(speciesId: string): number {
   const ratings: number[] = [];
 
   for (const opponentSpeciesId of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
+    const rating = getMatchupResult(
+      canonicalSpeciesId,
+      opponentSpeciesId,
+      formatId,
+    );
     if (rating !== null) {
       ratings.push(rating);
     }
@@ -549,8 +677,9 @@ export function getMedianBattleRating(speciesId: string): number {
 export function getWorstMatchups(
   speciesId: string,
   count: number = 10,
+  formatId?: BattleFormatId,
 ): string[] {
-  const matrix = getMatchupMatrix();
+  const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const pokemonMatchups = matrix.get(canonicalSpeciesId);
 
@@ -561,7 +690,11 @@ export function getWorstMatchups(
   const losses: Array<{ opponent: string; rating: number }> = [];
 
   for (const opponentSpeciesId of pokemonMatchups.keys()) {
-    const rating = getMatchupResult(canonicalSpeciesId, opponentSpeciesId);
+    const rating = getMatchupResult(
+      canonicalSpeciesId,
+      opponentSpeciesId,
+      formatId,
+    );
     if (rating !== null && rating < 500) {
       losses.push({ opponent: opponentSpeciesId, rating });
     }
@@ -574,11 +707,15 @@ export function getWorstMatchups(
 /**
  * Count how many listed threat speciesIds this speciesId beats.
  */
-export function countersThreats(speciesId: string, threats: string[]): number {
+export function countersThreats(
+  speciesId: string,
+  threats: string[],
+  formatId?: BattleFormatId,
+): number {
   let counterCount = 0;
 
   for (const threatSpeciesId of threats) {
-    if (winsMatchup(speciesId, threatSpeciesId)) {
+    if (winsMatchup(speciesId, threatSpeciesId, formatId)) {
       counterCount++;
     }
   }
@@ -589,9 +726,12 @@ export function countersThreats(speciesId: string, threats: string[]): number {
 /**
  * Calculate matchup quality score (0-1 scale).
  */
-export function getMatchupQualityScore(speciesId: string): number {
-  const mean = getMeanBattleRating(speciesId);
-  const median = getMedianBattleRating(speciesId);
+export function getMatchupQualityScore(
+  speciesId: string,
+  formatId?: BattleFormatId,
+): number {
+  const mean = getMeanBattleRating(speciesId, formatId);
+  const median = getMedianBattleRating(speciesId, formatId);
   const meanScore = mean / 1000;
   const medianScore = median / 1000;
 

@@ -5,6 +5,7 @@
 - For battle-format API requests, send `formatId` from `TeamManager`, default missing values to `DEFAULT_BATTLE_FORMAT_ID` in routes, and validate with `isBattleFormatId` before calling `generateTeam`.
 - In `lib/data/rankings.ts`, resolve CSV filenames from format metadata (`cp{cp}_{cup}_{category}_rankings.csv`) and keep lazy-load caches isolated per format id so one format failure never pollutes another.
 - In `lib/genetic/algorithm.ts`, always pass `formatId` into `getTopRankedPokemonNames` and build candidate pools through `getRankedPokemonForFormat` so league/cup eligibility follows the selected format.
+- In `lib/data/simulations.ts`, parse simulation files by format metadata (`cp` + `cup`), call `ensureSimulationDataAvailable(formatId)` before generation, and thread `formatId` through simulation helper calls to avoid non-Great fallback.
 
 ## Iteration Log
 
@@ -33,6 +34,36 @@
   - Story only introduces the catalog; UI/API/algorithm/sync integration remains for subsequent stories.
 - Next iteration start:
   - Implement US-002 (Select/Option atoms + chevron icons) using the shared format catalog ids.
+---
+
+## 2026-03-06 12:41:41 MST - US-007
+- What was implemented
+  - Refactored simulation data loading to be format-aware by parsing both legacy (`cp1500_{species}_{scenario}.csv`) and format-aware (`cp{cp}_{cup}_{species}_{scenario}.csv`) filenames and caching matchup matrices per `formatId`.
+  - Added `ensureSimulationDataAvailable(formatId)` + `MissingSimulationDataError` so generation blocks with a clear message when selected-format simulation files are missing.
+  - Threaded `formatId` through simulation helper APIs and through genetic pipeline callsites (`algorithm`, `fitness`, `chromosome`) so non-Great formats never silently reuse Great League simulations.
+  - Updated API route error handling to return HTTP 400 with clear missing-simulation text, and added regression tests for route behavior and simulation loader defaults/errors.
+  - Added reusable guidance to `lib/AGENTS.md` for required simulation availability checks before generation.
+- Files changed: `lib/data/simulations.ts`, `lib/data/simulations.test.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/chromosome.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/individual.ts`, `lib/genetic/fitness/teamSynergy.ts`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Kept support for legacy simulation filenames while adding format-aware parsing so existing Great League datasets continue to work during multi-format sync rollout.
+  - Chose explicit pre-generation validation (`ensureSimulationDataAvailable`) over implicit fallback warnings so users get deterministic errors instead of degraded cross-format behavior.
+  - Propagated `formatId` through fitness/chromosome simulation calls to guarantee format-correct threat coverage and matchup quality scoring.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Simulation APIs in `lib/data/simulations.ts` should mirror ranking APIs: optional `formatId` with Great League default, but explicit format threading from generation entry points.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - `import/order` in this repository can require relative imports before alias imports and enforces ordering for type-only imports, so run lint early after signature refactors.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - Route-level `MissingSimulationDataError` handling in `app/api/generate-team/route.ts` now maps known missing-data failures to status 400 with actionable text.
+- Known issues / follow-ups:
+  - Ultra/Master/Kanto simulation CSVs are still absent in `data/simulations`, so those formats intentionally return a clear blocking error until sync stories generate datasets.
+- Next iteration start:
+  - Implement US-008 by extending rankings sync to produce validated CSVs for all supported `cup/cp` format combinations.
 ---
 
 ## 2026-03-06 12:08:43 MST - US-002

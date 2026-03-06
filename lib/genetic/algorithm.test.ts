@@ -1,6 +1,7 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
 import { getTopRankedPokemonNames } from '@lib/data/rankings';
+import { ensureSimulationDataAvailable } from '@lib/data/simulations';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Chromosome, Pokemon } from '../types';
 import { generateTeam } from './algorithm';
@@ -20,6 +21,10 @@ vi.mock('@lib/data/rankings', () => ({
 
 vi.mock('@lib/data/pokemon', () => ({
   getRankedPokemonForFormat: vi.fn(),
+}));
+
+vi.mock('@lib/data/simulations', () => ({
+  ensureSimulationDataAvailable: vi.fn(),
 }));
 
 vi.mock('./chromosome', () => ({
@@ -76,6 +81,9 @@ describe('generateTeam format-aware candidate selection', () => {
     );
     vi.mocked(cloneChromosome).mockImplementation((chromosome) => chromosome);
     vi.mocked(evaluatePopulation).mockImplementation(() => undefined);
+    vi.mocked(ensureSimulationDataAvailable).mockImplementation(
+      () => undefined,
+    );
 
     const initialPopulation = [
       createChromosomeWithTeam(['mew', 'mewtwo', 'dragonite']),
@@ -107,7 +115,20 @@ describe('generateTeam format-aware candidate selection', () => {
       rankedNames,
       'kanto-cup',
     );
-    expect(initializePopulation).toHaveBeenCalledWith(1, ['mew'], 3, []);
+    expect(ensureSimulationDataAvailable).toHaveBeenCalledWith('kanto-cup');
+    expect(initializePopulation).toHaveBeenCalledWith(
+      1,
+      ['mew'],
+      3,
+      [],
+      'kanto-cup',
+    );
+    expect(evaluatePopulation).toHaveBeenCalledWith(
+      expect.any(Array),
+      'GBL',
+      'individual',
+      'kanto-cup',
+    );
   });
 
   it('defaults pool selection to Great League format when omitted', async () => {
@@ -131,6 +152,9 @@ describe('generateTeam format-aware candidate selection', () => {
     );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
       expect.any(Set),
+      DEFAULT_BATTLE_FORMAT_ID,
+    );
+    expect(ensureSimulationDataAvailable).toHaveBeenCalledWith(
       DEFAULT_BATTLE_FORMAT_ID,
     );
   });

@@ -1,3 +1,4 @@
+import type { BattleFormatId } from '../../data/battleFormats';
 import { getPokemonBySpeciesId } from '../../data/pokemon';
 import {
   getAllRankingsForPokemon,
@@ -15,8 +16,11 @@ const THREATS_PER_ROLE = 100;
  * Calculate team coverage matrix score (40% weight)
  * Ensures team has 2+ counters for each meta threat across shield scenarios
  */
-function calculateTeamCoverageMatrix(team: string[]): number {
-  const metaThreats = getTopThreatsByRole(THREATS_PER_ROLE);
+function calculateTeamCoverageMatrix(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
+  const metaThreats = getTopThreatsByRole(THREATS_PER_ROLE, formatId);
   const teamPokemon = team
     .map((id) => getPokemonBySpeciesId(id))
     .filter(Boolean);
@@ -32,7 +36,11 @@ function calculateTeamCoverageMatrix(team: string[]): number {
     for (const pokemon of teamPokemon) {
       const threatName = threat; // threat is already a string (Pokemon name)
       const teamSpeciesId = pokemon!.speciesId;
-      const coverage = calculateTeamCoverage([teamSpeciesId], [threatName]);
+      const coverage = calculateTeamCoverage(
+        [teamSpeciesId],
+        [threatName],
+        formatId,
+      );
 
       if (coverage > 0.5) {
         // > 500 rating = win
@@ -52,8 +60,11 @@ function calculateTeamCoverageMatrix(team: string[]): number {
  * Calculate shield scenario balance (20% weight)
  * Ensures team performs well across all shield scenarios using weighted average
  */
-function calculateShieldScenarioBalance(team: string[]): number {
-  const metaThreats = getTopThreatsByRole(THREATS_PER_ROLE);
+function calculateShieldScenarioBalance(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
+  const metaThreats = getTopThreatsByRole(THREATS_PER_ROLE, formatId);
 
   if (metaThreats.length === 0) return 0;
   let totalBalance = 0;
@@ -62,7 +73,11 @@ function calculateShieldScenarioBalance(team: string[]): number {
     const threatName = threat; // threat is already a string (Pokemon name)
     const teamSpeciesIds = team;
 
-    const coverage = calculateTeamCoverage(teamSpeciesIds, [threatName]);
+    const coverage = calculateTeamCoverage(
+      teamSpeciesIds,
+      [threatName],
+      formatId,
+    );
 
     // Weight coverage (any win is good, but consistency across scenarios matters)
     totalBalance += Math.min(coverage, 1.0);
@@ -75,8 +90,11 @@ function calculateShieldScenarioBalance(team: string[]): number {
  * Calculate core break penalty (15% weight)
  * Penalizes if top-ranked threats beat 2/3 of the team
  */
-function calculateCoreBreakPenalty(team: string[]): number {
-  const topThreats = getTopThreatsByRole(THREATS_PER_ROLE);
+function calculateCoreBreakPenalty(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
+  const topThreats = getTopThreatsByRole(THREATS_PER_ROLE, formatId);
 
   if (topThreats.length === 0) return 1;
   let penalty = 0;
@@ -85,7 +103,11 @@ function calculateCoreBreakPenalty(team: string[]): number {
     const threatName = threat; // threat is already a string (Pokemon name)
     const teamSpeciesIds = team;
 
-    const coverage = calculateTeamCoverage(teamSpeciesIds, [threatName]);
+    const coverage = calculateTeamCoverage(
+      teamSpeciesIds,
+      [threatName],
+      formatId,
+    );
 
     // If threat beats most of team (low coverage), add penalty
     if (coverage < 0.4) {
@@ -134,13 +156,16 @@ function calculateMoveDiversity(team: string[]): number {
  * Calculate individual quality score (15% weight)
  * Reduced ranking weight with capped scores
  */
-function calculateIndividualQuality(team: string[]): number {
+function calculateIndividualQuality(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
   let totalScore = 0;
   let validCount = 0;
 
   for (const speciesId of team) {
     const rankingName = speciesIdToRankingName(speciesId);
-    const rankings = getAllRankingsForPokemon(rankingName);
+    const rankings = getAllRankingsForPokemon(rankingName, formatId);
 
     if (rankings.average > 0) {
       // Cap ranking scores so #1 and #50 aren't vastly different
@@ -161,17 +186,18 @@ function calculateIndividualQuality(team: string[]): number {
 export function calculateFitness(
   chromosome: Chromosome,
   mode: TournamentMode,
+  formatId?: BattleFormatId,
 ): number {
   const { team } = chromosome;
 
   // Team-level analysis (85% weight)
-  const coverageMatrix = calculateTeamCoverageMatrix(team) * 0.4;
-  const shieldBalance = calculateShieldScenarioBalance(team) * 0.2;
-  const coreBreakPenalty = calculateCoreBreakPenalty(team) * 0.15;
+  const coverageMatrix = calculateTeamCoverageMatrix(team, formatId) * 0.4;
+  const shieldBalance = calculateShieldScenarioBalance(team, formatId) * 0.2;
+  const coreBreakPenalty = calculateCoreBreakPenalty(team, formatId) * 0.15;
   const moveDiversity = calculateMoveDiversity(team) * 0.1;
 
   // Individual quality (15% weight - reduced from 21%)
-  const individualQuality = calculateIndividualQuality(team) * 0.15;
+  const individualQuality = calculateIndividualQuality(team, formatId) * 0.15;
 
   const teamSynergyScore =
     coverageMatrix +

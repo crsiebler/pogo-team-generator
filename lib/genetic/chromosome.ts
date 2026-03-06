@@ -1,3 +1,4 @@
+import type { BattleFormatId } from '@lib/data/battleFormats';
 import {
   validateTeamUniqueness,
   getPokemonBySpeciesId,
@@ -95,6 +96,7 @@ export function createRandomChromosome(
   pokemonPool: string[],
   teamSize: number,
   anchorPokemon?: string[],
+  formatId?: BattleFormatId,
 ): Chromosome {
   const team: string[] = Array(teamSize).fill('');
   const anchors: number[] = [];
@@ -282,12 +284,17 @@ export function createRandomChromosome(
         for (let j = 0; j < slotIndex; j++) {
           if (team[j]) {
             const memberSpeciesId = team[j];
-            const worstMatchups = getWorstMatchups(memberSpeciesId, 5); // Top 5 worst for each member
+            const worstMatchups = getWorstMatchups(
+              memberSpeciesId,
+              5,
+              formatId,
+            ); // Top 5 worst for each member
 
             for (const threat of worstMatchups) {
               // Get threat's ranking and calculate weight
               const threatRankings = getAllRankingsForPokemon(
                 speciesIdToRankingName(threat),
+                formatId,
               );
               const threatScore = threatRankings.overall;
 
@@ -323,7 +330,7 @@ export function createRandomChromosome(
         // Calculate weighted bonus for countering threats
         let weightedCounterBonus = 0;
         for (const [threat, weight] of teamThreats.entries()) {
-          if (countersThreats(candidateSpeciesId, [threat]) > 0) {
+          if (countersThreats(candidateSpeciesId, [threat], formatId) > 0) {
             weightedCounterBonus += weight; // Add full weight if candidate beats this threat
           }
         }
@@ -331,7 +338,10 @@ export function createRandomChromosome(
         diversityScore += weightedCounterBonus; // Weighted bonus (much higher for top meta)
 
         // Additional bonus for overall matchup quality (consistency)
-        const qualityScore = getMatchupQualityScore(candidateSpeciesId);
+        const qualityScore = getMatchupQualityScore(
+          candidateSpeciesId,
+          formatId,
+        );
         // Scale from 0.5 (neutral) to bonus/penalty
         // 0.6 quality = +2, 0.4 quality = -2
         diversityScore += (qualityScore - 0.5) * 20; // High weight for quality
@@ -418,12 +428,13 @@ export function initializePopulation(
   pokemonPool: string[],
   teamSize: number,
   anchorPokemon?: string[],
+  formatId?: BattleFormatId,
 ): Chromosome[] {
   const population: Chromosome[] = [];
 
   for (let i = 0; i < populationSize; i++) {
     population.push(
-      createRandomChromosome(pokemonPool, teamSize, anchorPokemon),
+      createRandomChromosome(pokemonPool, teamSize, anchorPokemon, formatId),
     );
   }
 
