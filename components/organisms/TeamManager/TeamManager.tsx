@@ -2,6 +2,10 @@
 
 import { useState, useCallback } from 'react';
 import { TeamConfigPanel, ResultsPanel } from '@/components/organisms';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  type BattleFormatId,
+} from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
 import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
@@ -14,6 +18,9 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
   const [generatedTeam, setGeneratedTeam] = useState<string[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentMode, setCurrentMode] = useState<TournamentMode>('PlayPokemon');
+  const [currentFormatId, setCurrentFormatId] = useState<BattleFormatId>(
+    DEFAULT_BATTLE_FORMAT_ID,
+  );
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
   const [currentAlgorithm, setCurrentAlgorithm] =
@@ -23,6 +30,10 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
     setCurrentMode(mode);
     setAnchorPokemon([]);
     setExcludedPokemon([]);
+  }, []);
+
+  const handleFormatChange = useCallback((formatId: BattleFormatId) => {
+    setCurrentFormatId(formatId);
   }, []);
 
   const handleAnchorsChange = useCallback((anchors: string[]) => {
@@ -112,6 +123,8 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
     <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2">
       <TeamConfigPanel
         pokemonList={pokemonList}
+        selectedFormatId={currentFormatId}
+        onFormatChange={handleFormatChange}
         mode={currentMode}
         onModeChange={handleModeChange}
         onAnchorsChange={handleAnchorsChange}

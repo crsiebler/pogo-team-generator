@@ -1,20 +1,29 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import { TeamManager } from './TeamManager';
+import { type BattleFormatId } from '@/lib/data/battleFormats';
 
 const showToastMock = vi.fn();
 
 interface MockTeamConfigPanelProps {
+  selectedFormatId: BattleFormatId;
+  onFormatChange: (formatId: BattleFormatId) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onGenerate: () => void;
 }
 
 vi.mock('@/components/organisms', () => ({
   TeamConfigPanel: ({
+    selectedFormatId,
+    onFormatChange,
     onAnchorsChange,
     onGenerate,
   }: MockTeamConfigPanelProps) => (
     <div>
+      <div>Selected Format: {selectedFormatId}</div>
+      <button type="button" onClick={() => onFormatChange('ultra-league')}>
+        Set Ultra League
+      </button>
       <button
         type="button"
         onClick={() => onAnchorsChange(['Marowak', 'Marowak (Shadow)'])}
@@ -57,5 +66,19 @@ describe('TeamManager', () => {
         'error',
       );
     });
+  });
+
+  it('stores selected battle format in TeamManager state', () => {
+    render(<TeamManager pokemonList={['Azumarill', 'Skarmory']} />);
+
+    expect(
+      screen.getByText('Selected Format: great-league'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Set Ultra League'));
+
+    expect(
+      screen.getByText('Selected Format: ultra-league'),
+    ).toBeInTheDocument();
   });
 });
