@@ -8,7 +8,7 @@ For local PvPoke sync work, keep source-layout knowledge behind `lib/sync/adapte
 
 When syncing gamemaster JSON, call adapter `readPokemonJson`/`readMovesJson`, validate with `lib/sync/validation.ts`, then write normalized JSON outputs to `data/`.
 
-When syncing rankings, read local PvPoke ranking JSON via adapter `readRankingJson(category, 1500)` from `src/data/rankings/all/<category>/rankings-1500.json`, then map move IDs and species IDs using `data/moves.json` and `data/pokemon.json` produced by phase 1 before writing `cp1500_all_<category>_rankings.csv`.
+When syncing rankings, iterate all supported battle formats from `lib/data/battleFormats.ts` and read local PvPoke ranking JSON via adapter `readRankingJson(category, cp, cup)` from `src/data/rankings/<cup>/<category>/rankings-<cp>.json` before writing deterministic `cp<cp>_<cup>_<category>_rankings.csv` outputs.
 
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 

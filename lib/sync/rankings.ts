@@ -11,6 +11,7 @@ import {
 } from './types';
 import { logError } from './utils';
 import { logValidationErrors, validateRankingsCsv } from './validation';
+import { getBattleFormats } from '@/lib/data/battleFormats';
 
 interface RankingSourceEntry {
   speciesId: string;
@@ -63,6 +64,7 @@ interface RankingSyncDependencies {
     readRankingJson(
       category: RankingCategory,
       leagueCp: number,
+      cup?: 'all' | 'kanto',
     ): Promise<unknown>;
   };
   readFile: (filePath: string) => Promise<string>;
@@ -157,6 +159,7 @@ function convertRankingEntryToCsvRow(
   ranking: RankingSourceEntry,
   pokemonBySpeciesId: Map<string, PokemonData>,
   moveById: Map<string, MovesData>,
+  leagueCp: number,
 ): RankingEntry {
   const pokemon = pokemonBySpeciesId.get(ranking.speciesId);
   if (!pokemon) {
@@ -165,10 +168,10 @@ function convertRankingEntryToCsvRow(
     );
   }
 
-  const defaultIvs = pokemon.defaultIVs.cp1500;
+  const defaultIvs = getDefaultIvsForLeagueCp(pokemon, leagueCp);
   if (!defaultIvs || defaultIvs.length < 4) {
     throw new Error(
-      `[sync-rankings] Missing cp1500 default IVs for '${ranking.speciesId}'`,
+      `[sync-rankings] Missing cp${leagueCp} default IVs for '${ranking.speciesId}'`,
     );
   }
 
@@ -234,6 +237,21 @@ function convertRankingEntryToCsvRow(
     'Buddy Distance': pokemon.buddyDistance,
     'Charged Move Cost': pokemon.thirdMoveCost,
   };
+}
+
+function getDefaultIvsForLeagueCp(
+  pokemon: PokemonData,
+  leagueCp: number,
+): number[] | undefined {
+  if (leagueCp <= 500) {
+    return pokemon.defaultIVs.cp500;
+  }
+
+  if (leagueCp <= 1500) {
+    return pokemon.defaultIVs.cp1500;
+  }
+
+  return pokemon.defaultIVs.cp2500;
 }
 
 function convertEntriesToCsv(entries: RankingEntry[]): string {
@@ -305,49 +323,63 @@ export async function scrapeRankings(
     });
 
     const adapter = resolvedDependencies.createAdapter(sourcePath);
+    const rankingFormats = getBattleFormats().map((format) => {
+      return {
+        cup: format.cup,
+        cp: format.cp,
+      };
+    });
 
-    for (const category of RANKING_CATEGORIES) {
-      console.log(
-        `[sync-rankings] Syncing cp1500 ${category} rankings from local JSON`,
-      );
-
-      const sourceRankings = (await adapter.readRankingJson(
-        category,
-        1500,
-      )) as RankingSourceEntry[];
-
-      const normalizedRankings = normalizeRankingSourceEntries(sourceRankings);
-
-      const convertedEntries = normalizedRankings.map((ranking) => {
-        return convertRankingEntryToCsvRow(
-          ranking,
-          pokemonBySpeciesId,
-          moveById,
+    for (const format of rankingFormats) {
+      for (const category of RANKING_CATEGORIES) {
+        console.log(
+          `[sync-rankings] Syncing cp${format.cp} ${format.cup} ${category} rankings from local JSON`,
         );
-      });
 
-      const csvText = convertEntriesToCsv(convertedEntries);
-      const validation = validateRankingsCsv(csvText);
-      logValidationErrors(`${category} rankings CSV`, validation.errors);
+        const sourceRankings = (await adapter.readRankingJson(
+          category,
+          format.cp,
+          format.cup,
+        )) as RankingSourceEntry[];
 
-      if (!validation.valid) {
-        throw new Error(
-          `${category} rankings CSV validation failed: ${validation.errors.join(', ')}`,
+        const normalizedRankings =
+          normalizeRankingSourceEntries(sourceRankings);
+
+        const convertedEntries = normalizedRankings.map((ranking) => {
+          return convertRankingEntryToCsvRow(
+            ranking,
+            pokemonBySpeciesId,
+            moveById,
+            format.cp,
+          );
+        });
+
+        const csvText = convertEntriesToCsv(convertedEntries);
+        const validation = validateRankingsCsv(csvText);
+        logValidationErrors(
+          `cp${format.cp} ${format.cup} ${category} rankings CSV`,
+          validation.errors,
         );
+
+        if (!validation.valid) {
+          throw new Error(
+            `cp${format.cp} ${format.cup} ${category} rankings CSV validation failed: ${validation.errors.join(', ')}`,
+          );
+        }
+
+        await resolvedDependencies.mkdir(syncConfig.outputDir);
+        const outputFilePath = path.join(
+          syncConfig.outputDir,
+          `cp${format.cp}_${format.cup}_${category}_rankings.csv`,
+        );
+        await resolvedDependencies.writeFile(outputFilePath, csvText);
+
+        console.log(
+          `[sync-rankings] Synced ${convertedEntries.length} ${category} ranking entries to ${outputFilePath}`,
+        );
+
+        allRankings.push(...convertedEntries);
       }
-
-      await resolvedDependencies.mkdir(syncConfig.outputDir);
-      const outputFilePath = path.join(
-        syncConfig.outputDir,
-        `cp1500_all_${category}_rankings.csv`,
-      );
-      await resolvedDependencies.writeFile(outputFilePath, csvText);
-
-      console.log(
-        `[sync-rankings] Synced ${convertedEntries.length} ${category} ranking entries to ${outputFilePath}`,
-      );
-
-      allRankings.push(...convertedEntries);
     }
 
     console.log(

@@ -17,6 +17,7 @@ describe('rankings local sync', () => {
         (
           category: RankingCategory,
           leagueCp: number,
+          cup: 'all' | 'kanto' | undefined,
         ) => Promise<
           Array<{
             speciesId: string;
@@ -27,8 +28,9 @@ describe('rankings local sync', () => {
           }>
         >
       >()
-      .mockImplementation(async (category, leagueCp) => {
-        expect(leagueCp).toBe(1500);
+      .mockImplementation(async (category, leagueCp, cup) => {
+        expect([1500, 2500, 10000]).toContain(leagueCp);
+        expect(cup === 'all' || cup === 'kanto').toBe(true);
         expect(categories).toContain(category);
 
         return [
@@ -64,6 +66,7 @@ describe('rankings local sync', () => {
                 defaultIVs: {
                   cp500: [17.5, 3, 14, 12],
                   cp1500: [50, 15, 15, 15],
+                  cp2500: [50, 15, 15, 15],
                 },
                 buddyDistance: 3,
                 thirdMoveCost: 10000,
@@ -121,8 +124,8 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(4);
-    expect(rankings).toHaveLength(4);
+    expect(readRankingJson).toHaveBeenCalledTimes(16);
+    expect(rankings).toHaveLength(16);
     expect(rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
@@ -138,21 +141,21 @@ describe('rankings local sync', () => {
       'Charged Move Cost': 10000,
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(4);
+    expect(writeFile).toHaveBeenCalledTimes(16);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'cp1500_all_overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'cp1500_all_leads_rankings.csv'),
+      path.join('data', 'cp2500_all_leads_rankings.csv'),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'cp1500_all_switches_rankings.csv'),
+      path.join('data', 'cp10000_all_switches_rankings.csv'),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'cp1500_all_closers_rankings.csv'),
+      path.join('data', 'cp1500_kanto_closers_rankings.csv'),
       expect.stringContaining('Bulbasaur'),
     );
   });

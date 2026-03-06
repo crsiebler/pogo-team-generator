@@ -11,6 +11,7 @@ import {
   crossValidateRankingsVsPokemon,
   logValidationErrors,
 } from './validation';
+import { getBattleFormats } from '@/lib/data/battleFormats';
 
 /**
  * Persist successful sync metadata for UI freshness indicators.
@@ -34,6 +35,13 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
   try {
     console.log('[sync] Starting data sync pipeline');
 
+    const rankingCategories = ['overall', 'leads', 'switches', 'closers'];
+    const rankingFilesToDelete = getBattleFormats().flatMap((format) => {
+      return rankingCategories.map((category) => {
+        return `cp${format.cp}_${format.cup}_${category}_rankings.csv`;
+      });
+    });
+
     const sourceResolution = resolvePvpokeSourcePath();
     console.log(
       `[sync] Resolved PvPoke source path (${sourceResolution.sourceType}): ${sourceResolution.sourcePath}`,
@@ -44,10 +52,7 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     const filesToDelete = [
       'pokemon.json',
       'moves.json',
-      'cp1500_all_overall_rankings.csv',
-      'cp1500_all_leads_rankings.csv',
-      'cp1500_all_switches_rankings.csv',
-      'cp1500_all_closers_rankings.csv',
+      ...rankingFilesToDelete,
     ];
     filesToDelete.forEach((file) => {
       const filePath = path.join(syncConfig.outputDir, file);

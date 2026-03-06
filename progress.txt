@@ -6,6 +6,7 @@
 - In `lib/data/rankings.ts`, resolve CSV filenames from format metadata (`cp{cp}_{cup}_{category}_rankings.csv`) and keep lazy-load caches isolated per format id so one format failure never pollutes another.
 - In `lib/genetic/algorithm.ts`, always pass `formatId` into `getTopRankedPokemonNames` and build candidate pools through `getRankedPokemonForFormat` so league/cup eligibility follows the selected format.
 - In `lib/data/simulations.ts`, parse simulation files by format metadata (`cp` + `cup`), call `ensureSimulationDataAvailable(formatId)` before generation, and thread `formatId` through simulation helper calls to avoid non-Great fallback.
+- For ranking sync, resolve PvPoke JSON paths through `createPvpokeAdapter().readRankingJson(category, cp, cup)` and emit deterministic filenames as `cp{cp}_{cup}_{category}_rankings.csv` for every supported battle format.
 
 ## Iteration Log
 
@@ -206,4 +207,33 @@
   - Non-Great formats can still fail later in the pipeline until format-specific simulation data loading/sync stories are complete.
 - Next iteration start:
   - Implement US-007 by making simulation loaders/helpers format-aware and blocking generation with a clear error when selected-format simulations are missing.
+---
+
+## 2026-03-06 12:47:56 MST - US-008
+- What was implemented
+  - Extended rankings sync to iterate all supported battle formats and categories, reading PvPoke ranking JSON by `cup` + `cp` and writing deterministic format-specific CSV outputs.
+  - Updated the PvPoke adapter to support cup-aware ranking path resolution (`all` and `kanto`) while preserving default behavior for existing callers.
+  - Added/updated tests to verify multi-format rankings sync and cup-specific adapter reads, and updated sync cleanup to delete all generated format-specific ranking files before regeneration.
+  - Added reusable ranking-sync conventions to `lib/AGENTS.md` and marked US-008 as passing in `prd.json`.
+- Files changed: `lib/sync/adapter.ts`, `lib/sync/adapter.test.ts`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `lib/sync/index.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Used `getBattleFormats()` as the rankings sync driver so format coverage comes from one catalog and new formats can be added without touching sync loops.
+  - Added `cup` as an optional adapter parameter instead of introducing format-specific file-path logic in sync code to keep source-layout knowledge encapsulated.
+  - Kept conversion fallback for high-CP formats on available default IV buckets (`cp2500`) so sync can proceed for Master League even when gamemaster lacks a `cp10000` IV bucket.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Sync phases should use battle-format metadata (`cp`, `cup`) end-to-end so generated artifacts and runtime loaders stay filename-compatible.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - `import/order` in this repository expects local relative imports before `@/` alias imports within a file.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - `scrapeRankings` now returns aggregate rows across all formats (4 formats x 4 categories), so downstream summary counts and tests reflect combined totals.
+- Known issues / follow-ups:
+  - Master League ranking rows currently reuse the highest available default IV bucket from gamemaster (`cp2500`) for level/IV seed values; this is acceptable for sync continuity but could be refined if richer IV metadata is added.
+- Next iteration start:
+  - Implement US-009 by making simulation sync run TeamRanker per format and emit format-specific simulation CSV filenames.
 ---
