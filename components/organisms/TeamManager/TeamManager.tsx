@@ -90,6 +90,7 @@ export function TeamManager({ pokemonList }: TeamManagerProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          formatId: currentFormatId,
           mode: currentMode,
           anchorPokemon: selectedAnchors,
           excludedPokemon: excludedPokemon,

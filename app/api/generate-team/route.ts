@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  isBattleFormatId,
+} from '@/lib/data/battleFormats';
 import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
 import { generateTeam } from '@/lib/genetic/algorithm';
 import type { TournamentMode, FitnessAlgorithm } from '@/lib/types';
@@ -6,12 +10,23 @@ import type { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mode, anchorPokemon, excludedPokemon, algorithm } = body as {
-      mode: TournamentMode;
-      anchorPokemon?: string[];
-      excludedPokemon?: string[];
-      algorithm?: FitnessAlgorithm;
-    };
+    const { mode, formatId, anchorPokemon, excludedPokemon, algorithm } =
+      body as {
+        mode: TournamentMode;
+        formatId?: string;
+        anchorPokemon?: string[];
+        excludedPokemon?: string[];
+        algorithm?: FitnessAlgorithm;
+      };
+
+    const resolvedFormatId = formatId ?? DEFAULT_BATTLE_FORMAT_ID;
+
+    if (!isBattleFormatId(resolvedFormatId)) {
+      return NextResponse.json(
+        { error: `Invalid battle format: ${resolvedFormatId}` },
+        { status: 400 },
+      );
+    }
 
     // Validate mode
     if (!mode || (mode !== 'PlayPokemon' && mode !== 'GBL')) {
@@ -69,6 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Run genetic algorithm
     const result = await generateTeam({
+      formatId: resolvedFormatId,
       mode,
       anchorPokemon: anchorSpeciesIds,
       excludedPokemon: excludedSpeciesIds,

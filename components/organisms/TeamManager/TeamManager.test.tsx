@@ -81,4 +81,32 @@ describe('TeamManager', () => {
       screen.getByText('Selected Format: ultra-league'),
     ).toBeInTheDocument();
   });
+
+  it('sends selected format id in generate-team request payload', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ team: ['Azumarill'] }),
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TeamManager pokemonList={['Azumarill', 'Skarmory']} />);
+
+    fireEvent.click(screen.getByText('Set Ultra League'));
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, options] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit & { body: string },
+    ];
+    const payload = JSON.parse(options.body) as {
+      formatId: string;
+    };
+
+    expect(payload.formatId).toBe('ultra-league');
+  });
 });

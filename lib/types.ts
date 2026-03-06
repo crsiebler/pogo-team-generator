@@ -76,6 +76,7 @@ export interface Chromosome {
 }
 
 export interface GenerationOptions {
+  formatId?: BattleFormatId;
   mode: TournamentMode;
   anchorPokemon?: string[];
   excludedPokemon?: string[];
@@ -89,3 +90,4 @@ export interface TypeChart {
     [defenseType: string]: number;
   };
 }
+import type { BattleFormatId } from '@/lib/data/battleFormats';
