@@ -7,6 +7,7 @@
 - In `lib/genetic/algorithm.ts`, always pass `formatId` into `getTopRankedPokemonNames` and build candidate pools through `getRankedPokemonForFormat` so league/cup eligibility follows the selected format.
 - In `lib/data/simulations.ts`, parse simulation files by format metadata (`cp` + `cup`), call `ensureSimulationDataAvailable(formatId)` before generation, and thread `formatId` through simulation helper calls to avoid non-Great fallback.
 - For ranking sync, resolve PvPoke JSON paths through `createPvpokeAdapter().readRankingJson(category, cp, cup)` and emit deterministic filenames as `cp{cp}_{cup}_{category}_rankings.csv` for every supported battle format.
+- For simulation sync, iterate `getBattleFormats()` and write format-scoped simulation outputs as `data/simulations/cp{cp}_{cup}_{speciesId}_{scenario}.csv`; resume mode should only reuse valid CSVs at the exact format-specific path.
 
 ## Iteration Log
 
@@ -236,4 +237,33 @@
   - Master League ranking rows currently reuse the highest available default IV bucket from gamemaster (`cp2500`) for level/IV seed values; this is acceptable for sync continuity but could be refined if richer IV metadata is added.
 - Next iteration start:
   - Implement US-009 by making simulation sync run TeamRanker per format and emit format-specific simulation CSV filenames.
+---
+
+## 2026-03-06 12:54:28 MST - US-009
+- What was implemented
+  - Updated simulation sync to iterate all supported battle formats from `getBattleFormats()`, loading each format's `cp{cp}_{cup}_overall_rankings.csv` and generating per-format simulation matrices.
+  - Switched PvPoke TeamRanker VM execution to use format-specific `cup`, `cp`, and ranking cache keys so each run is format-correct (Great/Ultra/Master/Kanto).
+  - Changed simulation output naming to deterministic format-scoped files (`cp{cp}_{cup}_{speciesId}_{scenario}.csv`) and ensured resume mode only reuses valid CSVs for that exact format path.
+  - Added dedicated sync unit tests covering multi-format generation and resume behavior isolation (including non-reuse of legacy non-format filenames), and documented the reusable pattern in `lib/AGENTS.md`.
+- Files changed: `lib/sync/simulations.ts`, `lib/sync/simulations.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Added dependency injection hooks to `generateSimulations` instead of relying on VM/filesystem globals directly so format-loop behavior and resume-path semantics can be tested deterministically.
+  - Kept format source-of-truth in `battleFormats` and derived both input ranking filenames and output simulation filenames from `cup/cp` metadata to avoid sync/runtime drift.
+  - Retained existing validation gates (`validateSimulationsCsv`) before writing/reusing files so resume mode can safely skip only known-good artifacts.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - Sync modules are easier to test when runtime/file operations are injected as optional dependencies while production behavior remains in default dependency wiring.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - Resume semantics depend entirely on output filename determinism; changing filename templates requires updating both generation and reuse checks together.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - `generateScenarioCsvFromEngine` now accepts full `BattleFormat`, so any future cup/cp expansions only need catalog updates plus ranking availability.
+- Known issues / follow-ups:
+  - End-to-end runtime verification that all four formats generate teams still depends on full data presence and UI/API flow checks planned in US-010.
+- Next iteration start:
+  - Implement US-010 by validating full generation behavior (including clear blocking errors for missing format data) across Great, Ultra, Master, and Kanto formats.
 ---

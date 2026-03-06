@@ -12,6 +12,8 @@ When syncing rankings, iterate all supported battle formats from `lib/data/battl
 
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 
+Simulation sync must iterate every format from `getBattleFormats()`, loading rankings from `cp<cp>_<cup>_overall_rankings.csv`, and write deterministic outputs as `data/simulations/cp<cp>_<cup>_<speciesId>_<scenario>.csv`; in resume mode only reuse existing files at that exact format-specific path.
+
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
 
 Use `lib/data/battleFormats.ts` as the single source of truth for supported format ids, labels, cup, and CP. UI, API, data loaders, and sync code should import catalog values from there instead of hardcoding format strings.
