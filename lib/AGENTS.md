@@ -14,6 +14,8 @@ When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and
 
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
 
+Use `lib/data/battleFormats.ts` as the single source of truth for supported format ids, labels, cup, and CP. UI, API, data loaders, and sync code should import catalog values from there instead of hardcoding format strings.
+
 ## Code Style
 
 Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for functions/variables, PascalCase for types. Absolute imports (`@/lib/...`).
