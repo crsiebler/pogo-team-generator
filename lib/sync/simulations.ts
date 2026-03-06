@@ -12,6 +12,27 @@ interface RankingsCsvEntry {
   Pokemon: string;
 }
 
+interface SyncPokemonEntry {
+  speciesId: string;
+  speciesName: string;
+  released: boolean;
+}
+
+interface SimulationTargetSelectionCounts {
+  overall: number;
+  leads: number;
+  switches: number;
+  closers: number;
+  nameUnion: number;
+  speciesUnion: number;
+}
+
+interface SimulationTargetSelectionResult {
+  speciesIds: string[];
+  unresolvedPokemonNames: string[];
+  counts: SimulationTargetSelectionCounts;
+}
+
 interface PvpokeVmRuntime {
   context: vm.Context & Record<string, unknown>;
 }
@@ -30,6 +51,13 @@ const SIMULATION_SCENARIOS = [
   { scenario: '0-0', shields: 0 },
   { scenario: '2-2', shields: 2 },
 ] as const;
+
+const SIMULATION_TARGET_LIMITS = {
+  overall: 200,
+  leads: 100,
+  switches: 100,
+  closers: 100,
+} as const;
 
 const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
   morpeko_hangry: 'morpeko_full_belly',
@@ -129,6 +157,86 @@ function getSimulationOutputPath(speciesId: string, scenario: string): string {
  */
 function normalizeSpeciesName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Build simulation target speciesIds from rankings super union.
+ * Uses top 200 overall + top 100 of leads/switches/closers and deduplicates.
+ */
+export function selectSimulationTargetSpeciesIds(params: {
+  overallCsvText: string;
+  leadsCsvText: string;
+  switchesCsvText: string;
+  closersCsvText: string;
+  pokemonData: SyncPokemonEntry[];
+}): SimulationTargetSelectionResult {
+  const overallEntries = parseRankingsCsv(params.overallCsvText);
+  const leadEntries = parseRankingsCsv(params.leadsCsvText);
+  const switchEntries = parseRankingsCsv(params.switchesCsvText);
+  const closerEntries = parseRankingsCsv(params.closersCsvText);
+
+  const overallTopNames = overallEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.overall)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+  const leadTopNames = leadEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.leads)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+  const switchTopNames = switchEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.switches)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+  const closerTopNames = closerEntries
+    .slice(0, SIMULATION_TARGET_LIMITS.closers)
+    .map((entry) => entry.Pokemon)
+    .filter((name): name is string => !!name);
+
+  const orderedNameUnion = Array.from(
+    new Set([
+      ...overallTopNames,
+      ...leadTopNames,
+      ...switchTopNames,
+      ...closerTopNames,
+    ]),
+  );
+
+  const speciesByNormalizedName = new Map<string, string>();
+  params.pokemonData.forEach((pokemon) => {
+    const canonicalSpeciesId = normalizeToChoosableSpeciesId(pokemon.speciesId);
+    speciesByNormalizedName.set(
+      normalizeSpeciesName(pokemon.speciesName),
+      canonicalSpeciesId,
+    );
+  });
+
+  const resolvedSpecies = new Set<string>();
+  const unresolvedPokemonNames: string[] = [];
+
+  for (const pokemonName of orderedNameUnion) {
+    const speciesId = speciesByNormalizedName.get(
+      normalizeSpeciesName(pokemonName),
+    );
+    if (!speciesId) {
+      unresolvedPokemonNames.push(pokemonName);
+      continue;
+    }
+
+    resolvedSpecies.add(speciesId);
+  }
+
+  return {
+    speciesIds: Array.from(resolvedSpecies),
+    unresolvedPokemonNames,
+    counts: {
+      overall: overallTopNames.length,
+      leads: leadTopNames.length,
+      switches: switchTopNames.length,
+      closers: closerTopNames.length,
+      nameUnion: orderedNameUnion.length,
+      speciesUnion: resolvedSpecies.size,
+    },
+  };
 }
 
 /**
@@ -463,67 +571,83 @@ export async function generateSimulations(
       syncConfig.outputDir,
       'cp1500_all_overall_rankings.csv',
     );
+    const leadsCsvPath = path.join(
+      syncConfig.outputDir,
+      'cp1500_all_leads_rankings.csv',
+    );
+    const switchesCsvPath = path.join(
+      syncConfig.outputDir,
+      'cp1500_all_switches_rankings.csv',
+    );
+    const closersCsvPath = path.join(
+      syncConfig.outputDir,
+      'cp1500_all_closers_rankings.csv',
+    );
 
-    if (!fs.existsSync(overallCsvPath)) {
+    if (
+      !fs.existsSync(overallCsvPath) ||
+      !fs.existsSync(leadsCsvPath) ||
+      !fs.existsSync(switchesCsvPath) ||
+      !fs.existsSync(closersCsvPath)
+    ) {
       throw new Error(
-        '[sync-simulations] Overall rankings CSV not found. Run rankings sync first.',
+        '[sync-simulations] Required rankings CSV files not found. Run rankings sync first.',
       );
     }
 
-    const [overallCsvText, pokemonJsonText] = await Promise.all([
+    const [
+      overallCsvText,
+      leadsCsvText,
+      switchesCsvText,
+      closersCsvText,
+      pokemonJsonText,
+    ] = await Promise.all([
       fsAsync.readFile(overallCsvPath, 'utf8'),
+      fsAsync.readFile(leadsCsvPath, 'utf8'),
+      fsAsync.readFile(switchesCsvPath, 'utf8'),
+      fsAsync.readFile(closersCsvPath, 'utf8'),
       fsAsync.readFile(path.join(syncConfig.outputDir, 'pokemon.json'), 'utf8'),
     ]);
 
-    const allRankings = parseRankingsCsv(overallCsvText);
-    const topPokemonNames = allRankings
-      .slice(0, 150)
-      .map((ranking) => ranking.Pokemon)
-      .filter((name): name is string => typeof name === 'string' && !!name);
+    const pokemonData = JSON.parse(pokemonJsonText) as SyncPokemonEntry[];
 
-    const pokemonData = JSON.parse(pokemonJsonText) as Array<{
-      speciesId: string;
-      speciesName: string;
-      released: boolean;
-    }>;
+    const simulationTargets = selectSimulationTargetSpeciesIds({
+      overallCsvText,
+      leadsCsvText,
+      switchesCsvText,
+      closersCsvText,
+      pokemonData,
+    });
 
-    const speciesByNormalizedName = new Map<string, string>();
     const speciesNameById = new Map<string, string>();
 
     pokemonData.forEach((pokemon) => {
       const canonicalSpeciesId = normalizeToChoosableSpeciesId(
         pokemon.speciesId,
       );
-      speciesByNormalizedName.set(
-        normalizeSpeciesName(pokemon.speciesName),
-        canonicalSpeciesId,
-      );
-
       if (!speciesNameById.has(canonicalSpeciesId) && pokemon.released) {
         speciesNameById.set(canonicalSpeciesId, pokemon.speciesName);
       }
     });
 
+    for (const unresolvedName of simulationTargets.unresolvedPokemonNames) {
+      console.warn(
+        `[sync-simulations] Skipping ${unresolvedName}: no matching speciesId in pokemon.json`,
+      );
+    }
+
+    console.log(
+      `[sync-simulations] Target pool: overall=${simulationTargets.counts.overall}, leads=${simulationTargets.counts.leads}, switches=${simulationTargets.counts.switches}, closers=${simulationTargets.counts.closers}, unionNames=${simulationTargets.counts.nameUnion}, unionSpecies=${simulationTargets.counts.speciesUnion}`,
+    );
+
     const allSimulations: SimulationsCsv = [];
 
-    for (let i = 0; i < topPokemonNames.length; i++) {
-      const pokemonName = topPokemonNames[i];
-      const normalizedName = normalizeSpeciesName(pokemonName);
-      const resolvedSpeciesId = speciesByNormalizedName.get(normalizedName);
-      const speciesId = resolvedSpeciesId
-        ? normalizeToChoosableSpeciesId(resolvedSpeciesId)
-        : undefined;
+    for (let i = 0; i < simulationTargets.speciesIds.length; i++) {
+      const speciesId = simulationTargets.speciesIds[i];
 
-      if (!speciesId) {
-        console.warn(
-          `[sync-simulations] Skipping ${pokemonName}: no matching speciesId in pokemon.json`,
-        );
-        continue;
-      }
-
-      const displayName = speciesNameById.get(speciesId) ?? pokemonName;
+      const displayName = speciesNameById.get(speciesId) ?? speciesId;
       console.log(
-        `[sync-simulations] Processing ${displayName} (${i + 1}/${topPokemonNames.length})`,
+        `[sync-simulations] Processing ${displayName} (${i + 1}/${simulationTargets.speciesIds.length})`,
       );
 
       for (const scenario of SIMULATION_SCENARIOS) {
