@@ -21,6 +21,34 @@ interface FormatRankingsCache {
 const formatRankingsCache: Map<BattleFormatId, FormatRankingsCache> = new Map();
 
 /**
+ * Raised when ranking CSVs for the selected format are unavailable.
+ */
+export class MissingRankingDataError extends Error {
+  readonly formatId: BattleFormatId;
+  readonly category: RankingCategory;
+  readonly filename: string;
+
+  constructor(
+    formatId: BattleFormatId,
+    category: RankingCategory,
+    filename: string,
+  ) {
+    const battleFormat = getBattleFormatById(formatId);
+    const formatDescriptor = battleFormat
+      ? `${battleFormat.label} (${battleFormat.cup}/${battleFormat.cp})`
+      : formatId;
+
+    super(
+      `Ranking data missing for ${formatDescriptor}, category ${category}: ${filename}. Run rankings sync for this format before generating teams.`,
+    );
+    this.name = 'MissingRankingDataError';
+    this.formatId = formatId;
+    this.category = category;
+    this.filename = filename;
+  }
+}
+
+/**
  * Resolve a valid format id with default fallback.
  */
 function resolveFormatId(formatId?: BattleFormatId): BattleFormatId {
@@ -94,9 +122,7 @@ function parseRankingCSV(
       'code' in error &&
       error.code === 'ENOENT'
     ) {
-      throw new Error(
-        `Ranking file missing for ${formatDescriptor}, category ${category}: ${filename}`,
-      );
+      throw new MissingRankingDataError(resolvedFormatId, category, filename);
     }
 
     const errorMessage =

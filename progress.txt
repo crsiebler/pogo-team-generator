@@ -8,6 +8,7 @@
 - In `lib/data/simulations.ts`, parse simulation files by format metadata (`cp` + `cup`), call `ensureSimulationDataAvailable(formatId)` before generation, and thread `formatId` through simulation helper calls to avoid non-Great fallback.
 - For ranking sync, resolve PvPoke JSON paths through `createPvpokeAdapter().readRankingJson(category, cp, cup)` and emit deterministic filenames as `cp{cp}_{cup}_{category}_rankings.csv` for every supported battle format.
 - For simulation sync, iterate `getBattleFormats()` and write format-scoped simulation outputs as `data/simulations/cp{cp}_{cup}_{speciesId}_{scenario}.csv`; resume mode should only reuse valid CSVs at the exact format-specific path.
+- For generation routes, convert `MissingRankingDataError` and `MissingSimulationDataError` into HTTP 400 responses so missing format datasets fail fast with actionable sync guidance.
 
 ## Iteration Log
 
@@ -266,4 +267,34 @@
   - End-to-end runtime verification that all four formats generate teams still depends on full data presence and UI/API flow checks planned in US-010.
 - Next iteration start:
   - Implement US-010 by validating full generation behavior (including clear blocking errors for missing format data) across Great, Ultra, Master, and Kanto formats.
+---
+
+## 2026-03-06 13:14:14 MST - US-010
+- What was implemented
+  - Ran a full multi-format sync (`npm run sync`) so runtime ranking/simulation datasets now exist for Great (`all/1500`), Ultra (`all/2500`), Master (`all/10000`), and Kanto Cup (`kanto/1500`).
+  - Added deterministic missing-ranking handling with `MissingRankingDataError` in `lib/data/rankings.ts` and mapped ranking/simulation missing-data errors to HTTP 400 in `/api/generate-team`.
+  - Expanded API and data-layer tests to validate all four supported format ids flow through generation and that missing-format data errors are clear/user-actionable.
+  - Verified in browser (dev-browser): generated teams successfully for Great, Ultra, Master, and Kanto; captured API payloads confirming `formatId` values were `great-league`, `ultra-league`, `master-league`, and `kanto-cup` with HTTP 200 responses.
+  - Added reusable guidance to `app/AGENTS.md` and `lib/AGENTS.md` for missing-format data error handling.
+- Files changed: `data/cp2500_all_*_rankings.csv`, `data/cp10000_all_*_rankings.csv`, `data/cp1500_kanto_*_rankings.csv`, `data/simulations/cp1500_all_*.csv`, `data/simulations/cp2500_all_*.csv`, `data/simulations/cp10000_all_*.csv`, `data/simulations/cp1500_kanto_*.csv`, `data/sync-metadata.json`, `lib/data/rankings.ts`, `lib/data/rankings.test.ts`, `lib/data/simulations.test.ts`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `app/AGENTS.md`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Generated and committed real multi-format datasets instead of adding synthetic fixtures so runtime behavior matches production data paths and browser validation is meaningful.
+  - Introduced a typed ranking-missing error and route-level 400 mapping to align ranking failures with existing simulation failure semantics.
+  - Updated legacy "missing data" tests to assert supported-format availability now that US-008/US-009 sync outputs are present.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+    - End-to-end format validation should confirm both API payload `formatId` and successful `/api/generate-team` responses in browser network logs, not only UI dropdown state.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+    - After adding full-format sync outputs, tests that previously asserted missing-data errors for Ultra/Master must be rewritten to assert availability.
+  - Useful context (e.g., "the evaluation panel is in component X")
+    - `Generated Team` results can briefly show `Loading team data...` after `/api/generate-team` returns because follow-up `/api/team-details` calls populate card details asynchronously.
+- Known issues / follow-ups:
+  - Browser still reports a pre-existing `favicon.ico` 404 in dev; unrelated to format generation behavior.
+- Next iteration start:
+  - All stories are now passing; no remaining user stories with `passes: false`.
 ---

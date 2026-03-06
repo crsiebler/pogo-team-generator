@@ -31,18 +31,21 @@ describe('format-aware rankings loading', () => {
     expect(defaultThreats).toEqual(explicitThreats);
   });
 
-  it('throws a clear error when selected format ranking files are missing', () => {
-    expect(() => getOverallRankings('ultra-league')).toThrow(
-      /Ranking file missing for Ultra League \(all\/2500\), category overall: cp2500_all_overall_rankings\.csv/,
-    );
+  it('loads overall rankings for all supported battle formats', () => {
+    const greatLeagueRankings = getOverallRankings('great-league');
+    const ultraLeagueRankings = getOverallRankings('ultra-league');
+    const masterLeagueRankings = getOverallRankings('master-league');
+    const kantoCupRankings = getOverallRankings('kanto-cup');
+
+    expect(greatLeagueRankings.length).toBeGreaterThan(0);
+    expect(ultraLeagueRankings.length).toBeGreaterThan(0);
+    expect(masterLeagueRankings.length).toBeGreaterThan(0);
+    expect(kantoCupRankings.length).toBeGreaterThan(0);
   });
 
-  it('keeps Great League cache valid after a missing format load failure', () => {
+  it('keeps Great League cache stable after loading other formats', () => {
     const beforeFailure = getOverallRankings();
-
-    expect(() => getOverallRankings('master-league')).toThrow(
-      /cp10000_all_overall_rankings\.csv/,
-    );
+    getOverallRankings('master-league');
 
     const afterFailure = getOverallRankings();
     expect(afterFailure).toBe(beforeFailure);

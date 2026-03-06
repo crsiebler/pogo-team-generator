@@ -17,18 +17,16 @@ describe('format-aware simulation loading', () => {
     expect(defaultThreats).toEqual(explicitThreats);
   });
 
-  it('throws a clear error when selected format simulation files are missing', () => {
-    expect(() => ensureSimulationDataAvailable('ultra-league')).toThrow(
-      /Simulation data missing for Ultra League \(all\/2500\)/,
-    );
+  it('ensures simulation data exists for all supported battle formats', () => {
+    expect(() => ensureSimulationDataAvailable('great-league')).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('ultra-league')).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('master-league')).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('kanto-cup')).not.toThrow();
   });
 
-  it('keeps Great League cache valid after a missing format load failure', () => {
+  it('keeps Great League cache stable after loading other formats', () => {
     const beforeFailure = getMatchupMatrix();
-
-    expect(() => ensureSimulationDataAvailable('master-league')).toThrow(
-      /Master League \(all\/10000\)/,
-    );
+    ensureSimulationDataAvailable('master-league');
 
     const afterFailure = getMatchupMatrix();
     expect(afterFailure).toBe(beforeFailure);

@@ -20,6 +20,8 @@ Use `lib/data/battleFormats.ts` as the single source of truth for supported form
 
 For runtime ranking lookups in `lib/data/rankings.ts`, build filenames from format metadata (`cp{cp}_{cup}_{category}_rankings.csv`) and cache parsed CSV data per format id to avoid cross-format contamination.
 
+When format-specific ranking CSVs are missing, throw `MissingRankingDataError` (not a generic `Error`) so API adapters can return deterministic HTTP 400 messages with sync guidance.
+
 For genetic candidate pool construction, always pass `formatId` into `getTopRankedPokemonNames(...)` and filter species via `getRankedPokemonForFormat(...)` so league/cup eligibility stays aligned with the selected battle format.
 
 For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` before generation and pass `formatId` through simulation helpers so non-Great formats never silently reuse Great League matchups.

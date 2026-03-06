@@ -4,6 +4,7 @@ import {
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
 import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
+import { MissingRankingDataError } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
 import type { TournamentMode, FitnessAlgorithm } from '@/lib/types';
@@ -103,7 +104,10 @@ export async function POST(request: NextRequest) {
       fitness: result.fitness,
     });
   } catch (error) {
-    if (error instanceof MissingSimulationDataError) {
+    if (
+      error instanceof MissingRankingDataError ||
+      error instanceof MissingSimulationDataError
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
