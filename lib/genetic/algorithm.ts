@@ -1,4 +1,5 @@
-import { getRankedGreatLeaguePokemon } from '@lib/data/pokemon';
+import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
+import { getRankedPokemonForFormat } from '@lib/data/pokemon';
 import { getTopRankedPokemonNames } from '@lib/data/rankings';
 import type { Chromosome, GenerationOptions } from '../types';
 import {
@@ -26,13 +27,14 @@ export async function generateTeam(
     populationSize = 150,
     generations = 75,
     algorithm = 'individual',
+    formatId = DEFAULT_BATTLE_FORMAT_ID,
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
 
   // Get available Pokémon pool (only top 150 ranked Pokemon for competitive viability)
-  const topRankedNames = getTopRankedPokemonNames(80, 150);
-  const availablePokemon = getRankedGreatLeaguePokemon(topRankedNames);
+  const topRankedNames = getTopRankedPokemonNames(80, 150, formatId);
+  const availablePokemon = getRankedPokemonForFormat(topRankedNames, formatId);
 
   // Filter out excluded Pokemon
   const filteredPokemon = availablePokemon.filter(
