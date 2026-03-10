@@ -22,6 +22,7 @@ describe('format-aware simulation loading', () => {
     expect(() => ensureSimulationDataAvailable('ultra-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('master-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('kanto-cup')).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('spring-cup')).not.toThrow();
   });
 
   it('keeps Great League cache stable after loading other formats', () => {

@@ -36,11 +36,13 @@ describe('format-aware rankings loading', () => {
     const ultraLeagueRankings = getOverallRankings('ultra-league');
     const masterLeagueRankings = getOverallRankings('master-league');
     const kantoCupRankings = getOverallRankings('kanto-cup');
+    const springCupRankings = getOverallRankings('spring-cup');
 
     expect(greatLeagueRankings.length).toBeGreaterThan(0);
     expect(ultraLeagueRankings.length).toBeGreaterThan(0);
     expect(masterLeagueRankings.length).toBeGreaterThan(0);
     expect(kantoCupRankings.length).toBeGreaterThan(0);
+    expect(springCupRankings.length).toBeGreaterThan(0);
   });
 
   it('keeps Great League cache stable after loading other formats', () => {

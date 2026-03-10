@@ -12,7 +12,7 @@ function isOverallRankingPath(filePath: string): boolean {
 describe('generateSimulations', () => {
   it('generates simulations for every supported format and scenario', async () => {
     const generatedCalls: Array<{
-      cup: 'all' | 'kanto';
+      cup: 'all' | 'kanto' | 'spring';
       cp: 1500 | 2500 | 10000;
       speciesId: string;
       shields: number;
@@ -62,7 +62,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(12);
+    expect(generatedCalls).toHaveLength(15);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -87,6 +87,12 @@ describe('generateSimulations', () => {
       speciesId: 'bulbasaur',
       shields: 1,
     });
+    expect(generatedCalls).toContainEqual({
+      cup: 'spring',
+      cp: 1500,
+      speciesId: 'bulbasaur',
+      shields: 2,
+    });
 
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp1500', 'all', 'bulbasaur_1-1.csv'),
@@ -102,6 +108,10 @@ describe('generateSimulations', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp1500', 'kanto', 'bulbasaur_1-1.csv'),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'simulations', 'cp1500', 'spring', 'bulbasaur_2-2.csv'),
       VALID_SIMULATION_CSV,
     );
   });

@@ -17,7 +17,7 @@ describe('rankings local sync', () => {
         (
           category: RankingCategory,
           leagueCp: number,
-          cup: 'all' | 'kanto' | undefined,
+          cup: 'all' | 'kanto' | 'spring' | undefined,
         ) => Promise<
           Array<{
             speciesId: string;
@@ -30,7 +30,7 @@ describe('rankings local sync', () => {
       >()
       .mockImplementation(async (category, leagueCp, cup) => {
         expect([1500, 2500, 10000]).toContain(leagueCp);
-        expect(cup === 'all' || cup === 'kanto').toBe(true);
+        expect(cup === 'all' || cup === 'kanto' || cup === 'spring').toBe(true);
         expect(categories).toContain(category);
 
         return [
@@ -124,8 +124,8 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(16);
-    expect(rankings).toHaveLength(16);
+    expect(readRankingJson).toHaveBeenCalledTimes(20);
+    expect(rankings).toHaveLength(20);
     expect(rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
@@ -141,7 +141,7 @@ describe('rankings local sync', () => {
       'Charged Move Cost': 10000,
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(16);
+    expect(writeFile).toHaveBeenCalledTimes(20);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -156,6 +156,10 @@ describe('rankings local sync', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'kanto', 'closers_rankings.csv'),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'rankings', 'cp1500', 'spring', 'overall_rankings.csv'),
       expect.stringContaining('Bulbasaur'),
     );
   });
