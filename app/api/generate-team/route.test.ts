@@ -75,6 +75,7 @@ describe('POST /api/generate-team format validation', () => {
     ['ultra-league'],
     ['master-league'],
     ['kanto-cup'],
+    ['spring-cup'],
   ] as const)(
     'passes %s formatId to team generation for end-to-end requests',
     async (formatId) => {

@@ -11,7 +11,7 @@ const GAMEMASTER_RELATIVE_PATHS = {
 } as const;
 
 const RANKING_CATEGORIES = ['overall', 'leads', 'switches', 'closers'] as const;
-const RANKING_CUPS = ['all', 'kanto'] as const;
+const RANKING_CUPS = ['all', 'kanto', 'spring'] as const;
 
 export type RankingCategory = (typeof RANKING_CATEGORIES)[number];
 export type RankingCup = (typeof RANKING_CUPS)[number];

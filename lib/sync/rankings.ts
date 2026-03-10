@@ -64,7 +64,7 @@ interface RankingSyncDependencies {
     readRankingJson(
       category: RankingCategory,
       leagueCp: number,
-      cup?: 'all' | 'kanto',
+      cup?: 'all' | 'kanto' | 'spring',
     ): Promise<unknown>;
   };
   readFile: (filePath: string) => Promise<string>;

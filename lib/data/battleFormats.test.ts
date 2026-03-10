@@ -14,6 +14,7 @@ describe('battle format catalog', () => {
       'Ultra League',
       'Master League',
       'Kanto Cup',
+      'Spring Cup',
     ]);
   });
 
@@ -26,6 +27,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
     expect(isBattleFormatId('kanto-cup')).toBe(true);
+    expect(isBattleFormatId('spring-cup')).toBe(true);
   });
 
   it('rejects unknown format ids', () => {
@@ -45,6 +47,13 @@ describe('battle format catalog', () => {
       id: 'kanto-cup',
       label: 'Kanto Cup',
       cup: 'kanto',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('spring-cup')).toEqual({
+      id: 'spring-cup',
+      label: 'Spring Cup',
+      cup: 'spring',
       cp: 1500,
     });
 

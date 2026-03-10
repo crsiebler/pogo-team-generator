@@ -1,7 +1,7 @@
 export interface BattleFormat {
   id: BattleFormatId;
   label: string;
-  cup: 'all' | 'kanto';
+  cup: 'all' | 'kanto' | 'spring';
   cp: 1500 | 2500 | 10000;
 }
 
@@ -12,7 +12,8 @@ export type BattleFormatId =
   | 'great-league'
   | 'ultra-league'
   | 'master-league'
-  | 'kanto-cup';
+  | 'kanto-cup'
+  | 'spring-cup';
 
 /**
  * Catalog of supported battle formats.
@@ -40,6 +41,12 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     id: 'kanto-cup',
     label: 'Kanto Cup',
     cup: 'kanto',
+    cp: 1500,
+  },
+  {
+    id: 'spring-cup',
+    label: 'Spring Cup',
+    cup: 'spring',
     cp: 1500,
   },
 ];
