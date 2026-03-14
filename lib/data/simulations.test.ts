@@ -21,6 +21,18 @@ describe('format-aware simulation loading', () => {
     expect(() => ensureSimulationDataAvailable('great-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('ultra-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('master-league')).not.toThrow();
+    expect(() =>
+      ensureSimulationDataAvailable('battle-frontier-bayou-cup'),
+    ).not.toThrow();
+    expect(() =>
+      ensureSimulationDataAvailable('battle-frontier-brujeria-cup'),
+    ).not.toThrow();
+    expect(() =>
+      ensureSimulationDataAvailable('battle-frontier-ul-retro'),
+    ).not.toThrow();
+    expect(() =>
+      ensureSimulationDataAvailable('battle-frontier-master'),
+    ).not.toThrow();
     expect(() => ensureSimulationDataAvailable('kanto-cup')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('spring-cup')).not.toThrow();
   });

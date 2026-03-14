@@ -74,6 +74,10 @@ describe('POST /api/generate-team format validation', () => {
     ['great-league'],
     ['ultra-league'],
     ['master-league'],
+    ['battle-frontier-bayou-cup'],
+    ['battle-frontier-brujeria-cup'],
+    ['battle-frontier-ul-retro'],
+    ['battle-frontier-master'],
     ['kanto-cup'],
     ['spring-cup'],
   ] as const)(
