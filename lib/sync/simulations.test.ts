@@ -12,7 +12,14 @@ function isOverallRankingPath(filePath: string): boolean {
 describe('generateSimulations', () => {
   it('generates simulations for every supported format and scenario', async () => {
     const generatedCalls: Array<{
-      cup: 'all' | 'kanto' | 'spring';
+      cup:
+        | 'all'
+        | 'kanto'
+        | 'spring'
+        | 'bayou'
+        | 'brujeria'
+        | 'bfretro'
+        | 'battlefrontiermaster';
       cp: 1500 | 2500 | 10000;
       speciesId: string;
       shields: number;
@@ -62,7 +69,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(15);
+    expect(generatedCalls).toHaveLength(27);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -93,6 +100,30 @@ describe('generateSimulations', () => {
       speciesId: 'bulbasaur',
       shields: 2,
     });
+    expect(generatedCalls).toContainEqual({
+      cup: 'bayou',
+      cp: 1500,
+      speciesId: 'bulbasaur',
+      shields: 1,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'brujeria',
+      cp: 1500,
+      speciesId: 'bulbasaur',
+      shields: 0,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'bfretro',
+      cp: 2500,
+      speciesId: 'bulbasaur',
+      shields: 2,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'battlefrontiermaster',
+      cp: 10000,
+      speciesId: 'bulbasaur',
+      shields: 1,
+    });
 
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp1500', 'all', 'bulbasaur_1-1.csv'),
@@ -112,6 +143,40 @@ describe('generateSimulations', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp1500', 'spring', 'bulbasaur_2-2.csv'),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'simulations', 'cp1500', 'bayou', 'bulbasaur_1-1.csv'),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp1500',
+        'brujeria',
+        'bulbasaur_0-0.csv',
+      ),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp2500',
+        'bfretro',
+        'bulbasaur_2-2.csv',
+      ),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp10000',
+        'battlefrontiermaster',
+        'bulbasaur_1-1.csv',
+      ),
       VALID_SIMULATION_CSV,
     );
   });

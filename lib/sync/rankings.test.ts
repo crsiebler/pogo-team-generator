@@ -17,7 +17,15 @@ describe('rankings local sync', () => {
         (
           category: RankingCategory,
           leagueCp: number,
-          cup: 'all' | 'kanto' | 'spring' | undefined,
+          cup:
+            | 'all'
+            | 'kanto'
+            | 'spring'
+            | 'bayou'
+            | 'brujeria'
+            | 'bfretro'
+            | 'battlefrontiermaster'
+            | undefined,
         ) => Promise<
           Array<{
             speciesId: string;
@@ -30,7 +38,15 @@ describe('rankings local sync', () => {
       >()
       .mockImplementation(async (category, leagueCp, cup) => {
         expect([1500, 2500, 10000]).toContain(leagueCp);
-        expect(cup === 'all' || cup === 'kanto' || cup === 'spring').toBe(true);
+        expect(
+          cup === 'all' ||
+            cup === 'kanto' ||
+            cup === 'spring' ||
+            cup === 'bayou' ||
+            cup === 'brujeria' ||
+            cup === 'bfretro' ||
+            cup === 'battlefrontiermaster',
+        ).toBe(true);
         expect(categories).toContain(category);
 
         return [
@@ -124,8 +140,8 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(20);
-    expect(rankings).toHaveLength(20);
+    expect(readRankingJson).toHaveBeenCalledTimes(36);
+    expect(rankings).toHaveLength(36);
     expect(rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
@@ -141,7 +157,7 @@ describe('rankings local sync', () => {
       'Charged Move Cost': 10000,
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(20);
+    expect(writeFile).toHaveBeenCalledTimes(36);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -160,6 +176,34 @@ describe('rankings local sync', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'spring', 'overall_rankings.csv'),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'rankings', 'cp1500', 'bayou', 'overall_rankings.csv'),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'rankings', 'cp1500', 'brujeria', 'leads_rankings.csv'),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'rankings',
+        'cp2500',
+        'bfretro',
+        'switches_rankings.csv',
+      ),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'rankings',
+        'cp10000',
+        'battlefrontiermaster',
+        'closers_rankings.csv',
+      ),
       expect.stringContaining('Bulbasaur'),
     );
   });
@@ -239,6 +283,110 @@ describe('rankings local sync', () => {
         },
       ),
     ).rejects.toThrowError(/Missing move 'SLUDGE_BOMB'/);
+  });
+
+  it('skips ranking entries missing from gamemaster pokemon data', async () => {
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+
+    const rankings = await scrapeRankings(
+      { sourcePath: '/source/pvpoke' },
+      {
+        createAdapter: () => ({
+          readRankingJson: async () => [
+            {
+              speciesId: 'bulbasaur',
+              speciesName: 'Bulbasaur',
+              score: 90.5,
+              moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
+              stats: { atk: 102.1, def: 99.5, hp: 122 },
+            },
+            {
+              speciesId: 'kingler_shadow',
+              speciesName: 'Kingler (Shadow)',
+              score: 88.4,
+              moveset: ['BUBBLE', 'CRABHAMMER', 'X_SCISSOR'],
+              stats: { atk: 100, def: 100, hp: 100 },
+            },
+          ],
+        }),
+        readFile: async (filePath: string) => {
+          if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
+            return JSON.stringify([
+              {
+                dex: 1,
+                speciesName: 'Bulbasaur',
+                speciesId: 'bulbasaur',
+                baseStats: { atk: 118, def: 111, hp: 128 },
+                types: ['grass', 'poison'],
+                fastMoves: ['VINE_WHIP'],
+                chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+                defaultIVs: {
+                  cp500: [17.5, 3, 14, 12],
+                  cp1500: [50, 15, 15, 15],
+                  cp2500: [50, 15, 15, 15],
+                },
+                buddyDistance: 3,
+                thirdMoveCost: 10000,
+                released: true,
+                family: { id: 'FAMILY_BULBASAUR' },
+              },
+            ]);
+          }
+
+          if (filePath.endsWith(path.join('data', 'moves.json'))) {
+            return JSON.stringify([
+              {
+                moveId: 'VINE_WHIP',
+                name: 'Vine Whip',
+                abbreviation: 'VW',
+                type: 'grass',
+                power: 5,
+                energy: 0,
+                energyGain: 8,
+                cooldown: 500,
+                archetype: 'Fast',
+                turns: 2,
+              },
+              {
+                moveId: 'POWER_WHIP',
+                name: 'Power Whip',
+                abbreviation: 'PW',
+                type: 'grass',
+                power: 90,
+                energy: 50,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
+              {
+                moveId: 'SLUDGE_BOMB',
+                name: 'Sludge Bomb',
+                abbreviation: 'SB',
+                type: 'poison',
+                power: 80,
+                energy: 50,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
+            ]);
+          }
+
+          throw new Error(`unexpected file read: ${filePath}`);
+        },
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile,
+      },
+    );
+
+    expect(rankings).toHaveLength(36);
+    expect(rankings.every((entry) => entry.Pokemon === 'Bulbasaur')).toBe(true);
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'rankings', 'cp1500', 'bayou', 'overall_rankings.csv'),
+      expect.not.stringContaining('Kingler (Shadow)'),
+    );
   });
 
   it('normalizes non-choosable battle forms to choosable forms', async () => {

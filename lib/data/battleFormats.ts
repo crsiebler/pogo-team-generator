@@ -1,7 +1,14 @@
 export interface BattleFormat {
   id: BattleFormatId;
   label: string;
-  cup: 'all' | 'kanto' | 'spring';
+  cup:
+    | 'all'
+    | 'kanto'
+    | 'spring'
+    | 'bayou'
+    | 'brujeria'
+    | 'bfretro'
+    | 'battlefrontiermaster';
   cp: 1500 | 2500 | 10000;
 }
 
@@ -12,6 +19,10 @@ export type BattleFormatId =
   | 'great-league'
   | 'ultra-league'
   | 'master-league'
+  | 'battle-frontier-bayou-cup'
+  | 'battle-frontier-brujeria-cup'
+  | 'battle-frontier-ul-retro'
+  | 'battle-frontier-master'
   | 'kanto-cup'
   | 'spring-cup';
 
@@ -35,6 +46,30 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     id: 'master-league',
     label: 'Master League',
     cup: 'all',
+    cp: 10000,
+  },
+  {
+    id: 'battle-frontier-bayou-cup',
+    label: 'Battle Frontier (Bayou Cup)',
+    cup: 'bayou',
+    cp: 1500,
+  },
+  {
+    id: 'battle-frontier-brujeria-cup',
+    label: 'Battle Frontier (Brujeria Cup)',
+    cup: 'brujeria',
+    cp: 1500,
+  },
+  {
+    id: 'battle-frontier-ul-retro',
+    label: 'Battle Frontier (UL Retro)',
+    cup: 'bfretro',
+    cp: 2500,
+  },
+  {
+    id: 'battle-frontier-master',
+    label: 'Battle Frontier (Master)',
+    cup: 'battlefrontiermaster',
     cp: 10000,
   },
   {

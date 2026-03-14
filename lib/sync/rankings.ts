@@ -64,7 +64,14 @@ interface RankingSyncDependencies {
     readRankingJson(
       category: RankingCategory,
       leagueCp: number,
-      cup?: 'all' | 'kanto' | 'spring',
+      cup?:
+        | 'all'
+        | 'kanto'
+        | 'spring'
+        | 'bayou'
+        | 'brujeria'
+        | 'bfretro'
+        | 'battlefrontiermaster',
     ): Promise<unknown>;
   };
   readFile: (filePath: string) => Promise<string>;
@@ -282,6 +289,16 @@ function convertEntriesToCsv(entries: RankingEntry[]): string {
 }
 
 /**
+ * Check whether a rankings conversion failure should be treated as skippable.
+ */
+function isSkippableMissingPokemonError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message.startsWith('[sync-rankings] Missing pokemon ')
+  );
+}
+
+/**
  * Sync rankings CSV data from local PvPoke ranking JSON files.
  */
 export async function scrapeRankings(
@@ -345,14 +362,28 @@ export async function scrapeRankings(
         const normalizedRankings =
           normalizeRankingSourceEntries(sourceRankings);
 
-        const convertedEntries = normalizedRankings.map((ranking) => {
-          return convertRankingEntryToCsvRow(
-            ranking,
-            pokemonBySpeciesId,
-            moveById,
-            format.cp,
-          );
-        });
+        const convertedEntries: RankingEntry[] = [];
+
+        for (const ranking of normalizedRankings) {
+          try {
+            convertedEntries.push(
+              convertRankingEntryToCsvRow(
+                ranking,
+                pokemonBySpeciesId,
+                moveById,
+                format.cp,
+              ),
+            );
+          } catch (error) {
+            if (!isSkippableMissingPokemonError(error)) {
+              throw error;
+            }
+
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            console.warn(`${errorMessage}; skipping ranking entry`);
+          }
+        }
 
         const csvText = convertEntriesToCsv(convertedEntries);
         const validation = validateRankingsCsv(csvText);

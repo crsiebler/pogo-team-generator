@@ -13,6 +13,10 @@ describe('battle format catalog', () => {
       'Great League',
       'Ultra League',
       'Master League',
+      'Battle Frontier (Bayou Cup)',
+      'Battle Frontier (Brujeria Cup)',
+      'Battle Frontier (UL Retro)',
+      'Battle Frontier (Master)',
       'Kanto Cup',
       'Spring Cup',
     ]);
@@ -26,6 +30,10 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('great-league')).toBe(true);
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
+    expect(isBattleFormatId('battle-frontier-bayou-cup')).toBe(true);
+    expect(isBattleFormatId('battle-frontier-brujeria-cup')).toBe(true);
+    expect(isBattleFormatId('battle-frontier-ul-retro')).toBe(true);
+    expect(isBattleFormatId('battle-frontier-master')).toBe(true);
     expect(isBattleFormatId('kanto-cup')).toBe(true);
     expect(isBattleFormatId('spring-cup')).toBe(true);
   });
@@ -48,6 +56,34 @@ describe('battle format catalog', () => {
       label: 'Kanto Cup',
       cup: 'kanto',
       cp: 1500,
+    });
+
+    expect(getBattleFormatById('battle-frontier-bayou-cup')).toEqual({
+      id: 'battle-frontier-bayou-cup',
+      label: 'Battle Frontier (Bayou Cup)',
+      cup: 'bayou',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('battle-frontier-brujeria-cup')).toEqual({
+      id: 'battle-frontier-brujeria-cup',
+      label: 'Battle Frontier (Brujeria Cup)',
+      cup: 'brujeria',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('battle-frontier-ul-retro')).toEqual({
+      id: 'battle-frontier-ul-retro',
+      label: 'Battle Frontier (UL Retro)',
+      cup: 'bfretro',
+      cp: 2500,
+    });
+
+    expect(getBattleFormatById('battle-frontier-master')).toEqual({
+      id: 'battle-frontier-master',
+      label: 'Battle Frontier (Master)',
+      cup: 'battlefrontiermaster',
+      cp: 10000,
     });
 
     expect(getBattleFormatById('spring-cup')).toEqual({
