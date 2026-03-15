@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 import { buildCoreBreakerAnalysis } from '@/lib/analysis/coreBreakerAnalysis';
+import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContributionAnalysis';
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
@@ -48,9 +49,15 @@ vi.mock('@/lib/analysis/shieldScenarioAnalysis', () => ({
   buildShieldScenarioAnalysis: vi.fn(),
 }));
 
+vi.mock('@/lib/analysis/pokemonContributionAnalysis', () => ({
+  buildPokemonContributionAnalysis: vi.fn(),
+}));
+
 describe('POST /api/generate-team', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     vi.mocked(speciesNameToId).mockImplementation((name: string) =>
       name.toLowerCase().replace(/\s+/g, '-'),
@@ -68,6 +75,7 @@ describe('POST /api/generate-team', () => {
       evaluatedCount: 50,
       entries: [
         {
+          speciesId: 'feraligatr',
           pokemon: 'Feraligatr',
           rank: 1,
           teamAnswers: 2,
@@ -102,6 +110,19 @@ describe('POST /api/generate-team', () => {
         evaluatedThreats: 38,
         coverageRate: 0.3947,
       },
+    });
+    vi.mocked(buildPokemonContributionAnalysis).mockReturnValue({
+      entries: [
+        {
+          speciesId: 'lanturn',
+          pokemon: 'Lanturn',
+          threatsHandled: 12,
+          coverageAdded: 3,
+          highSeverityRelief: 4,
+          fragilityRiskTier: 'moderate',
+          rationale: 'Test rationale.',
+        },
+      ],
     });
   });
 
@@ -235,6 +256,13 @@ describe('POST /api/generate-team', () => {
             coverageRate: number;
           };
         };
+        pokemonContributions: {
+          entries: Array<{
+            speciesId: string;
+            pokemon: string;
+            threatsHandled: number;
+          }>;
+        };
       };
     };
 
@@ -249,6 +277,7 @@ describe('POST /api/generate-team', () => {
         evaluatedCount: 50,
         entries: [
           {
+            speciesId: 'feraligatr',
             pokemon: 'Feraligatr',
             rank: 1,
             teamAnswers: 2,
@@ -284,16 +313,25 @@ describe('POST /api/generate-team', () => {
           coverageRate: 0.3947,
         },
       },
+      pokemonContributions: {
+        entries: [
+          {
+            speciesId: 'lanturn',
+            pokemon: 'Lanturn',
+            threatsHandled: 12,
+          },
+        ],
+      },
     });
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
-    expect(buildThreatAnalysis).toHaveBeenCalledWith([
-      'lanturn',
-      'dewgong',
-      'annihilape',
-    ]);
+    expect(buildThreatAnalysis).toHaveBeenCalledWith(
+      ['lanturn', 'dewgong', 'annihilape'],
+      'great-league',
+    );
     expect(buildCoreBreakerAnalysis).toHaveBeenCalledWith(3, [
       {
+        speciesId: 'feraligatr',
         pokemon: 'Feraligatr',
         rank: 1,
         teamAnswers: 2,
@@ -304,12 +342,27 @@ describe('POST /api/generate-team', () => {
       ['lanturn', 'dewgong', 'annihilape'],
       [
         {
+          speciesId: 'feraligatr',
           pokemon: 'Feraligatr',
           rank: 1,
           teamAnswers: 2,
           severityTier: 'high',
         },
       ],
+      'great-league',
+    );
+    expect(buildPokemonContributionAnalysis).toHaveBeenCalledWith(
+      ['lanturn', 'dewgong', 'annihilape'],
+      [
+        {
+          speciesId: 'feraligatr',
+          pokemon: 'Feraligatr',
+          rank: 1,
+          teamAnswers: 2,
+          severityTier: 'high',
+        },
+      ],
+      'great-league',
     );
   });
 

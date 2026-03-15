@@ -1,4 +1,4 @@
-import { speciesIdToRankingName } from '@/lib/data/rankings';
+import type { BattleFormatId } from '@/lib/data/battleFormats';
 import { getShieldScenarioMatchupResult } from '@/lib/data/simulations';
 import type { ShieldScenarioAnalysis, ThreatAnalysisEntry } from '@/lib/types';
 
@@ -10,20 +10,20 @@ const SHIELD_SCENARIOS = [0, 1, 2] as const;
 export function buildShieldScenarioAnalysis(
   team: string[],
   threats: ThreatAnalysisEntry[],
+  formatId?: BattleFormatId,
 ): ShieldScenarioAnalysis {
-  const teamNames = team.map((speciesId) => speciesIdToRankingName(speciesId));
-
   const summaries = SHIELD_SCENARIOS.map((shieldCount) => {
     let evaluatedThreats = 0;
     let coveredThreats = 0;
 
     for (const threat of threats) {
-      const ratings = teamNames
+      const ratings = team
         .map((teamMember) =>
           getShieldScenarioMatchupResult(
             teamMember,
-            threat.pokemon,
+            threat.speciesId,
             shieldCount,
+            formatId,
           ),
         )
         .filter((rating): rating is number => rating !== null);

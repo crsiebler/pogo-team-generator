@@ -5,18 +5,21 @@ describe('buildCoreBreakerAnalysis', () => {
   it('classifies team size 3 core breakers when answers are 1 or less', () => {
     const analysis = buildCoreBreakerAnalysis(3, [
       {
+        speciesId: 'threat-rank-4',
         pokemon: 'Threat Rank 4',
         rank: 4,
         teamAnswers: 1,
         severityTier: 'high',
       },
       {
+        speciesId: 'threat-rank-2',
         pokemon: 'Threat Rank 2',
         rank: 2,
         teamAnswers: 0,
         severityTier: 'critical',
       },
       {
+        speciesId: 'threat-rank-1',
         pokemon: 'Threat Rank 1',
         rank: 1,
         teamAnswers: 2,
@@ -44,24 +47,28 @@ describe('buildCoreBreakerAnalysis', () => {
   it('classifies team size 6 core breakers when answers are 2 or less', () => {
     const analysis = buildCoreBreakerAnalysis(6, [
       {
+        speciesId: 'threat-rank-9',
         pokemon: 'Threat Rank 9',
         rank: 9,
         teamAnswers: 3,
         severityTier: 'low',
       },
       {
+        speciesId: 'threat-rank-12',
         pokemon: 'Threat Rank 12',
         rank: 12,
         teamAnswers: 2,
         severityTier: 'medium',
       },
       {
+        speciesId: 'threat-rank-10',
         pokemon: 'Threat Rank 10',
         rank: 10,
         teamAnswers: 1,
         severityTier: 'critical',
       },
       {
+        speciesId: 'threat-rank-15',
         pokemon: 'Threat Rank 15',
         rank: 15,
         teamAnswers: 0,

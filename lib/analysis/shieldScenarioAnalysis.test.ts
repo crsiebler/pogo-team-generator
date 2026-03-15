@@ -15,18 +15,21 @@ vi.mock('@/lib/data/simulations', () => ({
     pokemon: string,
     opponent: string,
     shields: 0 | 1 | 2,
-  ) => getShieldScenarioMatchupResultMock(pokemon, opponent, shields),
+    formatId?: string,
+  ) => getShieldScenarioMatchupResultMock(pokemon, opponent, shields, formatId),
 }));
 
 describe('buildShieldScenarioAnalysis', () => {
   const threats: ThreatAnalysisEntry[] = [
     {
+      speciesId: 'threat-1',
       pokemon: 'Threat 1',
       rank: 1,
       teamAnswers: 2,
       severityTier: 'high',
     },
     {
+      speciesId: 'threat-2',
       pokemon: 'Threat 2',
       rank: 2,
       teamAnswers: 1,
@@ -44,23 +47,23 @@ describe('buildShieldScenarioAnalysis', () => {
   it('returns 0-0, 1-1, and 2-2 scenario statistics', () => {
     getShieldScenarioMatchupResultMock.mockImplementation(
       (pokemon: string, opponent: string, shields: 0 | 1 | 2) => {
-        if (shields === 0 && pokemon === 'LANTURN' && opponent === 'Threat 1') {
+        if (shields === 0 && pokemon === 'lanturn' && opponent === 'threat-1') {
           return 620;
         }
 
-        if (shields === 1 && opponent === 'Threat 1') {
+        if (shields === 1 && opponent === 'threat-1') {
           return 480;
         }
 
-        if (shields === 1 && opponent === 'Threat 2') {
+        if (shields === 1 && opponent === 'threat-2') {
           return 450;
         }
 
-        if (shields === 2 && pokemon === 'LANTURN' && opponent === 'Threat 1') {
+        if (shields === 2 && pokemon === 'lanturn' && opponent === 'threat-1') {
           return 420;
         }
 
-        if (shields === 2 && pokemon === 'DEWGONG' && opponent === 'Threat 2') {
+        if (shields === 2 && pokemon === 'dewgong' && opponent === 'threat-2') {
           return 700;
         }
 
@@ -71,6 +74,7 @@ describe('buildShieldScenarioAnalysis', () => {
     const analysis = buildShieldScenarioAnalysis(
       ['lanturn', 'dewgong'],
       threats,
+      'great-league',
     );
 
     expect(analysis).toEqual({
@@ -98,6 +102,7 @@ describe('buildShieldScenarioAnalysis', () => {
     const analysis = buildShieldScenarioAnalysis(
       ['lanturn', 'dewgong'],
       threats,
+      'great-league',
     );
 
     expect(analysis).toEqual({
@@ -117,5 +122,18 @@ describe('buildShieldScenarioAnalysis', () => {
         coverageRate: 0,
       },
     });
+  });
+
+  it('threads formatId into shield-scenario lookups', () => {
+    getShieldScenarioMatchupResultMock.mockReturnValue(null);
+
+    buildShieldScenarioAnalysis(['lanturn'], threats, 'spring-cup');
+
+    expect(getShieldScenarioMatchupResultMock).toHaveBeenCalledWith(
+      'lanturn',
+      'threat-1',
+      0,
+      'spring-cup',
+    );
   });
 });

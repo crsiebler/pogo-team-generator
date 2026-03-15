@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildCoreBreakerAnalysis } from '@/lib/analysis/coreBreakerAnalysis';
+import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContributionAnalysis';
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import {
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
       algorithm: selectedAlgorithm,
     });
 
-    const threats = buildThreatAnalysis(result.team);
+    const threats = buildThreatAnalysis(result.team, resolvedFormatId);
 
     const analysis: GenerationAnalysis = {
       mode,
@@ -145,6 +146,12 @@ export async function POST(request: NextRequest) {
       shieldScenarios: buildShieldScenarioAnalysis(
         result.team,
         threats.entries,
+        resolvedFormatId,
+      ),
+      pokemonContributions: buildPokemonContributionAnalysis(
+        result.team,
+        threats.entries,
+        resolvedFormatId,
       ),
     };
 

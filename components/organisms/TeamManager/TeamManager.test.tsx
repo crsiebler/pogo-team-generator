@@ -12,6 +12,11 @@ interface MockTeamConfigPanelProps {
   onGenerate: () => void;
 }
 
+interface MockAnalysisPanelProps {
+  fitness: number | null;
+  analysis: unknown;
+}
+
 vi.mock('@/components/organisms', () => ({
   TeamConfigPanel: ({
     selectedFormatId,
@@ -39,6 +44,11 @@ vi.mock('@/components/organisms', () => ({
     </div>
   ),
   ResultsPanel: () => <div>Results</div>,
+  AnalysisPanel: ({ fitness, analysis }: MockAnalysisPanelProps) => (
+    <div>
+      Analysis {fitness ?? 'none'} {analysis ? 'loaded' : 'missing'}
+    </div>
+  ),
 }));
 
 vi.mock('@/lib/hooks/useToast', () => ({
@@ -59,6 +69,7 @@ describe('TeamManager', () => {
   beforeEach(() => {
     showToastMock.mockClear();
     vi.clearAllMocks();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       if (typeof input === 'string' && input.startsWith('/api/pokemon-list')) {
@@ -67,7 +78,11 @@ describe('TeamManager', () => {
 
       return Promise.resolve({
         ok: true,
-        json: vi.fn().mockResolvedValue({ team: ['Azumarill'] }),
+        json: vi.fn().mockResolvedValue({
+          team: ['Azumarill'],
+          fitness: 0.75,
+          analysis: { generatedAt: '2026-03-15T00:00:00.000Z' },
+        }),
       });
     });
 
@@ -115,9 +130,11 @@ describe('TeamManager', () => {
 
     fireEvent.click(screen.getByText('Set Ultra League'));
 
-    expect(
-      screen.getByText('Selected Format: ultra-league'),
-    ).toBeInTheDocument();
+    return waitFor(() => {
+      expect(
+        screen.getByText('Selected Format: ultra-league'),
+      ).toBeInTheDocument();
+    });
   });
 
   it('sends selected format id in generate-team request payload', async () => {
@@ -210,5 +227,24 @@ describe('TeamManager', () => {
       '/api/generate-team',
       expect.anything(),
     );
+  });
+
+  it('passes fitness and analysis response data to AnalysisPanel', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Analysis 0.75 loaded')).toBeInTheDocument();
+    });
   });
 });

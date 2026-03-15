@@ -1,4 +1,8 @@
-import { getTopPokemon, speciesIdToRankingName } from '@/lib/data/rankings';
+import type { BattleFormatId } from '@/lib/data/battleFormats';
+import {
+  getRoleBasedThreatSpeciesIds,
+  speciesIdToRankingName,
+} from '@/lib/data/rankings';
 import { winsMatchup } from '@/lib/data/simulations';
 import type {
   ThreatAnalysis,
@@ -6,31 +10,36 @@ import type {
   ThreatSeverityTier,
 } from '@/lib/types';
 
-const TOP_THREAT_COUNT = 50;
+const THREATS_PER_ROLE = 100;
 
 /**
  * Build ranked threat analysis for a generated team.
  */
-export function buildThreatAnalysis(team: string[]): ThreatAnalysis {
-  const teamNames = team.map((speciesId) => speciesIdToRankingName(speciesId));
-  const topThreats = getTopPokemon('overall', TOP_THREAT_COUNT).slice(
-    0,
-    TOP_THREAT_COUNT,
+export function buildThreatAnalysis(
+  team: string[],
+  formatId?: BattleFormatId,
+): ThreatAnalysis {
+  const threatSpeciesIds = getRoleBasedThreatSpeciesIds(
+    THREATS_PER_ROLE,
+    formatId,
   );
 
-  const entries: ThreatAnalysisEntry[] = topThreats.map((threat, index) => {
-    const rank = index + 1;
-    const teamAnswers = teamNames.filter((teamMember) =>
-      winsMatchup(teamMember, threat.Pokemon),
-    ).length;
+  const entries: ThreatAnalysisEntry[] = threatSpeciesIds.map(
+    (threatSpeciesId, index) => {
+      const rank = index + 1;
+      const teamAnswers = team.filter((teamMember) =>
+        winsMatchup(teamMember, threatSpeciesId, formatId),
+      ).length;
 
-    return {
-      pokemon: threat.Pokemon,
-      rank,
-      teamAnswers,
-      severityTier: calculateThreatSeverity(rank, teamAnswers),
-    };
-  });
+      return {
+        speciesId: threatSpeciesId,
+        pokemon: speciesIdToRankingName(threatSpeciesId),
+        rank,
+        teamAnswers,
+        severityTier: calculateThreatSeverity(rank, teamAnswers),
+      };
+    },
+  );
 
   return {
     evaluatedCount: entries.length,

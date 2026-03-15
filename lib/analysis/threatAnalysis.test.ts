@@ -5,18 +5,24 @@ import {
 } from '@/lib/analysis/threatAnalysis';
 
 const getTopPokemonMock = vi.fn();
+const getRoleBasedThreatSpeciesIdsMock = vi.fn();
 const speciesIdToRankingNameMock = vi.fn();
+const speciesIdToSpeciesNameMock = vi.fn();
 const winsMatchupMock = vi.fn();
 
 vi.mock('@/lib/data/rankings', () => ({
   getTopPokemon: (...args: unknown[]) => getTopPokemonMock(...args),
+  getRoleBasedThreatSpeciesIds: (...args: unknown[]) =>
+    getRoleBasedThreatSpeciesIdsMock(...args),
   speciesIdToRankingName: (speciesId: string) =>
     speciesIdToRankingNameMock(speciesId),
+  speciesIdToSpeciesName: (speciesId: string) =>
+    speciesIdToSpeciesNameMock(speciesId),
 }));
 
 vi.mock('@/lib/data/simulations', () => ({
-  winsMatchup: (pokemon: string, opponent: string) =>
-    winsMatchupMock(pokemon, opponent),
+  winsMatchup: (pokemon: string, opponent: string, formatId?: string) =>
+    winsMatchupMock(pokemon, opponent, formatId),
 }));
 
 describe('buildThreatAnalysis', () => {
@@ -25,39 +31,60 @@ describe('buildThreatAnalysis', () => {
     speciesIdToRankingNameMock.mockImplementation((speciesId: string) =>
       speciesId.toUpperCase(),
     );
+    speciesIdToSpeciesNameMock.mockImplementation((speciesId: string) =>
+      speciesId.toUpperCase(),
+    );
   });
 
-  it('evaluates exactly the top 50 ranked threats', () => {
-    const rankedThreats = Array.from({ length: 60 }, (_, index) => ({
-      Pokemon: `Threat ${index + 1}`,
-    }));
-
-    getTopPokemonMock.mockReturnValue(rankedThreats);
+  it('evaluates the role-based GA threat pool for the selected format', () => {
+    getRoleBasedThreatSpeciesIdsMock.mockReturnValue([
+      'threat-1',
+      'threat-2',
+      'threat-3',
+    ]);
     winsMatchupMock.mockReturnValue(false);
 
-    const analysis = buildThreatAnalysis(['lanturn', 'dewgong', 'annihilape']);
+    const analysis = buildThreatAnalysis(
+      ['lanturn', 'dewgong', 'annihilape'],
+      'great-league',
+    );
 
-    expect(getTopPokemonMock).toHaveBeenCalledWith('overall', 50);
-    expect(analysis.evaluatedCount).toBe(50);
-    expect(analysis.entries).toHaveLength(50);
-    expect(analysis.entries[49].pokemon).toBe('Threat 50');
+    expect(getRoleBasedThreatSpeciesIdsMock).toHaveBeenCalledWith(
+      100,
+      'great-league',
+    );
+    expect(analysis.evaluatedCount).toBe(3);
+    expect(analysis.entries).toHaveLength(3);
+    expect(analysis.entries[0]).toMatchObject({
+      speciesId: 'threat-1',
+      pokemon: 'THREAT-1',
+    });
   });
 
   it('includes team answer count and severity tier per threat', () => {
-    getTopPokemonMock.mockReturnValue([{ Pokemon: 'Threat 1' }]);
+    getRoleBasedThreatSpeciesIdsMock.mockReturnValue(['threat-1']);
 
     winsMatchupMock.mockImplementation((pokemon: string) => {
-      return pokemon !== 'ANNIHILAPE';
+      return pokemon !== 'annihilape';
     });
 
-    const analysis = buildThreatAnalysis(['lanturn', 'dewgong', 'annihilape']);
+    const analysis = buildThreatAnalysis(
+      ['lanturn', 'dewgong', 'annihilape'],
+      'great-league',
+    );
 
     expect(analysis.entries[0]).toMatchObject({
-      pokemon: 'Threat 1',
+      speciesId: 'threat-1',
+      pokemon: 'THREAT-1',
       rank: 1,
       teamAnswers: 2,
       severityTier: 'high',
     });
+    expect(winsMatchupMock).toHaveBeenCalledWith(
+      'lanturn',
+      'threat-1',
+      'great-league',
+    );
   });
 });
 
