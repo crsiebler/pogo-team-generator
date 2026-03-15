@@ -245,7 +245,10 @@ function calculateMetaThreatScore(
  * Calculate energy breakpoint score (10% weight)
  * Evaluates move synergy and fast charging using OPTIMAL moves for team
  */
-function calculateEnergyScore(team: string[]): number {
+function calculateEnergyScore(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
   const teamPokemon = team
     .map((id) => getPokemonBySpeciesId(id))
     .filter(Boolean);
@@ -258,7 +261,7 @@ function calculateEnergyScore(team: string[]): number {
   for (const pokemon of teamPokemon) {
     if (!pokemon) continue;
 
-    const optimalMoves = getRecommendedMovesetForPokemon(pokemon);
+    const optimalMoves = getRecommendedMovesetForPokemon(pokemon, formatId);
     const chargedMoves = [
       optimalMoves.chargedMove1,
       optimalMoves.chargedMove2,
@@ -541,7 +544,10 @@ function calculateStatBalance(team: string[]): number {
  * Rewards Pokemon with STAB moves and coverage moves that hit their weaknesses
  * Penalizes mono-type movesets that get hard-walled
  */
-function calculateMoveCoverage(team: string[]): number {
+function calculateMoveCoverage(
+  team: string[],
+  formatId?: BattleFormatId,
+): number {
   const teamPokemon = team
     .map((id) => getPokemonBySpeciesId(id))
     .filter(Boolean);
@@ -574,7 +580,7 @@ function calculateMoveCoverage(team: string[]): number {
   for (const pokemon of teamPokemon) {
     if (!pokemon) continue;
 
-    const optimalMoves = getRecommendedMovesetForPokemon(pokemon);
+    const optimalMoves = getRecommendedMovesetForPokemon(pokemon, formatId);
     const chargedMoves = [
       optimalMoves.chargedMove1,
       optimalMoves.chargedMove2,
@@ -922,7 +928,7 @@ export function calculateFitness(
   const avgRanking = calculateRankingScore(team, formatId) * 0.21; // Reduced to make room for stat balance
   const strategyViability = calculateStrategyScore(team, mode) * 0.03;
   const metaThreatCoverage = calculateMetaThreatScore(team, formatId) * 0.02;
-  const energyBreakpoints = calculateEnergyScore(team) * 0.02;
+  const energyBreakpoints = calculateEnergyScore(team, formatId) * 0.02;
 
   // Type diversity bonus (penalize teams with too many of same type)
   const typeDiversity = calculateTypeDiversity(team) * 0.07;
@@ -931,7 +937,7 @@ export function calculateFitness(
   const typeSynergy = calculateTypeSynergy(team) * 0.08;
 
   // Move coverage (penalize mono-type movesets, reward diverse moves)
-  const moveCoverage = calculateMoveCoverage(team) * 0.08;
+  const moveCoverage = calculateMoveCoverage(team, formatId) * 0.08;
 
   // Stat balance (bulk vs attack distribution) - INCREASED for team survivability
   const statBalance = calculateStatBalance(team) * 0.15; // UP from 0.1

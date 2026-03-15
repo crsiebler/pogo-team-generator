@@ -11,6 +11,15 @@ import { BattleFormat, getBattleFormats } from '@/lib/data/battleFormats';
 
 interface RankingsCsvEntry {
   Pokemon: string;
+  'Fast Move': string;
+  'Charged Move 1': string;
+  'Charged Move 2': string;
+}
+
+interface RecommendedMoveIds {
+  fastMove: string;
+  chargedMove1: string;
+  chargedMove2: string | null;
 }
 
 interface PvpokeVmRuntime {
@@ -62,10 +71,47 @@ function parseRankingsCsv(csvText: string): RankingsCsvEntry[] {
 
     entries.push({
       Pokemon: entry.Pokemon,
+      'Fast Move': entry['Fast Move'],
+      'Charged Move 1': entry['Charged Move 1'],
+      'Charged Move 2': entry['Charged Move 2'],
     });
   }
 
   return entries;
+}
+
+/**
+ * Convert CSV move names to PvPoke move ids.
+ */
+function moveNameToMoveId(moveName: string): string {
+  const match = moveName.match(/^(.+?)\s*\((.+?)\)$/);
+
+  if (match) {
+    const baseId = match[1].trim().toUpperCase().replace(/\s+/g, '_');
+    const typeId = match[2].trim().toUpperCase().replace(/\s+/g, '_');
+    return `${baseId}_${typeId}`;
+  }
+
+  return moveName.trim().toUpperCase().replace(/\s+/g, '_');
+}
+
+/**
+ * Derive a selected Pokemon move override from ranking CSV data.
+ */
+function getRecommendedMoveIds(
+  ranking: RankingsCsvEntry,
+): RecommendedMoveIds | undefined {
+  if (!ranking['Fast Move'] || !ranking['Charged Move 1']) {
+    return undefined;
+  }
+
+  return {
+    fastMove: moveNameToMoveId(ranking['Fast Move']),
+    chargedMove1: moveNameToMoveId(ranking['Charged Move 1']),
+    chargedMove2: ranking['Charged Move 2']
+      ? moveNameToMoveId(ranking['Charged Move 2'])
+      : null,
+  };
 }
 
 /**
@@ -412,11 +458,12 @@ function getPvpokeVmRuntime(sourcePath: string): PvpokeVmRuntime {
 /**
  * Generate one simulation CSV via PvPoke TeamRanker engine logic.
  */
-function generateScenarioCsvFromEngine(
+export function generateScenarioCsvFromEngine(
   runtime: PvpokeVmRuntime,
   format: BattleFormat,
   speciesId: string,
   shields: number,
+  recommendedMoves?: RecommendedMoveIds,
 ): string {
   const rankingKey = `${format.cup}overall${format.cp}`;
   runtime.context.__speciesId = speciesId;
@@ -424,6 +471,11 @@ function generateScenarioCsvFromEngine(
   runtime.context.__leagueCp = format.cp;
   runtime.context.__cup = format.cup;
   runtime.context.__rankingKey = rankingKey;
+  runtime.context.__selectedFastMove = recommendedMoves?.fastMove ?? null;
+  runtime.context.__selectedChargedMove1 =
+    recommendedMoves?.chargedMove1 ?? null;
+  runtime.context.__selectedChargedMove2 =
+    recommendedMoves?.chargedMove2 ?? null;
 
   const script = new vm.Script(
     `(() => {
@@ -455,6 +507,20 @@ function generateScenarioCsvFromEngine(
       const selectedPokemon = new Pokemon(globalThis.__speciesId, 0, battle);
       selectedPokemon.initialize(globalThis.__leagueCp);
       selectedPokemon.selectRecommendedMoveset('overall');
+
+      if (globalThis.__selectedFastMove) {
+        selectedPokemon.selectMove('fast', globalThis.__selectedFastMove);
+      }
+
+      if (globalThis.__selectedChargedMove1) {
+        selectedPokemon.selectMove('charged', globalThis.__selectedChargedMove1, 0);
+      }
+
+      if (globalThis.__selectedChargedMove2) {
+        selectedPokemon.selectMove('charged', globalThis.__selectedChargedMove2, 1);
+      }
+
+      selectedPokemon.resetMoves();
 
       const result = ranker.rank(
         [selectedPokemon],
@@ -488,6 +554,7 @@ interface SimulationSyncDependencies {
     format: BattleFormat,
     speciesId: string,
     shields: number,
+    recommendedMoves?: RecommendedMoveIds,
   ) => string;
 }
 
@@ -506,7 +573,15 @@ const defaultDependencies: SimulationSyncDependencies = {
     format: BattleFormat,
     speciesId: string,
     shields: number,
-  ) => generateScenarioCsvFromEngine(runtime, format, speciesId, shields),
+    recommendedMoves?: RecommendedMoveIds,
+  ) =>
+    generateScenarioCsvFromEngine(
+      runtime,
+      format,
+      speciesId,
+      shields,
+      recommendedMoves,
+    ),
 };
 
 /**
@@ -588,6 +663,7 @@ export async function generateSimulations(
 
       for (let i = 0; i < topPokemonNames.length; i++) {
         const pokemonName = topPokemonNames[i];
+        const ranking = allRankings[i];
         const normalizedName = normalizeSpeciesName(pokemonName);
         const resolvedSpeciesId = speciesByNormalizedName.get(normalizedName);
         const speciesId = resolvedSpeciesId
@@ -635,11 +711,15 @@ export async function generateSimulations(
             }
           }
 
+          const recommendedMoves = ranking
+            ? getRecommendedMoveIds(ranking)
+            : undefined;
           const csvText = resolvedDependencies.generateScenarioCsv(
             runtime,
             format,
             speciesId,
             scenario.shields,
+            recommendedMoves,
           );
           const validation = validateSimulationsCsv(csvText);
           logValidationErrors(

@@ -2,10 +2,14 @@
 
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
+import type { BattleFormatId } from '@/lib/data/battleFormats';
 import { TournamentMode } from '@/lib/types';
 
 interface ResultsPanelProps {
-  generatedTeam: string[] | null;
+  generatedTeam: {
+    team: string[];
+    formatId: BattleFormatId;
+  } | null;
   mode: TournamentMode;
   isGenerating: boolean;
 }
@@ -104,7 +108,13 @@ export function ResultsPanel({
         </div>
       )}
 
-      {generatedTeam && <TeamDisplay team={generatedTeam} mode={mode} />}
+      {generatedTeam && (
+        <TeamDisplay
+          team={generatedTeam.team}
+          mode={mode}
+          formatId={generatedTeam.formatId}
+        />
+      )}
     </div>
   );
 }

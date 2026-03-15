@@ -3,15 +3,17 @@
 import { useEffect, useState } from 'react';
 import { PokemonCard } from '@/components/molecules';
 import { ExportButton } from '@/components/molecules/ExportButton/ExportButton';
+import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type { TeamMovesets } from '@/lib/export';
 import type { Pokemon, TournamentMode } from '@/lib/types';
 
 interface TeamDisplayProps {
   team: string[];
   mode: TournamentMode;
+  formatId: BattleFormatId;
 }
 
-export function TeamDisplay({ team, mode }: TeamDisplayProps) {
+export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
   const [pokemonData, setPokemonData] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +22,7 @@ export function TeamDisplay({ team, mode }: TeamDisplayProps) {
     fetch('/api/team-details', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team }),
+      body: JSON.stringify({ team, formatId }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -31,7 +33,7 @@ export function TeamDisplay({ team, mode }: TeamDisplayProps) {
         console.error('Failed to fetch team details:', err);
         setLoading(false);
       });
-  }, [team]);
+  }, [formatId, team]);
 
   if (loading) {
     return (

@@ -1,17 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  isBattleFormatId,
+} from '@/lib/data/battleFormats';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
 import { getRecommendedMovesetForPokemon } from '@/lib/genetic/moveset';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { team } = body as { team: string[] };
+    const { team, formatId } = body as {
+      team: string[];
+      formatId?: string;
+    };
+    const resolvedFormatId = formatId ?? DEFAULT_BATTLE_FORMAT_ID;
 
     console.log('Team details requested for:', team);
     console.log('Team size:', team.length);
 
     if (!team || !Array.isArray(team)) {
       return NextResponse.json({ error: 'Invalid team data' }, { status: 400 });
+    }
+
+    if (!isBattleFormatId(resolvedFormatId)) {
+      return NextResponse.json(
+        { error: `Invalid battle format: ${resolvedFormatId}` },
+        { status: 400 },
+      );
     }
 
     // Fetch full Pokemon data for each team member with strict recommended movesets
@@ -23,7 +38,10 @@ export async function POST(request: NextRequest) {
           return null;
         }
 
-        const moveset = getRecommendedMovesetForPokemon(pokemon);
+        const moveset = getRecommendedMovesetForPokemon(
+          pokemon,
+          resolvedFormatId,
+        );
 
         return {
           ...pokemon,
