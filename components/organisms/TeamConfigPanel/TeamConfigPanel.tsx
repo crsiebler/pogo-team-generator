@@ -119,7 +119,7 @@ export function TeamConfigPanel({
 
       {/* Anchor Pokémon Input */}
       <TeamGenerator
-        key={mode} // Force remount when mode changes to reset state
+        key={`${mode}:${selectedFormatId}`}
         mode={mode}
         pokemonList={pokemonList}
         onAnchorsChange={handleAnchorsChange}

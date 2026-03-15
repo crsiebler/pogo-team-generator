@@ -7,9 +7,23 @@ vi.mock('@/components/molecules', () => ({
   ModeSelector: () => <div>Mode Selector</div>,
 }));
 
-vi.mock('@/components/organisms', () => ({
-  TeamGenerator: () => <div>Team Generator</div>,
-}));
+vi.mock('@/components/organisms', async () => {
+  const React = await import('react');
+
+  return {
+    TeamGenerator: () => {
+      const [anchorValue, setAnchorValue] = React.useState('');
+
+      return (
+        <input
+          aria-label="Anchor Mock"
+          value={anchorValue}
+          onChange={(event) => setAnchorValue(event.target.value)}
+        />
+      );
+    },
+  };
+});
 
 describe('TeamConfigPanel', () => {
   it('renders the battle format dropdown with expected options and default value', () => {
@@ -66,5 +80,48 @@ describe('TeamConfigPanel', () => {
     });
 
     expect(onFormatChange).toHaveBeenCalledWith('ultra-league');
+  });
+
+  it('resets anchor selection UI when the selected format changes', () => {
+    const { rerender } = render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        selectedFormatId="great-league"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    const anchorInput = screen.getByRole('textbox', { name: 'Anchor Mock' });
+    fireEvent.change(anchorInput, { target: { value: 'Azumarill' } });
+
+    expect(anchorInput).toHaveValue('Azumarill');
+
+    rerender(
+      <TeamConfigPanel
+        pokemonList={[]}
+        selectedFormatId="ultra-league"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Anchor Mock' })).toHaveValue(
+      '',
+    );
   });
 });
