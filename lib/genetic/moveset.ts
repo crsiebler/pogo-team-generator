@@ -1,3 +1,4 @@
+import type { BattleFormatId } from '@lib/data/battleFormats';
 import { getMoveByMoveId } from '@lib/data/moves';
 import { getPokemonBySpeciesId } from '@lib/data/pokemon';
 import { getOptimalMoveset } from '@lib/data/rankings';
@@ -18,12 +19,15 @@ const movesetCache = new Map<
  * Get strict recommended moveset from rankings for a Pokemon.
  * Falls back to the Pokemon's first available moves when ranking data is missing.
  */
-export function getRecommendedMovesetForPokemon(pokemon: Pokemon): {
+export function getRecommendedMovesetForPokemon(
+  pokemon: Pokemon,
+  formatId?: BattleFormatId,
+): {
   fastMove: string;
   chargedMove1: string;
   chargedMove2: string;
 } {
-  const rankedMoves = getOptimalMoveset(pokemon.speciesName);
+  const rankedMoves = getOptimalMoveset(pokemon.speciesName, formatId);
 
   return {
     fastMove: rankedMoves.fastMove || pokemon.fastMoves[0],
@@ -221,6 +225,7 @@ function calculatePacingScore(
 export function getOptimalMovesetForTeam(
   pokemon: Pokemon,
   team: string[],
+  formatId?: BattleFormatId,
 ): {
   fastMove: string;
   chargedMove1: string;
@@ -228,14 +233,14 @@ export function getOptimalMovesetForTeam(
 } {
   // Create cache key based on Pokemon + team composition
   // CRITICAL: Copy array before sorting to avoid mutation!
-  const cacheKey = `${pokemon.speciesId}:${[...team].sort().join(',')}`;
+  const cacheKey = `${formatId ?? 'default'}:${pokemon.speciesId}:${[...team].sort().join(',')}`;
 
   if (movesetCache.has(cacheKey)) {
     return movesetCache.get(cacheKey)!;
   }
 
   // Get ranked moveset as baseline
-  const rankedMoves = getOptimalMoveset(pokemon.speciesName);
+  const rankedMoves = getOptimalMoveset(pokemon.speciesName, formatId);
 
   // Analyze team weaknesses
   const teamWeaknesses = analyzeTeamWeaknesses(team);
@@ -249,7 +254,7 @@ export function getOptimalMovesetForTeam(
     if (!teammate) continue;
 
     // Get teammate's optimal moveset
-    const teammateMoves = getOptimalMoveset(teammate.speciesName);
+    const teammateMoves = getOptimalMoveset(teammate.speciesName, formatId);
     for (const moveId of [
       teammateMoves.chargedMove1,
       teammateMoves.chargedMove2,

@@ -13,9 +13,15 @@ interface TeamManagerProps {
   pokemonList?: string[];
 }
 
+interface GeneratedTeamResult {
+  team: string[];
+  formatId: BattleFormatId;
+}
+
 export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   const { showToast } = useToast();
-  const [generatedTeam, setGeneratedTeam] = useState<string[] | null>(null);
+  const [generatedTeam, setGeneratedTeam] =
+    useState<GeneratedTeamResult | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingPokemonList, setIsLoadingPokemonList] = useState(false);
   const [currentMode, setCurrentMode] = useState<TournamentMode>('PlayPokemon');
@@ -206,8 +212,8 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         throw new Error(errorData?.error ?? 'Failed to generate team');
       }
 
-      const data = await response.json();
-      setGeneratedTeam(data.team);
+      const data = (await response.json()) as { team: string[] };
+      setGeneratedTeam({ team: data.team, formatId: currentFormatId });
     } catch (error) {
       console.error('Error generating team:', error);
       const message =

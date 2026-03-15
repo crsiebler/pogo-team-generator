@@ -1,6 +1,10 @@
 import path from 'path';
+import vm from 'vm';
 import { describe, expect, it, vi } from 'vitest';
-import { generateSimulations } from './simulations';
+import {
+  generateScenarioCsvFromEngine,
+  generateSimulations,
+} from './simulations';
 
 const VALID_SIMULATION_CSV =
   'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nIvysaur,500,0,0\n';
@@ -10,6 +14,94 @@ function isOverallRankingPath(filePath: string): boolean {
 }
 
 describe('generateSimulations', () => {
+  it('forces the selected Pokemon onto the format-specific recommended moveset', () => {
+    const context = vm.createContext({
+      __flushPvpokeAjax: () => undefined,
+      GameMaster: {
+        getInstance: () => ({
+          rankings: {
+            bfretrooverall2500: [
+              {
+                speciesId: 'decidueye',
+                moveset: ['ASTONISH', 'FRENZY_PLANT', 'SPIRIT_SHACKLE'],
+              },
+            ],
+          },
+          loadRankingData: () => undefined,
+          getCupById: (cup: string) => ({ name: cup }),
+        }),
+      },
+      Battle: function Battle(this: Record<string, unknown>) {
+        return this;
+      },
+      RankerMaster: {
+        getInstance: () => ({
+          applySettings: () => undefined,
+          setShieldMode: () => undefined,
+          setTargets: () => undefined,
+          setRecommendMoveUsage: () => undefined,
+          rank: (team: Array<Record<string, unknown>>) => {
+            const selectedPokemon = team[0] as {
+              fastMove: { moveId: string };
+              chargedMoves: Array<{ moveId: string }>;
+            };
+
+            return {
+              csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\nDecidueye ${selectedPokemon.fastMove.moveId}/${selectedPokemon.chargedMoves[0].moveId}/${selectedPokemon.chargedMoves[1].moveId},500,0,0\n`,
+            };
+          },
+        }),
+      },
+      getDefaultMultiBattleSettings: () => ({ shields: 0 }),
+      Pokemon: function Pokemon(
+        this: Record<string, unknown>,
+        speciesId: string,
+      ) {
+        this.speciesId = speciesId;
+        this.fastMove = { moveId: 'LEAFAGE' };
+        this.chargedMoves = [
+          { moveId: 'FRENZY_PLANT' },
+          { moveId: 'SPIRIT_SHACKLE' },
+        ];
+        this.initialize = () => undefined;
+        this.selectRecommendedMoveset = () => undefined;
+        this.selectMove = (
+          moveType: 'fast' | 'charged',
+          moveId: string,
+          index?: number,
+        ) => {
+          if (moveType === 'fast') {
+            this.fastMove = { moveId };
+            return;
+          }
+
+          const chargedMoves = this.chargedMoves as Array<{ moveId: string }>;
+          chargedMoves[index ?? 0] = { moveId };
+        };
+        this.resetMoves = () => undefined;
+      },
+    });
+
+    const csvText = generateScenarioCsvFromEngine(
+      { context },
+      {
+        id: 'battle-frontier-ul-retro',
+        label: 'Battle Frontier (UL Retro)',
+        cup: 'bfretro',
+        cp: 2500,
+      },
+      'decidueye',
+      0,
+      {
+        fastMove: 'ASTONISH',
+        chargedMove1: 'FRENZY_PLANT',
+        chargedMove2: 'SPIRIT_SHACKLE',
+      },
+    );
+
+    expect(csvText).toContain('Decidueye ASTONISH/FRENZY_PLANT/SPIRIT_SHACKLE');
+  });
+
   it('generates simulations for every supported format and scenario', async () => {
     const generatedCalls: Array<{
       cup:
@@ -289,12 +381,14 @@ describe('generateSimulations', () => {
       expect.objectContaining({ cp: 1500, cup: 'all' }),
       'bulbasaur',
       1,
+      undefined,
     );
     expect(generateScenarioCsv).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ cp: 2500, cup: 'all' }),
       'bulbasaur',
       1,
+      undefined,
     );
   });
 });
