@@ -49,6 +49,12 @@ const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
   golisopodsh: 'golisopod',
 };
 
+const MOVE_ID_ALIASES: Record<string, string> = {
+  NATURE_S_MADNESS: 'NATURES_MADNESS',
+  SUPERPOWER: 'SUPER_POWER',
+  VISE_GRIP: 'VICE_GRIP',
+};
+
 /**
  * Parse rankings CSV text into key/value objects.
  */
@@ -87,12 +93,25 @@ function moveNameToMoveId(moveName: string): string {
   const match = moveName.match(/^(.+?)\s*\((.+?)\)$/);
 
   if (match) {
-    const baseId = match[1].trim().toUpperCase().replace(/\s+/g, '_');
-    const typeId = match[2].trim().toUpperCase().replace(/\s+/g, '_');
-    return `${baseId}_${typeId}`;
+    const normalizedBase = match[1]
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
+    const normalizedType = match[2]
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
+    const moveId = `${normalizedBase}_${normalizedType}`;
+
+    return MOVE_ID_ALIASES[moveId] ?? moveId;
   }
 
-  return moveName.trim().toUpperCase().replace(/\s+/g, '_');
+  const moveId = moveName
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+
+  return MOVE_ID_ALIASES[moveId] ?? moveId;
 }
 
 /**
