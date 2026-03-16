@@ -20,23 +20,30 @@ export function buildPokemonContributionAnalysis(
 ): PokemonContributionAnalysis {
   const entries = team.map((speciesId) => {
     const pokemon = speciesIdToRankingName(speciesId);
+    let threatsHandled = 0;
+    let coverageAdded = 0;
+    let highSeverityRelief = 0;
 
-    const threatsHandled = threatEntries.filter((threat) =>
-      winsMatchup(speciesId, threat.speciesId, formatId),
-    ).length;
+    for (const threat of threatEntries) {
+      const handlesThreat = winsMatchup(speciesId, threat.speciesId, formatId);
 
-    const coverageAdded = threatEntries.filter(
-      (threat) =>
-        threat.teamAnswers === 1 &&
-        winsMatchup(speciesId, threat.speciesId, formatId),
-    ).length;
+      if (!handlesThreat) {
+        continue;
+      }
 
-    const highSeverityRelief = threatEntries.filter(
-      (threat) =>
-        (threat.severityTier === 'high' ||
-          threat.severityTier === 'critical') &&
-        winsMatchup(speciesId, threat.speciesId, formatId),
-    ).length;
+      threatsHandled += 1;
+
+      if (threat.teamAnswers === 1) {
+        coverageAdded += 1;
+      }
+
+      if (
+        threat.severityTier === 'high' ||
+        threat.severityTier === 'critical'
+      ) {
+        highSeverityRelief += 1;
+      }
+    }
 
     const fragilityRiskTier = getFragilityRiskTier(coverageAdded);
 

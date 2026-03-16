@@ -76,6 +76,26 @@ describe('buildPokemonContributionAnalysis', () => {
       }),
     ]);
   });
+
+  it('computes each threat matchup once per Pokemon', () => {
+    winsMatchupMock.mockImplementation(
+      (speciesId: string, opponentSpeciesId: string) => {
+        return (
+          (speciesId === 'lanturn' && opponentSpeciesId === 'azumarill') ||
+          (speciesId === 'lanturn' && opponentSpeciesId === 'feraligatr') ||
+          (speciesId === 'dewgong' && opponentSpeciesId === 'gastrodon')
+        );
+      },
+    );
+
+    buildPokemonContributionAnalysis(
+      ['lanturn', 'dewgong'],
+      threats,
+      'great-league',
+    );
+
+    expect(winsMatchupMock).toHaveBeenCalledTimes(6);
+  });
 });
 
 describe('getFragilityRiskTier', () => {

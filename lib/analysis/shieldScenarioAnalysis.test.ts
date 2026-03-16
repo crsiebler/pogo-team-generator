@@ -136,4 +136,36 @@ describe('buildShieldScenarioAnalysis', () => {
       'spring-cup',
     );
   });
+
+  it('treats shield scenario coverage as evaluated once data exists and covered on first win', () => {
+    getShieldScenarioMatchupResultMock.mockImplementation(
+      (pokemon: string, opponent: string, shields: 0 | 1 | 2) => {
+        if (pokemon === 'lanturn' && opponent === 'threat-1' && shields === 1) {
+          return 640;
+        }
+
+        if (pokemon === 'lanturn' && opponent === 'threat-2' && shields === 1) {
+          return null;
+        }
+
+        if (pokemon === 'dewgong' && opponent === 'threat-2' && shields === 1) {
+          return 430;
+        }
+
+        return null;
+      },
+    );
+
+    const analysis = buildShieldScenarioAnalysis(
+      ['lanturn', 'dewgong'],
+      threats,
+      'great-league',
+    );
+
+    expect(analysis['1-1']).toEqual({
+      coveredThreats: 1,
+      evaluatedThreats: 2,
+      coverageRate: 0.5,
+    });
+  });
 });

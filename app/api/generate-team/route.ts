@@ -26,6 +26,10 @@ import type {
 
 export const runtime = 'nodejs';
 
+function isFitnessAlgorithm(value: string): value is FitnessAlgorithm {
+  return value === 'individual' || value === 'teamSynergy';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -50,6 +54,13 @@ export async function POST(request: NextRequest) {
     if (!mode || (mode !== 'PlayPokemon' && mode !== 'GBL')) {
       return NextResponse.json(
         { error: 'Invalid tournament mode' },
+        { status: 400 },
+      );
+    }
+
+    if (algorithm !== undefined && !isFitnessAlgorithm(algorithm)) {
+      return NextResponse.json(
+        { error: `Invalid fitness algorithm: ${algorithm}` },
         { status: 400 },
       );
     }
@@ -121,7 +132,7 @@ export async function POST(request: NextRequest) {
     console.log('Excluded Pokemon names:', excludedPokemon);
     console.log('Excluded Species IDs:', excludedSpeciesIds);
 
-    const selectedAlgorithm = algorithm || 'individual';
+    const selectedAlgorithm = algorithm ?? 'individual';
     const teamSize = mode === 'GBL' ? 3 : 6;
 
     const result = await generateTeam({

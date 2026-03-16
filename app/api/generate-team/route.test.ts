@@ -388,6 +388,27 @@ describe('POST /api/generate-team', () => {
     expect(generateTeam).not.toHaveBeenCalled();
   });
 
+  it('returns 400 for invalid algorithm values', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+        algorithm: 'broken-algorithm',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const responseBody = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(responseBody.error).toBe(
+      'Invalid fitness algorithm: broken-algorithm',
+    );
+    expect(generateTeam).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when selected anchor is not ranked in selected format', async () => {
     vi.mocked(speciesNameToId).mockImplementation((name: string) =>
       name === 'Pikachu' ? 'pikachu' : name.toLowerCase().replace(/\s+/g, '-'),
