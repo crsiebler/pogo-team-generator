@@ -1,13 +1,21 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { TeamConfigPanel, ResultsPanel } from '@/components/organisms';
+import {
+  AnalysisPanel,
+  ResultsPanel,
+  TeamConfigPanel,
+} from '@/components/organisms';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
-import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
+import {
+  FitnessAlgorithm,
+  GenerationAnalysis,
+  TournamentMode,
+} from '@/lib/types';
 
 interface TeamManagerProps {
   pokemonList?: string[];
@@ -22,6 +30,8 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   const { showToast } = useToast();
   const [generatedTeam, setGeneratedTeam] =
     useState<GeneratedTeamResult | null>(null);
+  const [fitness, setFitness] = useState<number | null>(null);
+  const [analysis, setAnalysis] = useState<GenerationAnalysis | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoadingPokemonList, setIsLoadingPokemonList] = useState(false);
   const [currentMode, setCurrentMode] = useState<TournamentMode>('PlayPokemon');
@@ -162,6 +172,8 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
 
     setIsGenerating(true);
     setGeneratedTeam(null);
+    setFitness(null);
+    setAnalysis(null);
 
     try {
       const selectedAnchors = anchorPokemon.filter(Boolean);
@@ -212,8 +224,14 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         throw new Error(errorData?.error ?? 'Failed to generate team');
       }
 
-      const data = (await response.json()) as { team: string[] };
+      const data = (await response.json()) as {
+        team: string[];
+        fitness?: number;
+        analysis?: GenerationAnalysis;
+      };
       setGeneratedTeam({ team: data.team, formatId: currentFormatId });
+      setFitness(data.fitness ?? null);
+      setAnalysis(data.analysis ?? null);
     } catch (error) {
       console.error('Error generating team:', error);
       const message =
@@ -227,7 +245,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 xl:grid-cols-3">
       <TeamConfigPanel
         pokemonList={eligiblePokemonList}
         selectedFormatId={currentFormatId}
@@ -245,6 +263,12 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         generatedTeam={generatedTeam}
         mode={currentMode}
         isGenerating={isGenerating}
+      />
+      <AnalysisPanel
+        generatedTeam={generatedTeam}
+        isGenerating={isGenerating}
+        fitness={fitness}
+        analysis={analysis}
       />
     </div>
   );

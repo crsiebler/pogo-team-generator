@@ -325,6 +325,41 @@ export function getMatchupResult(
 }
 
 /**
+ * Get matchup result for a specific shield scenario.
+ */
+export function getShieldScenarioMatchupResult(
+  speciesId: string,
+  opponentSpeciesId: string,
+  shields: 0 | 1 | 2,
+  formatId?: BattleFormatId,
+): number | null {
+  const matrix = getMatchupMatrix(formatId);
+  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const canonicalOpponentSpeciesId =
+    normalizeToChoosableSpeciesId(opponentSpeciesId);
+  const pokemonMatchups = matrix.get(canonicalSpeciesId);
+
+  if (!pokemonMatchups) {
+    return null;
+  }
+
+  const matchupData = pokemonMatchups.get(canonicalOpponentSpeciesId);
+  if (!matchupData) {
+    return null;
+  }
+
+  if (shields === 0) {
+    return matchupData.shields0?.battleRating ?? null;
+  }
+
+  if (shields === 1) {
+    return matchupData.shields1?.battleRating ?? null;
+  }
+
+  return matchupData.shields2?.battleRating ?? null;
+}
+
+/**
  * Check if speciesId wins matchup (battle rating > 500).
  */
 export function winsMatchup(

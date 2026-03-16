@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { buildCoreBreakerAnalysis } from '@/lib/analysis/coreBreakerAnalysis';
+import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContributionAnalysis';
+import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
+import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
@@ -8,13 +12,23 @@ import {
   speciesNameToId,
   validateTeamUniqueness,
 } from '@/lib/data/pokemon';
-import { MissingRankingDataError } from '@/lib/data/rankings';
-import { getRankedSpeciesIds } from '@/lib/data/rankings';
+import {
+  getRankedSpeciesIds,
+  MissingRankingDataError,
+} from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
-import type { TournamentMode, FitnessAlgorithm } from '@/lib/types';
+import type {
+  FitnessAlgorithm,
+  GenerationAnalysis,
+  TournamentMode,
+} from '@/lib/types';
 
 export const runtime = 'nodejs';
+
+function isFitnessAlgorithm(value: string): value is FitnessAlgorithm {
+  return value === 'individual' || value === 'teamSynergy';
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +51,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate mode
     if (!mode || (mode !== 'PlayPokemon' && mode !== 'GBL')) {
       return NextResponse.json(
         { error: 'Invalid tournament mode' },
@@ -45,7 +58,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert anchor Pokemon names to speciesIds
+    if (algorithm !== undefined && !isFitnessAlgorithm(algorithm)) {
+      return NextResponse.json(
+        { error: `Invalid fitness algorithm: ${algorithm}` },
+        { status: 400 },
+      );
+    }
+
     const anchorSpeciesIds: string[] = [];
     const rankedSpeciesIds = getRankedSpeciesIds(resolvedFormatId);
     if (anchorPokemon && anchorPokemon.length > 0) {
@@ -85,7 +104,6 @@ export async function POST(request: NextRequest) {
     console.log('Anchor Pokemon names:', anchorPokemon);
     console.log('Anchor Species IDs:', anchorSpeciesIds);
 
-    // Convert excluded Pokemon names to speciesIds
     const excludedSpeciesIds: string[] = [];
     if (excludedPokemon && excludedPokemon.length > 0) {
       for (const name of excludedPokemon) {
@@ -114,7 +132,9 @@ export async function POST(request: NextRequest) {
     console.log('Excluded Pokemon names:', excludedPokemon);
     console.log('Excluded Species IDs:', excludedSpeciesIds);
 
-    // Run genetic algorithm
+    const selectedAlgorithm = algorithm ?? 'individual';
+    const teamSize = mode === 'GBL' ? 3 : 6;
+
     const result = await generateTeam({
       formatId: resolvedFormatId,
       mode,
@@ -122,8 +142,29 @@ export async function POST(request: NextRequest) {
       excludedPokemon: excludedSpeciesIds,
       populationSize: 150,
       generations: 75,
-      algorithm: algorithm || 'individual',
+      algorithm: selectedAlgorithm,
     });
+
+    const threats = buildThreatAnalysis(result.team, resolvedFormatId);
+
+    const analysis: GenerationAnalysis = {
+      mode,
+      algorithm: selectedAlgorithm,
+      teamSize,
+      generatedAt: new Date().toISOString(),
+      threats,
+      coreBreakers: buildCoreBreakerAnalysis(teamSize, threats.entries),
+      shieldScenarios: buildShieldScenarioAnalysis(
+        result.team,
+        threats.entries,
+        resolvedFormatId,
+      ),
+      pokemonContributions: buildPokemonContributionAnalysis(
+        result.team,
+        threats.entries,
+        resolvedFormatId,
+      ),
+    };
 
     console.log('Generated team:', result.team);
     console.log('Team size:', result.team.length);
@@ -132,6 +173,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       team: result.team,
       fitness: result.fitness,
+      analysis,
     });
   } catch (error) {
     if (

@@ -12,7 +12,7 @@ export function Footer() {
 
   return (
     <footer className="border-t border-gray-200 bg-gray-50 py-6 dark:border-gray-700 dark:bg-gray-900">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center gap-4">
           <a
             href="https://x.com/ekvelt"

@@ -87,6 +87,75 @@ export interface GenerationOptions {
   algorithm?: FitnessAlgorithm;
 }
 
+export interface GenerationAnalysis {
+  mode: TournamentMode;
+  algorithm: FitnessAlgorithm;
+  teamSize: number;
+  generatedAt: string;
+  threats: ThreatAnalysis;
+  coreBreakers: CoreBreakerAnalysis;
+  shieldScenarios: ShieldScenarioAnalysis;
+  pokemonContributions: PokemonContributionAnalysis;
+}
+
+export type ShieldScenarioKey = '0-0' | '1-1' | '2-2';
+
+export interface ShieldScenarioStats {
+  coveredThreats: number;
+  evaluatedThreats: number;
+  coverageRate: number;
+}
+
+export type ShieldScenarioAnalysis = Record<
+  ShieldScenarioKey,
+  ShieldScenarioStats
+>;
+
+export type ThreatSeverityTier = 'low' | 'medium' | 'high' | 'critical';
+
+export interface ThreatAnalysisEntry {
+  speciesId: string;
+  pokemon: string;
+  rank: number;
+  teamAnswers: number;
+  severityTier: ThreatSeverityTier;
+}
+
+export interface ThreatAnalysis {
+  evaluatedCount: number;
+  entries: ThreatAnalysisEntry[];
+}
+
+export type CoreBreakerSeverityTier = 'medium' | 'high';
+
+export interface CoreBreakerAnalysisEntry {
+  pokemon: string;
+  rank: number;
+  teamAnswers: number;
+  severityTier: CoreBreakerSeverityTier;
+}
+
+export interface CoreBreakerAnalysis {
+  threshold: number;
+  entries: CoreBreakerAnalysisEntry[];
+}
+
+export type PokemonContributionRiskTier = 'low' | 'moderate' | 'high';
+
+export interface PokemonContributionAnalysisEntry {
+  speciesId: string;
+  pokemon: string;
+  threatsHandled: number;
+  coverageAdded: number;
+  highSeverityRelief: number;
+  fragilityRiskTier: PokemonContributionRiskTier;
+  rationale: string;
+}
+
+export interface PokemonContributionAnalysis {
+  entries: PokemonContributionAnalysisEntry[];
+}
+
 export interface TypeChart {
   [attackType: string]: {
     [defenseType: string]: number;
