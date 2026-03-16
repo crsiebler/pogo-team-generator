@@ -154,6 +154,64 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('Relative grading guide')).toBeInTheDocument();
   });
 
+  it('grades displayed percentages and fitness values using the shown rounded values', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'gastrodon', 'dunsparce'],
+          formatId: 'great-league',
+        }}
+        isGenerating={false}
+        fitness={0.749}
+        analysis={{
+          ...analysisFixture,
+          shieldScenarios: {
+            '0-0': {
+              coveredThreats: 72,
+              evaluatedThreats: 100,
+              coverageRate: 0.72,
+            },
+            '1-1': {
+              coveredThreats: 72,
+              evaluatedThreats: 100,
+              coverageRate: 0.72,
+            },
+            '2-2': {
+              coveredThreats: 648,
+              evaluatedThreats: 1000,
+              coverageRate: 0.648,
+            },
+          },
+          threats: {
+            evaluatedCount: 125,
+            entries: [
+              ...analysisFixture.threats.entries,
+              ...Array.from({ length: 84 }, (_, index) => ({
+                speciesId: `support-${index}`,
+                pokemon: `Support ${index}`,
+                rank: index + 4,
+                teamAnswers: 1,
+                severityTier: 'medium' as const,
+              })),
+              ...Array.from({ length: 38 }, (_, index) => ({
+                speciesId: `pressure-${index}`,
+                pokemon: `Pressure ${index}`,
+                rank: index + 88,
+                teamAnswers: 0,
+                severityTier: 'low' as const,
+              })),
+            ],
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
+
+    expect(screen.getByText('0.75')).toHaveClass('text-emerald-700');
+    expect(screen.getByText('86/125 (69%)')).toHaveClass('text-amber-700');
+  });
+
   it('shows a waiting state when analysis data is unavailable', () => {
     render(
       <AnalysisPanel

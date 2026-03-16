@@ -52,16 +52,17 @@ function getOverallFitnessStatus(
   fitness: number,
   algorithm: FitnessAlgorithm,
 ): SummaryMetric['status'] {
+  const roundedFitness = roundToHundredths(fitness);
   const thresholds =
     algorithm === 'teamSynergy'
       ? { good: 0.75, average: 0.55 }
       : { good: 0.9, average: 0.65 };
 
-  if (fitness >= thresholds.good) {
+  if (roundedFitness >= thresholds.good) {
     return 'good';
   }
 
-  if (fitness >= thresholds.average) {
+  if (roundedFitness >= thresholds.average) {
     return 'average';
   }
 
@@ -111,7 +112,15 @@ function getContributionStatus(value: number): CategoryMetric['status'] {
 }
 
 function formatPercent(value: number): string {
-  return `${Math.round(value)}%`;
+  return `${roundPercent(value)}%`;
+}
+
+function roundPercent(value: number): number {
+  return Math.round(value);
+}
+
+function roundToHundredths(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function formatImpactValue(value: number): string {
@@ -207,29 +216,33 @@ function buildSummaryMetrics(
     highSeverityCoreBreakers,
   );
 
+  const roundedThreatHandlingPercent = roundPercent(threatHandlingPercent);
+  const roundedShieldStabilityPercent = roundPercent(shieldStabilityPercent);
+  const roundedFitness = roundToHundredths(fitness);
+
   return [
     {
       label: 'Overall Fitness',
-      value: fitness.toFixed(2),
+      value: roundedFitness.toFixed(2),
       description:
         'Composite algorithm score for the selected format. Bands are normalized by algorithm family because raw fitness varies by strategy model.',
-      status: getOverallFitnessStatus(fitness, analysis.algorithm),
+      status: getOverallFitnessStatus(roundedFitness, analysis.algorithm),
       range: getOverallFitnessRange(analysis.algorithm),
     },
     {
       label: 'Threat Handling',
-      value: `${coveredThreats}/${evaluatedThreats} (${formatPercent(threatHandlingPercent)})`,
+      value: `${coveredThreats}/${evaluatedThreats} (${formatPercent(roundedThreatHandlingPercent)})`,
       description:
         'How often the team has at least one practical answer into the evaluated GA threat pool.',
-      status: getPercentStatus(threatHandlingPercent),
+      status: getPercentStatus(roundedThreatHandlingPercent),
       range: 'Green >= 70%, Yellow 50-69%, Red < 50%',
     },
     {
       label: 'Shield Stability',
-      value: formatPercent(shieldStabilityPercent),
+      value: formatPercent(roundedShieldStabilityPercent),
       description:
         'Average threat coverage across 0-0, 1-1, and 2-2 shield states for the selected format.',
-      status: getPercentStatus(shieldStabilityPercent),
+      status: getPercentStatus(roundedShieldStabilityPercent),
       range: 'Green >= 70%, Yellow 50-69%, Red < 50%',
     },
     {
