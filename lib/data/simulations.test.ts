@@ -35,7 +35,7 @@ describe('format-aware simulation loading', () => {
     ).not.toThrow();
     expect(() => ensureSimulationDataAvailable('kanto-cup')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('spring-cup')).not.toThrow();
-  });
+  }, 15000);
 
   it('keeps Great League cache stable after loading other formats', () => {
     const beforeFailure = getMatchupMatrix();

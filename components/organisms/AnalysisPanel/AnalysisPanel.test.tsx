@@ -169,4 +169,22 @@ describe('AnalysisPanel', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Summary Statistics')).not.toBeInTheDocument();
   });
+
+  it('shows an unavailable message when team exists but analysis payload is missing', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'gastrodon', 'dunsparce'],
+          formatId: 'great-league',
+        }}
+        isGenerating={false}
+        fitness={null}
+        analysis={null}
+      />,
+    );
+
+    expect(
+      screen.getByText('Analysis unavailable for this run.'),
+    ).toBeInTheDocument();
+  });
 });

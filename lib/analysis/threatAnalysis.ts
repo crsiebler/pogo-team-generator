@@ -3,7 +3,7 @@ import {
   getRoleBasedThreatSpeciesIds,
   speciesIdToRankingName,
 } from '@/lib/data/rankings';
-import { winsMatchup } from '@/lib/data/simulations';
+import { getMatchupResult } from '@/lib/data/simulations';
 import type {
   ThreatAnalysis,
   ThreatAnalysisEntry,
@@ -24,20 +24,30 @@ export function buildThreatAnalysis(
     formatId,
   );
 
-  const entries: ThreatAnalysisEntry[] = threatSpeciesIds.map(
+  const entries: ThreatAnalysisEntry[] = threatSpeciesIds.flatMap(
     (threatSpeciesId, index) => {
-      const rank = index + 1;
-      const teamAnswers = team.filter((teamMember) =>
-        winsMatchup(teamMember, threatSpeciesId, formatId),
-      ).length;
+      const ratings = team
+        .map((teamMember) =>
+          getMatchupResult(teamMember, threatSpeciesId, formatId),
+        )
+        .filter((rating): rating is number => rating !== null);
 
-      return {
-        speciesId: threatSpeciesId,
-        pokemon: speciesIdToRankingName(threatSpeciesId),
-        rank,
-        teamAnswers,
-        severityTier: calculateThreatSeverity(rank, teamAnswers),
-      };
+      if (ratings.length === 0) {
+        return [];
+      }
+
+      const rank = index + 1;
+      const teamAnswers = ratings.filter((rating) => rating > 500).length;
+
+      return [
+        {
+          speciesId: threatSpeciesId,
+          pokemon: speciesIdToRankingName(threatSpeciesId),
+          rank,
+          teamAnswers,
+          severityTier: calculateThreatSeverity(rank, teamAnswers),
+        },
+      ];
     },
   );
 

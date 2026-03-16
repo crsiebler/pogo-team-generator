@@ -8,7 +8,7 @@ const getTopPokemonMock = vi.fn();
 const getRoleBasedThreatSpeciesIdsMock = vi.fn();
 const speciesIdToRankingNameMock = vi.fn();
 const speciesIdToSpeciesNameMock = vi.fn();
-const winsMatchupMock = vi.fn();
+const getMatchupResultMock = vi.fn();
 
 vi.mock('@/lib/data/rankings', () => ({
   getTopPokemon: (...args: unknown[]) => getTopPokemonMock(...args),
@@ -21,8 +21,8 @@ vi.mock('@/lib/data/rankings', () => ({
 }));
 
 vi.mock('@/lib/data/simulations', () => ({
-  winsMatchup: (pokemon: string, opponent: string, formatId?: string) =>
-    winsMatchupMock(pokemon, opponent, formatId),
+  getMatchupResult: (pokemon: string, opponent: string, formatId?: string) =>
+    getMatchupResultMock(pokemon, opponent, formatId),
 }));
 
 describe('buildThreatAnalysis', () => {
@@ -42,7 +42,7 @@ describe('buildThreatAnalysis', () => {
       'threat-2',
       'threat-3',
     ]);
-    winsMatchupMock.mockReturnValue(false);
+    getMatchupResultMock.mockReturnValue(450);
 
     const analysis = buildThreatAnalysis(
       ['lanturn', 'dewgong', 'annihilape'],
@@ -64,8 +64,8 @@ describe('buildThreatAnalysis', () => {
   it('includes team answer count and severity tier per threat', () => {
     getRoleBasedThreatSpeciesIdsMock.mockReturnValue(['threat-1']);
 
-    winsMatchupMock.mockImplementation((pokemon: string) => {
-      return pokemon !== 'annihilape';
+    getMatchupResultMock.mockImplementation((pokemon: string) => {
+      return pokemon !== 'annihilape' ? 650 : 420;
     });
 
     const analysis = buildThreatAnalysis(
@@ -80,11 +80,36 @@ describe('buildThreatAnalysis', () => {
       teamAnswers: 2,
       severityTier: 'high',
     });
-    expect(winsMatchupMock).toHaveBeenCalledWith(
+    expect(getMatchupResultMock).toHaveBeenCalledWith(
       'lanturn',
       'threat-1',
       'great-league',
     );
+  });
+
+  it('excludes threats with no matchup data from evaluated count', () => {
+    getRoleBasedThreatSpeciesIdsMock.mockReturnValue(['threat-1', 'threat-2']);
+    getMatchupResultMock.mockImplementation(
+      (pokemon: string, opponent: string) => {
+        if (opponent === 'threat-1') {
+          return pokemon === 'lanturn' ? 610 : 420;
+        }
+
+        return null;
+      },
+    );
+
+    const analysis = buildThreatAnalysis(
+      ['lanturn', 'dewgong'],
+      'great-league',
+    );
+
+    expect(analysis.evaluatedCount).toBe(1);
+    expect(analysis.entries).toHaveLength(1);
+    expect(analysis.entries[0]).toMatchObject({
+      speciesId: 'threat-1',
+      teamAnswers: 1,
+    });
   });
 });
 

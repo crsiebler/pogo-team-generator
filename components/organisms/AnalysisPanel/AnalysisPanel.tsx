@@ -379,7 +379,7 @@ export function AnalysisPanel({
     <div
       className={clsx(
         'rounded-2xl border border-blue-200 bg-white p-6 shadow-xl sm:p-8',
-        'dark:border-blue-900/60 dark:bg-transparent dark:bg-linear-to-br dark:from-gray-800 dark:to-gray-900',
+        'dark:border-blue-900/60 dark:bg-transparent dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900',
       )}
     >
       <h2
@@ -402,6 +402,14 @@ export function AnalysisPanel({
           Analysis updates after the current generation run completes.
         </div>
       )}
+
+      {generatedTeam &&
+        (analysis === null || fitness === null) &&
+        !isGenerating && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+            Analysis unavailable for this run.
+          </div>
+        )}
 
       {generatedTeam && analysis !== null && fitness !== null && (
         <section

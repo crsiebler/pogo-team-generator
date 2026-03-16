@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 import { buildCoreBreakerAnalysis } from '@/lib/analysis/coreBreakerAnalysis';
 import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContributionAnalysis';
@@ -124,6 +124,10 @@ describe('POST /api/generate-team', () => {
         },
       ],
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('passes validated formatId to team generation', async () => {
