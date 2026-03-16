@@ -23,7 +23,7 @@ export function ResultsPanel({
     <div
       className={clsx(
         'rounded-2xl bg-white p-6 shadow-xl sm:p-8',
-        'dark:bg-transparent dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900',
+        'dark:bg-transparent dark:bg-linear-to-br dark:from-gray-800 dark:to-gray-900',
       )}
     >
       <h2

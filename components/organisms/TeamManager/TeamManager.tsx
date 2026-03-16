@@ -245,7 +245,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 xl:grid-cols-[minmax(22rem,0.85fr)_minmax(26rem,1fr)_minmax(26rem,1fr)] 2xl:grid-cols-[minmax(24rem,0.9fr)_minmax(30rem,1.15fr)_minmax(30rem,1.15fr)]">
+    <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 xl:grid-cols-3">
       <TeamConfigPanel
         pokemonList={eligiblePokemonList}
         selectedFormatId={currentFormatId}

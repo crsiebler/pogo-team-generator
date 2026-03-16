@@ -379,7 +379,7 @@ export function AnalysisPanel({
     <div
       className={clsx(
         'rounded-2xl border border-blue-200 bg-white p-6 shadow-xl sm:p-8',
-        'dark:border-blue-900/60 dark:bg-transparent dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900',
+        'dark:border-blue-900/60 dark:bg-transparent dark:bg-linear-to-br dark:from-gray-800 dark:to-gray-900',
       )}
     >
       <h2
