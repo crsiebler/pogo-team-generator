@@ -10,7 +10,7 @@ interface PokemonCardProps {
 
 export function PokemonCard({ pokemon }: PokemonCardProps) {
   const cardClasses =
-    'rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-4 shadow-sm transition-shadow hover:shadow-lg sm:p-5 dark:border-gray-700 dark:bg-linear-to-br dark:from-gray-800 dark:to-gray-900';
+    'rounded-xl border border-gray-200 bg-linear-to-br from-white to-gray-50 p-4 shadow-sm transition-shadow hover:shadow-lg sm:p-5 dark:border-gray-700 dark:bg-linear-to-br dark:from-gray-800 dark:to-gray-900';
 
   const nameClasses =
     'text-lg font-bold text-gray-900 sm:text-xl dark:text-gray-100';

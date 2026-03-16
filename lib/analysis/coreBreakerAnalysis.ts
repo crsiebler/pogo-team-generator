@@ -1,5 +1,8 @@
-import type { CoreBreakerAnalysis, CoreBreakerSeverityTier } from '@/lib/types';
-import type { ThreatAnalysisEntry } from '@/lib/types';
+import type {
+  CoreBreakerAnalysis,
+  CoreBreakerSeverityTier,
+  ThreatAnalysisEntry,
+} from '@/lib/types';
 
 /**
  * Build core-breaker analysis from ranked threats using team-size thresholds.

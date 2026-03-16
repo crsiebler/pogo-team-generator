@@ -167,5 +167,6 @@ describe('buildShieldScenarioAnalysis', () => {
       evaluatedThreats: 2,
       coverageRate: 0.5,
     });
+    expect(getShieldScenarioMatchupResultMock).toHaveBeenCalledTimes(11);
   });
 });

@@ -74,4 +74,10 @@ describe('PokemonCard', () => {
     expect(screen.getByText('fire')).toBeInTheDocument();
     expect(screen.getByText('flying')).toBeInTheDocument();
   });
+
+  it('uses linear gradient utility classes for the light theme card background', () => {
+    const { container } = render(<PokemonCard pokemon={mockPokemon} />);
+
+    expect(container.firstChild).toHaveClass('bg-linear-to-br');
+  });
 });

@@ -17,24 +17,36 @@ export function buildShieldScenarioAnalysis(
     let coveredThreats = 0;
 
     for (const threat of threats) {
-      const ratings = team
-        .map((teamMember) =>
-          getShieldScenarioMatchupResult(
-            teamMember,
-            threat.speciesId,
-            shieldCount,
-            formatId,
-          ),
-        )
-        .filter((rating): rating is number => rating !== null);
+      let hasAnyData = false;
+      let hasWin = false;
 
-      if (ratings.length === 0) {
+      for (const teamMember of team) {
+        const rating = getShieldScenarioMatchupResult(
+          teamMember,
+          threat.speciesId,
+          shieldCount,
+          formatId,
+        );
+
+        if (rating === null) {
+          continue;
+        }
+
+        hasAnyData = true;
+
+        if (rating > 500) {
+          hasWin = true;
+          break;
+        }
+      }
+
+      if (!hasAnyData) {
         continue;
       }
 
       evaluatedThreats += 1;
 
-      if (ratings.some((rating) => rating > 500)) {
+      if (hasWin) {
         coveredThreats += 1;
       }
     }
