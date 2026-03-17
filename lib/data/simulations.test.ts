@@ -35,6 +35,7 @@ describe('format-aware simulation loading', () => {
       ensureSimulationDataAvailable('battle-frontier-master'),
     ).not.toThrow();
     expect(() => ensureSimulationDataAvailable('kanto-cup')).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('jungle-cup')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('spring-cup')).not.toThrow();
   }, 15000);
 

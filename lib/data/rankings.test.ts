@@ -44,6 +44,7 @@ describe('format-aware rankings loading', () => {
       'battle-frontier-master',
     );
     const kantoCupRankings = getOverallRankings('kanto-cup');
+    const jungleCupRankings = getOverallRankings('jungle-cup');
     const springCupRankings = getOverallRankings('spring-cup');
 
     expect(greatLeagueRankings.length).toBeGreaterThan(0);
@@ -54,6 +55,7 @@ describe('format-aware rankings loading', () => {
     expect(ulRetroRankings.length).toBeGreaterThan(0);
     expect(battleFrontierMasterRankings.length).toBeGreaterThan(0);
     expect(kantoCupRankings.length).toBeGreaterThan(0);
+    expect(jungleCupRankings.length).toBeGreaterThan(0);
     expect(springCupRankings.length).toBeGreaterThan(0);
   });
 

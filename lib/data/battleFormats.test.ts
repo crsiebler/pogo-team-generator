@@ -18,6 +18,7 @@ describe('battle format catalog', () => {
       'Battle Frontier (UL Retro)',
       'Battle Frontier (Master)',
       'Kanto Cup',
+      'Jungle Cup',
       'Spring Cup',
     ]);
   });
@@ -35,6 +36,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('battle-frontier-ul-retro')).toBe(true);
     expect(isBattleFormatId('battle-frontier-master')).toBe(true);
     expect(isBattleFormatId('kanto-cup')).toBe(true);
+    expect(isBattleFormatId('jungle-cup')).toBe(true);
     expect(isBattleFormatId('spring-cup')).toBe(true);
   });
 
@@ -55,6 +57,13 @@ describe('battle format catalog', () => {
       id: 'kanto-cup',
       label: 'Kanto Cup',
       cup: 'kanto',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('jungle-cup')).toEqual({
+      id: 'jungle-cup',
+      label: 'Jungle Cup',
+      cup: 'jungle',
       cp: 1500,
     });
 

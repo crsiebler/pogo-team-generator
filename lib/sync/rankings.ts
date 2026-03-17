@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { createPvpokeAdapter, RankingCategory } from './adapter';
+import { createPvpokeAdapter, RankingCategory, RankingCup } from './adapter';
 import { syncConfig } from './config';
 import {
   MovesData,
@@ -64,14 +64,7 @@ interface RankingSyncDependencies {
     readRankingJson(
       category: RankingCategory,
       leagueCp: number,
-      cup?:
-        | 'all'
-        | 'kanto'
-        | 'spring'
-        | 'bayou'
-        | 'brujeria'
-        | 'bfretro'
-        | 'battlefrontiermaster',
+      cup?: RankingCup,
     ): Promise<unknown>;
   };
   readFile: (filePath: string) => Promise<string>;

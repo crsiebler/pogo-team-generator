@@ -4,6 +4,7 @@ export interface BattleFormat {
   cup:
     | 'all'
     | 'kanto'
+    | 'jungle'
     | 'spring'
     | 'bayou'
     | 'brujeria'
@@ -24,6 +25,7 @@ export type BattleFormatId =
   | 'battle-frontier-ul-retro'
   | 'battle-frontier-master'
   | 'kanto-cup'
+  | 'jungle-cup'
   | 'spring-cup';
 
 /**
@@ -76,6 +78,12 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     id: 'kanto-cup',
     label: 'Kanto Cup',
     cup: 'kanto',
+    cp: 1500,
+  },
+  {
+    id: 'jungle-cup',
+    label: 'Jungle Cup',
+    cup: 'jungle',
     cp: 1500,
   },
   {
