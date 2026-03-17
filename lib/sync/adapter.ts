@@ -14,6 +14,7 @@ const RANKING_CATEGORIES = ['overall', 'leads', 'switches', 'closers'] as const;
 const RANKING_CUPS = [
   'all',
   'kanto',
+  'jungle',
   'spring',
   'bayou',
   'brujeria',
