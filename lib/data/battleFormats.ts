@@ -7,7 +7,7 @@ export interface BattleFormat {
     | 'jungle'
     | 'spring'
     | 'bayou'
-    | 'brujeria'
+    | 'spellcraft'
     | 'bfretro'
     | 'battlefrontiermaster';
   cp: 1500 | 2500 | 10000;
@@ -21,7 +21,7 @@ export type BattleFormatId =
   | 'ultra-league'
   | 'master-league'
   | 'battle-frontier-bayou-cup'
-  | 'battle-frontier-brujeria-cup'
+  | 'battle-frontier-spellcraft-cup'
   | 'battle-frontier-ul-retro'
   | 'battle-frontier-master'
   | 'kanto-cup'
@@ -57,9 +57,9 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 1500,
   },
   {
-    id: 'battle-frontier-brujeria-cup',
-    label: 'Battle Frontier (Brujeria Cup)',
-    cup: 'brujeria',
+    id: 'battle-frontier-spellcraft-cup',
+    label: 'Battle Frontier (Spellcraft Cup)',
+    cup: 'spellcraft',
     cp: 1500,
   },
   {

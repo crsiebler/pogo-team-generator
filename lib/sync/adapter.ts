@@ -17,7 +17,7 @@ const RANKING_CUPS = [
   'jungle',
   'spring',
   'bayou',
-  'brujeria',
+  'spellcraft',
   'bfretro',
   'battlefrontiermaster',
 ] as const;

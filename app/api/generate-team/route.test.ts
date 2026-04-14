@@ -154,7 +154,7 @@ describe('POST /api/generate-team', () => {
     ['ultra-league'],
     ['master-league'],
     ['battle-frontier-bayou-cup'],
-    ['battle-frontier-brujeria-cup'],
+    ['battle-frontier-spellcraft-cup'],
     ['battle-frontier-ul-retro'],
     ['battle-frontier-master'],
     ['kanto-cup'],

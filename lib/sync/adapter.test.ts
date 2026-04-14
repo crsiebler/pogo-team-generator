@@ -36,8 +36,8 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'bayou')).toBe(
       '/source/pvpoke/src/data/rankings/bayou/overall/rankings-1500.json',
     );
-    expect(adapter.getRankingFilePath('overall', 1500, 'brujeria')).toBe(
-      '/source/pvpoke/src/data/rankings/brujeria/overall/rankings-1500.json',
+    expect(adapter.getRankingFilePath('overall', 1500, 'spellcraft')).toBe(
+      '/source/pvpoke/src/data/rankings/spellcraft/overall/rankings-1500.json',
     );
     expect(adapter.getRankingFilePath('overall', 2500, 'bfretro')).toBe(
       '/source/pvpoke/src/data/rankings/bfretro/overall/rankings-2500.json',
