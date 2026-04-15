@@ -15,6 +15,7 @@ import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 
 interface TeamConfigPanelProps {
   pokemonList: string[];
+  battleFrontierMasterPointsByPokemonName: Record<string, number>;
   selectedFormatId: BattleFormatId;
   errorMessage?: string | null;
   onFormatChange: (formatId: BattleFormatId) => void;
@@ -30,6 +31,7 @@ interface TeamConfigPanelProps {
 
 export function TeamConfigPanel({
   pokemonList,
+  battleFrontierMasterPointsByPokemonName,
   selectedFormatId,
   errorMessage,
   onFormatChange,
@@ -150,6 +152,10 @@ export function TeamConfigPanel({
         key={`${mode}:${selectedFormatId}`}
         mode={mode}
         pokemonList={pokemonList}
+        selectedFormatId={selectedFormatId}
+        battleFrontierMasterPointsByPokemonName={
+          battleFrontierMasterPointsByPokemonName
+        }
         onAnchorsChange={handleAnchorsChange}
         onExclusionsChange={handleExclusionsChange}
         algorithm={algorithm}

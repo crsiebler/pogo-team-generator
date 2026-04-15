@@ -30,6 +30,7 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -62,6 +63,7 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={onFormatChange}
         mode="PlayPokemon"
@@ -86,6 +88,7 @@ describe('TeamConfigPanel', () => {
     const { rerender } = render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -107,6 +110,7 @@ describe('TeamConfigPanel', () => {
     rerender(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="ultra-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -129,6 +133,7 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="battle-frontier-master"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -153,6 +158,7 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"

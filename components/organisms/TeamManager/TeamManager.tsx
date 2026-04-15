@@ -26,6 +26,11 @@ interface GeneratedTeamResult {
   formatId: BattleFormatId;
 }
 
+interface PokemonListResponse {
+  pokemon: string[];
+  battleFrontierMasterPointsByPokemonName?: Record<string, number>;
+}
+
 export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   const { showToast } = useToast();
   const [generatedTeam, setGeneratedTeam] =
@@ -40,6 +45,10 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   );
   const [eligiblePokemonList, setEligiblePokemonList] =
     useState<string[]>(pokemonList);
+  const [
+    battleFrontierMasterPointsByPokemonName,
+    setBattleFrontierMasterPointsByPokemonName,
+  ] = useState<Record<string, number>>({});
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
   const [currentAlgorithm, setCurrentAlgorithm] =
@@ -73,12 +82,13 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
           );
         }
 
-        const data = (await response.json()) as {
-          pokemon: string[];
-        };
+        const data = (await response.json()) as PokemonListResponse;
 
         const nextEligiblePokemonList = data.pokemon ?? [];
         setEligiblePokemonList(nextEligiblePokemonList);
+        setBattleFrontierMasterPointsByPokemonName(
+          data.battleFrontierMasterPointsByPokemonName ?? {},
+        );
 
         setAnchorPokemon((previousAnchors) =>
           previousAnchors.filter((name) =>
@@ -96,6 +106,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         }
 
         setEligiblePokemonList([]);
+        setBattleFrontierMasterPointsByPokemonName({});
 
         const message =
           error instanceof Error
@@ -254,6 +265,9 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 xl:grid-cols-3">
       <TeamConfigPanel
         pokemonList={eligiblePokemonList}
+        battleFrontierMasterPointsByPokemonName={
+          battleFrontierMasterPointsByPokemonName
+        }
         selectedFormatId={currentFormatId}
         errorMessage={generationError}
         onFormatChange={handleFormatChange}

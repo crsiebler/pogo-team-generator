@@ -5,8 +5,33 @@
 - In `lib/genetic/chromosome.ts`, enforce Battle Frontier Master initialization legality while filling each slot and in the random fallback path, then keep a final legality assertion on the completed team so later operator work can reuse the same pattern.
 - In `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever Battle Frontier Master operator output would become illegal.
 - For battle-format-specific setup feedback, keep `TeamManager` as the owner of transient generation errors and pass them into `TeamConfigPanel` for inline alerts; render static format-rule copy in the config panel instead of duplicating it inside `TeamGenerator`.
+- Reuse `/api/pokemon-list?formatId=battle-frontier-master` as the UI transport for `battleFrontierMasterPointsByPokemonName`, then render the live point meter inside `TeamGenerator` so anchor edits stay immediate while point resolution still comes from the server-side rules helper.
 
 ## Iteration Log
+## 2026-04-15 11:35:14 MST - US-007
+- What was implemented
+- Added live Battle Frontier Master anchor point usage to the anchor UI by enriching the existing format-specific pokemon list response with server-resolved point values and rendering a running `(points / 11)` meter in `TeamGenerator`.
+- Files changed: `app/api/pokemon-list/route.ts`, `app/api/pokemon-list/route.test.ts`, `app/AGENTS.md`, `components/organisms/TeamConfigPanel/TeamConfigPanel.tsx`, `components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx`, `components/organisms/TeamGenerator/TeamGenerator.tsx`, `components/organisms/TeamGenerator/TeamGenerator.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification via `dev-browser` (pass)
+- Decisions (why):
+  - Reused the existing `/api/pokemon-list` fetch to deliver Battle Frontier Master point values so the UI could stay in sync with `getBattleFrontierMasterPointsForSpecies(...)` without adding a second frontend-specific rules path or duplicating CSV parsing in client code.
+  - Rendered the meter in `TeamGenerator` instead of `TeamConfigPanel` because `TeamGenerator` already owns anchor input state, which keeps the point display updating immediately on add, change, and removal.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - The `pokemon-list` response is now the right place to attach format-specific anchor metadata needed by the setup UI, as long as the route still delegates point resolution to `lib/` helpers.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - Browser verification for the live point meter can use Battle Frontier Master plus exact anchor names like `Palkia (Origin)` and `Palkia (Shadow)`; the meter moved to `7 / 11` after adding both and back to `2 / 11` after clearing one anchor.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-008` still needs broader automated coverage for the Battle Frontier Master rules and generator behavior that earlier iterations introduced.
+- Next iteration start:
+  - Expand automated coverage around Battle Frontier Master points, API validation, and generator legality so the new rule path is fully regression-tested.
+---
 ## 2026-04-14 17:08:04 MST - US-001
 - What was implemented
 - Added the checked-in Battle Frontier Master cycle point CSV and a regression test that validates its canonical ids and current-cycle contents against the bundled cup tier rules.
