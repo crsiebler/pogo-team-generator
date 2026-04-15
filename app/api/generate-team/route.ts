@@ -8,6 +8,10 @@ import {
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
 import {
+  getBattleFrontierMasterTeamLegality,
+  type BattleFrontierMasterLegalityViolation,
+} from '@/lib/data/battleFrontierMasterRules';
+import {
   normalizeToChoosableSpeciesId,
   speciesNameToId,
   validateTeamUniqueness,
@@ -28,6 +32,19 @@ export const runtime = 'nodejs';
 
 function isFitnessAlgorithm(value: string): value is FitnessAlgorithm {
   return value === 'individual' || value === 'teamSynergy';
+}
+
+function getBattleFrontierMasterAnchorError(
+  violation: BattleFrontierMasterLegalityViolation,
+): string {
+  switch (violation) {
+    case 'points-cap':
+      return 'Battle Frontier Master anchors exceed the 11-point cap.';
+    case 'five-point-limit':
+      return 'Battle Frontier Master anchors can include at most one 5-point Pokemon.';
+    case 'mega-limit':
+      return 'Battle Frontier Master anchors can include at most one Mega Pokemon.';
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -98,6 +115,19 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 },
         );
+      }
+
+      if (resolvedFormatId === 'battle-frontier-master') {
+        const legality = getBattleFrontierMasterTeamLegality(anchorSpeciesIds);
+
+        if (!legality.isLegal) {
+          return NextResponse.json(
+            {
+              error: getBattleFrontierMasterAnchorError(legality.violations[0]),
+            },
+            { status: 400 },
+          );
+        }
       }
     }
 

@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - Battle Frontier Master cycle point data lives in `data/battle-frontier-master-points.csv` with a `speciesId,points` header and should stay aligned with the active bundled PvPoke cup tier rules while using canonical ids from `data/pokemon.json`.
 - Battle Frontier Master shadow point inheritance belongs in code, not the CSV: inherit a listed base species cost only when the shadow variant exists in `data/pokemon.json` and is ranked for `battle-frontier-master`.
+- In `app/api/generate-team/route.ts`, validate Battle Frontier Master anchor legality after ranked-species and uniqueness checks but before `generateTeam(...)`, and map the first legality violation to a deterministic HTTP 400 message.
 
 ## Iteration Log
 ## 2026-04-14 17:08:04 MST - US-001
@@ -31,7 +32,7 @@
 - What was implemented
 - Added a cached Battle Frontier Master rules helper that loads the checked-in points CSV, resolves exact and inherited shadow costs, detects Mega species from structured Pokemon tags, and evaluates team legality for points, 5-point, and Mega limits.
 - Files changed: `lib/data/battleFrontierMasterRules.ts`, `lib/data/battleFrontierMasterRules.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
-- Commit: `pending commit creation`
+- Commit: `e924968`
 - Checks:
   - `npx tsc --noEmit` (pass)
   - `npm run lint` (pass)
@@ -50,4 +51,27 @@
   - US-003 still needs API-level validation to turn legality violations into deterministic HTTP 400 errors.
 - Next iteration start:
   - Wire `getBattleFrontierMasterTeamLegality(...)` into `app/api/generate-team/route.ts` so illegal Battle Frontier Master anchors are rejected before generation.
+---
+## 2026-04-14 17:18:09 MST - US-003
+- What was implemented
+- Wired Battle Frontier Master anchor validation into `POST /api/generate-team` so illegal anchor combinations fail fast with deterministic 400 errors for point-cap, 5-point, and Mega violations before team generation starts.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Reused `getBattleFrontierMasterTeamLegality(...)` in the route instead of duplicating rule checks so the API stays aligned with the shared format rules module used by later generator and UI work.
+  - Returned the first legality violation as the API error so responses stay deterministic and easy for tests and UI handling to match.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `app/api/generate-team/route.test.ts` is the contract test for request validation, so new format-specific request guards should be added there with mocked `lib/` helpers rather than pulling real data into the route adapter tests.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - Battle Frontier Master API validation currently happens only on anchors, before `generateTeam(...)`; later generator stories still need legality enforcement during random initialization, mutation, and crossover.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - US-004 still needs generator initialization to avoid building illegal Battle Frontier Master teams without relying on API anchor validation.
+- Next iteration start:
+  - Update initial random chromosome construction in `lib/genetic/algorithm.ts` and related helpers so Battle Frontier Master teams start within the point, 5-point, and Mega limits.
 ---
