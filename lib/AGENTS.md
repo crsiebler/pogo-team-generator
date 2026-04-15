@@ -34,6 +34,8 @@ For Battle Frontier Master random team initialization in `lib/genetic/chromosome
 
 For Battle Frontier Master evolution in `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever an operator would create an illegal child.
 
+Keep a final Battle Frontier Master legality assertion in `lib/genetic/algorithm.ts` before returning the best team so initialization or operator regressions cannot leak an illegal final result.
+
 For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` before generation and pass `formatId` through simulation helpers so non-Great formats never silently reuse Great League matchups.
 
 ## Code Style

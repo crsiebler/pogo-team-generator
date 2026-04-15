@@ -1,4 +1,5 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
+import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
 import { getTopRankedPokemonNames } from '@lib/data/rankings';
 import { ensureSimulationDataAvailable } from '@lib/data/simulations';
@@ -202,6 +203,16 @@ export async function generateTeam(
       }
     }
     console.log('✅ All anchors verified in final team');
+  }
+
+  if (formatId === 'battle-frontier-master') {
+    const legality = getBattleFrontierMasterTeamLegality(bestOverall.team);
+
+    if (!legality.isLegal) {
+      throw new Error(
+        'Final Battle Frontier Master team is illegal. This should never happen.',
+      );
+    }
   }
 
   return bestOverall;
