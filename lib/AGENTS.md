@@ -32,6 +32,8 @@ For genetic candidate pool construction, always pass `formatId` into `getTopRank
 
 For Battle Frontier Master random team initialization in `lib/genetic/chromosome.ts`, reject illegal candidates incrementally during both scored selection and fallback selection using `getBattleFrontierMasterTeamLegality(...)`, then assert the completed team is legal before returning it.
 
+For Battle Frontier Master evolution in `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever an operator would create an illegal child.
+
 For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` before generation and pass `formatId` through simulation helpers so non-Great formats never silently reuse Great League matchups.
 
 ## Code Style

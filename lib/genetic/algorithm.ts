@@ -95,6 +95,7 @@ export async function generateTeam(
       mutationRate,
       eliteCount: Math.ceil(populationSize * 0.1),
       crossoverRate: 0.8,
+      formatId,
     });
 
     // Evaluate new population

@@ -158,4 +158,29 @@ describe('generateTeam format-aware candidate selection', () => {
       DEFAULT_BATTLE_FORMAT_ID,
     );
   });
+
+  it('passes the selected format into next-generation operators', async () => {
+    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+      new Set<string>(['Mew']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('mew', 'Mew'),
+    ]);
+
+    await generateTeam({
+      mode: 'GBL',
+      formatId: 'battle-frontier-master',
+      populationSize: 1,
+      generations: 1,
+    });
+
+    expect(createNextGeneration).toHaveBeenCalledWith(
+      expect.any(Array),
+      ['mew'],
+      'GBL',
+      expect.objectContaining({
+        formatId: 'battle-frontier-master',
+      }),
+    );
+  });
 });

@@ -3,6 +3,7 @@
 - Battle Frontier Master shadow point inheritance belongs in code, not the CSV: inherit a listed base species cost only when the shadow variant exists in `data/pokemon.json` and is ranked for `battle-frontier-master`.
 - In `app/api/generate-team/route.ts`, validate Battle Frontier Master anchor legality after ranked-species and uniqueness checks but before `generateTeam(...)`, and map the first legality violation to a deterministic HTTP 400 message.
 - In `lib/genetic/chromosome.ts`, enforce Battle Frontier Master initialization legality while filling each slot and in the random fallback path, then keep a final legality assertion on the completed team so later operator work can reuse the same pattern.
+- In `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever Battle Frontier Master operator output would become illegal.
 
 ## Iteration Log
 ## 2026-04-14 17:08:04 MST - US-001
@@ -97,5 +98,28 @@
   - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
   - US-004 still needs generator initialization to avoid building illegal Battle Frontier Master teams without relying on API anchor validation.
 - Next iteration start:
-  - Update initial random chromosome construction in `lib/genetic/algorithm.ts` and related helpers so Battle Frontier Master teams start within the point, 5-point, and Mega limits.
+ - Update initial random chromosome construction in `lib/genetic/algorithm.ts` and related helpers so Battle Frontier Master teams start within the point, 5-point, and Mega limits.
+---
+## 2026-04-15 11:17:32 MST - US-005
+- What was implemented
+- Kept Battle Frontier Master crossover and mutation legal by threading `formatId` into the operator stage, rejecting illegal children, and adding focused regression tests for crossover, mutation, and algorithm-level format propagation.
+- Files changed: `lib/genetic/operators.ts`, `lib/genetic/operators.test.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Threaded `formatId` through `createNextGeneration(...)` instead of hardcoding Battle Frontier Master checks in the algorithm loop so legality stays encapsulated inside the operator layer that owns crossover and mutation.
+  - Fell back to the original legal parent/chromosome when an operator would create an illegal child because initialization already guarantees legal starting teams, making fallback the smallest behavior-preserving repair for non-Battle Frontier formats.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - Format-specific generator constraints need the selected `formatId` threaded all the way into `lib/genetic/operators.ts`; otherwise crossover and mutation silently revert to format-agnostic behavior even if initialization is format-aware.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - `lib/genetic/operators.test.ts` is now the focused place to cover crossover/mutation behavior with mocked legality helpers, while `lib/genetic/algorithm.test.ts` only needs to prove format context reaches the operator stage.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-006` still needs UI messaging so Battle Frontier Master rules and API validation failures are visible before or during team generation.
+- Next iteration start:
+  - Show Battle Frontier Master rule copy and legality errors in the team setup UI, then verify it in the browser.
 ---
