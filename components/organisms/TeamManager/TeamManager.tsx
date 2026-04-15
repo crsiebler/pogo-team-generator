@@ -44,6 +44,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
   const [currentAlgorithm, setCurrentAlgorithm] =
     useState<FitnessAlgorithm>('individual');
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const eligiblePokemonSet = useMemo(() => {
     return new Set(eligiblePokemonList);
@@ -119,12 +120,14 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     setCurrentMode(mode);
     setAnchorPokemon([]);
     setExcludedPokemon([]);
+    setGenerationError(null);
   }, []);
 
   const handleFormatChange = useCallback((formatId: BattleFormatId) => {
     setCurrentFormatId(formatId);
     setAnchorPokemon([]);
     setExcludedPokemon([]);
+    setGenerationError(null);
   }, []);
 
   const handleAnchorsChange = useCallback((anchors: string[]) => {
@@ -174,6 +177,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     setGeneratedTeam(null);
     setFitness(null);
     setAnalysis(null);
+    setGenerationError(null);
 
     try {
       const selectedAnchors = anchorPokemon.filter(Boolean);
@@ -232,12 +236,14 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
       setGeneratedTeam({ team: data.team, formatId: currentFormatId });
       setFitness(data.fitness ?? null);
       setAnalysis(data.analysis ?? null);
+      setGenerationError(null);
     } catch (error) {
       console.error('Error generating team:', error);
       const message =
         error instanceof Error
           ? error.message
           : 'Failed to generate team. Please try again.';
+      setGenerationError(message);
       showToast(message, 'error');
     } finally {
       setIsGenerating(false);
@@ -249,6 +255,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
       <TeamConfigPanel
         pokemonList={eligiblePokemonList}
         selectedFormatId={currentFormatId}
+        errorMessage={generationError}
         onFormatChange={handleFormatChange}
         mode={currentMode}
         onModeChange={handleModeChange}

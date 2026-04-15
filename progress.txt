@@ -4,6 +4,7 @@
 - In `app/api/generate-team/route.ts`, validate Battle Frontier Master anchor legality after ranked-species and uniqueness checks but before `generateTeam(...)`, and map the first legality violation to a deterministic HTTP 400 message.
 - In `lib/genetic/chromosome.ts`, enforce Battle Frontier Master initialization legality while filling each slot and in the random fallback path, then keep a final legality assertion on the completed team so later operator work can reuse the same pattern.
 - In `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever Battle Frontier Master operator output would become illegal.
+- For battle-format-specific setup feedback, keep `TeamManager` as the owner of transient generation errors and pass them into `TeamConfigPanel` for inline alerts; render static format-rule copy in the config panel instead of duplicating it inside `TeamGenerator`.
 
 ## Iteration Log
 ## 2026-04-14 17:08:04 MST - US-001
@@ -122,4 +123,27 @@
   - `US-006` still needs UI messaging so Battle Frontier Master rules and API validation failures are visible before or during team generation.
 - Next iteration start:
   - Show Battle Frontier Master rule copy and legality errors in the team setup UI, then verify it in the browser.
+---
+## 2026-04-15 11:26:34 MST - US-006
+- What was implemented
+- Added Battle Frontier Master setup copy in `TeamConfigPanel` and surfaced generation failures as inline alerts near the configuration controls while preserving the existing toast notifications.
+- Files changed: `components/organisms/TeamConfigPanel/TeamConfigPanel.tsx`, `components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Kept the new rule copy and inline validation state in `TeamConfigPanel` because the acceptance criteria call for messaging near team setup, while `TeamManager` already owns the request lifecycle and can provide the latest generation error without duplicating API logic in child components.
+  - Preserved the existing toast behavior and added an inline alert instead of replacing toasts so legality failures remain visible both immediately and persistently without changing the established notification pattern.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - Format-specific setup messaging fits best in `TeamConfigPanel`, while transient generate-team errors should stay in `TeamManager` state and flow down as props.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - Browser verification for this flow can use Battle Frontier Master plus two Mega anchors (for example `Swampert (Mega)` and `Gallade (Mega)`) to trigger the inline legality error deterministically.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-007` still needs a live Battle Frontier Master point meter in the anchor UI.
+- Next iteration start:
+  - Add Battle Frontier Master live anchor point usage to the setup UI using the shared server-side point resolution rules.
 ---

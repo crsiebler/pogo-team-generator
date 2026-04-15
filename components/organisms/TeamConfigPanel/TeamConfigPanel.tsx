@@ -16,6 +16,7 @@ import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
 interface TeamConfigPanelProps {
   pokemonList: string[];
   selectedFormatId: BattleFormatId;
+  errorMessage?: string | null;
   onFormatChange: (formatId: BattleFormatId) => void;
   mode: TournamentMode;
   onModeChange: (mode: TournamentMode) => void;
@@ -30,6 +31,7 @@ interface TeamConfigPanelProps {
 export function TeamConfigPanel({
   pokemonList,
   selectedFormatId,
+  errorMessage,
   onFormatChange,
   mode,
   onModeChange,
@@ -103,6 +105,32 @@ export function TeamConfigPanel({
           ))}
         </Select>
       </div>
+
+      {selectedFormatId === 'battle-frontier-master' ? (
+        <div
+          className={clsx(
+            'mb-6 rounded-xl border px-4 py-3 text-sm sm:mb-8',
+            'border-amber-200 bg-amber-50 text-amber-950',
+            'dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-100',
+          )}
+        >
+          Battle Frontier Master teams must stay within 11 total points, at most
+          one 5-point Pokemon, and at most one Mega Pokemon.
+        </div>
+      ) : null}
+
+      {errorMessage ? (
+        <div
+          role="alert"
+          className={clsx(
+            'mb-6 rounded-xl border px-4 py-3 text-sm sm:mb-8',
+            'border-red-200 bg-red-50 text-red-900',
+            'dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-100',
+          )}
+        >
+          {errorMessage}
+        </div>
+      ) : null}
 
       {/* Tournament Mode Selection */}
       <div className="mb-6 sm:mb-8">

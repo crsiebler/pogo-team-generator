@@ -10,6 +10,7 @@ interface MockTeamConfigPanelProps {
   onFormatChange: (formatId: BattleFormatId) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onGenerate: () => void;
+  errorMessage?: string | null;
 }
 
 interface MockAnalysisPanelProps {
@@ -23,11 +24,18 @@ vi.mock('@/components/organisms', () => ({
     onFormatChange,
     onAnchorsChange,
     onGenerate,
+    errorMessage,
   }: MockTeamConfigPanelProps) => (
     <div>
       <div>Selected Format: {selectedFormatId}</div>
       <button type="button" onClick={() => onFormatChange('ultra-league')}>
         Set Ultra League
+      </button>
+      <button
+        type="button"
+        onClick={() => onFormatChange('battle-frontier-master')}
+      >
+        Set Battle Frontier Master
       </button>
       <button
         type="button"
@@ -41,6 +49,7 @@ vi.mock('@/components/organisms', () => ({
       <button type="button" onClick={onGenerate}>
         Generate Team
       </button>
+      {errorMessage ? <div role="alert">{errorMessage}</div> : null}
     </div>
   ),
   ResultsPanel: () => <div>Results</div>,
@@ -248,4 +257,58 @@ describe('TeamManager', () => {
       expect(screen.getByText('Analysis 0.75 loaded')).toBeInTheDocument();
     });
   });
+
+  it.each([
+    'Battle Frontier Master anchors exceed the 11-point cap.',
+    'Battle Frontier Master anchors can include at most one 5-point Pokemon.',
+    'Battle Frontier Master anchors can include at most one Mega Pokemon.',
+  ])(
+    'shows Battle Frontier Master legality failures to the user: %s',
+    async (errorMessage) => {
+      const fetchMock = vi
+        .fn()
+        .mockImplementation((input: RequestInfo | URL) => {
+          if (
+            typeof input === 'string' &&
+            input.startsWith('/api/pokemon-list')
+          ) {
+            return Promise.resolve(pokemonListResponse);
+          }
+
+          return Promise.resolve({
+            ok: false,
+            json: vi.fn().mockResolvedValue({ error: errorMessage }),
+          });
+        });
+
+      vi.stubGlobal('fetch', fetchMock);
+
+      render(<TeamManager />);
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/pokemon-list?formatId=great-league',
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
+      });
+
+      fireEvent.click(screen.getByText('Set Battle Frontier Master'));
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          '/api/pokemon-list?formatId=battle-frontier-master',
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
+      });
+
+      fireEvent.click(screen.getByText('Generate Team'));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(errorMessage);
+      });
+
+      expect(showToastMock).toHaveBeenCalledWith(errorMessage, 'error');
+      expect(screen.getByText('Analysis none missing')).toBeInTheDocument();
+    },
+  );
 });

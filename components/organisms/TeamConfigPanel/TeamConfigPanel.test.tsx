@@ -124,4 +124,52 @@ describe('TeamConfigPanel', () => {
       '',
     );
   });
+
+  it('shows Battle Frontier Master rules in the team configuration panel', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        selectedFormatId="battle-frontier-master"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /11 total points, at most one 5-point pokemon, and at most one mega pokemon/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('hides Battle Frontier Master rules for other formats', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        selectedFormatId="great-league"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(
+      screen.queryByText(
+        /11 total points, at most one 5-point pokemon, and at most one mega pokemon/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
 });
