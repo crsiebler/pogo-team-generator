@@ -8,6 +8,7 @@ import {
 } from '@/components/organisms';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
+  isBattleFrontierFormatId,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
@@ -136,6 +137,9 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
 
   const handleFormatChange = useCallback((formatId: BattleFormatId) => {
     setCurrentFormatId(formatId);
+    if (isBattleFrontierFormatId(formatId)) {
+      setCurrentMode('PlayPokemon');
+    }
     setAnchorPokemon([]);
     setExcludedPokemon([]);
     setGenerationError(null);
@@ -284,6 +288,9 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         generatedTeam={generatedTeam}
         mode={currentMode}
         isGenerating={isGenerating}
+        battleFrontierMasterPointsByPokemonName={
+          battleFrontierMasterPointsByPokemonName
+        }
       />
       <AnalysisPanel
         generatedTeam={generatedTeam}

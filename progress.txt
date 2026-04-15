@@ -4,10 +4,35 @@
 - In `app/api/generate-team/route.ts`, validate Battle Frontier Master anchor legality after ranked-species and uniqueness checks but before `generateTeam(...)`, and map the first legality violation to a deterministic HTTP 400 message.
 - In `lib/genetic/chromosome.ts`, enforce Battle Frontier Master initialization legality while filling each slot and in the random fallback path, then keep a final legality assertion on the completed team so later operator work can reuse the same pattern.
 - In `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever Battle Frontier Master operator output would become illegal.
+- In `lib/genetic/algorithm.ts`, keep a final Battle Frontier Master legality assertion before returning the best team so test doubles or future operator regressions cannot leak an illegal final result.
 - For battle-format-specific setup feedback, keep `TeamManager` as the owner of transient generation errors and pass them into `TeamConfigPanel` for inline alerts; render static format-rule copy in the config panel instead of duplicating it inside `TeamGenerator`.
 - Reuse `/api/pokemon-list?formatId=battle-frontier-master` as the UI transport for `battleFrontierMasterPointsByPokemonName`, then render the live point meter inside `TeamGenerator` so anchor edits stay immediate while point resolution still comes from the server-side rules helper.
 
 ## Iteration Log
+## 2026-04-15 11:40:25 MST - US-008
+- What was implemented
+- Added an algorithm-level regression test that forces an illegal Battle Frontier Master final team and verifies `generateTeam(...)` rejects it, then added a final legality backstop in `lib/genetic/algorithm.ts` so the generator cannot return an illegal team even if earlier stages regress.
+- Files changed: `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `069d513`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Added the new coverage at the `generateTeam(...)` boundary instead of only adding more unit tests around initialization or operators because the remaining gap was a missing end-to-end guard on the final returned team.
+  - Kept the production change to one final legality assertion rather than adding repair logic in the algorithm loop because initialization and operator stages already own legality preservation, and this story only needed a regression-proof backstop plus coverage.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `lib/genetic/algorithm.test.ts` is the right place to lock down final generation invariants that span multiple internals, especially when lower-level helpers are already unit-tested in isolation.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+  - Husky lint-staged hooks will restage touched TypeScript files during commit, so any iteration-specific bookkeeping that needs the final commit hash must be written after the implementation commit rather than relying on pre-commit placeholders.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - The most meaningful uncovered Battle Frontier Master regression was not point lookup or route validation, but the lack of a final algorithm-level legality assertion before returning `bestOverall`.
+- Known issues / follow-ups:
+  - `prd.json` and `progress.txt` now reflect the completed story in the working tree after the implementation commit and are not included in commit `069d513`.
+- Next iteration start:
+  - No remaining PRD stories are pending; the next pass can verify the bookkeeping files are committed or conclude the branch work.
+---
 ## 2026-04-15 11:35:14 MST - US-007
 - What was implemented
 - Added live Battle Frontier Master anchor point usage to the anchor UI by enriching the existing format-specific pokemon list response with server-resolved point values and rendering a running `(points / 11)` meter in `TeamGenerator`.

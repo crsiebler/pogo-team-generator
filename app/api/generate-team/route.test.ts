@@ -5,9 +5,16 @@ import { buildCoreBreakerAnalysis } from '@/lib/analysis/coreBreakerAnalysis';
 import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContributionAnalysis';
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
-import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  isBattleFrontierFormatId,
+} from '@/lib/data/battleFormats';
 import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
-import { speciesNameToId, validateTeamUniqueness } from '@/lib/data/pokemon';
+import {
+  isBattleFrontierBannedSpeciesId,
+  speciesNameToId,
+  validateTeamUniqueness,
+} from '@/lib/data/pokemon';
 import {
   getRankedSpeciesIds,
   MissingRankingDataError,
@@ -15,11 +22,21 @@ import {
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
 
+vi.mock('@/lib/data/battleFormats', async () => {
+  const actual = await vi.importActual('@/lib/data/battleFormats');
+
+  return {
+    ...actual,
+    isBattleFrontierFormatId: vi.fn(),
+  };
+});
+
 vi.mock('@/lib/data/pokemon', async () => {
   const actual = await vi.importActual('@/lib/data/pokemon');
 
   return {
     ...actual,
+    isBattleFrontierBannedSpeciesId: vi.fn(),
     speciesNameToId: vi.fn(),
     validateTeamUniqueness: vi.fn(),
   };
@@ -67,6 +84,10 @@ describe('POST /api/generate-team', () => {
     vi.mocked(speciesNameToId).mockImplementation((name: string) =>
       name.toLowerCase().replace(/\s+/g, '-'),
     );
+    vi.mocked(isBattleFrontierFormatId).mockImplementation((formatId) =>
+      formatId.startsWith('battle-frontier-'),
+    );
+    vi.mocked(isBattleFrontierBannedSpeciesId).mockReturnValue(false);
     vi.mocked(validateTeamUniqueness).mockReturnValue(true);
     vi.mocked(getRankedSpeciesIds).mockReturnValue(
       new Set(['azumarill', 'marowak', 'marowak-shadow']),
@@ -443,6 +464,37 @@ describe('POST /api/generate-team', () => {
     expect(response.status).toBe(400);
     expect(responseBody.error).toBe(
       'Pokémon is not eligible for ultra-league: Pikachu',
+    );
+    expect(generateTeam).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when a Battle Frontier anchor is on the banned list', async () => {
+    vi.mocked(speciesNameToId).mockImplementation((name: string) =>
+      name === 'Groudon (Primal)'
+        ? 'groudon_primal'
+        : name.toLowerCase().replace(/\s+/g, '-'),
+    );
+    vi.mocked(getRankedSpeciesIds).mockReturnValue(new Set(['groudon_primal']));
+    vi.mocked(isBattleFrontierBannedSpeciesId).mockImplementation(
+      (speciesId: string) => speciesId === 'groudon_primal',
+    );
+
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'battle-frontier-master',
+        anchorPokemon: ['Groudon (Primal)'],
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const responseBody = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(responseBody.error).toBe(
+      'Pokémon is not eligible for battle-frontier-master: Groudon (Primal)',
     );
     expect(generateTeam).not.toHaveBeenCalled();
   });

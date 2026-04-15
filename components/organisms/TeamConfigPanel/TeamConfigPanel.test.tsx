@@ -178,4 +178,48 @@ describe('TeamConfigPanel', () => {
       ),
     ).not.toBeInTheDocument();
   });
+
+  it('shows the tournament format selector for non-Battle Frontier formats', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
+        selectedFormatId="great-league"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.getByText('Tournament Format')).toBeInTheDocument();
+    expect(screen.getByText('Mode Selector')).toBeInTheDocument();
+  });
+
+  it('hides the tournament format selector for Battle Frontier formats', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
+        selectedFormatId="battle-frontier-bayou-cup"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.queryByText('Tournament Format')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mode Selector')).not.toBeInTheDocument();
+  });
 });

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
+  isBattleFrontierFormatId,
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
 import { getBattleFrontierMasterPointsForSpecies } from '@/lib/data/battleFrontierMasterRules';
-import { speciesNameToChoosableId } from '@/lib/data/pokemon';
+import {
+  isBattleFrontierBannedSpeciesId,
+  speciesNameToChoosableId,
+} from '@/lib/data/pokemon';
 import { getRankedPokemonNames } from '@/lib/data/rankings';
 
 export const runtime = 'nodejs';
@@ -22,7 +26,17 @@ export async function GET(request: Request) {
       );
     }
 
-    const pokemonNames = Array.from(getRankedPokemonNames(formatId));
+    const pokemonNames = Array.from(getRankedPokemonNames(formatId)).filter(
+      (pokemonName) => {
+        if (!isBattleFrontierFormatId(formatId)) {
+          return true;
+        }
+
+        const speciesId = speciesNameToChoosableId(pokemonName);
+
+        return !speciesId || !isBattleFrontierBannedSpeciesId(speciesId);
+      },
+    );
 
     const battleFrontierMasterPointsByPokemonName =
       formatId === 'battle-frontier-master'

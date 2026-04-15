@@ -8,6 +8,7 @@ import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
 import {
   getBattleFormats,
+  isBattleFrontierFormatId,
   isBattleFormatId,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
@@ -77,6 +78,9 @@ export function TeamConfigPanel({
     [onFormatChange],
   );
 
+  const showTournamentFormatSelector =
+    !isBattleFrontierFormatId(selectedFormatId);
+
   return (
     <div
       className={clsx(
@@ -135,17 +139,19 @@ export function TeamConfigPanel({
       ) : null}
 
       {/* Tournament Mode Selection */}
-      <div className="mb-6 sm:mb-8">
-        <span
-          className={clsx(
-            'mb-3 block text-sm font-semibold',
-            'text-gray-800 dark:text-gray-300',
-          )}
-        >
-          Tournament Format
-        </span>
-        <ModeSelector mode={mode} onModeChange={onModeChange} />
-      </div>
+      {showTournamentFormatSelector ? (
+        <div className="mb-6 sm:mb-8">
+          <span
+            className={clsx(
+              'mb-3 block text-sm font-semibold',
+              'text-gray-800 dark:text-gray-300',
+            )}
+          >
+            Tournament Format
+          </span>
+          <ModeSelector mode={mode} onModeChange={onModeChange} />
+        </div>
+      ) : null}
 
       {/* Anchor Pokémon Input */}
       <TeamGenerator

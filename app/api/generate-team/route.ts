@@ -4,6 +4,7 @@ import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContribu
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import {
+  isBattleFrontierFormatId,
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
@@ -12,6 +13,7 @@ import {
   type BattleFrontierMasterLegalityViolation,
 } from '@/lib/data/battleFrontierMasterRules';
 import {
+  isBattleFrontierBannedSpeciesId,
   normalizeToChoosableSpeciesId,
   speciesNameToId,
   validateTeamUniqueness,
@@ -95,7 +97,11 @@ export async function POST(request: NextRequest) {
         }
 
         const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
-        if (!rankedSpeciesIds.has(canonicalSpeciesId)) {
+        if (
+          !rankedSpeciesIds.has(canonicalSpeciesId) ||
+          (isBattleFrontierFormatId(resolvedFormatId) &&
+            isBattleFrontierBannedSpeciesId(canonicalSpeciesId))
+        ) {
           return NextResponse.json(
             {
               error: `Pokémon is not eligible for ${resolvedFormatId}: ${name}`,
@@ -146,7 +152,11 @@ export async function POST(request: NextRequest) {
         }
 
         const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
-        if (!rankedSpeciesIds.has(canonicalSpeciesId)) {
+        if (
+          !rankedSpeciesIds.has(canonicalSpeciesId) ||
+          (isBattleFrontierFormatId(resolvedFormatId) &&
+            isBattleFrontierBannedSpeciesId(canonicalSpeciesId))
+        ) {
           return NextResponse.json(
             {
               error: `Pokémon is not eligible for ${resolvedFormatId}: ${name}`,

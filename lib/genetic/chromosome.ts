@@ -388,12 +388,11 @@ export function createRandomChromosome(
     // If no good candidate found, fall back to random unique selection
     if (!selectedSpecies) {
       let fallbackAttempts = 0;
-      let selectedDex: number | undefined = undefined;
 
-      while (!selectedDex || usedDexNumbers.has(selectedDex)) {
+      while (!selectedSpecies) {
         const candidate =
           pokemonPool[Math.floor(Math.random() * pokemonPool.length)];
-        selectedDex = getDexNumber(candidate);
+        const candidateDex = getDexNumber(candidate);
         fallbackAttempts++;
 
         if (fallbackAttempts > 1000) {
@@ -402,17 +401,19 @@ export function createRandomChromosome(
           );
         }
 
-        // Only assign once we've confirmed it's valid
-        if (selectedDex && !usedDexNumbers.has(selectedDex)) {
-          if (
-            enforceBattleFrontierMasterLegality &&
-            !isLegalBattleFrontierMasterCandidate(team, candidate)
-          ) {
-            continue;
-          }
-
-          selectedSpecies = candidate;
+        if (!candidateDex || usedDexNumbers.has(candidateDex)) {
+          continue;
         }
+
+        // Only assign once we've confirmed it's valid
+        if (
+          enforceBattleFrontierMasterLegality &&
+          !isLegalBattleFrontierMasterCandidate(team, candidate)
+        ) {
+          continue;
+        }
+
+        selectedSpecies = candidate;
       }
     }
 

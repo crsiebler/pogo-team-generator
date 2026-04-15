@@ -37,6 +37,7 @@ const mockPokemonBySpeciesId = vi.mocked(getPokemonBySpeciesId);
 const mockDexNumber = vi.mocked(getDexNumber);
 
 const pointsBySpeciesId: Record<string, number> = {
+  charizard_mega_y: 4,
   palkia_origin: 5,
   eternatus: 5,
   mewtwo: 2,
@@ -44,7 +45,7 @@ const pointsBySpeciesId: Record<string, number> = {
   dragonite: 0,
 };
 
-const megaSpeciesIds = new Set(['swampert_mega']);
+const megaSpeciesIds = new Set(['charizard_mega_y', 'swampert_mega']);
 
 function mockRandomSequence(values: number[]): void {
   const randomSpy = vi.spyOn(Math, 'random');
@@ -164,5 +165,36 @@ describe('createRandomChromosome Battle Frontier Master legality', () => {
       'eternatus',
       'swampert_mega',
     ]);
+  });
+
+  it('keeps searching fallback candidates until it finds a legal Battle Frontier team member', () => {
+    mockDexNumber.mockImplementation(
+      (speciesId: string) =>
+        ({
+          charizard_mega_y: 6,
+          swampert_mega: 260,
+          dragonite: 149,
+        })[speciesId],
+    );
+
+    mockRandomSequence([
+      0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1,
+      0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.9,
+    ]);
+
+    const chromosome = createRandomChromosome(
+      ['swampert_mega', 'dragonite'],
+      2,
+      ['charizard_mega_y'],
+      'battle-frontier-master',
+    );
+
+    expect(chromosome.team).toEqual(['charizard_mega_y', 'dragonite']);
+    expect(getBattleFrontierMasterTeamLegality(chromosome.team)).toMatchObject({
+      isLegal: true,
+      megaCount: 1,
+      fivePointPokemonCount: 0,
+      totalPoints: 4,
+    });
   });
 });

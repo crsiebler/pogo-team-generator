@@ -121,7 +121,7 @@ export function isBattleFrontierMasterMegaSpecies(speciesId: string): boolean {
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const pokemon = getPokemonBySpeciesId(canonicalSpeciesId);
 
-  return pokemon?.tags.includes('mega') ?? false;
+  return pokemon?.tags?.includes('mega') ?? false;
 }
 
 /**

@@ -7,7 +7,9 @@ const showToastMock = vi.fn();
 
 interface MockTeamConfigPanelProps {
   selectedFormatId: BattleFormatId;
+  mode: string;
   onFormatChange: (formatId: BattleFormatId) => void;
+  onModeChange: (mode: 'PlayPokemon' | 'GBL') => void;
   onAnchorsChange: (anchors: string[]) => void;
   onGenerate: () => void;
   errorMessage?: string | null;
@@ -21,15 +23,27 @@ interface MockAnalysisPanelProps {
 vi.mock('@/components/organisms', () => ({
   TeamConfigPanel: ({
     selectedFormatId,
+    mode,
     onFormatChange,
+    onModeChange,
     onAnchorsChange,
     onGenerate,
     errorMessage,
   }: MockTeamConfigPanelProps) => (
     <div>
       <div>Selected Format: {selectedFormatId}</div>
+      <div>Selected Mode: {mode}</div>
       <button type="button" onClick={() => onFormatChange('ultra-league')}>
         Set Ultra League
+      </button>
+      <button type="button" onClick={() => onModeChange('GBL')}>
+        Set GBL Mode
+      </button>
+      <button
+        type="button"
+        onClick={() => onFormatChange('battle-frontier-bayou-cup')}
+      >
+        Set Battle Frontier Bayou
       </button>
       <button
         type="button"
@@ -143,6 +157,44 @@ describe('TeamManager', () => {
     return waitFor(() => {
       expect(
         screen.getByText('Selected Format: ultra-league'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('forces PlayPokemon mode for Battle Frontier formats', async () => {
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Selected Mode: PlayPokemon'),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Set GBL Mode'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Selected Mode: GBL')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Set Battle Frontier Master'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Selected Format: battle-frontier-master'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Selected Mode: PlayPokemon'),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Set Battle Frontier Bayou'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Selected Format: battle-frontier-bayou-cup'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Selected Mode: PlayPokemon'),
       ).toBeInTheDocument();
     });
   });

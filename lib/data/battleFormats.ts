@@ -129,3 +129,10 @@ export function getBattleFormatById(
 
   return battleFormatLookup.get(formatId);
 }
+
+/**
+ * Returns whether a supported format is part of the Battle Frontier series.
+ */
+export function isBattleFrontierFormatId(formatId: BattleFormatId): boolean {
+  return formatId.startsWith('battle-frontier-');
+}
