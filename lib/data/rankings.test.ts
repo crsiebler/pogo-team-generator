@@ -36,8 +36,8 @@ describe('format-aware rankings loading', () => {
     const ultraLeagueRankings = getOverallRankings('ultra-league');
     const masterLeagueRankings = getOverallRankings('master-league');
     const bayouCupRankings = getOverallRankings('battle-frontier-bayou-cup');
-    const brujeriaCupRankings = getOverallRankings(
-      'battle-frontier-brujeria-cup',
+    const spellcraftCupRankings = getOverallRankings(
+      'battle-frontier-spellcraft-cup',
     );
     const ulRetroRankings = getOverallRankings('battle-frontier-ul-retro');
     const battleFrontierMasterRankings = getOverallRankings(
@@ -51,7 +51,7 @@ describe('format-aware rankings loading', () => {
     expect(ultraLeagueRankings.length).toBeGreaterThan(0);
     expect(masterLeagueRankings.length).toBeGreaterThan(0);
     expect(bayouCupRankings.length).toBeGreaterThan(0);
-    expect(brujeriaCupRankings.length).toBeGreaterThan(0);
+    expect(spellcraftCupRankings.length).toBeGreaterThan(0);
     expect(ulRetroRankings.length).toBeGreaterThan(0);
     expect(battleFrontierMasterRankings.length).toBeGreaterThan(0);
     expect(kantoCupRankings.length).toBeGreaterThan(0);

@@ -23,7 +23,7 @@ describe('rankings local sync', () => {
             | 'jungle'
             | 'spring'
             | 'bayou'
-            | 'brujeria'
+            | 'spellcraft'
             | 'bfretro'
             | 'battlefrontiermaster'
             | undefined,
@@ -45,7 +45,7 @@ describe('rankings local sync', () => {
             cup === 'jungle' ||
             cup === 'spring' ||
             cup === 'bayou' ||
-            cup === 'brujeria' ||
+            cup === 'spellcraft' ||
             cup === 'bfretro' ||
             cup === 'battlefrontiermaster',
         ).toBe(true);
@@ -189,7 +189,13 @@ describe('rankings local sync', () => {
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'rankings', 'cp1500', 'brujeria', 'leads_rankings.csv'),
+      path.join(
+        'data',
+        'rankings',
+        'cp1500',
+        'spellcraft',
+        'leads_rankings.csv',
+      ),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(

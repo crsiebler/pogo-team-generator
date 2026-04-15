@@ -110,7 +110,7 @@ describe('generateSimulations', () => {
         | 'jungle'
         | 'spring'
         | 'bayou'
-        | 'brujeria'
+        | 'spellcraft'
         | 'bfretro'
         | 'battlefrontiermaster';
       cp: 1500 | 2500 | 10000;
@@ -206,7 +206,7 @@ describe('generateSimulations', () => {
       shields: 1,
     });
     expect(generatedCalls).toContainEqual({
-      cup: 'brujeria',
+      cup: 'spellcraft',
       cp: 1500,
       speciesId: 'bulbasaur',
       shields: 0,
@@ -257,7 +257,7 @@ describe('generateSimulations', () => {
         'data',
         'simulations',
         'cp1500',
-        'brujeria',
+        'spellcraft',
         'bulbasaur_0-0.csv',
       ),
       VALID_SIMULATION_CSV,

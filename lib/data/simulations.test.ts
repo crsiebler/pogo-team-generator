@@ -26,7 +26,7 @@ describe('format-aware simulation loading', () => {
       ensureSimulationDataAvailable('battle-frontier-bayou-cup'),
     ).not.toThrow();
     expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-brujeria-cup'),
+      ensureSimulationDataAvailable('battle-frontier-spellcraft-cup'),
     ).not.toThrow();
     expect(() =>
       ensureSimulationDataAvailable('battle-frontier-ul-retro'),

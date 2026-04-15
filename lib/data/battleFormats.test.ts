@@ -14,7 +14,7 @@ describe('battle format catalog', () => {
       'Ultra League',
       'Master League',
       'Battle Frontier (Bayou Cup)',
-      'Battle Frontier (Brujeria Cup)',
+      'Battle Frontier (Spellcraft Cup)',
       'Battle Frontier (UL Retro)',
       'Battle Frontier (Master)',
       'Kanto Cup',
@@ -32,7 +32,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
     expect(isBattleFormatId('battle-frontier-bayou-cup')).toBe(true);
-    expect(isBattleFormatId('battle-frontier-brujeria-cup')).toBe(true);
+    expect(isBattleFormatId('battle-frontier-spellcraft-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-ul-retro')).toBe(true);
     expect(isBattleFormatId('battle-frontier-master')).toBe(true);
     expect(isBattleFormatId('kanto-cup')).toBe(true);
@@ -74,10 +74,10 @@ describe('battle format catalog', () => {
       cp: 1500,
     });
 
-    expect(getBattleFormatById('battle-frontier-brujeria-cup')).toEqual({
-      id: 'battle-frontier-brujeria-cup',
-      label: 'Battle Frontier (Brujeria Cup)',
-      cup: 'brujeria',
+    expect(getBattleFormatById('battle-frontier-spellcraft-cup')).toEqual({
+      id: 'battle-frontier-spellcraft-cup',
+      label: 'Battle Frontier (Spellcraft Cup)',
+      cup: 'spellcraft',
       cp: 1500,
     });
 
