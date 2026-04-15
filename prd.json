@@ -1,16 +1,17 @@
 {
   "project": "pogo-team-generator",
-  "branchName": "ralph/multi-league-cup-support",
-  "description": "Add league and cup selection so team generation uses format-specific PvPoke rankings and simulations for Great, Ultra, Master, and Kanto Cup.",
+  "branchName": "ralph/battle-frontier-master-support",
+  "description": "Add Battle Frontier (Master) support with cycle-specific point rules, shadow point inheritance, generator legality enforcement, and live anchor point usage UI.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Create battle format catalog",
-      "description": "As a developer, I want a typed battle format catalog so UI, API, algorithm, and sync layers share one source of truth for supported formats.",
+      "title": "Add Battle Frontier Master cycle points CSV",
+      "description": "As a developer, I want the Battle Frontier Master cycle point table stored in a checked-in CSV so future cycles can be updated without changing rule logic.",
       "acceptanceCriteria": [
-        "Add a typed format catalog with ids, labels, cup, and cp for Great League, Ultra League, Master League, and Kanto Cup",
-        "Add a default format id for Great League",
-        "Add helper validation/lookup utilities for format ids",
+        "Add a checked-in CSV file under data/ for Battle Frontier Master cycle point values",
+        "The CSV uses canonical internal Pokemon identifiers that match project data",
+        "The CSV includes all point-listed species for this cycle",
+        "The CSV format is simple enough to update next cycle without code changes",
         "Typecheck passes",
         "Tests pass"
       ],
@@ -20,150 +21,116 @@
     },
     {
       "id": "US-002",
-      "title": "Add Select and Option atoms with chevron icons",
-      "description": "As a user, I want a reusable select component with clear affordance so format selection is consistent with project styling.",
+      "title": "Add Battle Frontier Master rules helper",
+      "description": "As a developer, I want a reusable rules module for points and Mega detection so API, UI, and generation share one source of truth.",
       "acceptanceCriteria": [
-        "Create Select atom with floating label behavior adapted to this project's theme classes",
-        "Create Option atom for option rendering",
-        "Add ChevronDownIcon and ChevronUpIcon to atom icons and export them",
-        "Select renders correctly in light and dark themes",
+        "Add a helper that loads and caches the Battle Frontier Master points CSV",
+        "Point lookup works for exact listed species ids",
+        "Point lookup applies shadow inheritance from a listed base species when appropriate",
+        "Mega detection uses structured Pokemon data and existing mega tags",
+        "The helper exposes team-level legality checks for point cap, one 5-point Pokemon, and one Mega",
         "Typecheck passes",
-        "Tests pass",
-        "Verify in browser using dev-browser skill"
+        "Tests pass"
       ],
       "priority": 2,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-003",
-      "title": "Add format dropdown to Team Configuration",
-      "description": "As a user, I want to select a battle format at the top of Team Configuration so team generation targets the right league or cup.",
+      "title": "Validate Battle Frontier Master anchors in the API",
+      "description": "As a user, I want illegal Battle Frontier Master anchor selections rejected before generation starts so I get immediate, clear feedback.",
       "acceptanceCriteria": [
-        "Place format selector at the top of Team Configuration above tournament mode",
-        "Dropdown options are exactly Great League, Ultra League, Master League, and Kanto Cup",
-        "Default selected option is Great League",
-        "TeamManager stores selected format state and passes it to config panel",
+        "POST /api/generate-team validates Battle Frontier Master anchors against the 11-point cap",
+        "POST /api/generate-team enforces at most one 5-point Pokemon for Battle Frontier Master",
+        "POST /api/generate-team enforces at most one Mega Pokemon for Battle Frontier Master",
+        "Invalid Battle Frontier Master anchor combinations return HTTP 400 with deterministic human-readable errors",
         "Typecheck passes",
-        "Tests pass",
-        "Verify in browser using dev-browser skill"
+        "Tests pass"
       ],
       "priority": 3,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-004",
-      "title": "Send and validate formatId in generate-team API",
-      "description": "As a user, I want my selected format sent to the backend so generated teams use the requested data context.",
+      "title": "Keep random team construction legal for Battle Frontier Master",
+      "description": "As a user, I want Battle Frontier Master teams built from legal candidates so generated teams do not violate format rules during initial construction.",
       "acceptanceCriteria": [
-        "Client generate-team request payload includes formatId",
-        "API validates formatId against supported format catalog",
-        "Invalid formatId returns HTTP 400 with a clear message",
-        "API passes validated formatId into generation options",
+        "Random chromosome creation does not finalize a Battle Frontier Master team over 11 points",
+        "Random chromosome creation does not finalize a Battle Frontier Master team with more than one 5-point Pokemon",
+        "Random chromosome creation does not finalize a Battle Frontier Master team with more than one Mega Pokemon",
+        "Non-Battle Frontier Master formats keep their current initialization behavior",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 4,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-005",
-      "title": "Load rankings by selected format",
-      "description": "As a user, I want ranking-based scoring to come from the selected format so results reflect the correct meta.",
+      "title": "Keep mutated and crossed teams legal for Battle Frontier Master",
+      "description": "As a user, I want the genetic algorithm to preserve Battle Frontier Master legality after crossover and mutation so final generated teams remain tournament-legal.",
       "acceptanceCriteria": [
-        "Rankings loader resolves CSV paths by selected cup/cp/category",
-        "Ranking helper APIs accept an optional formatId and default to Great League",
-        "Ranking caches are isolated by format to prevent cross-format contamination",
-        "Missing ranking files for selected format raise handled errors",
+        "Mutation does not keep an illegal Battle Frontier Master child",
+        "Crossover does not keep an illegal Battle Frontier Master child",
+        "Final generated Battle Frontier Master teams always satisfy point cap, one 5-point Pokemon, and one Mega rules",
+        "Non-Battle Frontier Master formats keep their current operator behavior",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 5,
-      "passes": true,
+      "passes": false,
       "notes": ""
     },
     {
       "id": "US-006",
-      "title": "Use format-aware Pokemon pool in algorithm",
-      "description": "As a user, I want candidate Pokemon chosen from selected format rankings so generation honors league and cup restrictions.",
+      "title": "Show Battle Frontier Master rule messaging in the UI",
+      "description": "As a user, I want Battle Frontier Master rule messaging near team setup so I understand the current cycle constraints before generating a team.",
       "acceptanceCriteria": [
-        "Algorithm obtains top-ranked names from selected format",
-        "Pokemon eligibility filtering uses selected format context",
-        "Kanto Cup generation is restricted to Kanto ranking pool",
-        "Genetic operators and fitness formulas remain unchanged",
-        "Typecheck passes",
-        "Tests pass"
-      ],
-      "priority": 6,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-007",
-      "title": "Load simulations by selected format and block missing data",
-      "description": "As a user, I want matchup analysis tied to the selected format and clear failure behavior when required data is missing.",
-      "acceptanceCriteria": [
-        "Simulation loader parses and indexes files by format-aware naming",
-        "Simulation helper APIs accept an optional formatId and default to Great League",
-        "Team generation blocks with a clear error when selected format simulations are missing",
-        "No silent fallback to Great League when non-Great format is selected",
-        "Typecheck passes",
-        "Tests pass"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-008",
-      "title": "Sync rankings for all supported formats",
-      "description": "As a maintainer, I want rankings sync to generate outputs for all supported formats so runtime lookups have complete data.",
-      "acceptanceCriteria": [
-        "Rankings sync iterates formats all/1500, all/2500, all/10000, and kanto/1500",
-        "Generate overall, leads, switches, and closers CSVs for each supported format",
-        "Output filenames encode cup/cp/category deterministically",
-        "Validation runs for each generated CSV",
-        "Typecheck passes",
-        "Tests pass"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-009",
-      "title": "Sync simulations for all supported formats",
-      "description": "As a maintainer, I want simulation sync to run PvPoke TeamRanker per format so coverage and threat analysis are format-correct.",
-      "acceptanceCriteria": [
-        "Simulation sync runs TeamRanker with correct cup and cp per selected format",
-        "Generate 0-0, 1-1, and 2-2 CSVs per target species for each supported format",
-        "Resume mode reuses valid files only for the same format",
-        "Output filenames encode format, species, and scenario deterministically",
-        "Typecheck passes",
-        "Tests pass"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-010",
-      "title": "Validate end-to-end generation for all four formats",
-      "description": "As a user, I want confidence that all supported formats generate valid teams so I can use the app for multiple metas.",
-      "acceptanceCriteria": [
-        "Great League generates using all/1500 data",
-        "Ultra League generates using all/2500 data",
-        "Master League generates using all/10000 data",
-        "Kanto Cup generates using kanto/1500 data",
-        "Missing format data shows clear error and blocks generation",
+        "When Battle Frontier Master is selected, team configuration shows concise copy describing 11 total points, at most one 5-point Pokemon, and at most one Mega Pokemon",
+        "Validation failures surface clear user-visible error messages for point cap, 5-point limit, and Mega limit",
+        "Team generation does not proceed after a Battle Frontier Master legality failure",
         "Typecheck passes",
         "Tests pass",
         "Verify in browser using dev-browser skill"
       ],
-      "priority": 10,
-      "passes": true,
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Show live anchor point usage for Battle Frontier Master",
+      "description": "As a user, I want to see current Battle Frontier Master anchor point usage so I can build legal teams without guessing my remaining budget.",
+      "acceptanceCriteria": [
+        "When battle-frontier-master is selected, the anchor UI displays current point usage in the format '(# / 11 points)'",
+        "The point usage display updates immediately when anchors are added, changed, or removed",
+        "The point usage display uses the same point-resolution rules as server-side validation, including shadow inheritance",
+        "Non-Battle Frontier Master formats do not show the Battle Frontier Master point meter",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Add automated coverage for Battle Frontier Master rules",
+      "description": "As a developer, I want automated tests for Battle Frontier Master legality so future data or generator changes do not break rule enforcement.",
+      "acceptanceCriteria": [
+        "Add unit tests for point lookup and shadow inheritance",
+        "Add unit tests for one-Mega and one-5-point validation",
+        "Add API tests for invalid Battle Frontier Master anchor combinations",
+        "Add generator tests verifying produced Battle Frontier Master teams are legal",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 8,
+      "passes": false,
       "notes": ""
     }
   ]
