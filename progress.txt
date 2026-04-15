@@ -2,6 +2,7 @@
 - Battle Frontier Master cycle point data lives in `data/battle-frontier-master-points.csv` with a `speciesId,points` header and should stay aligned with the active bundled PvPoke cup tier rules while using canonical ids from `data/pokemon.json`.
 - Battle Frontier Master shadow point inheritance belongs in code, not the CSV: inherit a listed base species cost only when the shadow variant exists in `data/pokemon.json` and is ranked for `battle-frontier-master`.
 - In `app/api/generate-team/route.ts`, validate Battle Frontier Master anchor legality after ranked-species and uniqueness checks but before `generateTeam(...)`, and map the first legality violation to a deterministic HTTP 400 message.
+- In `lib/genetic/chromosome.ts`, enforce Battle Frontier Master initialization legality while filling each slot and in the random fallback path, then keep a final legality assertion on the completed team so later operator work can reuse the same pattern.
 
 ## Iteration Log
 ## 2026-04-14 17:08:04 MST - US-001
@@ -27,6 +28,29 @@
   - US-002 still needs the runtime rules helper that loads this CSV and applies shadow inheritance.
 - Next iteration start:
 - Implement `US-002` by adding a cached Battle Frontier Master points helper in `lib/` that reads this CSV and resolves exact and inherited shadow costs.
+---
+## 2026-04-15 11:10:00 MST - US-004
+- What was implemented
+- Kept Battle Frontier Master random chromosome initialization legal by rejecting over-budget, extra-5-point, and extra-Mega candidates during both scored selection and fallback selection, with a final legality assertion before returning the chromosome.
+- Files changed: `lib/genetic/chromosome.ts`, `lib/genetic/chromosome.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Reused `getBattleFrontierMasterTeamLegality(...)` inside `createRandomChromosome(...)` so initialization follows the same legality rules already used by the API instead of duplicating point, Mega, and 5-point logic.
+  - Applied the legality filter in both the scored candidate loop and the fallback loop because the fallback path can otherwise bypass format constraints when the diversity scorer cannot find a candidate quickly.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `lib/genetic/chromosome.test.ts` is the focused unit-test entry point for initialization behavior, so Battle Frontier Master generator coverage can stay isolated there with mocked data helpers instead of loading full rankings or simulations.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - `createRandomChromosome(...)` now enforces Battle Frontier Master legality during initial team construction only; mutation and crossover still need equivalent guardrails in `lib/genetic/operators.ts` for `US-005`.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-005` still needs mutation and crossover legality preservation so evolved Battle Frontier Master teams cannot drift into illegal states after initialization.
+- Next iteration start:
+  - Update `lib/genetic/operators.ts` so crossover and mutation reject or repair illegal Battle Frontier Master children using the shared legality helper.
 ---
 ## 2026-04-14 17:14:29 MST - US-002
 - What was implemented

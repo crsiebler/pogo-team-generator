@@ -15,6 +15,25 @@ import {
 } from '@lib/data/simulations';
 import { calculateEffectiveness } from '../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../types';
+import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
+
+function shouldEnforceBattleFrontierMasterLegality(
+  formatId?: BattleFormatId,
+): boolean {
+  return formatId === 'battle-frontier-master';
+}
+
+function isLegalBattleFrontierMasterCandidate(
+  currentTeam: string[],
+  candidateSpeciesId: string,
+): boolean {
+  const partialTeam = currentTeam.filter(Boolean);
+
+  return getBattleFrontierMasterTeamLegality([
+    ...partialTeam,
+    candidateSpeciesId,
+  ]).isLegal;
+}
 
 /**
  * Create a new chromosome with optional anchors
@@ -98,6 +117,8 @@ export function createRandomChromosome(
   anchorPokemon?: string[],
   formatId?: BattleFormatId,
 ): Chromosome {
+  const enforceBattleFrontierMasterLegality =
+    shouldEnforceBattleFrontierMasterLegality(formatId);
   const team: string[] = Array(teamSize).fill('');
   const anchors: number[] = [];
   const usedDexNumbers = new Set<number>();
@@ -150,6 +171,14 @@ export function createRandomChromosome(
       // Get candidate's types
       const candidatePokemon = getPokemonBySpeciesId(candidateSpecies);
       if (!candidatePokemon) {
+        attempts++;
+        continue;
+      }
+
+      if (
+        enforceBattleFrontierMasterLegality &&
+        !isLegalBattleFrontierMasterCandidate(team, candidateSpecies)
+      ) {
         attempts++;
         continue;
       }
@@ -375,6 +404,13 @@ export function createRandomChromosome(
 
         // Only assign once we've confirmed it's valid
         if (selectedDex && !usedDexNumbers.has(selectedDex)) {
+          if (
+            enforceBattleFrontierMasterLegality &&
+            !isLegalBattleFrontierMasterCandidate(team, candidate)
+          ) {
+            continue;
+          }
+
           selectedSpecies = candidate;
         }
       }
@@ -414,6 +450,16 @@ export function createRandomChromosome(
       } else {
         console.log(`✓ Anchor ${i} preserved: ${anchorPokemon[i]}`);
       }
+    }
+  }
+
+  if (enforceBattleFrontierMasterLegality) {
+    const legality = getBattleFrontierMasterTeamLegality(team);
+
+    if (!legality.isLegal) {
+      throw new Error(
+        `Failed to create a legal Battle Frontier Master team: ${legality.violations.join(', ')}`,
+      );
     }
   }
 
