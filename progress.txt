@@ -1,12 +1,13 @@
 ## Codebase Patterns
 - Battle Frontier Master cycle point data lives in `data/battle-frontier-master-points.csv` with a `speciesId,points` header and should stay aligned with the active bundled PvPoke cup tier rules while using canonical ids from `data/pokemon.json`.
+- Battle Frontier Master shadow point inheritance belongs in code, not the CSV: inherit a listed base species cost only when the shadow variant exists in `data/pokemon.json` and is ranked for `battle-frontier-master`.
 
 ## Iteration Log
 ## 2026-04-14 17:08:04 MST - US-001
 - What was implemented
 - Added the checked-in Battle Frontier Master cycle point CSV and a regression test that validates its canonical ids and current-cycle contents against the bundled cup tier rules.
 - Files changed: `data/battle-frontier-master-points.csv`, `lib/data/battleFrontierMasterPoints.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
-- Commit: `pending commit creation`
+- Commit: `cf64c32`
 - Checks:
   - `npx tsc --noEmit` (pass)
   - `npm run lint` (pass)
@@ -24,5 +25,29 @@
   - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
   - US-002 still needs the runtime rules helper that loads this CSV and applies shadow inheritance.
 - Next iteration start:
-  - Implement `US-002` by adding a cached Battle Frontier Master points helper in `lib/` that reads this CSV and resolves exact and inherited shadow costs.
+- Implement `US-002` by adding a cached Battle Frontier Master points helper in `lib/` that reads this CSV and resolves exact and inherited shadow costs.
+---
+## 2026-04-14 17:14:29 MST - US-002
+- What was implemented
+- Added a cached Battle Frontier Master rules helper that loads the checked-in points CSV, resolves exact and inherited shadow costs, detects Mega species from structured Pokemon tags, and evaluates team legality for points, 5-point, and Mega limits.
+- Files changed: `lib/data/battleFrontierMasterRules.ts`, `lib/data/battleFrontierMasterRules.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `pending commit creation`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Reused `getRankedSpeciesIds('battle-frontier-master')` to decide which shadow forms inherit costs so the helper follows active format rankings instead of assuming every `_shadow` form should count.
+  - Used Pokemon `tags` from `data/pokemon.json` for Mega detection so legality checks stay tied to structured gamemaster data instead of brittle naming heuristics.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `lib/data` runtime helpers typically lazy-load checked-in data and cache parsed results per format or feature, which keeps file I/O centralized and deterministic.
+  - Battle Frontier Master legality can treat missing point entries as zero-cost species while still enforcing point and Mega rules through one shared helper.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - `getBattleFrontierMasterTeamLegality(...)` now provides the reusable legality summary shape for upcoming API, generator, and UI wiring work.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - US-003 still needs API-level validation to turn legality violations into deterministic HTTP 400 errors.
+- Next iteration start:
+  - Wire `getBattleFrontierMasterTeamLegality(...)` into `app/api/generate-team/route.ts` so illegal Battle Frontier Master anchors are rejected before generation.
 ---
