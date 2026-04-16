@@ -149,4 +149,38 @@ describe('GET /api/pokemon-list', () => {
       count: 1,
     });
   });
+
+  it('excludes Battle Frontier Pokemon names that cannot be canonicalized', async () => {
+    vi.mocked(isBattleFrontierFormatId).mockReturnValue(true);
+    vi.mocked(getRankedPokemonNames).mockReturnValue(
+      new Set(['Unresolvable Pokemon', 'Hydreigon']),
+    );
+    vi.mocked(speciesNameToChoosableId).mockImplementation((name: string) => {
+      if (name === 'Unresolvable Pokemon') {
+        return undefined;
+      }
+
+      return 'hydreigon';
+    });
+
+    const request = new Request(
+      'http://localhost/api/pokemon-list?formatId=battle-frontier-master',
+    );
+
+    const response = await GET(request as NextRequest);
+    const payload = (await response.json()) as {
+      pokemon: string[];
+      count: number;
+      battleFrontierMasterPointsByPokemonName?: Record<string, number>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload).toMatchObject({
+      pokemon: ['Hydreigon'],
+      count: 1,
+      battleFrontierMasterPointsByPokemonName: {
+        Hydreigon: 0,
+      },
+    });
+  });
 });

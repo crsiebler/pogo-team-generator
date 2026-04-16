@@ -442,6 +442,26 @@ describe('POST /api/generate-team', () => {
     expect(generateTeam).not.toHaveBeenCalled();
   });
 
+  it('returns 400 when Battle Frontier requests use GBL mode', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'GBL',
+        formatId: 'battle-frontier-master',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const responseBody = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(responseBody.error).toBe(
+      'Battle Frontier formats only support Play! Pokemon team generation.',
+    );
+    expect(generateTeam).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when selected anchor is not ranked in selected format', async () => {
     vi.mocked(speciesNameToId).mockImplementation((name: string) =>
       name === 'Pikachu' ? 'pikachu' : name.toLowerCase().replace(/\s+/g, '-'),

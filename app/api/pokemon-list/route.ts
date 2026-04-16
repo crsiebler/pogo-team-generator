@@ -34,7 +34,11 @@ export async function GET(request: Request) {
 
         const speciesId = speciesNameToChoosableId(pokemonName);
 
-        return !speciesId || !isBattleFrontierBannedSpeciesId(speciesId);
+        if (!speciesId) {
+          return false;
+        }
+
+        return !isBattleFrontierBannedSpeciesId(speciesId);
       },
     );
 

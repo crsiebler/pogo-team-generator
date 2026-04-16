@@ -44,22 +44,30 @@ function getBattleFrontierMasterRulesData(): BattleFrontierMasterRulesData {
   const records = parse(fileContent, {
     columns: true,
     skip_empty_lines: true,
-    cast: (value, context) => {
-      if (context.column === 'points') {
-        return Number(value);
-      }
-
-      return value;
-    },
   }) as Array<{
     speciesId: string;
-    points: number;
+    points: string;
   }>;
 
   const pointsBySpeciesId = new Map<string, number>();
 
-  for (const record of records) {
-    pointsBySpeciesId.set(record.speciesId, record.points);
+  for (const [index, record] of records.entries()) {
+    const rowNumber = index + 2;
+
+    if (pointsBySpeciesId.has(record.speciesId)) {
+      throw new Error(
+        `Malformed Battle Frontier Master point table at ${filePath}: duplicate speciesId "${record.speciesId}" on row ${rowNumber}.`,
+      );
+    }
+
+    const points = Number(record.points);
+    if (!Number.isFinite(points) || !Number.isInteger(points) || points < 0) {
+      throw new Error(
+        `Malformed Battle Frontier Master point table at ${filePath}: invalid points "${record.points}" for speciesId "${record.speciesId}" on row ${rowNumber}; expected a non-negative integer.`,
+      );
+    }
+
+    pointsBySpeciesId.set(record.speciesId, points);
   }
 
   const rankedSpeciesIds = getRankedSpeciesIds('battle-frontier-master');

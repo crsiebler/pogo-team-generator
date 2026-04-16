@@ -77,6 +77,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (isBattleFrontierFormatId(resolvedFormatId) && mode !== 'PlayPokemon') {
+      return NextResponse.json(
+        {
+          error:
+            'Battle Frontier formats only support Play! Pokemon team generation.',
+        },
+        { status: 400 },
+      );
+    }
+
     if (algorithm !== undefined && !isFitnessAlgorithm(algorithm)) {
       return NextResponse.json(
         { error: `Invalid fitness algorithm: ${algorithm}` },
