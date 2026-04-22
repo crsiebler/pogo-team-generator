@@ -3,6 +3,7 @@ import {
   DEFAULT_BATTLE_FORMAT_ID,
   getBattleFormatById,
   getBattleFormats,
+  isBattleFrontierFormatId,
   isBattleFormatId,
   type BattleFormatId,
 } from './battleFormats';
@@ -107,5 +108,16 @@ describe('battle format catalog', () => {
 
   it('returns a read-only format list via helper', () => {
     expect(getBattleFormats()).toEqual(BATTLE_FORMATS);
+  });
+
+  it('identifies Battle Frontier formats', () => {
+    expect(isBattleFrontierFormatId('battle-frontier-bayou-cup')).toBe(true);
+    expect(isBattleFrontierFormatId('battle-frontier-spellcraft-cup')).toBe(
+      true,
+    );
+    expect(isBattleFrontierFormatId('battle-frontier-ul-retro')).toBe(true);
+    expect(isBattleFrontierFormatId('battle-frontier-master')).toBe(true);
+    expect(isBattleFrontierFormatId('great-league')).toBe(false);
+    expect(isBattleFrontierFormatId('kanto-cup')).toBe(false);
   });
 });

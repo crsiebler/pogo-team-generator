@@ -1,6 +1,25 @@
+import type { BattleFormatId } from '@lib/data/battleFormats';
 import { getDexNumber, validateTeamUniqueness } from '@lib/data/pokemon';
 import type { Chromosome, TournamentMode } from '../types';
 import { cloneChromosome, getMutableSlots, isAnchorSlot } from './chromosome';
+import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
+
+function shouldEnforceBattleFrontierMasterLegality(
+  formatId?: BattleFormatId,
+): boolean {
+  return formatId === 'battle-frontier-master';
+}
+
+function isLegalBattleFrontierMasterTeam(
+  team: string[],
+  formatId?: BattleFormatId,
+): boolean {
+  if (!shouldEnforceBattleFrontierMasterLegality(formatId)) {
+    return true;
+  }
+
+  return getBattleFrontierMasterTeamLegality(team).isLegal;
+}
 
 /**
  * Tournament selection - pick best of N random chromosomes
@@ -29,6 +48,7 @@ export function crossover(
   parent1: Chromosome,
   parent2: Chromosome,
   mode: TournamentMode,
+  formatId?: BattleFormatId,
 ): Chromosome {
   const teamSize = mode === 'GBL' ? 3 : 6;
   const child = cloneChromosome(parent1);
@@ -94,6 +114,10 @@ export function crossover(
     }
   }
 
+  if (!isLegalBattleFrontierMasterTeam(child.team, formatId)) {
+    return cloneChromosome(parent1);
+  }
+
   return child;
 }
 
@@ -107,6 +131,7 @@ export function mutate(
   pokemonPool: string[],
   mutationRate: number,
   mode: TournamentMode,
+  formatId?: BattleFormatId,
 ): Chromosome {
   if (Math.random() > mutationRate) {
     return chromosome; // No mutation
@@ -166,6 +191,10 @@ export function mutate(
     }
   }
 
+  if (!isLegalBattleFrontierMasterTeam(mutated.team, formatId)) {
+    return chromosome;
+  }
+
   return mutated;
 }
 
@@ -191,12 +220,14 @@ export function createNextGeneration(
     eliteCount?: number;
     crossoverRate?: number;
     mutationRate?: number;
+    formatId?: BattleFormatId;
   } = {},
 ): Chromosome[] {
   const {
     eliteCount = Math.ceil(population.length * 0.1),
     crossoverRate = 0.8,
     mutationRate = 0.2,
+    formatId,
   } = options;
 
   const nextGeneration: Chromosome[] = [];
@@ -213,12 +244,12 @@ export function createNextGeneration(
     let child: Chromosome;
 
     if (Math.random() < crossoverRate) {
-      child = crossover(parent1, parent2, mode);
+      child = crossover(parent1, parent2, mode, formatId);
     } else {
       child = cloneChromosome(parent1);
     }
 
-    child = mutate(child, pokemonPool, mutationRate, mode);
+    child = mutate(child, pokemonPool, mutationRate, mode, formatId);
 
     // CRITICAL: Validate child preserves anchors from parent1
     if (parent1.anchors && parent1.anchors.length > 0) {

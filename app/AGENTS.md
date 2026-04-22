@@ -10,6 +10,8 @@ API routes in TypeScript; error objects well-typed. Import order: external, inte
 
 For battle-format-aware endpoints, resolve missing `formatId` to `DEFAULT_BATTLE_FORMAT_ID` and validate incoming values with `isBattleFormatId` before invoking `lib/` generation logic.
 
+When `battle-frontier-master` needs UI-side point awareness, enrich the existing `/api/pokemon-list` response with a `battleFrontierMasterPointsByPokemonName` map derived from `getBattleFrontierMasterPointsForSpecies(...)` instead of adding a separate frontend-only rules path.
+
 When generation fails due to missing format datasets, map `MissingRankingDataError` and `MissingSimulationDataError` to HTTP 400 responses so users get actionable sync instructions instead of generic 500 errors.
 
 ## Testing

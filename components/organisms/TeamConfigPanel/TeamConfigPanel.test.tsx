@@ -30,6 +30,7 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -62,6 +63,7 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={onFormatChange}
         mode="PlayPokemon"
@@ -86,6 +88,7 @@ describe('TeamConfigPanel', () => {
     const { rerender } = render(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -107,6 +110,7 @@ describe('TeamConfigPanel', () => {
     rerender(
       <TeamConfigPanel
         pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="ultra-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -123,5 +127,99 @@ describe('TeamConfigPanel', () => {
     expect(screen.getByRole('textbox', { name: 'Anchor Mock' })).toHaveValue(
       '',
     );
+  });
+
+  it('shows Battle Frontier Master rules in the team configuration panel', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
+        selectedFormatId="battle-frontier-master"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        /11 total points, at most one 5-point pokemon, and at most one mega pokemon/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('hides Battle Frontier Master rules for other formats', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
+        selectedFormatId="great-league"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(
+      screen.queryByText(
+        /11 total points, at most one 5-point pokemon, and at most one mega pokemon/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the tournament format selector for non-Battle Frontier formats', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
+        selectedFormatId="great-league"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.getByText('Tournament Format')).toBeInTheDocument();
+    expect(screen.getByText('Mode Selector')).toBeInTheDocument();
+  });
+
+  it('hides the tournament format selector for Battle Frontier formats', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
+        selectedFormatId="battle-frontier-bayou-cup"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        algorithm="individual"
+        onAlgorithmChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    expect(screen.queryByText('Tournament Format')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mode Selector')).not.toBeInTheDocument();
   });
 });

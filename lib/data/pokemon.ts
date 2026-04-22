@@ -2,9 +2,25 @@ import type { Pokemon } from '../types';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
   getBattleFormatById,
+  isBattleFrontierFormatId,
   type BattleFormatId,
 } from './battleFormats';
 import pokemonData from '@/data/pokemon.json';
+
+const BATTLE_FRONTIER_BANNED_SPECIES_IDS = new Set([
+  'groudon_primal',
+  'kyogre_primal',
+  'rayquaza_mega',
+  'gyarados_mega',
+  'heracross_mega',
+  'tyranitar_mega',
+  'metagross_mega',
+  'salamence_mega',
+  'latias_mega',
+  'latios_mega',
+  'garchomp_mega',
+  'dragonite_mega',
+]);
 
 // Type-safe cast
 const allPokemon = pokemonData as Pokemon[];
@@ -130,6 +146,15 @@ export function speciesIdToSpeciesName(speciesId: string): string {
 }
 
 /**
+ * Returns whether a species is banned across Battle Frontier formats.
+ */
+export function isBattleFrontierBannedSpeciesId(speciesId: string): boolean {
+  return BATTLE_FRONTIER_BANNED_SPECIES_IDS.has(
+    normalizeToChoosableSpeciesId(speciesId),
+  );
+}
+
+/**
  * Get all Pokémon that match a filter
  */
 export function filterPokemon(
@@ -221,6 +246,16 @@ export function getRankedPokemonForFormat(
   return filterPokemon((pokemon) => {
     if (!pokemon.released || !rankedNames.has(pokemon.speciesName)) {
       return false;
+    }
+
+    if (isBattleFrontierFormatId(formatId)) {
+      const canonicalSpeciesId = normalizeToChoosableSpeciesId(
+        pokemon.speciesId,
+      );
+
+      if (isBattleFrontierBannedSpeciesId(canonicalSpeciesId)) {
+        return false;
+      }
     }
 
     if (battleFormat.cp === 1500) {

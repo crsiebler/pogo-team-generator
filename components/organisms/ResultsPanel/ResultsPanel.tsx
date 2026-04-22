@@ -12,12 +12,14 @@ interface ResultsPanelProps {
   } | null;
   mode: TournamentMode;
   isGenerating: boolean;
+  battleFrontierMasterPointsByPokemonName: Record<string, number>;
 }
 
 export function ResultsPanel({
   generatedTeam,
   mode,
   isGenerating,
+  battleFrontierMasterPointsByPokemonName,
 }: ResultsPanelProps) {
   return (
     <div
@@ -113,6 +115,9 @@ export function ResultsPanel({
           team={generatedTeam.team}
           mode={mode}
           formatId={generatedTeam.formatId}
+          battleFrontierMasterPointsByPokemonName={
+            battleFrontierMasterPointsByPokemonName
+          }
         />
       )}
     </div>

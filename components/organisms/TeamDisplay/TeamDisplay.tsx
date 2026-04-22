@@ -11,9 +11,15 @@ interface TeamDisplayProps {
   team: string[];
   mode: TournamentMode;
   formatId: BattleFormatId;
+  battleFrontierMasterPointsByPokemonName?: Record<string, number>;
 }
 
-export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
+export function TeamDisplay({
+  team,
+  mode,
+  formatId,
+  battleFrontierMasterPointsByPokemonName = {},
+}: TeamDisplayProps) {
   const [pokemonData, setPokemonData] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +61,16 @@ export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
     }
   });
 
+  const battleFrontierMasterTeamPoints = pokemonData.reduce(
+    (totalPoints, pokemon) => {
+      return (
+        totalPoints +
+        (battleFrontierMasterPointsByPokemonName[pokemon.speciesName] ?? 0)
+      );
+    },
+    0,
+  );
+
   return (
     <div className="space-y-3 sm:space-y-4">
       {pokemonData.map((pokemon, index) => (
@@ -73,6 +89,12 @@ export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
             • This team is optimized for{' '}
             {mode === 'GBL' ? 'GO Battle League' : 'Play! Pokémon'} format
           </li>
+          {formatId === 'battle-frontier-master' ? (
+            <li>
+              • Current Battle Frontier Master point usage:{' '}
+              {battleFrontierMasterTeamPoints} / 11 points
+            </li>
+          ) : null}
           <li>• Check type coverage and adjust movesets as needed</li>
         </ul>
       </div>

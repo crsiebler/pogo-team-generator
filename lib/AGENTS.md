@@ -22,9 +22,19 @@ Use `lib/data/battleFormats.ts` as the single source of truth for supported form
 
 For runtime ranking lookups in `lib/data/rankings.ts`, build file paths from format metadata (`rankings/cp{cp}/{cup}/{category}_rankings.csv`) and cache parsed CSV data per format id to avoid cross-format contamination.
 
+Store Battle Frontier Master cycle point data in `data/battle-frontier-master-points.csv` with a simple `speciesId,points` header, keep ids canonical to `data/pokemon.json`, and keep the checked-in table aligned with the bundled PvPoke cup tier rules for the active cycle.
+
+For Battle Frontier Master legality, keep exact point values in the CSV and derive shadow inheritance in code only for shadow variants that are both present in `data/pokemon.json` and ranked for `battle-frontier-master`; do not duplicate inherited shadow rows in the CSV.
+
 When format-specific ranking CSVs are missing, throw `MissingRankingDataError` (not a generic `Error`) so API adapters can return deterministic HTTP 400 messages with sync guidance.
 
 For genetic candidate pool construction, always pass `formatId` into `getTopRankedPokemonNames(...)` and filter species via `getRankedPokemonForFormat(...)` so league/cup eligibility stays aligned with the selected battle format.
+
+For Battle Frontier Master random team initialization in `lib/genetic/chromosome.ts`, reject illegal candidates incrementally during both scored selection and fallback selection using `getBattleFrontierMasterTeamLegality(...)`, then assert the completed team is legal before returning it.
+
+For Battle Frontier Master evolution in `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever an operator would create an illegal child.
+
+Keep a final Battle Frontier Master legality assertion in `lib/genetic/algorithm.ts` before returning the best team so initialization or operator regressions cannot leak an illegal final result.
 
 For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` before generation and pass `formatId` through simulation helpers so non-Great formats never silently reuse Great League matchups.
 

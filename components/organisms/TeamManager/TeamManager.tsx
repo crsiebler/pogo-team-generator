@@ -8,6 +8,7 @@ import {
 } from '@/components/organisms';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
+  isBattleFrontierFormatId,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
@@ -26,6 +27,11 @@ interface GeneratedTeamResult {
   formatId: BattleFormatId;
 }
 
+interface PokemonListResponse {
+  pokemon: string[];
+  battleFrontierMasterPointsByPokemonName?: Record<string, number>;
+}
+
 export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   const { showToast } = useToast();
   const [generatedTeam, setGeneratedTeam] =
@@ -40,10 +46,15 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   );
   const [eligiblePokemonList, setEligiblePokemonList] =
     useState<string[]>(pokemonList);
+  const [
+    battleFrontierMasterPointsByPokemonName,
+    setBattleFrontierMasterPointsByPokemonName,
+  ] = useState<Record<string, number>>({});
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
   const [currentAlgorithm, setCurrentAlgorithm] =
     useState<FitnessAlgorithm>('individual');
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const eligiblePokemonSet = useMemo(() => {
     return new Set(eligiblePokemonList);
@@ -72,12 +83,13 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
           );
         }
 
-        const data = (await response.json()) as {
-          pokemon: string[];
-        };
+        const data = (await response.json()) as PokemonListResponse;
 
         const nextEligiblePokemonList = data.pokemon ?? [];
         setEligiblePokemonList(nextEligiblePokemonList);
+        setBattleFrontierMasterPointsByPokemonName(
+          data.battleFrontierMasterPointsByPokemonName ?? {},
+        );
 
         setAnchorPokemon((previousAnchors) =>
           previousAnchors.filter((name) =>
@@ -95,6 +107,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         }
 
         setEligiblePokemonList([]);
+        setBattleFrontierMasterPointsByPokemonName({});
 
         const message =
           error instanceof Error
@@ -119,12 +132,17 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     setCurrentMode(mode);
     setAnchorPokemon([]);
     setExcludedPokemon([]);
+    setGenerationError(null);
   }, []);
 
   const handleFormatChange = useCallback((formatId: BattleFormatId) => {
     setCurrentFormatId(formatId);
+    if (isBattleFrontierFormatId(formatId)) {
+      setCurrentMode('PlayPokemon');
+    }
     setAnchorPokemon([]);
     setExcludedPokemon([]);
+    setGenerationError(null);
   }, []);
 
   const handleAnchorsChange = useCallback((anchors: string[]) => {
@@ -174,6 +192,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     setGeneratedTeam(null);
     setFitness(null);
     setAnalysis(null);
+    setGenerationError(null);
 
     try {
       const selectedAnchors = anchorPokemon.filter(Boolean);
@@ -232,12 +251,14 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
       setGeneratedTeam({ team: data.team, formatId: currentFormatId });
       setFitness(data.fitness ?? null);
       setAnalysis(data.analysis ?? null);
+      setGenerationError(null);
     } catch (error) {
       console.error('Error generating team:', error);
       const message =
         error instanceof Error
           ? error.message
           : 'Failed to generate team. Please try again.';
+      setGenerationError(message);
       showToast(message, 'error');
     } finally {
       setIsGenerating(false);
@@ -248,7 +269,11 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 xl:grid-cols-3">
       <TeamConfigPanel
         pokemonList={eligiblePokemonList}
+        battleFrontierMasterPointsByPokemonName={
+          battleFrontierMasterPointsByPokemonName
+        }
         selectedFormatId={currentFormatId}
+        errorMessage={generationError}
         onFormatChange={handleFormatChange}
         mode={currentMode}
         onModeChange={handleModeChange}
@@ -263,6 +288,9 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         generatedTeam={generatedTeam}
         mode={currentMode}
         isGenerating={isGenerating}
+        battleFrontierMasterPointsByPokemonName={
+          battleFrontierMasterPointsByPokemonName
+        }
       />
       <AnalysisPanel
         generatedTeam={generatedTeam}

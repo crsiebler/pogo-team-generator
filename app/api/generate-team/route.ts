@@ -4,10 +4,16 @@ import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContribu
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import {
+  isBattleFrontierFormatId,
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
 import {
+  getBattleFrontierMasterTeamLegality,
+  type BattleFrontierMasterLegalityViolation,
+} from '@/lib/data/battleFrontierMasterRules';
+import {
+  isBattleFrontierBannedSpeciesId,
   normalizeToChoosableSpeciesId,
   speciesNameToId,
   validateTeamUniqueness,
@@ -28,6 +34,19 @@ export const runtime = 'nodejs';
 
 function isFitnessAlgorithm(value: string): value is FitnessAlgorithm {
   return value === 'individual' || value === 'teamSynergy';
+}
+
+function getBattleFrontierMasterAnchorError(
+  violation: BattleFrontierMasterLegalityViolation,
+): string {
+  switch (violation) {
+    case 'points-cap':
+      return 'Battle Frontier Master anchors exceed the 11-point cap.';
+    case 'five-point-limit':
+      return 'Battle Frontier Master anchors can include at most one 5-point Pokemon.';
+    case 'mega-limit':
+      return 'Battle Frontier Master anchors can include at most one Mega Pokemon.';
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -58,6 +77,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (isBattleFrontierFormatId(resolvedFormatId) && mode !== 'PlayPokemon') {
+      return NextResponse.json(
+        {
+          error:
+            'Battle Frontier formats only support Play! Pokemon team generation.',
+        },
+        { status: 400 },
+      );
+    }
+
     if (algorithm !== undefined && !isFitnessAlgorithm(algorithm)) {
       return NextResponse.json(
         { error: `Invalid fitness algorithm: ${algorithm}` },
@@ -78,7 +107,11 @@ export async function POST(request: NextRequest) {
         }
 
         const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
-        if (!rankedSpeciesIds.has(canonicalSpeciesId)) {
+        if (
+          !rankedSpeciesIds.has(canonicalSpeciesId) ||
+          (isBattleFrontierFormatId(resolvedFormatId) &&
+            isBattleFrontierBannedSpeciesId(canonicalSpeciesId))
+        ) {
           return NextResponse.json(
             {
               error: `Pokémon is not eligible for ${resolvedFormatId}: ${name}`,
@@ -99,6 +132,19 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+
+      if (resolvedFormatId === 'battle-frontier-master') {
+        const legality = getBattleFrontierMasterTeamLegality(anchorSpeciesIds);
+
+        if (!legality.isLegal) {
+          return NextResponse.json(
+            {
+              error: getBattleFrontierMasterAnchorError(legality.violations[0]),
+            },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     console.log('Anchor Pokemon names:', anchorPokemon);
@@ -116,7 +162,11 @@ export async function POST(request: NextRequest) {
         }
 
         const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
-        if (!rankedSpeciesIds.has(canonicalSpeciesId)) {
+        if (
+          !rankedSpeciesIds.has(canonicalSpeciesId) ||
+          (isBattleFrontierFormatId(resolvedFormatId) &&
+            isBattleFrontierBannedSpeciesId(canonicalSpeciesId))
+        ) {
           return NextResponse.json(
             {
               error: `Pokémon is not eligible for ${resolvedFormatId}: ${name}`,
