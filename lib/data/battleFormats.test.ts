@@ -14,6 +14,8 @@ describe('battle format catalog', () => {
       'Great League',
       'Ultra League',
       'Master League',
+      'Fantasy Cup',
+      'NAIC 2026 Championship Series Cup',
       'Battle Frontier (Bayou Cup)',
       'Battle Frontier (Spellcraft Cup)',
       'Battle Frontier (UL Retro)',
@@ -32,6 +34,8 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('great-league')).toBe(true);
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
+    expect(isBattleFormatId('fantasy-cup')).toBe(true);
+    expect(isBattleFormatId('naic-2026-championship-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-bayou-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-spellcraft-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-ul-retro')).toBe(true);
@@ -58,6 +62,20 @@ describe('battle format catalog', () => {
       id: 'kanto-cup',
       label: 'Kanto Cup',
       cup: 'kanto',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('fantasy-cup')).toEqual({
+      id: 'fantasy-cup',
+      label: 'Fantasy Cup',
+      cup: 'fantasy',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('naic-2026-championship-cup')).toEqual({
+      id: 'naic-2026-championship-cup',
+      label: 'NAIC 2026 Championship Series Cup',
+      cup: 'naic2026',
       cp: 1500,
     });
 

@@ -16,6 +16,8 @@ const RANKING_CUPS = [
   'kanto',
   'jungle',
   'spring',
+  'fantasy',
+  'naic2026',
   'bayou',
   'spellcraft',
   'bfretro',

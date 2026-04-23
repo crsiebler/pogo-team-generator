@@ -22,6 +22,10 @@ describe('format-aware simulation loading', () => {
     expect(() => ensureSimulationDataAvailable('great-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('ultra-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('master-league')).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('fantasy-cup')).not.toThrow();
+    expect(() =>
+      ensureSimulationDataAvailable('naic-2026-championship-cup'),
+    ).not.toThrow();
     expect(() =>
       ensureSimulationDataAvailable('battle-frontier-bayou-cup'),
     ).not.toThrow();
