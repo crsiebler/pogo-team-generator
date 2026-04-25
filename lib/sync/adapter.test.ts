@@ -33,6 +33,12 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'spring')).toBe(
       '/source/pvpoke/src/data/rankings/spring/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 1500, 'fantasy')).toBe(
+      '/source/pvpoke/src/data/rankings/fantasy/overall/rankings-1500.json',
+    );
+    expect(adapter.getRankingFilePath('overall', 1500, 'naic2026')).toBe(
+      '/source/pvpoke/src/data/rankings/naic2026/overall/rankings-1500.json',
+    );
     expect(adapter.getRankingFilePath('overall', 1500, 'bayou')).toBe(
       '/source/pvpoke/src/data/rankings/bayou/overall/rankings-1500.json',
     );
@@ -118,6 +124,54 @@ describe('createPvpokeAdapter', () => {
     >('overall', 1500, 'spring');
 
     expect(rankings).toEqual([{ speciesName: 'Azumarill' }]);
+  });
+
+  it('reads Fantasy Cup rankings JSON files', async () => {
+    const sourcePath = '/source/pvpoke';
+    const rankingRelativePath =
+      'src/data/rankings/fantasy/overall/rankings-1500.json';
+    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== rankingAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesName":"Mawile"}]';
+      },
+    });
+
+    const rankings = await adapter.readRankingJson<
+      Array<{ speciesName: string }>
+    >('overall', 1500, 'fantasy');
+
+    expect(rankings).toEqual([{ speciesName: 'Mawile' }]);
+  });
+
+  it('reads NAIC 2026 Championship Series Cup rankings JSON files', async () => {
+    const sourcePath = '/source/pvpoke';
+    const rankingRelativePath =
+      'src/data/rankings/naic2026/overall/rankings-1500.json';
+    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== rankingAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesName":"Dewgong"}]';
+      },
+    });
+
+    const rankings = await adapter.readRankingJson<
+      Array<{ speciesName: string }>
+    >('overall', 1500, 'naic2026');
+
+    expect(rankings).toEqual([{ speciesName: 'Dewgong' }]);
   });
 
   it('reads Jungle Cup rankings JSON files', async () => {
