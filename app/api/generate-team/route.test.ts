@@ -192,8 +192,6 @@ describe('POST /api/generate-team', () => {
     ['battle-frontier-spellcraft-cup'],
     ['battle-frontier-ul-retro'],
     ['battle-frontier-master'],
-    ['kanto-cup'],
-    ['spring-cup'],
   ] as const)(
     'passes %s formatId to team generation for end-to-end requests',
     async (formatId) => {
@@ -405,23 +403,26 @@ describe('POST /api/generate-team', () => {
     );
   });
 
-  it('returns 400 for invalid formatId', async () => {
-    const request = new Request('http://localhost/api/generate-team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'PlayPokemon',
-        formatId: 'little-cup',
-      }),
-    });
+  it.each([['little-cup'], ['kanto-cup'], ['spring-cup']] as const)(
+    'returns 400 for invalid formatId %s',
+    async (formatId) => {
+      const request = new Request('http://localhost/api/generate-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'PlayPokemon',
+          formatId,
+        }),
+      });
 
-    const response = await POST(request as NextRequest);
-    const responseBody = (await response.json()) as { error: string };
+      const response = await POST(request as NextRequest);
+      const responseBody = (await response.json()) as { error: string };
 
-    expect(response.status).toBe(400);
-    expect(responseBody.error).toBe('Invalid battle format: little-cup');
-    expect(generateTeam).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect(responseBody.error).toBe(`Invalid battle format: ${formatId}`);
+      expect(generateTeam).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns 400 for invalid algorithm values', async () => {
     const request = new Request('http://localhost/api/generate-team', {

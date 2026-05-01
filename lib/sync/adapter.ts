@@ -13,9 +13,7 @@ const GAMEMASTER_RELATIVE_PATHS = {
 const RANKING_CATEGORIES = ['overall', 'leads', 'switches', 'closers'] as const;
 const RANKING_CUPS = [
   'all',
-  'kanto',
   'jungle',
-  'spring',
   'fantasy',
   'naic2026',
   'bayou',

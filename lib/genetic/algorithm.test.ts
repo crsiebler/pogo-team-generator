@@ -117,29 +117,33 @@ describe('generateTeam format-aware candidate selection', () => {
 
     await generateTeam({
       mode: 'GBL',
-      formatId: 'kanto-cup',
+      formatId: 'jungle-cup',
       populationSize: 1,
       generations: 0,
     });
 
-    expect(getTopRankedPokemonNames).toHaveBeenCalledWith(80, 150, 'kanto-cup');
+    expect(getTopRankedPokemonNames).toHaveBeenCalledWith(
+      80,
+      150,
+      'jungle-cup',
+    );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
       rankedNames,
-      'kanto-cup',
+      'jungle-cup',
     );
-    expect(ensureSimulationDataAvailable).toHaveBeenCalledWith('kanto-cup');
+    expect(ensureSimulationDataAvailable).toHaveBeenCalledWith('jungle-cup');
     expect(initializePopulation).toHaveBeenCalledWith(
       1,
       ['mew'],
       3,
       [],
-      'kanto-cup',
+      'jungle-cup',
     );
     expect(evaluatePopulation).toHaveBeenCalledWith(
       expect.any(Array),
       'GBL',
       'individual',
-      'kanto-cup',
+      'jungle-cup',
     );
   });
 
