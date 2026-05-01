@@ -3,9 +3,7 @@ export interface BattleFormat {
   label: string;
   cup:
     | 'all'
-    | 'kanto'
     | 'jungle'
-    | 'spring'
     | 'fantasy'
     | 'naic2026'
     | 'bayou'
@@ -28,9 +26,7 @@ export type BattleFormatId =
   | 'battle-frontier-spellcraft-cup'
   | 'battle-frontier-ul-retro'
   | 'battle-frontier-master'
-  | 'kanto-cup'
-  | 'jungle-cup'
-  | 'spring-cup';
+  | 'jungle-cup';
 
 /**
  * Catalog of supported battle formats.
@@ -91,21 +87,9 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 10000,
   },
   {
-    id: 'kanto-cup',
-    label: 'Kanto Cup',
-    cup: 'kanto',
-    cp: 1500,
-  },
-  {
     id: 'jungle-cup',
     label: 'Jungle Cup',
     cup: 'jungle',
-    cp: 1500,
-  },
-  {
-    id: 'spring-cup',
-    label: 'Spring Cup',
-    cup: 'spring',
     cp: 1500,
   },
 ];

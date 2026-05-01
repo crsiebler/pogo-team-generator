@@ -106,9 +106,7 @@ describe('generateSimulations', () => {
     const generatedCalls: Array<{
       cup:
         | 'all'
-        | 'kanto'
         | 'jungle'
-        | 'spring'
         | 'fantasy'
         | 'naic2026'
         | 'bayou'
@@ -164,7 +162,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(36);
+    expect(generatedCalls).toHaveLength(30);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -184,22 +182,10 @@ describe('generateSimulations', () => {
       shields: 2,
     });
     expect(generatedCalls).toContainEqual({
-      cup: 'kanto',
-      cp: 1500,
-      speciesId: 'bulbasaur',
-      shields: 1,
-    });
-    expect(generatedCalls).toContainEqual({
       cup: 'jungle',
       cp: 1500,
       speciesId: 'bulbasaur',
       shields: 0,
-    });
-    expect(generatedCalls).toContainEqual({
-      cup: 'spring',
-      cp: 1500,
-      speciesId: 'bulbasaur',
-      shields: 2,
     });
     expect(generatedCalls).toContainEqual({
       cup: 'fantasy',
@@ -251,15 +237,7 @@ describe('generateSimulations', () => {
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp1500', 'kanto', 'bulbasaur_1-1.csv'),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp1500', 'jungle', 'bulbasaur_0-0.csv'),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp1500', 'spring', 'bulbasaur_2-2.csv'),
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(

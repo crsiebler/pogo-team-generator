@@ -127,13 +127,13 @@ describe('buildShieldScenarioAnalysis', () => {
   it('threads formatId into shield-scenario lookups', () => {
     getShieldScenarioMatchupResultMock.mockReturnValue(null);
 
-    buildShieldScenarioAnalysis(['lanturn'], threats, 'spring-cup');
+    buildShieldScenarioAnalysis(['lanturn'], threats, 'jungle-cup');
 
     expect(getShieldScenarioMatchupResultMock).toHaveBeenCalledWith(
       'lanturn',
       'threat-1',
       0,
-      'spring-cup',
+      'jungle-cup',
     );
   });
 

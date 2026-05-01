@@ -20,9 +20,7 @@ describe('battle format catalog', () => {
       'Battle Frontier (Spellcraft Cup)',
       'Battle Frontier (UL Retro)',
       'Battle Frontier (Master)',
-      'Kanto Cup',
       'Jungle Cup',
-      'Spring Cup',
     ]);
   });
 
@@ -40,13 +38,13 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('battle-frontier-spellcraft-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-ul-retro')).toBe(true);
     expect(isBattleFormatId('battle-frontier-master')).toBe(true);
-    expect(isBattleFormatId('kanto-cup')).toBe(true);
     expect(isBattleFormatId('jungle-cup')).toBe(true);
-    expect(isBattleFormatId('spring-cup')).toBe(true);
   });
 
   it('rejects unknown format ids', () => {
     expect(isBattleFormatId('little-cup')).toBe(false);
+    expect(isBattleFormatId('kanto-cup')).toBe(false);
+    expect(isBattleFormatId('spring-cup')).toBe(false);
     expect(isBattleFormatId('')).toBe(false);
   });
 
@@ -55,13 +53,6 @@ describe('battle format catalog', () => {
       id: 'great-league',
       label: 'Great League',
       cup: 'all',
-      cp: 1500,
-    });
-
-    expect(getBattleFormatById('kanto-cup')).toEqual({
-      id: 'kanto-cup',
-      label: 'Kanto Cup',
-      cup: 'kanto',
       cp: 1500,
     });
 
@@ -114,14 +105,9 @@ describe('battle format catalog', () => {
       cp: 10000,
     });
 
-    expect(getBattleFormatById('spring-cup')).toEqual({
-      id: 'spring-cup',
-      label: 'Spring Cup',
-      cup: 'spring',
-      cp: 1500,
-    });
-
     expect(getBattleFormatById('little-cup')).toBeUndefined();
+    expect(getBattleFormatById('kanto-cup')).toBeUndefined();
+    expect(getBattleFormatById('spring-cup')).toBeUndefined();
   });
 
   it('returns a read-only format list via helper', () => {
@@ -136,6 +122,5 @@ describe('battle format catalog', () => {
     expect(isBattleFrontierFormatId('battle-frontier-ul-retro')).toBe(true);
     expect(isBattleFrontierFormatId('battle-frontier-master')).toBe(true);
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
-    expect(isBattleFrontierFormatId('kanto-cup')).toBe(false);
   });
 });

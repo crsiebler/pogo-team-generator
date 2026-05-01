@@ -38,9 +38,7 @@ describe('format-aware simulation loading', () => {
     expect(() =>
       ensureSimulationDataAvailable('battle-frontier-master'),
     ).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('kanto-cup')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('jungle-cup')).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('spring-cup')).not.toThrow();
   }, 15000);
 
   it('keeps Great League cache stable after loading other formats', () => {
