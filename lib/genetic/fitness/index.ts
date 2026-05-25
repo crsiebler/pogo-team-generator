@@ -27,6 +27,12 @@ export {
   type LineupScoringContext,
 } from './lineupScoring';
 
+export {
+  scorePlayPokemonRoster,
+  type PlayPokemonRosterScoreResult,
+  type PlayPokemonRosterScoringContext,
+} from './rosterScoring';
+
 type FitnessFunction = (
   chromosome: Chromosome,
   mode: TournamentMode,

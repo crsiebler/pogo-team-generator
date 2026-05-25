@@ -3,6 +3,7 @@
 - PlayPokemon lineup enumeration lives in `lib/genetic/fitness/lineupEnumeration.ts`; roster input order controls lead iteration, backline pairs are sorted canonically and represented once, and species ids containing the lineup key delimiter (`|`) are invalid.
 - Lineup scoring lives in `lib/genetic/fitness/lineupScoring.ts`; use `LineupScoringContext` injection for deterministic tests and `createDefaultLineupScoringContext(...)` when wiring production data helpers.
 - Lineup resource path metrics use shield-specific matchup ratings when `LineupScoringContext.getShieldScenarioMatchupRating` is available; missing shield rows are neutral fallbacks and paths are unavailable only when no path-specific shield data exists.
+- PlayPokemon roster scoring lives in `lib/genetic/fitness/rosterScoring.ts`; use `PlayPokemonRosterScoringContext.scoreLineup` for cached or deterministic lineup scoring, and only request `lineupScores` through full `LineupAwareFitnessConfig` diagnostics.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -125,4 +126,37 @@
   - Later stories still need roster aggregation and recommendation output to expose these resource path metrics in API/UI-ready structures.
 - Next iteration start:
   - US-005 - Implement PlayPokemon roster scoring
+---
+## 2026-05-25 03:27 MST - US-005
+- What was implemented
+- Added pure PlayPokemon bring-6 roster scoring that evaluates all 60 ordered lineups, aggregates lineup depth and coverage risk metrics, computes viable lead diversity, and summarizes bench utility from viable lineups.
+- Added fast/full staging so hot scoring can return roster metrics without all lineup diagnostics, while full mode keeps bounded finalist lineup diagnostics.
+- Files changed: `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/index.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-005 - Implement PlayPokemon roster scoring`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts` (pass after red failure for missing module)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after fixing import order)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed fast-mode diagnostic fallback, repeated single-answer dependency penalty, repeated shared weakness penalty, and broad threat coverage reward before commit; final pass had no actionable findings
+- Decisions (why):
+  - Added a dedicated `rosterScoring.ts` module under `lib/genetic/fitness` because roster aggregation is pure domain logic and later GA/API stories can import the same entry point.
+  - Used `PlayPokemonRosterScoringContext.scoreLineup` injection because GA integration can layer per-run caches around lineup scoring without changing roster aggregation behavior.
+  - Based bench utility on viable lineup appearances because roster fitness should penalize dead or unbringable roster slots rather than counting every enumerated lineup equally.
+  - Returned bounded `lineupScores` only in full mode because hot GA evaluation should not carry UI-ready diagnostics for every chromosome.
+  - Added a lightweight fast fallback scorer because relying on every future caller to inject a cached scorer would not satisfy the fast-mode contract.
+- **Learnings for future iterations:**
+  - Roster scoring reuses the 60-lineup enumerator and should receive cached lineup scoring through context injection once wired into the GA.
+  - Full roster diagnostics are opt-in via `LineupAwareFitnessConfig.mode === 'full'`; fast scoring still returns aggregate metrics and fitness.
+  - Fast roster fallback intentionally avoids `getPokemon`, resource paths, and other diagnostic-only lineup work; use full mode when UI-ready lineup details are needed.
+- Known issues / follow-ups:
+  - US-006 still needs recommendation helpers that transform bounded lineup diagnostics into API-ready recommended lineups and bench warnings.
+  - US-008 still needs to wire roster scoring into the canonical genetic algorithm fitness path.
+- Next iteration start:
+  - US-006 - Implement lineup recommendations and bench utility
 ---
