@@ -5,13 +5,16 @@ import clsx from 'clsx';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type {
   GenerationAnalysis,
+  LineupResourcePathMetrics,
   PokemonContributionRiskTier,
+  RecommendedLineup,
   ShieldScenarioKey,
 } from '@/lib/types';
 
 interface GeneratedTeamResult {
   team: string[];
   formatId: BattleFormatId;
+  recommendedLineups?: RecommendedLineup[];
 }
 
 interface AnalysisPanelProps {
@@ -46,6 +49,16 @@ const ANALYSIS_ACCORDION_SECTIONS = [
 type AnalysisAccordionSectionId = (typeof ANALYSIS_ACCORDION_SECTIONS)[number];
 
 const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
+
+const resourcePathLabels: Record<keyof LineupResourcePathMetrics, string> = {
+  balanced: 'Balanced',
+  shieldSpend: 'Shield spend',
+  shieldSave: 'Shield save',
+};
+
+function formatScore(score: number): string {
+  return score.toFixed(2);
+}
 
 function getOverallFitnessStatus(fitness: number): SummaryMetric['status'] {
   const roundedFitness = roundToHundredths(fitness);
@@ -322,6 +335,8 @@ export function AnalysisPanel({
   const contributionMetrics =
     analysis !== null ? buildContributionMetrics(analysis) : [];
   const pokemonEntries = analysis?.pokemonContributions.entries ?? [];
+  const recommendedLineups = generatedTeam?.recommendedLineups ?? [];
+  const hasRecommendedLineups = recommendedLineups.length > 0;
   const maxThreatsHandled = Math.max(
     ...pokemonEntries.map((entry) => entry.threatsHandled),
     0,
@@ -407,6 +422,78 @@ export function AnalysisPanel({
         </div>
       )}
 
+      {generatedTeam && hasRecommendedLineups && !isGenerating ? (
+        <section className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 sm:p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+          <h3 className="text-base font-bold text-emerald-950 sm:text-lg dark:text-emerald-100">
+            Recommended Lineups
+          </h3>
+          <div className="mt-3 space-y-3">
+            {recommendedLineups.map((recommendedLineup, index) => (
+              <article
+                key={`${recommendedLineup.lineup.lead}-${recommendedLineup.lineup.switch}-${recommendedLineup.lineup.closer}-${index}`}
+                className="rounded-lg border border-emerald-100 bg-white p-3 text-xs text-emerald-950 shadow-sm sm:text-sm dark:border-emerald-900 dark:bg-gray-900 dark:text-emerald-50"
+              >
+                {recommendedLineups.length > 1 ? (
+                  <h4 className="font-semibold text-emerald-900 dark:text-emerald-100">
+                    Lineup {index + 1}
+                  </h4>
+                ) : null}
+                <dl className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <div>
+                    <dt className="font-semibold">Lead</dt>
+                    <dd>Lead: {recommendedLineup.lineup.lead}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold">Safe Swap</dt>
+                    <dd>Safe Swap: {recommendedLineup.lineup.switch}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold">Closer</dt>
+                    <dd>Closer: {recommendedLineup.lineup.closer}</dd>
+                  </div>
+                </dl>
+                <div className="mt-3 grid gap-1 text-emerald-900 sm:grid-cols-2 dark:text-emerald-100">
+                  <p>Score: {formatScore(recommendedLineup.score)}</p>
+                  <p>Structure: {recommendedLineup.diagnosticLabel}</p>
+                  <p>
+                    Covered threats:{' '}
+                    {recommendedLineup.coveredThreats.length > 0
+                      ? recommendedLineup.coveredThreats.join(', ')
+                      : 'None'}
+                  </p>
+                  <p>
+                    Weaknesses:{' '}
+                    {recommendedLineup.weaknesses.length > 0
+                      ? recommendedLineup.weaknesses.join(', ')
+                      : 'None'}
+                  </p>
+                </div>
+                {recommendedLineup.resourcePathMetrics ? (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-emerald-800 dark:text-emerald-200">
+                    {Object.entries(recommendedLineup.resourcePathMetrics).map(
+                      ([pathName, metric]) =>
+                        metric.available ? (
+                          <span
+                            key={pathName}
+                            className="rounded-full bg-emerald-100 px-2 py-1 dark:bg-emerald-900"
+                          >
+                            {
+                              resourcePathLabels[
+                                pathName as keyof LineupResourcePathMetrics
+                              ]
+                            }
+                            : {formatScore(metric.score)}
+                          </span>
+                        ) : null,
+                    )}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {generatedTeam &&
         (analysis === null || fitness === null) &&
         !isGenerating && (
@@ -416,224 +503,227 @@ export function AnalysisPanel({
         )}
 
       {generatedTeam && analysis !== null && fitness !== null && (
-        <section
-          className="space-y-3"
-          aria-label="Team analysis drill-down sections"
-        >
-          {[
-            {
-              id: 'summaryStatistics' as const,
-              title: 'Summary Statistics',
-              content: (
-                <div className="space-y-3 px-3 pb-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {summaryMetrics.map((metric) => (
-                      <article
-                        key={metric.label}
-                        className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                      >
-                        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                          {metric.label}
-                        </p>
-                        <p
-                          className={clsx(
-                            'mt-1 text-lg font-bold',
-                            getValueClasses(metric.status),
-                          )}
-                        >
-                          {metric.value}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                          {metric.description}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                    <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                      Expected Ranges
-                    </p>
-                    <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
+        <section className="space-y-3" aria-label="Team analysis sections">
+          <section aria-label="Team analysis drill-down sections">
+            {[
+              {
+                id: 'summaryStatistics' as const,
+                title: 'Summary Statistics',
+                content: (
+                  <div className="space-y-3 px-3 pb-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {summaryMetrics.map((metric) => (
-                        <p key={metric.label}>
-                          <span className="font-semibold">{metric.label}:</span>{' '}
-                          {metric.range}
-                        </p>
+                        <article
+                          key={metric.label}
+                          className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
+                        >
+                          <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+                            {metric.label}
+                          </p>
+                          <p
+                            className={clsx(
+                              'mt-1 text-lg font-bold',
+                              getValueClasses(metric.status),
+                            )}
+                          >
+                            {metric.value}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
+                            {metric.description}
+                          </p>
+                        </article>
                       ))}
                     </div>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
+                      <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+                        Expected Ranges
+                      </p>
+                      <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
+                        {summaryMetrics.map((metric) => (
+                          <p key={metric.label}>
+                            <span className="font-semibold">
+                              {metric.label}:
+                            </span>{' '}
+                            {metric.range}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ),
-            },
-            {
-              id: 'fitnessContributionCategories' as const,
-              title: 'Fitness Contribution Categories',
-              content: (
-                <div className="space-y-3 px-3 pb-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {contributionMetrics.map((metric) => (
+                ),
+              },
+              {
+                id: 'fitnessContributionCategories' as const,
+                title: 'Fitness Contribution Categories',
+                content: (
+                  <div className="space-y-3 px-3 pb-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      {contributionMetrics.map((metric) => (
+                        <article
+                          key={metric.label}
+                          className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
+                        >
+                          <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+                            {metric.label}
+                          </p>
+                          <p
+                            className={clsx(
+                              'mt-1 text-lg font-bold',
+                              getValueClasses(metric.status),
+                            )}
+                          >
+                            {metric.value}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
+                            {metric.description}
+                          </p>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
+                      <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+                        Expected contribution bands
+                      </p>
+                      <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
+                        {contributionMetrics.map((metric) => (
+                          <p key={metric.label}>
+                            <span className="font-semibold">
+                              {metric.label}:
+                            </span>{' '}
+                            {metric.range}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                id: 'perPokemonContributions' as const,
+                title: 'Per-Pokemon Contribution',
+                content: (
+                  <div className="space-y-3 px-3 pb-3">
+                    {pokemonEntries.map((entry) => (
                       <article
-                        key={metric.label}
+                        key={entry.speciesId}
                         className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
                       >
-                        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                          {metric.label}
-                        </p>
-                        <p
-                          className={clsx(
-                            'mt-1 text-lg font-bold',
-                            getValueClasses(metric.status),
-                          )}
-                        >
-                          {metric.value}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                          {metric.description}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                            {entry.pokemon}
+                          </p>
+                          <span
+                            className={clsx(
+                              'rounded-full px-2 py-1 text-xs font-semibold tracking-wide uppercase',
+                              getBadgeClasses(entry.fragilityRiskTier),
+                            )}
+                          >
+                            {`Replacement Risk: ${formatRiskTier(entry.fragilityRiskTier)}`}
+                          </span>
+                        </div>
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+                            <span
+                              className={getValueClasses(
+                                getRelativeMetricStatus(
+                                  entry.threatsHandled,
+                                  maxThreatsHandled,
+                                ),
+                              )}
+                            >
+                              {`Threats Handled: ${entry.threatsHandled}`}
+                            </span>
+                          </p>
+                          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+                            <span
+                              className={getValueClasses(
+                                getRelativeMetricStatus(
+                                  entry.coverageAdded,
+                                  maxCoverageAdded,
+                                ),
+                              )}
+                            >
+                              {`Coverage Added: ${entry.coverageAdded}`}
+                            </span>
+                          </p>
+                          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+                            <span
+                              className={getValueClasses(
+                                getRelativeMetricStatus(
+                                  entry.highSeverityRelief,
+                                  maxHighSeverityRelief,
+                                ),
+                              )}
+                            >
+                              {`High-Pressure Relief: ${entry.highSeverityRelief}`}
+                            </span>
+                          </p>
+                        </div>
+                        <p className="mt-2 text-xs leading-5 text-gray-700 dark:text-gray-300">
+                          {entry.rationale}
                         </p>
                       </article>
                     ))}
-                  </div>
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                    <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                      Expected contribution bands
-                    </p>
-                    <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                      {contributionMetrics.map((metric) => (
-                        <p key={metric.label}>
-                          <span className="font-semibold">{metric.label}:</span>{' '}
-                          {metric.range}
-                        </p>
-                      ))}
+                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
+                      <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+                        Relative grading guide
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
+                        Green marks values near the strongest contributor on
+                        this team, yellow marks middle-of-team support, and red
+                        marks low relative contribution for the current lineup.
+                        Replacement risk uses Low / Moderate / High bands
+                        directly.
+                      </p>
                     </div>
                   </div>
-                </div>
-              ),
-            },
-            {
-              id: 'perPokemonContributions' as const,
-              title: 'Per-Pokemon Contribution',
-              content: (
-                <div className="space-y-3 px-3 pb-3">
-                  {pokemonEntries.map((entry) => (
-                    <article
-                      key={entry.speciesId}
-                      className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">
-                          {entry.pokemon}
-                        </p>
-                        <span
-                          className={clsx(
-                            'rounded-full px-2 py-1 text-xs font-semibold tracking-wide uppercase',
-                            getBadgeClasses(entry.fragilityRiskTier),
-                          )}
-                        >
-                          {`Replacement Risk: ${formatRiskTier(entry.fragilityRiskTier)}`}
-                        </span>
-                      </div>
-                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                          <span
-                            className={getValueClasses(
-                              getRelativeMetricStatus(
-                                entry.threatsHandled,
-                                maxThreatsHandled,
-                              ),
-                            )}
-                          >
-                            {`Threats Handled: ${entry.threatsHandled}`}
-                          </span>
-                        </p>
-                        <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                          <span
-                            className={getValueClasses(
-                              getRelativeMetricStatus(
-                                entry.coverageAdded,
-                                maxCoverageAdded,
-                              ),
-                            )}
-                          >
-                            {`Coverage Added: ${entry.coverageAdded}`}
-                          </span>
-                        </p>
-                        <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                          <span
-                            className={getValueClasses(
-                              getRelativeMetricStatus(
-                                entry.highSeverityRelief,
-                                maxHighSeverityRelief,
-                              ),
-                            )}
-                          >
-                            {`High-Pressure Relief: ${entry.highSeverityRelief}`}
-                          </span>
-                        </p>
-                      </div>
-                      <p className="mt-2 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                        {entry.rationale}
-                      </p>
-                    </article>
-                  ))}
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                    <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                      Relative grading guide
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                      Green marks values near the strongest contributor on this
-                      team, yellow marks middle-of-team support, and red marks
-                      low relative contribution for the current lineup.
-                      Replacement risk uses Low / Moderate / High bands
-                      directly.
-                    </p>
-                  </div>
-                </div>
-              ),
-            },
-          ].map((section) => (
-            <div
-              key={section.id}
-              className="rounded-lg border border-blue-200 bg-white dark:border-blue-900/60 dark:bg-gray-900/40"
-            >
-              <h3>
-                <button
-                  ref={(buttonElement) => {
-                    accordionButtonRefs.current[section.id] = buttonElement;
-                  }}
-                  type="button"
-                  aria-expanded={expandedSections[section.id]}
-                  aria-controls={`${accordionIdPrefix}-${section.id}-panel`}
-                  id={`${accordionIdPrefix}-${section.id}-trigger`}
-                  className="flex w-full items-center justify-between rounded-lg p-3 text-left focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-                  onClick={() => {
-                    toggleSection(section.id);
-                  }}
-                  onKeyDown={(event) => {
-                    onAccordionHeaderKeyDown(event, section.id);
-                  }}
-                >
-                  <span className="text-sm font-semibold tracking-wide text-blue-800 uppercase dark:text-blue-200">
-                    {section.title}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="text-sm font-semibold text-blue-700 dark:text-blue-300"
+                ),
+              },
+            ].map((section) => (
+              <div
+                key={section.id}
+                className="rounded-lg border border-blue-200 bg-white dark:border-blue-900/60 dark:bg-gray-900/40"
+              >
+                <h3>
+                  <button
+                    ref={(buttonElement) => {
+                      accordionButtonRefs.current[section.id] = buttonElement;
+                    }}
+                    type="button"
+                    aria-expanded={expandedSections[section.id]}
+                    aria-controls={`${accordionIdPrefix}-${section.id}-panel`}
+                    id={`${accordionIdPrefix}-${section.id}-trigger`}
+                    className="flex w-full items-center justify-between rounded-lg p-3 text-left focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+                    onClick={() => {
+                      toggleSection(section.id);
+                    }}
+                    onKeyDown={(event) => {
+                      onAccordionHeaderKeyDown(event, section.id);
+                    }}
                   >
-                    {expandedSections[section.id] ? '-' : '+'}
-                  </span>
-                </button>
-              </h3>
-              {expandedSections[section.id] && (
-                <div
-                  id={`${accordionIdPrefix}-${section.id}-panel`}
-                  role="region"
-                  aria-labelledby={`${accordionIdPrefix}-${section.id}-trigger`}
-                >
-                  {section.content}
-                </div>
-              )}
-            </div>
-          ))}
+                    <span className="text-sm font-semibold tracking-wide text-blue-800 uppercase dark:text-blue-200">
+                      {section.title}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="text-sm font-semibold text-blue-700 dark:text-blue-300"
+                    >
+                      {expandedSections[section.id] ? '-' : '+'}
+                    </span>
+                  </button>
+                </h3>
+                {expandedSections[section.id] && (
+                  <div
+                    id={`${accordionIdPrefix}-${section.id}-panel`}
+                    role="region"
+                    aria-labelledby={`${accordionIdPrefix}-${section.id}-trigger`}
+                  >
+                    {section.content}
+                  </div>
+                )}
+              </div>
+            ))}
+          </section>
         </section>
       )}
     </div>

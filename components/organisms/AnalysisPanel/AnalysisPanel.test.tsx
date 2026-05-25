@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AnalysisPanel } from './AnalysisPanel';
-import type { GenerationAnalysis } from '@/lib/types';
+import type { GenerationAnalysis, RecommendedLineup } from '@/lib/types';
 
 const analysisFixture: GenerationAnalysis = {
   mode: 'GBL',
@@ -87,6 +87,48 @@ const analysisFixture: GenerationAnalysis = {
 };
 
 describe('AnalysisPanel', () => {
+  const recommendedLineups: RecommendedLineup[] = [
+    {
+      lineup: {
+        lead: 'azumarill',
+        switch: 'skarmory',
+        closer: 'registeel',
+      },
+      score: 0.87,
+      coverageMetrics: {
+        coverageRate: 0.74,
+        dominatingMatchupCount: 8,
+        overwhelmingLossCount: 2,
+        singleAnswerThreatCount: 1,
+      },
+      coveredThreats: ['lanturn'],
+      weaknesses: ['venusaur'],
+      diagnosticLabel: 'ABC',
+      resourcePathMetrics: {
+        balanced: { available: true, score: 0.8 },
+        shieldSpend: { available: true, score: 0.76 },
+        shieldSave: { available: false },
+      },
+    },
+    {
+      lineup: {
+        lead: 'skarmory',
+        switch: 'registeel',
+        closer: 'azumarill',
+      },
+      score: 0.81,
+      coverageMetrics: {
+        coverageRate: 0.68,
+        dominatingMatchupCount: 6,
+        overwhelmingLossCount: 3,
+        singleAnswerThreatCount: 2,
+      },
+      coveredThreats: ['venusaur'],
+      weaknesses: ['lanturn'],
+      diagnosticLabel: 'ABA',
+    },
+  ];
+
   it('renders accordion sections collapsed by default', () => {
     render(
       <AnalysisPanel
@@ -157,6 +199,55 @@ describe('AnalysisPanel', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/fitness mode/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/algorithm/i)).not.toBeInTheDocument();
+  });
+
+  it('renders recommended lineups from generated-team output in the analysis column', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    expect(screen.getByText('Recommended Lineups')).toBeInTheDocument();
+    expect(screen.getByText('Lineup 1')).toBeInTheDocument();
+    expect(screen.getByText('Lead: azumarill')).toBeInTheDocument();
+    expect(screen.getByText('Safe Swap: skarmory')).toBeInTheDocument();
+    expect(screen.getByText('Closer: registeel')).toBeInTheDocument();
+    expect(screen.getByText('Score: 0.87')).toBeInTheDocument();
+    expect(screen.getByText('Covered threats: lanturn')).toBeInTheDocument();
+    expect(screen.getByText('Weaknesses: venusaur')).toBeInTheDocument();
+    expect(screen.getByText('Structure: ABC')).toBeInTheDocument();
+    expect(screen.getByText('Balanced: 0.80')).toBeInTheDocument();
+    expect(screen.getByText('Shield spend: 0.76')).toBeInTheDocument();
+    expect(screen.queryByText(/Shield save:/i)).not.toBeInTheDocument();
+  });
+
+  it('renders recommended lineups even when analysis details are unavailable', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups: [recommendedLineups[0]],
+        }}
+        isGenerating={false}
+        fitness={null}
+        analysis={null}
+      />,
+    );
+
+    expect(screen.getByText('Recommended Lineups')).toBeInTheDocument();
+    expect(screen.getByText('Lead: azumarill')).toBeInTheDocument();
+    expect(
+      screen.getByText('Analysis unavailable for this run.'),
+    ).toBeInTheDocument();
   });
 
   it('grades displayed percentages and fitness values using the shown rounded values', () => {

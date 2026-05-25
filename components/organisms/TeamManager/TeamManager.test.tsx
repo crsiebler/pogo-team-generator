@@ -25,13 +25,15 @@ const teamConfigPanelProps: Array<
 > = [];
 
 interface MockAnalysisPanelProps {
+  generatedTeam: {
+    recommendedLineups?: RecommendedLineup[];
+  } | null;
   fitness: number | null;
   analysis: unknown;
 }
 
 interface MockResultsPanelProps {
   generatedTeam: {
-    recommendedLineups?: RecommendedLineup[];
     rosterMetrics?: PlayPokemonRosterMetrics;
     benchUtility?: BenchUtility[];
   } | null;
@@ -93,17 +95,21 @@ vi.mock('@/components/organisms', () => ({
   },
   ResultsPanel: ({ generatedTeam }: MockResultsPanelProps) => (
     <div>
-      Results {generatedTeam?.recommendedLineups?.length ?? 0} lineups{' '}
-      {generatedTeam?.recommendedLineups?.[0]
-        ? `${generatedTeam.recommendedLineups[0].lineup.lead} ${generatedTeam.recommendedLineups[0].score} ${generatedTeam.recommendedLineups[0].diagnosticLabel}`
-        : ''}{' '}
-      roster metrics {generatedTeam?.rosterMetrics?.viableLineupCount ?? 'none'}{' '}
-      bench utility {generatedTeam?.benchUtility?.[0]?.speciesId ?? 'none'}
+      Results roster metrics{' '}
+      {generatedTeam?.rosterMetrics?.viableLineupCount ?? 'none'} bench utility{' '}
+      {generatedTeam?.benchUtility?.[0]?.speciesId ?? 'none'}
     </div>
   ),
-  AnalysisPanel: ({ fitness, analysis }: MockAnalysisPanelProps) => (
+  AnalysisPanel: ({
+    generatedTeam,
+    fitness,
+    analysis,
+  }: MockAnalysisPanelProps) => (
     <div>
       Analysis {fitness ?? 'none'} {analysis ? 'loaded' : 'missing'}
+      {generatedTeam?.recommendedLineups?.[0]
+        ? ` ${generatedTeam.recommendedLineups.length} lineups ${generatedTeam.recommendedLineups[0].lineup.lead} ${generatedTeam.recommendedLineups[0].score} ${generatedTeam.recommendedLineups[0].diagnosticLabel}`
+        : ''}
     </div>
   ),
 }));
@@ -414,11 +420,11 @@ describe('TeamManager', () => {
     fireEvent.click(screen.getByText('Generate Team'));
 
     await waitFor(() => {
-      expect(screen.getByText('Analysis 0.75 loaded')).toBeInTheDocument();
+      expect(screen.getByText(/Analysis 0.75 loaded/)).toBeInTheDocument();
     });
   });
 
-  it('passes recommended lineups response data to ResultsPanel', async () => {
+  it('passes recommended lineups response data to AnalysisPanel', async () => {
     const fetchMock = vi.mocked(fetch);
 
     render(<TeamManager />);
@@ -434,7 +440,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Results 1 lineups azumarill 0.82 ABC/),
+        screen.getByText(/Analysis 0.75 loaded 1 lineups azumarill 0.82 ABC/),
       ).toBeInTheDocument();
     });
   });
@@ -455,7 +461,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/roster metrics 12 bench utility azumarill/),
+        screen.getByText(/Results roster metrics 12 bench utility azumarill/),
       ).toBeInTheDocument();
     });
   });

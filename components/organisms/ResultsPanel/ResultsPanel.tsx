@@ -6,7 +6,6 @@ import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type {
   BenchUtility,
   PlayPokemonRosterMetrics,
-  RecommendedLineup,
   TournamentMode,
 } from '@/lib/types';
 
@@ -14,7 +13,6 @@ interface ResultsPanelProps {
   generatedTeam: {
     team: string[];
     formatId: BattleFormatId;
-    recommendedLineups?: RecommendedLineup[];
     rosterMetrics?: PlayPokemonRosterMetrics;
     benchUtility?: BenchUtility[];
   } | null;
@@ -126,7 +124,6 @@ export function ResultsPanel({
           battleFrontierMasterPointsByPokemonName={
             battleFrontierMasterPointsByPokemonName
           }
-          recommendedLineups={generatedTeam.recommendedLineups}
           rosterMetrics={generatedTeam.rosterMetrics}
           benchUtility={generatedTeam.benchUtility}
         />
