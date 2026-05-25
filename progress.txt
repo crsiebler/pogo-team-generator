@@ -4,6 +4,7 @@
 - Lineup scoring lives in `lib/genetic/fitness/lineupScoring.ts`; use `LineupScoringContext` injection for deterministic tests and `createDefaultLineupScoringContext(...)` when wiring production data helpers.
 - Lineup resource path metrics use shield-specific matchup ratings when `LineupScoringContext.getShieldScenarioMatchupRating` is available; missing shield rows are neutral fallbacks and paths are unavailable only when no path-specific shield data exists.
 - PlayPokemon roster scoring lives in `lib/genetic/fitness/rosterScoring.ts`; use `PlayPokemonRosterScoringContext.scoreLineup` for cached or deterministic lineup scoring, and only request `lineupScores` through full `LineupAwareFitnessConfig` diagnostics.
+- PlayPokemon recommendation helpers live in `lib/genetic/fitness/recommendations.ts`; pass only bounded full-mode lineup diagnostics into `buildPlayPokemonRosterRecommendations(...)` so API-ready output returns recommended lineups and bench utility without exposing all 60 enumerated lineups.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -159,4 +160,34 @@
   - US-008 still needs to wire roster scoring into the canonical genetic algorithm fitness path.
 - Next iteration start:
   - US-006 - Implement lineup recommendations and bench utility
+---
+## 2026-05-25 03:37 MST - US-006
+- What was implemented
+- Added pure PlayPokemon recommendation helpers that convert bounded lineup diagnostics into API-ready recommended lineups and bench utility warnings.
+- Files changed: `lib/genetic/fitness/recommendations.ts`, `lib/genetic/fitness/recommendations.test.ts`, `lib/genetic/fitness/index.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-006 - Implement lineup recommendations and bench utility`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/recommendations.test.ts` (pass after red failure for missing module)
+  - `npx vitest run lib/genetic/fitness/recommendations.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - `npx prettier --write "lib/genetic/fitness/recommendations.ts" "lib/genetic/fitness/recommendations.test.ts" "lib/genetic/fitness/index.ts"` (pass)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: none from `code-reviewer`, `qa-expert`, or `security-engineer`; fixed low documentation placeholder from `documentation-engineer` before commit
+- Decisions (why):
+  - Built recommendations from bounded `LineupScoreResult[]` instead of enumerating or rescoring all 60 lineups because US-006 requires API-ready output to avoid returning all lineups and to reserve full diagnostics for recommended or finalist lineups.
+  - Calculated bench utility from recommended lineup appearances rather than all viable roster lineups because US-006 specifically asks for warnings tied to recommended lineup usage.
+  - Kept the helper pure and colocated under `lib/genetic/fitness` so later GA/API stories can wire it without UI or route dependencies.
+- **Learnings for future iterations:**
+  - Recommendation output should consume the bounded `lineupScores` returned by full roster scoring; do not call the 60-lineup enumerator again in API/UI adapters.
+  - Bench utility warnings for recommendation output are based on recommended lineup appearances: zero appearances means `unbringable`, nonzero below the threshold means `low-utility`.
+- Known issues / follow-ups:
+  - US-008 and US-009 still need to wire these helpers into generation and API responses.
+- Next iteration start:
+  - US-007 - Add GBL role-order recommendations
 ---

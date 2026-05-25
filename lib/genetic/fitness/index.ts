@@ -33,6 +33,12 @@ export {
   type PlayPokemonRosterScoringContext,
 } from './rosterScoring';
 
+export {
+  buildPlayPokemonRosterRecommendations,
+  type PlayPokemonRosterRecommendationOptions,
+  type PlayPokemonRosterRecommendationResult,
+} from './recommendations';
+
 type FitnessFunction = (
   chromosome: Chromosome,
   mode: TournamentMode,

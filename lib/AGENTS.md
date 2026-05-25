@@ -46,6 +46,8 @@ For lineup resource path metrics, use shield-specific matchup lookup (`getShield
 
 For PlayPokemon roster scoring in `lib/genetic/fitness/rosterScoring.ts`, inject cached lineup scoring through `PlayPokemonRosterScoringContext.scoreLineup` when evaluating many rosters, and use full `LineupAwareFitnessConfig` diagnostics only for finalists or recommendation output.
 
+For PlayPokemon recommendation output in `lib/genetic/fitness/recommendations.ts`, pass bounded full-mode `LineupScoreResult[]` into `buildPlayPokemonRosterRecommendations(...)`; do not re-enumerate all 60 lineups in API/UI adapters, and calculate bench warnings from recommended-lineup appearances.
+
 ## Code Style
 
 Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for functions/variables, PascalCase for types. Absolute imports (`@/lib/...`).
