@@ -38,6 +38,8 @@ Keep a final Battle Frontier Master legality assertion in `lib/genetic/algorithm
 
 For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` before generation and pass `formatId` through simulation helpers so non-Great formats never silently reuse Great League matchups.
 
+For PlayPokemon lineup-aware fitness, enumerate bring-6 rosters through `lib/genetic/fitness/lineupEnumeration.ts`; preserve roster input order for lead iteration, sort backline pairs canonically so duplicate backline permutations are not scored, and reject species ids containing the lineup key delimiter (`|`).
+
 ## Code Style
 
 Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for functions/variables, PascalCase for types. Absolute imports (`@/lib/...`).

@@ -12,6 +12,12 @@ export {
 
 export { calculateFitness as calculateFitnessTeamSynergy } from './teamSynergy';
 
+export {
+  PlayPokemonRosterValidationError,
+  enumeratePlayPokemonLineups,
+  getPlayPokemonLineupKey,
+} from './lineupEnumeration';
+
 type FitnessFunction = (
   chromosome: Chromosome,
   mode: TournamentMode,
