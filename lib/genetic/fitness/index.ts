@@ -43,6 +43,18 @@ export {
   type PlayPokemonRosterRecommendationResult,
 } from './recommendations';
 
+export {
+  OPTIMIZER_HARD_CONSTRAINT_CATEGORIES,
+  OPTIMIZER_SCORE_COMPONENT_WEIGHTS,
+  aggregateWeightedScore,
+  createNormalizedScoreBreakdown,
+  type OptimizerHardConstraintCategory,
+  type OptimizerScoreBreakdown,
+  type OptimizerScoreComponent,
+  type OptimizerScoreComponents,
+  type OptimizerScoreWeights,
+} from './scoreBreakdown';
+
 const FAST_LINEUP_AWARE_CONFIG: LineupAwareFitnessConfig = {
   mode: 'fast',
   includeDiagnostics: false,

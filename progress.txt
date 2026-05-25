@@ -18,6 +18,10 @@
 - PlayPokemon roster fitness now combines lineup quality/depth with expected-meta offensive move coverage, defensive resistance/weakness spread using frequency-preserving expected threat move types when available, and a top-lineup primary-type redundancy penalty that includes all lineups tied at the cutoff; use per-Pokemon typing fallback when move metadata is missing or partially unresolved, and handle useful shared secondary typings through coverage context rather than blanket duplicate-type penalties.
 - Bench utility warning pills in `TeamDisplay` should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered.
 - Recommended lineup weaknesses in `AnalysisPanel` should render as semantic `ul`/`li` lists with one readable weakness label per item and `No major weaknesses identified` for empty weakness arrays; avoid comma-separated inline weakness strings.
+- Future optimizer scoring, PvPoke ranking sync, runtime ranking access, type-effectiveness, coverage, safety, consistency, bulk, role scoring, or lineup strategy work must read or invoke the `gbl-optimizer` skill and record the optimizer docs read in `progress.txt` for the Ralph iteration.
+- Optimizer scoring should follow `docs/pokemon-go-team-optimization.md` and `docs/team-optimization/*`: use normalized weighted components in priority order (synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, role), keep hard constraints limited to legality/validity, and distinguish top-threat from full-meta coverage.
+- Ranking sync/runtime data should support PvPoke Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency categories when source files exist, while preserving graceful behavior for unavailable optional categories.
+- Normalized optimizer score breakdown helpers live in `lib/genetic/fitness/scoreBreakdown.ts`; use the documented weights there and clamp every component to 0..1 before weighted aggregation.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -707,5 +711,99 @@
 - Known issues / follow-ups:
   - Browser console still shows the pre-existing `/favicon.ico` 404.
 - Next iteration start:
-  - All PRD stories are now marked passing after US-020.
+  - US-021 - Sync chargers attackers and consistency rankings
+---
+## 2026-05-25 16:10 MST - US-021
+- What was implemented
+- Expanded PvPoke ranking category support in `lib/sync/adapter.ts` and `lib/sync/rankings.ts` from four categories to seven: `overall`, `leads`, `switches`, `closers`, `chargers`, `attackers`, and `consistency`.
+- Updated sync regression tests to assert the adapter accepts the three new categories and ranking sync writes deterministic `chargers_rankings.csv`, `attackers_rankings.csv`, and `consistency_rankings.csv` outputs for supported formats.
+- Marked `US-021` passing in `prd.json` after focused tests and typecheck.
+- Files changed: `lib/sync/adapter.ts`, `lib/sync/adapter.test.ts`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-021 - Sync chargers attackers and consistency rankings`
+- Checks:
+  - `npx vitest run lib/sync/adapter.test.ts lib/sync/rankings.test.ts` (red first: unsupported `chargers` category and 40-call sync loop; pass after implementation)
+  - `npx tsc --noEmit` (pass)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` before ranking sync changes.
+  - Required optimizer docs already read for this Ralph run and recorded in session context: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Not run; change is constrained to sync category constants and regression tests.
+- Decisions (why):
+  - Kept source-layout knowledge in `lib/sync/adapter.ts` and preserved the existing deterministic output path pattern under `data/rankings/cp{cp}/{cup}/{category}_rankings.csv`.
+  - Limited this story to sync support only; runtime loading for the new categories remains the next planned story.
+- Known issues / follow-ups:
+  - Runtime ranking access still only exposes `overall`, `leads`, `switches`, and `closers`; continue with US-022.
+- Next iteration start:
+  - US-022 - Expose runtime ranking access for all role categories
+---
+## 2026-05-25 16:13 MST - US-022
+- What was implemented
+- Expanded runtime ranking category support in `lib/data/rankings.ts` to include `chargers`, `attackers`, and `consistency` alongside `overall`, `leads`, `switches`, and `closers`.
+- Added lazy runtime loaders for `getChargersRankings(...)`, `getAttackersRankings(...)`, and `getConsistencyRankings(...)`, plus cache buckets for all seven categories per battle format.
+- Updated `getRankingScore(...)`, `getAllRankingsForPokemon(...)`, `getTopPokemon(...)`, and `getRankingForSpeciesId(...)` to accept the exported seven-category `RankingCategory` type.
+- Added regression coverage proving missing optional runtime files throw `MissingRankingDataError` with the missing category/path and that the aggregate ranking contract includes all seven category scores plus `average`.
+- Marked `US-022` passing in `prd.json` after focused tests, typecheck, and lint.
+- Files changed: `lib/data/rankings.ts`, `lib/data/rankings.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-022 - Expose runtime ranking access for all role categories`
+- Checks:
+  - `npx vitest run lib/data/rankings.test.ts` (red first: new runtime loader exports missing; pass after implementation)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` before ranking sync/runtime work.
+  - Required optimizer docs already read for this Ralph run and recorded in session context: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Not run; change is constrained to runtime ranking category access and regression tests.
+- Decisions (why):
+  - Preserved existing `getAverageRankingScore(...)` behavior over the original four categories to avoid unexpectedly requiring optional newly synced files in existing callers.
+  - Added the seven-category aggregate average directly in `getAllRankingsForPokemon(...)`, where the new contract explicitly requires all seven role scores.
+- Known issues / follow-ups:
+  - New category CSV data is not checked in yet; runtime loaders intentionally raise `MissingRankingDataError` until sync outputs exist.
+- Next iteration start:
+  - Stop requested after US-022. Next planned story is US-023 - Add normalized weighted score component contract.
+---
+## 2026-05-25 16:17 MST - US-023
+- What was implemented
+- Added a normalized weighted optimizer score breakdown contract with synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, and role components.
+- Added documented frozen starting weights, validity/legality-only hard constraint categories, 0..1 component clamping before aggregation, and regression tests for lower-priority influence without role-score domination.
+- Files changed: `lib/genetic/fitness/scoreBreakdown.ts`, `lib/genetic/fitness/scoreBreakdown.test.ts`, `lib/genetic/fitness/index.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-023 - Add normalized weighted score component contract`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/scoreBreakdown.test.ts` (red first: missing `scoreBreakdown` module; pass after implementation)
+  - `npx vitest run lib/genetic/fitness/scoreBreakdown.test.ts` (red after review: NaN bypassed normalization; pass after fix)
+  - `npx vitest run lib/genetic/fitness/scoreBreakdown.test.ts` (red after second review: default weights were mutable; pass after freezing weights)
+  - `npx prettier --write "lib/genetic/fitness/scoreBreakdown.ts" "lib/genetic/fitness/scoreBreakdown.test.ts" "lib/genetic/fitness/index.ts"` (pass before and after review fixes)
+  - `npx tsc --noEmit` (pass before and after review fixes)
+  - `npm run lint` (pass before and after review fixes)
+  - `npm test` (pass; 53 files, 379 tests)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` before optimizer scoring contract work.
+  - Read `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed medium NaN/non-finite normalization finding and low mutable-weights finding before commit; final pass had no actionable critical/high/medium findings; deferred low mutable hard-constraint category array note because the three-pass review loop was complete and low findings do not block the story
+- Decisions (why):
+  - Added a dedicated pure `scoreBreakdown.ts` module because US-023 establishes a reusable contract for later lineup and roster integration stories without changing existing scoring behavior prematurely.
+  - Exported the contract through `lib/genetic/fitness/index.ts` so future optimizer modules can import the canonical weights and aggregation helpers from the fitness boundary.
+  - Represented hard constraints as `validity` and `legality` categories only because strategic concerns such as role balance and type diversity should remain weighted components, not hard filters.
+  - Normalized `NaN` to 0 after specialist review because missing-data arithmetic should not poison downstream optimizer ordering with a non-finite aggregate.
+  - Froze the default weight table after specialist review because the exported contract should not be mutable process-wide state.
+- **Learnings for future iterations:**
+  - Use `createNormalizedScoreBreakdown(...)` or `aggregateWeightedScore(...)` for new optimizer component aggregation; do not duplicate or mutate weight constants in lineup or roster modules.
+  - Role is intentionally the lowest-weight component and should support, not replace, synergy, coverage, safety, consistency, bulk, and ratio signals.
+- Known issues / follow-ups:
+  - Low follow-up: consider freezing `OPTIMIZER_HARD_CONSTRAINT_CATEGORIES` to mirror the frozen default weights.
+  - US-024 still needs separate top-threat and full-meta threat pools before coverage diagnostics can expose those components separately.
+  - US-028 still needs to integrate the weighted breakdown into lineup and roster aggregation.
+- Next iteration start:
+  - US-024 - Separate top-threat and full-meta threat pools
 ---

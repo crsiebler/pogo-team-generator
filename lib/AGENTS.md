@@ -54,6 +54,8 @@ For GBL recommendation output in `lib/genetic/fitness/recommendations.ts`, pass 
 
 For GA evaluation in `lib/genetic/fitness/index.ts`, call `evaluatePopulation(population, mode, formatId)` without an algorithm selector. It creates a per-run `LineupAwareFitnessContext`, caches `scoreFastRosterLineup(...)` for hot PlayPokemon evaluation, and leaves full PlayPokemon diagnostics to the final output pass in `lib/genetic/algorithm.ts`.
 
+For optimizer weighted scoring, import the canonical score contract from `lib/genetic/fitness/scoreBreakdown.ts`; keep components normalized to 0..1 before aggregation and treat only validity or legality as hard constraints.
+
 Shared generation contracts in `lib/types.ts` do not include algorithm selectors or algorithm labels. Keep deprecated request compatibility isolated to API schemas and do not add algorithm fields back to `GenerationOptions` or `GenerationAnalysis`.
 
 ## Code Style
