@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type {
   BenchUtility,
+  GenerationAnalysis,
+  GenerationOptions,
   LineupAwareFitnessConfig,
   LineupCoverageMetrics,
   LineupPatternLabel,
@@ -112,5 +114,43 @@ describe('lineup-aware generation types', () => {
     expect(unavailableResourcePathWithScore).toBeDefined();
     expect(fastConfigWithDiagnostics).toBeDefined();
     expect(fullConfigWithoutDiagnostics).toBeDefined();
+  });
+
+  it('does not expose algorithm selection on generation request or analysis contracts', () => {
+    const generationOptions = {
+      mode: 'GBL',
+      formatId: 'great-league',
+    } satisfies GenerationOptions;
+
+    const deprecatedAlgorithmOptions: GenerationOptions = {
+      mode: 'GBL',
+      // @ts-expect-error algorithm selection is obsolete.
+      algorithm: 'teamSynergy',
+    };
+
+    const generationAnalysis = {
+      mode: 'GBL',
+      teamSize: 3,
+      generatedAt: '2026-03-15T00:00:00.000Z',
+      threats: { evaluatedCount: 0, entries: [] },
+      coreBreakers: { threshold: 1, entries: [] },
+      shieldScenarios: {
+        '0-0': { coveredThreats: 0, evaluatedThreats: 0, coverageRate: 0 },
+        '1-1': { coveredThreats: 0, evaluatedThreats: 0, coverageRate: 0 },
+        '2-2': { coveredThreats: 0, evaluatedThreats: 0, coverageRate: 0 },
+      },
+      pokemonContributions: { entries: [] },
+    } satisfies GenerationAnalysis;
+
+    const deprecatedAlgorithmAnalysis: GenerationAnalysis = {
+      ...generationAnalysis,
+      // @ts-expect-error analysis output must not include algorithm labels.
+      algorithm: 'individual',
+    };
+
+    expect(generationOptions.mode).toBe('GBL');
+    expect(deprecatedAlgorithmOptions).toBeDefined();
+    expect(generationAnalysis.teamSize).toBe(3);
+    expect(deprecatedAlgorithmAnalysis).toBeDefined();
   });
 });

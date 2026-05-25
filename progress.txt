@@ -10,6 +10,7 @@
 - Frontend generation configuration no longer owns or passes `FitnessAlgorithm`; `TeamManager` sends only format, mode, anchors, and exclusions to `/api/generate-team`, and `TeamGenerator` must not render algorithm-selection UI copy.
 - Frontend lineup recommendations should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; do not recompute lineup scoring in UI adapters.
 - Frontend PlayPokemon roster diagnostics should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; display `rosterMetrics` and `benchUtility` directly and include text warning labels for low-utility or unbringable roster members.
+- `GenerationOptions` and `GenerationAnalysis` in `lib/types.ts` no longer include algorithm selectors or labels; adapters should use the canonical lineup-aware generation path and pass through lineup-aware diagnostics.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -401,4 +402,38 @@
   - Browser console still shows the pre-existing `/favicon.ico` 404.
 - Next iteration start:
   - US-013 - Remove obsolete algorithm code paths
+---
+## 2026-05-25 04:57 MST - US-013
+- What was implemented
+- Removed obsolete `FitnessAlgorithm` request/analysis contracts, deleted unused algorithm toggle exports/files, retired legacy `individual` and `teamSynergy` fitness modules, and updated analysis/README copy to describe the canonical lineup-aware scoring path.
+- Files changed: `lib/types.ts`, `lib/types.lineup.test.ts`, `lib/genetic/fitness/individual.ts`, `lib/genetic/fitness/teamSynergy.ts`, `components/molecules/index.ts`, `components/molecules/AlgorithmToggle/AlgorithmToggle.tsx`, `components/molecules/AlgorithmToggle/index.ts`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `app/api/generate-team/route.ts`, `app/AGENTS.md`, `README.md`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-013 - Remove obsolete algorithm code paths`
+- Checks:
+  - `npx tsc --noEmit` (pass after red failure for obsolete algorithm type contracts)
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass after red failure for algorithm copy and obsolete threshold behavior)
+  - `npx vitest run lib/types.lineup.test.ts components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 353 tests)
+  - Browser verification with dev-browser at `http://localhost:3000` (pass; generated GBL result rendered expanded Summary Statistics with lineup-aware copy and no algorithm wording; observed pre-existing `/favicon.ico` 404)
+  - `npx vitest run app/api/generate-team/route.test.ts lib/types.lineup.test.ts components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass after review fix)
+  - `npx tsc --noEmit` (pass after review fix)
+  - `npm run lint` (pass after review fix)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`
+  - Findings: fixed low stale route type/reference before commit; deferred low historical PRD wording note because US-003 acceptance criteria records past audit context and US-013 explicitly deletes the retired files; final review pass had no actionable findings
+- Decisions (why):
+  - Removed `FitnessAlgorithm` from shared request and analysis types because API/frontend cleanup stories already migrated callers and US-013 owns retiring the remaining selection contract.
+  - Deleted the unused `AlgorithmToggle` and legacy fitness modules instead of leaving hidden dead code because the canonical lineup-aware GA path no longer imports or routes through them.
+  - Kept deprecated `algorithm` route payload handling out of `GenerationOptions` because the route treats it as ignored input compatibility, not a supported internal generation option.
+  - Updated the route analysis variable to use `GenerationAnalysis` directly because the shared type no longer contains an algorithm field to omit.
+- **Learnings for future iterations:**
+  - Algorithm selector compatibility, if needed for old clients, should stay isolated in API schema handling and must not re-enter shared generation options, frontend state, or analysis output types.
+- Known issues / follow-ups:
+  - Final validation story US-014 still needs full build/test/browser validation.
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+- Next iteration start:
+  - US-014 - Run final validation for lineup-aware generation
 ---

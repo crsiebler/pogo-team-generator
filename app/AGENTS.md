@@ -14,7 +14,7 @@ When `battle-frontier-master` needs UI-side point awareness, enrich the existing
 
 When generation fails due to missing format datasets, map `MissingRankingDataError` and `MissingSimulationDataError` to HTTP 400 responses so users get actionable sync instructions instead of generic 500 errors.
 
-For `/api/generate-team`, ignore deprecated `algorithm` request fields, do not pass algorithm selectors into `generateTeam(...)`, and expose lineup-aware output fields (`recommendedLineups`, `rosterMetrics`, `benchUtility`) directly from the returned chromosome without adding user-facing individual/teamSynergy labels.
+For `/api/generate-team`, ignore deprecated `algorithm` request fields, do not pass algorithm selectors into `generateTeam(...)`, and expose lineup-aware output fields (`recommendedLineups`, `rosterMetrics`, `benchUtility`) directly from the returned chromosome without adding algorithm labels.
 
 ## Testing
 

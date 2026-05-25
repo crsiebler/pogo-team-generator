@@ -69,8 +69,6 @@ export interface RankedPokemon {
 
 export type TournamentMode = 'PlayPokemon' | 'GBL';
 
-export type FitnessAlgorithm = 'individual' | 'teamSynergy';
-
 /** Ordered battle roles for a pick-3 lineup. */
 export type LineupRole = 'lead' | 'switch' | 'closer';
 
@@ -163,12 +161,10 @@ export interface GenerationOptions {
   excludedPokemon?: string[];
   populationSize?: number;
   generations?: number;
-  algorithm?: FitnessAlgorithm;
 }
 
 export interface GenerationAnalysis {
   mode: TournamentMode;
-  algorithm: FitnessAlgorithm;
   teamSize: number;
   generatedAt: string;
   threats: ThreatAnalysis;

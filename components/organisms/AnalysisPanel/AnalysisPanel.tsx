@@ -4,7 +4,6 @@ import { KeyboardEvent, useId, useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type {
-  FitnessAlgorithm,
   GenerationAnalysis,
   PokemonContributionRiskTier,
   ShieldScenarioKey,
@@ -48,15 +47,9 @@ type AnalysisAccordionSectionId = (typeof ANALYSIS_ACCORDION_SECTIONS)[number];
 
 const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
 
-function getOverallFitnessStatus(
-  fitness: number,
-  algorithm: FitnessAlgorithm,
-): SummaryMetric['status'] {
+function getOverallFitnessStatus(fitness: number): SummaryMetric['status'] {
   const roundedFitness = roundToHundredths(fitness);
-  const thresholds =
-    algorithm === 'teamSynergy'
-      ? { good: 0.75, average: 0.55 }
-      : { good: 0.9, average: 0.65 };
+  const thresholds = { good: 0.75, average: 0.55 };
 
   if (roundedFitness >= thresholds.good) {
     return 'good';
@@ -69,10 +62,8 @@ function getOverallFitnessStatus(
   return 'weak';
 }
 
-function getOverallFitnessRange(algorithm: FitnessAlgorithm): string {
-  return algorithm === 'teamSynergy'
-    ? 'Green >= 0.75, Yellow 0.55-0.74, Red < 0.55'
-    : 'Green >= 0.90, Yellow 0.65-0.89, Red < 0.65';
+function getOverallFitnessRange(): string {
+  return 'Green >= 0.75, Yellow 0.55-0.74, Red < 0.55';
 }
 
 function getPercentStatus(percent: number): SummaryMetric['status'] {
@@ -225,9 +216,9 @@ function buildSummaryMetrics(
       label: 'Overall Fitness',
       value: roundedFitness.toFixed(2),
       description:
-        'Composite algorithm score for the selected format. Bands are normalized by algorithm family because raw fitness varies by strategy model.',
-      status: getOverallFitnessStatus(roundedFitness, analysis.algorithm),
-      range: getOverallFitnessRange(analysis.algorithm),
+        'Composite lineup-aware score for the selected format using matchup coverage, role quality, and team stability.',
+      status: getOverallFitnessStatus(roundedFitness),
+      range: getOverallFitnessRange(),
     },
     {
       label: 'Threat Handling',

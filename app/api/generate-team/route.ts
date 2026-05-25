@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
 
     const threats = buildThreatAnalysis(result.team, resolvedFormatId);
 
-    const analysis: Omit<GenerationAnalysis, 'algorithm'> = {
+    const analysis: GenerationAnalysis = {
       mode,
       teamSize,
       generatedAt: new Date().toISOString(),

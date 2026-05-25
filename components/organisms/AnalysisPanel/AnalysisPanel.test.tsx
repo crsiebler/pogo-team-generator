@@ -4,7 +4,6 @@ import type { GenerationAnalysis } from '@/lib/types';
 
 const analysisFixture: GenerationAnalysis = {
   mode: 'GBL',
-  algorithm: 'teamSynergy',
   teamSize: 3,
   generatedAt: '2026-03-15T00:00:00.000Z',
   threats: {
@@ -152,6 +151,12 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('High-Pressure Relief: 7')).toBeInTheDocument();
     expect(screen.getByText('Replacement Risk: High')).toBeInTheDocument();
     expect(screen.getByText('Relative grading guide')).toBeInTheDocument();
+    expect(screen.queryByText(/individual algorithm/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/team synergy algorithm/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/fitness mode/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/algorithm/i)).not.toBeInTheDocument();
   });
 
   it('grades displayed percentages and fitness values using the shown rounded values', () => {

@@ -17,10 +17,7 @@ Each format uses its own ranking CSVs, simulation data, and eligible Pokemon poo
 - Generates teams for both `PlayPokemon` (6 Pokemon) and `GBL` (3 Pokemon)
 - Filters anchor and excluded Pokemon by the selected battle format
 - Enforces species uniqueness across forms that share the same base Dex number
-- Scores teams with simulation-backed matchup coverage instead of ranking-only heuristics
-- Supports two fitness strategies:
-  - `individual`: balances individual strength, matchup quality, team coverage, type diversity, move coverage, and anchor support
-  - `teamSynergy`: emphasizes threat redundancy, shield-scenario balance, and team-level coverage
+- Scores teams with canonical lineup-aware fitness using simulation-backed matchup coverage, role quality, lineup depth, and team stability
 
 ## Quick Start
 
@@ -63,10 +60,7 @@ npm run sync
    - `GBL`: build a 3-Pokemon roster
 3. Optionally add anchor Pokemon you want locked into the generated team.
 4. Optionally add excluded Pokemon you do not want considered.
-5. Choose an algorithm:
-   - `individual` for faster, broad scoring
-   - `teamSynergy` for more coverage-focused analysis
-6. Generate a team.
+5. Generate a team.
 
 ## How Team Generation Works
 
@@ -86,39 +80,15 @@ npm run sync
 - Anchor slots are preserved during initialization, crossover, and mutation.
 - Teams are validated with base-species uniqueness rules, so different forms of the same Pokemon family cannot appear together.
 
-### Fitness Algorithms
+### Lineup-Aware Fitness
 
-#### `individual`
+Generation uses one canonical lineup-aware fitness path in `lib/genetic/fitness/index.ts`.
 
-Implemented in `lib/genetic/fitness/individual.ts`.
+- `PlayPokemon` bring-6 rosters are scored by enumerating ordered pick-3 lineups, rewarding viable lineup depth, lead diversity, bench utility, and broad threat coverage.
+- `GBL` teams are scored by evaluating ordered lead, safe swap, and closer recommendations for the three selected Pokemon.
+- Final results include recommended lineups and, for `PlayPokemon`, roster metrics plus bench utility diagnostics.
 
-This scorer combines:
-
-- simulation-backed threat coverage
-- weighted team weaknesses
-- single-counter fragility penalties
-- average matchup quality
-- type coverage and type synergy
-- move coverage and energy pressure
-- stat balance and shadow preference
-- mode-specific bonuses for consistency or surprise
-- anchor synergy bonuses when anchors are present
-
-Simulation coverage is the dominant factor, so the generator prefers teams that can repeatedly answer relevant threats in the selected format.
-
-#### `teamSynergy`
-
-Implemented in `lib/genetic/fitness/teamSynergy.ts`.
-
-This scorer focuses more on:
-
-- having multiple counters to meta threats
-- shield-scenario consistency
-- avoiding cores that are broken by the same threats
-- preserving move diversity
-- keeping a baseline level of individual quality
-
-Use this mode when you care more about roster redundancy and team-wide structure than maximizing the ceiling of each individual slot.
+Simulation coverage remains a dominant factor, so the generator prefers teams that can repeatedly answer relevant threats in the selected format.
 
 ### Moveset Selection
 
