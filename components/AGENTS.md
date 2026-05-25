@@ -18,6 +18,8 @@ For Battle Frontier Master anchor UX, keep the live point meter in `TeamGenerato
 
 Lineup-aware generation is the only frontend generation path. Do not add `FitnessAlgorithm` props, state, request fields, or algorithm-selection copy to `TeamManager`, `TeamConfigPanel`, or `TeamGenerator`.
 
+Lineup-aware result UI should pass `recommendedLineups` from the generate-team response through `TeamManager` and `ResultsPanel` into `TeamDisplay`; frontend adapters should display these diagnostics rather than recomputing lineup scoring.
+
 ## Testing
 
 Snapshot tests for UI; update via vitest. Run on changes; focus on accessibility.

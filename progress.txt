@@ -8,6 +8,7 @@
 - GBL role-order recommendations use `buildGblLineupRecommendation(...)` from `lib/genetic/fitness/recommendations.ts`; it evaluates all six ordered role permutations with canonical lineup scoring and generation returns the single best recommendation on `Chromosome.recommendedLineups`.
 - GA fitness now routes through `evaluatePopulation(population, mode, formatId)` in `lib/genetic/fitness/index.ts`; use `createLineupAwareFitnessContext(...)` for per-run cached full and fast lineup scoring, fast mode during population evaluation, and full roster scoring only for final PlayPokemon diagnostics.
 - Frontend generation configuration no longer owns or passes `FitnessAlgorithm`; `TeamManager` sends only format, mode, anchors, and exclusions to `/api/generate-team`, and `TeamGenerator` must not render algorithm-selection UI copy.
+- Frontend lineup recommendations should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; do not recompute lineup scoring in UI adapters.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -335,4 +336,37 @@
   - US-012 still needs to remove algorithm-specific assumptions from analysis panels.
 - Next iteration start:
   - US-011 - Display recommended lineups in results
+---
+## 2026-05-25 04:37 MST - US-011
+- What was implemented
+- Added recommended lineup rendering to `TeamDisplay` for PlayPokemon and GBL results, including lead, safe swap, closer, score, covered threats, weaknesses, diagnostic structure, and available resource path metrics.
+- Wired generate-team `recommendedLineups` response data through `TeamManager` and `ResultsPanel` so generated results display API-provided lineup diagnostics.
+- Files changed: `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-011 - Display recommended lineups in results`
+- Checks:
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` (pass after red failure for missing recommended lineup UI)
+  - `npx vitest run components/organisms/TeamManager/TeamManager.test.tsx` (pass after red failure for missing pass-through)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 349 tests)
+  - Browser verification with dev-browser at `http://localhost:3000` (pass; generated GBL result displayed Recommended Lineup with roles, score, threats, weaknesses, structure, and resource paths; observed pre-existing `/favicon.ico` 404)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`, `compliance-auditor`
+  - Findings: fixed low QA pass-through assertion and stale progress metadata before commit; deferred low commit-message format note because Ralph requires `feat: US-011 - Display recommended lineups in results`; deferred low runtime validation/capping note because the route returns bounded same-origin typed recommendation output and broader response schema hardening is outside US-011
+- Decisions (why):
+  - Rendered recommendations in `TeamDisplay` because it already owns team-detail species names and result-card layout, while `ResultsPanel` remains a thin container.
+  - Passed API-provided `recommendedLineups` through state instead of recomputing in the frontend because lineup scoring belongs in `lib/` and the API already returns bounded diagnostics.
+  - Used static sections instead of collapsible controls because the story only requires ARIA-expanded buttons if collapsible UI is introduced, and always-visible cards are simpler and accessible.
+- **Learnings for future iterations:**
+  - `TeamDisplay` can map recommendation species ids to display names after `/api/team-details` resolves; fallback to species id keeps partial data renderable.
+  - Browser generation in GBL mode is a fast manual check for the single-recommendation UI path.
+- Known issues / follow-ups:
+  - US-012 still needs to display roster metrics and bench utility warnings for PlayPokemon results.
+  - US-013 still needs to remove obsolete algorithm code paths and remaining algorithm label assumptions.
+- Next iteration start:
+  - US-012 - Display roster metrics and bench utility warnings
 ---

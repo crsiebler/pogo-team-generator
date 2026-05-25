@@ -3,12 +3,13 @@
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import { TournamentMode } from '@/lib/types';
+import type { RecommendedLineup, TournamentMode } from '@/lib/types';
 
 interface ResultsPanelProps {
   generatedTeam: {
     team: string[];
     formatId: BattleFormatId;
+    recommendedLineups?: RecommendedLineup[];
   } | null;
   mode: TournamentMode;
   isGenerating: boolean;
@@ -118,6 +119,7 @@ export function ResultsPanel({
           battleFrontierMasterPointsByPokemonName={
             battleFrontierMasterPointsByPokemonName
           }
+          recommendedLineups={generatedTeam.recommendedLineups}
         />
       )}
     </div>

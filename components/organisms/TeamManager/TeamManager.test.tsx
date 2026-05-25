@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import { TeamManager } from './TeamManager';
 import { type BattleFormatId } from '@/lib/data/battleFormats';
+import type { RecommendedLineup } from '@/lib/types';
 
 const showToastMock = vi.fn();
 
@@ -22,6 +23,12 @@ const teamConfigPanelProps: Array<
 interface MockAnalysisPanelProps {
   fitness: number | null;
   analysis: unknown;
+}
+
+interface MockResultsPanelProps {
+  generatedTeam: {
+    recommendedLineups?: RecommendedLineup[];
+  } | null;
 }
 
 vi.mock('@/components/organisms', () => ({
@@ -78,7 +85,14 @@ vi.mock('@/components/organisms', () => ({
       </div>
     );
   },
-  ResultsPanel: () => <div>Results</div>,
+  ResultsPanel: ({ generatedTeam }: MockResultsPanelProps) => (
+    <div>
+      Results {generatedTeam?.recommendedLineups?.length ?? 0} lineups{' '}
+      {generatedTeam?.recommendedLineups?.[0]
+        ? `${generatedTeam.recommendedLineups[0].lineup.lead} ${generatedTeam.recommendedLineups[0].score} ${generatedTeam.recommendedLineups[0].diagnosticLabel}`
+        : ''}
+    </div>
+  ),
   AnalysisPanel: ({ fitness, analysis }: MockAnalysisPanelProps) => (
     <div>
       Analysis {fitness ?? 'none'} {analysis ? 'loaded' : 'missing'}
@@ -117,6 +131,25 @@ describe('TeamManager', () => {
         json: vi.fn().mockResolvedValue({
           team: ['Azumarill'],
           fitness: 0.75,
+          recommendedLineups: [
+            {
+              lineup: {
+                lead: 'azumarill',
+                switch: 'skarmory',
+                closer: 'registeel',
+              },
+              score: 0.82,
+              coverageMetrics: {
+                coverageRate: 0.7,
+                dominatingMatchupCount: 5,
+                overwhelmingLossCount: 2,
+                singleAnswerThreatCount: 1,
+              },
+              coveredThreats: [],
+              weaknesses: [],
+              diagnosticLabel: 'ABC',
+            },
+          ],
           analysis: { generatedAt: '2026-03-15T00:00:00.000Z' },
         }),
       });
@@ -353,6 +386,27 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Analysis 0.75 loaded')).toBeInTheDocument();
+    });
+  });
+
+  it('passes recommended lineups response data to ResultsPanel', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Results 1 lineups azumarill 0.82 ABC'),
+      ).toBeInTheDocument();
     });
   });
 
