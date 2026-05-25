@@ -55,6 +55,12 @@ export {
   type OptimizerScoreWeights,
 } from './scoreBreakdown';
 
+export {
+  calculateDefensiveTypeRatio,
+  calculateOffensiveTypeRatio,
+  calculateTypeEffectivenessMultiplier,
+} from './typeEffectivenessRatios';
+
 const FAST_LINEUP_AWARE_CONFIG: LineupAwareFitnessConfig = {
   mode: 'fast',
   includeDiagnostics: false,

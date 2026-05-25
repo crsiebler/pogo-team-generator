@@ -4,7 +4,10 @@ import {
   type LineupScoreResult,
   type LineupScoringContext,
 } from './lineupScoring';
-import { calculateEffectiveness } from '@/lib/coverage/typeChart';
+import {
+  calculateDefensiveTypeRatio,
+  calculateOffensiveTypeRatio,
+} from './typeEffectivenessRatios';
 import { normalizeToChoosableSpeciesId } from '@/lib/data/pokemon';
 import type {
   BenchUtility,
@@ -470,41 +473,46 @@ function calculateRosterTypeCoverage(
     return { offensive: 0.5, defensive: 0.5 };
   }
 
-  const attackingTypes = pokemon.flatMap((entry) =>
+  const attackingMoveTypes = pokemon.flatMap((entry) =>
     getRosterAttackingTypes(entry, context),
   );
-  const threatTypeProfiles = getThreatTypeProfiles(context);
-  const offensive = average(
-    threatTypeProfiles.map((threatTypes) =>
-      scoreBestOffensiveCoverage(attackingTypes, threatTypes),
-    ),
-  );
-  const expectedAttackTypes = getExpectedAttackTypes(context);
-  const defensive = average(
-    expectedAttackTypes.map((attackType) => {
-      const effectiveness = pokemon.map((entry) =>
-        calculateEffectiveness(entry.types, attackType),
-      );
-      const resistCount = effectiveness.filter(
-        (value) => value <= 0.625,
-      ).length;
-      const weakCount = effectiveness.filter((value) => value >= 1.6).length;
-      return clamp01(
-        (resistCount > 0 ? 0.7 : 0.35) +
-          Math.min(resistCount, 2) * 0.15 -
-          Math.max(0, weakCount - resistCount) * 0.12 -
-          Math.max(0, weakCount - 2) * 0.1,
-      );
+  const offensive = calculateWeightedTypePoolScore(
+    calculateOffensiveTypeRatio({
+      attackingMoveTypes,
+      defenderTypeProfiles: getThreatTypeProfiles(
+        context,
+        context.topThreats ?? context.threats,
+      ),
+    }),
+    calculateOffensiveTypeRatio({
+      attackingMoveTypes,
+      defenderTypeProfiles: getThreatTypeProfiles(
+        context,
+        context.fullMetaThreats ?? context.threats,
+      ),
     }),
   );
+  const expectedAttackTypes = getExpectedAttackTypes(context);
+  const defensive = calculateDefensiveTypeRatio({
+    defenderTypes: pokemon.map((entry) => entry.types),
+    incomingAttackTypes: expectedAttackTypes,
+  });
 
   return { offensive, defensive };
 }
 
+function calculateWeightedTypePoolScore(
+  topThreatScore: number,
+  fullMetaScore: number,
+): number {
+  return clamp01(topThreatScore * 0.7 + fullMetaScore * 0.3);
+}
+
 function getThreatTypeProfiles(
   context: PlayPokemonRosterScoringContext,
+  threats: string[],
 ): string[][] {
-  const profiles = context.threats
+  const profiles = threats
     .map((speciesId) => context.getPokemon(speciesId)?.types ?? [])
     .filter((types) => types.length > 0);
 
@@ -534,41 +542,22 @@ function getExpectedThreatAttackTypes(
     return pokemon.types;
   }
 
-  const chargedMoveIds = [moveset.chargedMove1, moveset.chargedMove2].filter(
-    (moveId): moveId is string => moveId !== null,
-  );
-  if (chargedMoveIds.length === 0) {
+  const moveIds = [
+    moveset.fastMove,
+    moveset.chargedMove1,
+    moveset.chargedMove2,
+  ].filter((moveId): moveId is string => moveId !== null);
+  if (moveIds.length === 0) {
     return pokemon.types;
   }
 
-  const moveTypes = chargedMoveIds
+  const moveTypes = moveIds
     .map((moveId) => context.getMove?.(moveId)?.type)
     .filter((moveType): moveType is string => moveType !== undefined);
 
-  return moveTypes.length === chargedMoveIds.length
+  return moveTypes.length === moveIds.length
     ? moveTypes
     : [...moveTypes, ...pokemon.types];
-}
-
-function scoreBestOffensiveCoverage(
-  attackingTypes: string[],
-  threatTypes: string[],
-): number {
-  const bestMultiplier = Math.max(
-    0,
-    ...attackingTypes.map((attackType) =>
-      calculateEffectiveness(threatTypes, attackType),
-    ),
-  );
-
-  if (bestMultiplier >= 1.6) {
-    return 1;
-  }
-  if (bestMultiplier >= 1) {
-    return 0.65;
-  }
-
-  return 0.25;
 }
 
 function getRosterAttackingTypes(
@@ -582,18 +571,20 @@ function getRosterAttackingTypes(
     return pokemon.types;
   }
 
-  const chargedMoveIds = [moveset.chargedMove1, moveset.chargedMove2].filter(
-    (moveId): moveId is string => moveId !== null,
-  );
-  if (chargedMoveIds.length === 0) {
+  const moveIds = [
+    moveset.fastMove,
+    moveset.chargedMove1,
+    moveset.chargedMove2,
+  ].filter((moveId): moveId is string => moveId !== null);
+  if (moveIds.length === 0) {
     return pokemon.types;
   }
 
-  const moveTypes = chargedMoveIds
+  const moveTypes = moveIds
     .map((moveId) => context.getMove?.(moveId)?.type)
     .filter((moveType): moveType is string => moveType !== undefined);
 
-  return moveTypes.length === chargedMoveIds.length
+  return moveTypes.length === moveIds.length
     ? uniqueSorted(moveTypes)
     : uniqueSorted([...moveTypes, ...pokemon.types]);
 }

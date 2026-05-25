@@ -23,6 +23,7 @@
 - Ranking sync/runtime data should support PvPoke Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency categories when source files exist, while preserving graceful behavior for unavailable optional categories.
 - Normalized optimizer score breakdown helpers live in `lib/genetic/fitness/scoreBreakdown.ts`; use the documented weights there and clamp every component to 0..1 before weighted aggregation.
 - Lineup scoring contexts can provide separate `topThreats` and `fullMetaThreats`; canonicalize, dedupe, and bound pools before scoring, keep `context.threats` as the union/default pool, expose `topThreatCoverage` and `fullMetaCoverage`, and weight evaluated top-threat coverage more heavily than broader full-meta coverage.
+- Type-effectiveness ratio helpers live in `lib/genetic/fitness/typeEffectivenessRatios.ts`; use `data/type-effectiveness.json` through `calculateEffectiveness(...)`, include selected fast and charged move types for offensive pressure, and keep offensive/defensive ratio scores normalized to 0..1.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -844,4 +845,39 @@
   - US-028 still needs to fold these split coverage metrics into the normalized weighted score breakdown output.
 - Next iteration start:
   - US-025 - Implement type-effectiveness offensive and defensive ratios
+---
+## 2026-05-25 16:49 MST - US-025
+- What was implemented
+- Added pure type-effectiveness ratio helpers for Pokemon GO multipliers, offensive move pressure, and defensive resistance/weakness scoring.
+- Wired PlayPokemon roster type coverage to use normalized offensive and defensive ratios, including selected fast and charged move types and top-threat/full-meta offensive pools.
+- Files changed: `lib/genetic/fitness/typeEffectivenessRatios.ts`, `lib/genetic/fitness/typeEffectivenessRatios.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/index.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-025 - Implement type-effectiveness offensive and defensive ratios`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/typeEffectivenessRatios.test.ts` (pass after red failure for missing module; pass after review fix for true double resistance)
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts` (pass after red failure for missing fast-move offensive scoring)
+  - `npx vitest run lib/genetic/fitness/typeEffectivenessRatios.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass; pass after review fixes, 33 tests)
+  - `npx tsc --noEmit` (pass; pass after review fixes)
+  - `npm run lint` (pass; pass after review fixes)
+  - `npm test` (pass; 54 files, 394 tests; pass after review fixes, 54 files, 396 tests)
+  - `npx prettier --write "lib/genetic/fitness/typeEffectivenessRatios.ts" "lib/genetic/fitness/typeEffectivenessRatios.test.ts" "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts" "lib/genetic/fitness/index.ts"` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer` skill required by PRD, `test-driven-development` skill for feature work
+  - Used: `gbl-optimizer`, `test-driven-development`
+  - Optimizer docs read: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, `data/type-effectiveness.json`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed medium double-resistance threshold finding and low double-weakness regression-test finding before commit; final review pass had no actionable findings
+- Decisions (why):
+  - Added a focused `typeEffectivenessRatios.ts` helper because the type-chart behavior is reusable across lineup, roster, and future score-breakdown integration without embedding raw JSON access in scoring code.
+  - Routed calculations through existing `calculateEffectiveness(...)` because it already uses `data/type-effectiveness.json` as the source of truth and handles dual-type multiplication plus Pokemon GO immunity-style values.
+  - Included fast moves in both offensive roster pressure and expected incoming threat attack types because the story requires selected fast and charged move types, not only charged moves.
+  - Weighted top-threat offensive ratios above full-meta offensive ratios because optimizer docs and prior threat-pool scoring establish top threats as higher-priority practical viability signals.
+- **Learnings for future iterations:**
+  - `rosterScoring.ts` previously had embedded charged-move-only type coverage; future scoring stories should reuse `typeEffectivenessRatios.ts` instead of adding another local multiplier scale.
+  - Type-ratio tests should assert Pokemon GO edge cases directly: dual-type multiplication, 0.39x immunity-style interactions, neutral cancellation, double resistance, and double super effectiveness.
+- Known issues / follow-ups:
+  - US-026 still needs safety, consistency, and bulk components as separate normalized weighted-model inputs.
+  - US-028 still needs final integration of normalized offensiveRatio and defensiveRatio components into weighted lineup and roster aggregation.
+- Next iteration start:
+  - US-026 - Implement safety consistency and bulk components
 ---

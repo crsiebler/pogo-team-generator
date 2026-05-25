@@ -689,6 +689,54 @@ describe('scorePlayPokemonRoster', () => {
     );
   });
 
+  test('uses selected fast and charged move types in offensive type ratio scoring', () => {
+    const waterFastRoster = [
+      'water-a',
+      'grass-a',
+      'ground-a',
+      'fire-a',
+      'flying-a',
+      'bug-a',
+    ];
+    const neutralFastRoster = [
+      'normal-a',
+      'grass-a',
+      'ground-a',
+      'fire-a',
+      'flying-a',
+      'bug-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      threats: ['threat-fire-rock'],
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: speciesId === 'water-a' ? 'water-move' : 'normal-move',
+        chargedMove1: 'normal-move',
+        chargedMove2: null,
+      }),
+      getMove: (moveId) => ({ type: moveId.replace('-move', '') }),
+      scoreLineup,
+    });
+
+    const waterFastResult = scorePlayPokemonRoster(waterFastRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+    const neutralFastResult = scorePlayPokemonRoster(
+      neutralFastRoster,
+      context,
+      {
+        mode: 'fast',
+        includeDiagnostics: false,
+        recommendationLimit: 0,
+      },
+    );
+
+    expect(waterFastResult.fitness).toBeGreaterThan(neutralFastResult.fitness);
+  });
+
   test('penalizes duplicated primary types that are absent from top recommended lineups', () => {
     const redundantRoster = [
       'electric-a',
@@ -966,6 +1014,7 @@ function createTypeCoverageContext(
     'threat-ground-a': makeTypedPokemon('threat-ground-a', ['normal']),
     'threat-ground-b': makeTypedPokemon('threat-ground-b', ['normal']),
     'threat-electric': makeTypedPokemon('threat-electric', ['normal']),
+    'threat-fire-rock': makeTypedPokemon('threat-fire-rock', ['fire', 'rock']),
   };
 
   return createContext({
