@@ -17,6 +17,7 @@
 - PlayPokemon roster diagnostics in `TeamDisplay` should render API-provided single-answer risk labels and use `Switch` copy for role appearance counts.
 - PlayPokemon roster fitness now combines lineup quality/depth with expected-meta offensive move coverage, defensive resistance/weakness spread using frequency-preserving expected threat move types when available, and a top-lineup primary-type redundancy penalty that includes all lineups tied at the cutoff; use per-Pokemon typing fallback when move metadata is missing or partially unresolved, and handle useful shared secondary typings through coverage context rather than blanket duplicate-type penalties.
 - Bench utility warning pills in `TeamDisplay` should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered.
+- Recommended lineup weaknesses in `AnalysisPanel` should render as semantic `ul`/`li` lists with one readable weakness label per item and `No major weaknesses identified` for empty weakness arrays; avoid comma-separated inline weakness strings.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -677,4 +678,34 @@
   - US-020 still needs lineup weakness rendering as semantic bullet lists.
 - Next iteration start:
   - US-020 - Render lineup weaknesses as bullet lists
+---
+## 2026-05-25 15:58 MST - US-020
+- What was implemented
+- Updated `AnalysisPanel` recommended lineup cards to render weaknesses as semantic bullet lists with one weakness per item and a concise empty-state fallback.
+- Added regression coverage for multiple weakness list items, readable labels, absence of comma-separated inline weakness text, and the empty weakness fallback.
+- Files changed: `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-020 - Render lineup weaknesses as bullet lists`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass after red failure for missing semantic list markup)
+  - `npx prettier --write "components/organisms/AnalysisPanel/AnalysisPanel.tsx" "components/organisms/AnalysisPanel/AnalysisPanel.test.tsx"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 370 tests)
+  - Browser verification with dev-browser at `http://localhost:3000` (pass; generated PlayPokemon result rendered `Lineup 1 weaknesses` as a `ul` with separate `li` items and no `Weaknesses:` comma-separated paragraphs; observed pre-existing `/favicon.ico` 404)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`, `compliance-auditor`
+  - Findings: no actionable critical/high/medium findings; deferred low commit-message format note because Ralph requires `feat: US-020 - Render lineup weaknesses as bullet lists`
+- Decisions (why):
+  - Kept the change in `AnalysisPanel` because recommended lineup cards already live in the analysis column and API output already provides readable weakness labels.
+  - Used native list semantics instead of visual-only bullets because the story requires an accessible list structure and separate scan-friendly weakness items.
+  - Kept a text fallback for empty weakness arrays so cards do not render empty lists or imply missing data.
+- **Learnings for future iterations:**
+  - `AnalysisPanel` can expose stable per-lineup weakness list labels like `Lineup 1 weaknesses` for automated accessibility checks and manual DOM verification.
+- Known issues / follow-ups:
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+- Next iteration start:
+  - All PRD stories are now marked passing after US-020.
 ---

@@ -500,12 +500,21 @@ export function AnalysisPanel({
                 <div className="mt-3 grid gap-1 text-emerald-900 sm:grid-cols-2 dark:text-emerald-100">
                   <p>Score: {formatScore(recommendedLineup.score)}</p>
                   <p>Structure: {recommendedLineup.diagnosticLabel}</p>
-                  <p>
-                    Weaknesses:{' '}
-                    {recommendedLineup.weaknesses.length > 0
-                      ? recommendedLineup.weaknesses.join(', ')
-                      : 'None'}
-                  </p>
+                  <div>
+                    <p className="font-semibold">Weaknesses</p>
+                    {recommendedLineup.weaknesses.length > 0 ? (
+                      <ul
+                        aria-label={`Lineup ${index + 1} weaknesses`}
+                        className="mt-1 list-disc space-y-0.5 pl-5"
+                      >
+                        {recommendedLineup.weaknesses.map((weakness) => (
+                          <li key={weakness}>{weakness}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-1">No major weaknesses identified</p>
+                    )}
+                  </div>
                 </div>
                 {recommendedLineup.resourcePathMetrics ? (
                   <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">

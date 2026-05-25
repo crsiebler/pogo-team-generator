@@ -24,6 +24,8 @@ Recommended lineup cards should stay concise: show role terms as `Lead`, `Switch
 
 Recommended lineup resource path cards should show the path meaning, rounded numeric score, and visible quality label (`weak`, `neutral`, `strong`, or `elite`) with matching color classes so color is not the only indicator.
 
+Recommended lineup weakness display should use semantic `ul`/`li` lists with one weakness per item and a concise fallback when the weakness list is empty; do not return to comma-separated inline weakness strings.
+
 PlayPokemon roster diagnostics should flow from `/api/generate-team` as `rosterMetrics` and `benchUtility` through `TeamManager` and `ResultsPanel` into `TeamDisplay`; keep the UI display-only and show warning text labels instead of relying on color alone.
 
 Bench utility warning pills should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered across pill widths.

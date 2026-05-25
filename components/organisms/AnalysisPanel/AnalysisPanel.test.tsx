@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AnalysisPanel } from './AnalysisPanel';
 import type { GenerationAnalysis, RecommendedLineup } from '@/lib/types';
 
@@ -234,7 +234,11 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText('Safe Swap: skarmory')).not.toBeInTheDocument();
     expect(screen.getByText('Score: 0.87')).toBeInTheDocument();
     expect(screen.queryByText(/Covered threats/i)).not.toBeInTheDocument();
-    expect(screen.getByText('Weaknesses: Venusaur')).toBeInTheDocument();
+    expect(screen.getAllByText('Weaknesses')).toHaveLength(2);
+    expect(
+      screen.getByRole('list', { name: 'Lineup 1 weaknesses' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Weaknesses: Venusaur')).not.toBeInTheDocument();
     expect(screen.queryByText('Weaknesses: venusaur')).not.toBeInTheDocument();
     expect(screen.getByText('Structure: ABC')).toBeInTheDocument();
     expect(screen.getByText('Balanced')).toBeInTheDocument();
@@ -278,6 +282,43 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('0.95')).toHaveAccessibleDescription('elite');
     expect(screen.getByText('elite')).toHaveClass('text-sky-800');
     expect(screen.queryByText('Shield save')).not.toBeInTheDocument();
+  });
+
+  it('renders each lineup weakness as a separate semantic list item', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups: [
+            {
+              ...recommendedLineups[0],
+              weaknesses: ['Venusaur', 'Lanturn'],
+            },
+            {
+              ...recommendedLineups[1],
+              weaknesses: [],
+            },
+          ],
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    const weaknessList = screen.getByRole('list', {
+      name: 'Lineup 1 weaknesses',
+    });
+    const weaknessItems = within(weaknessList).getAllByRole('listitem');
+
+    expect(weaknessItems).toHaveLength(2);
+    expect(weaknessItems[0]).toHaveTextContent('Venusaur');
+    expect(weaknessItems[1]).toHaveTextContent('Lanturn');
+    expect(screen.queryByText('Venusaur, Lanturn')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('No major weaknesses identified'),
+    ).toBeInTheDocument();
   });
 
   it('renders recommended lineups even when analysis details are unavailable', () => {
