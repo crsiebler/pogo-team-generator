@@ -2,7 +2,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import { TeamManager } from './TeamManager';
 import { type BattleFormatId } from '@/lib/data/battleFormats';
-import type { RecommendedLineup } from '@/lib/types';
+import type {
+  BenchUtility,
+  PlayPokemonRosterMetrics,
+  RecommendedLineup,
+} from '@/lib/types';
 
 const showToastMock = vi.fn();
 
@@ -28,6 +32,8 @@ interface MockAnalysisPanelProps {
 interface MockResultsPanelProps {
   generatedTeam: {
     recommendedLineups?: RecommendedLineup[];
+    rosterMetrics?: PlayPokemonRosterMetrics;
+    benchUtility?: BenchUtility[];
   } | null;
 }
 
@@ -90,7 +96,9 @@ vi.mock('@/components/organisms', () => ({
       Results {generatedTeam?.recommendedLineups?.length ?? 0} lineups{' '}
       {generatedTeam?.recommendedLineups?.[0]
         ? `${generatedTeam.recommendedLineups[0].lineup.lead} ${generatedTeam.recommendedLineups[0].score} ${generatedTeam.recommendedLineups[0].diagnosticLabel}`
-        : ''}
+        : ''}{' '}
+      roster metrics {generatedTeam?.rosterMetrics?.viableLineupCount ?? 'none'}{' '}
+      bench utility {generatedTeam?.benchUtility?.[0]?.speciesId ?? 'none'}
     </div>
   ),
   AnalysisPanel: ({ fitness, analysis }: MockAnalysisPanelProps) => (
@@ -148,6 +156,27 @@ describe('TeamManager', () => {
               coveredThreats: [],
               weaknesses: [],
               diagnosticLabel: 'ABC',
+            },
+          ],
+          rosterMetrics: {
+            viableLineupCount: 12,
+            topLineupQuality: 0.88,
+            topNLineupDepth: 0.76,
+            dominatingMatchupRate: 0.42,
+            overwhelmingLossRate: 0.14,
+            singleAnswerRisks: ['lanturn'],
+            viableLeadDiversity: 3,
+            benchUtilitySummary: [],
+          },
+          benchUtility: [
+            {
+              speciesId: 'azumarill',
+              utilityScore: 0.84,
+              totalAppearances: 4,
+              leadAppearances: 1,
+              switchAppearances: 2,
+              closerAppearances: 1,
+              warnings: [],
             },
           ],
           analysis: { generatedAt: '2026-03-15T00:00:00.000Z' },
@@ -405,7 +434,28 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Results 1 lineups azumarill 0.82 ABC'),
+        screen.getByText(/Results 1 lineups azumarill 0.82 ABC/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('passes roster metrics and bench utility response data to ResultsPanel', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/roster metrics 12 bench utility azumarill/),
       ).toBeInTheDocument();
     });
   });

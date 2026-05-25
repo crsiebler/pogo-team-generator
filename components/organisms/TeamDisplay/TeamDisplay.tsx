@@ -6,7 +6,9 @@ import { ExportButton } from '@/components/molecules/ExportButton/ExportButton';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type { TeamMovesets } from '@/lib/export';
 import type {
+  BenchUtility,
   LineupResourcePathMetrics,
+  PlayPokemonRosterMetrics,
   Pokemon,
   RecommendedLineup,
   TournamentMode,
@@ -18,6 +20,8 @@ interface TeamDisplayProps {
   formatId: BattleFormatId;
   battleFrontierMasterPointsByPokemonName?: Record<string, number>;
   recommendedLineups?: RecommendedLineup[];
+  rosterMetrics?: PlayPokemonRosterMetrics;
+  benchUtility?: BenchUtility[];
 }
 
 const resourcePathLabels: Record<keyof LineupResourcePathMetrics, string> = {
@@ -30,12 +34,18 @@ function formatScore(score: number): string {
   return score.toFixed(2);
 }
 
+function formatRate(rate: number): string {
+  return `${Math.round(rate * 100)}%`;
+}
+
 export function TeamDisplay({
   team,
   mode,
   formatId,
   battleFrontierMasterPointsByPokemonName = {},
   recommendedLineups = [],
+  rosterMetrics,
+  benchUtility,
 }: TeamDisplayProps) {
   const [pokemonData, setPokemonData] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +107,10 @@ export function TeamDisplay({
   };
 
   const hasRecommendedLineups = recommendedLineups.length > 0;
+  const displayedBenchUtility =
+    benchUtility ?? rosterMetrics?.benchUtilitySummary;
+  const hasRosterMetrics =
+    mode === 'PlayPokemon' && rosterMetrics !== undefined;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -180,6 +194,104 @@ export function TeamDisplay({
               </article>
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {hasRosterMetrics ? (
+        <section className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 sm:p-4 dark:border-indigo-800 dark:bg-indigo-950/30">
+          <h3 className="text-base font-bold text-indigo-950 sm:text-lg dark:text-indigo-100">
+            Roster Metrics
+          </h3>
+          <div className="mt-3 grid gap-3 text-xs sm:grid-cols-2 sm:text-sm">
+            {[
+              {
+                label: 'Viable Lineups',
+                value: String(rosterMetrics.viableLineupCount),
+              },
+              {
+                label: 'Top Lineup Quality',
+                value: formatScore(rosterMetrics.topLineupQuality),
+              },
+              {
+                label: 'Top-N Lineup Depth',
+                value: formatScore(rosterMetrics.topNLineupDepth),
+              },
+              {
+                label: 'Dominating Matchup Rate',
+                value: formatRate(rosterMetrics.dominatingMatchupRate),
+              },
+              {
+                label: 'Overwhelming Loss Rate',
+                value: formatRate(rosterMetrics.overwhelmingLossRate),
+              },
+              {
+                label: 'Single-Answer Risks',
+                value:
+                  rosterMetrics.singleAnswerRisks.length > 0
+                    ? rosterMetrics.singleAnswerRisks.join(', ')
+                    : 'None',
+              },
+              {
+                label: 'Viable Lead Diversity',
+                value: String(rosterMetrics.viableLeadDiversity),
+              },
+              {
+                label: 'Bench Utility Summary',
+                value: `${rosterMetrics.benchUtilitySummary.length} roster members tracked`,
+              },
+            ].map((metric) => (
+              <article
+                key={metric.label}
+                className="rounded-lg border border-indigo-100 bg-white p-3 text-indigo-950 dark:border-indigo-900 dark:bg-gray-900 dark:text-indigo-50"
+              >
+                <p className="text-xs font-semibold tracking-wide text-indigo-700 uppercase dark:text-indigo-300">
+                  {metric.label}
+                </p>
+                <p className="mt-1 font-bold">{metric.value}</p>
+              </article>
+            ))}
+          </div>
+
+          {displayedBenchUtility && displayedBenchUtility.length > 0 ? (
+            <div className="mt-4">
+              <h4 className="text-sm font-bold text-indigo-950 dark:text-indigo-100">
+                Bench Utility
+              </h4>
+              <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2 sm:text-sm">
+                {displayedBenchUtility.map((utility) => (
+                  <article
+                    key={utility.speciesId}
+                    className="rounded-lg border border-indigo-100 bg-white p-3 text-indigo-950 dark:border-indigo-900 dark:bg-gray-900 dark:text-indigo-50"
+                  >
+                    <p className="font-bold">
+                      {getDisplayName(utility.speciesId)}
+                    </p>
+                    <p className="mt-1">
+                      Utility Score: {formatScore(utility.utilityScore)}
+                    </p>
+                    <p>Appearances: {utility.totalAppearances} total</p>
+                    <p>
+                      Lead: {utility.leadAppearances} / Safe Swap:{' '}
+                      {utility.switchAppearances} / Closer:{' '}
+                      {utility.closerAppearances}
+                    </p>
+                    {utility.warnings.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {utility.warnings.map((warning) => (
+                          <span
+                            key={warning}
+                            className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100"
+                          >
+                            Warning: {warning}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

@@ -20,6 +20,8 @@ Lineup-aware generation is the only frontend generation path. Do not add `Fitnes
 
 Lineup-aware result UI should pass `recommendedLineups` from the generate-team response through `TeamManager` and `ResultsPanel` into `TeamDisplay`; frontend adapters should display these diagnostics rather than recomputing lineup scoring.
 
+PlayPokemon roster diagnostics should flow from `/api/generate-team` as `rosterMetrics` and `benchUtility` through `TeamManager` and `ResultsPanel` into `TeamDisplay`; keep the UI display-only and show warning text labels instead of relying on color alone.
+
 ## Testing
 
 Snapshot tests for UI; update via vitest. Run on changes; focus on accessibility.

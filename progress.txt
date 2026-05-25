@@ -9,6 +9,7 @@
 - GA fitness now routes through `evaluatePopulation(population, mode, formatId)` in `lib/genetic/fitness/index.ts`; use `createLineupAwareFitnessContext(...)` for per-run cached full and fast lineup scoring, fast mode during population evaluation, and full roster scoring only for final PlayPokemon diagnostics.
 - Frontend generation configuration no longer owns or passes `FitnessAlgorithm`; `TeamManager` sends only format, mode, anchors, and exclusions to `/api/generate-team`, and `TeamGenerator` must not render algorithm-selection UI copy.
 - Frontend lineup recommendations should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; do not recompute lineup scoring in UI adapters.
+- Frontend PlayPokemon roster diagnostics should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; display `rosterMetrics` and `benchUtility` directly and include text warning labels for low-utility or unbringable roster members.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -369,4 +370,35 @@
   - US-013 still needs to remove obsolete algorithm code paths and remaining algorithm label assumptions.
 - Next iteration start:
   - US-012 - Display roster metrics and bench utility warnings
+---
+## 2026-05-25 04:49 MST - US-012
+- What was implemented
+- Added PlayPokemon roster metrics and bench utility warning display to `TeamDisplay`, including viable lineup count, top lineup quality, top-N lineup depth, dominating matchup rate, overwhelming loss rate, single-answer risks, viable lead diversity, bench utility summary, utility scores, total appearances, role appearances, and explicit warning labels.
+- Wired `rosterMetrics` and `benchUtility` response fields through `TeamManager.generatedTeam` and `ResultsPanel` without recomputing diagnostics in the frontend.
+- Files changed: `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-012 - Display roster metrics and bench utility warnings`
+- Checks:
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` (pass after red failures)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 352 tests)
+  - Browser verification with dev-browser at `http://localhost:3000` (pass; generated PlayPokemon result displayed Roster Metrics, Bench Utility, role appearances, and text warning labels; observed pre-existing `/favicon.ico` 404)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`, `compliance-auditor`
+  - Findings: no actionable critical/high/medium findings; deferred low ResultsPanel-specific pass-through test because TeamManager state pass-through plus TeamDisplay rendering coverage exercise the story flow, deferred low runtime validation/capping because same-origin API response schema hardening is broader than US-012, and deferred low commit-message format note because Ralph requires `feat: US-012 - Display roster metrics and bench utility warnings`
+- Decisions (why):
+  - Rendered roster metrics and bench utility in `TeamDisplay` because it already owns the generated roster card layout and species-id-to-display-name mapping from `/api/team-details`.
+  - Passed `rosterMetrics` and `benchUtility` through state instead of deriving them from recommendations because the API already returns canonical lineup-aware diagnostics and frontend adapters should remain display-only.
+  - Kept roster diagnostics PlayPokemon-only because GBL uses a single ordered role recommendation and does not have bring-6 roster metrics.
+- **Learnings for future iterations:**
+  - `TeamDisplay` is the result UI owner for both recommendations and PlayPokemon roster diagnostics; `ResultsPanel` should stay a thin pass-through container.
+  - Text warning labels are required for bench utility warnings so low-utility or unbringable status is not conveyed by color alone.
+- Known issues / follow-ups:
+  - US-013 still needs to remove obsolete algorithm code paths and remaining algorithm type/label assumptions.
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+- Next iteration start:
+  - US-013 - Remove obsolete algorithm code paths
 ---

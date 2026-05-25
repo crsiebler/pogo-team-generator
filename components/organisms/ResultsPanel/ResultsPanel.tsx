@@ -3,13 +3,20 @@
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import type { RecommendedLineup, TournamentMode } from '@/lib/types';
+import type {
+  BenchUtility,
+  PlayPokemonRosterMetrics,
+  RecommendedLineup,
+  TournamentMode,
+} from '@/lib/types';
 
 interface ResultsPanelProps {
   generatedTeam: {
     team: string[];
     formatId: BattleFormatId;
     recommendedLineups?: RecommendedLineup[];
+    rosterMetrics?: PlayPokemonRosterMetrics;
+    benchUtility?: BenchUtility[];
   } | null;
   mode: TournamentMode;
   isGenerating: boolean;
@@ -120,6 +127,8 @@ export function ResultsPanel({
             battleFrontierMasterPointsByPokemonName
           }
           recommendedLineups={generatedTeam.recommendedLineups}
+          rosterMetrics={generatedTeam.rosterMetrics}
+          benchUtility={generatedTeam.benchUtility}
         />
       )}
     </div>
