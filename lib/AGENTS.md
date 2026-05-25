@@ -45,3 +45,4 @@ Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for fun
 ## Testing
 
 Write tests before implementation; run `npm test` on changes. Coverage cannot regress.
+For type-only contract tests, run `npx tsc --noEmit`; Vitest transpiles type-only imports and may not fail on missing exported types.

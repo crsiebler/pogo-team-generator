@@ -71,6 +71,82 @@ export type TournamentMode = 'PlayPokemon' | 'GBL';
 
 export type FitnessAlgorithm = 'individual' | 'teamSynergy';
 
+/** Ordered battle roles for a pick-3 lineup. */
+export type LineupRole = 'lead' | 'switch' | 'closer';
+
+/** Diagnostic label for common PvP lineup structures. */
+export type LineupPatternLabel = 'ABC' | 'ABB' | 'ABA' | 'unknown';
+
+/** Ordered pick-3 lineup keyed by battle role. */
+export type OrderedLineup = Record<LineupRole, string>;
+
+/** Coverage metrics shared by fast scoring and recommendation output. */
+export interface LineupCoverageMetrics {
+  coverageRate: number;
+  dominatingMatchupCount: number;
+  overwhelmingLossCount: number;
+  singleAnswerThreatCount: number;
+}
+
+/** Availability and score for one shield or resource path. */
+export type LineupResourcePathMetric =
+  | { available: true; score: number }
+  | { available: false; score?: never };
+
+/** Shield/resource path metrics for an ordered lineup. */
+export interface LineupResourcePathMetrics {
+  balanced: LineupResourcePathMetric;
+  shieldSpend: LineupResourcePathMetric;
+  shieldSave: LineupResourcePathMetric;
+}
+
+/** UI-ready recommended lineup with diagnostics. */
+export interface RecommendedLineup {
+  lineup: OrderedLineup;
+  score: number;
+  coverageMetrics: LineupCoverageMetrics;
+  coveredThreats: string[];
+  weaknesses: string[];
+  diagnosticLabel: LineupPatternLabel;
+  resourcePathMetrics?: LineupResourcePathMetrics;
+}
+
+/** Per-Pokemon utility in recommended PlayPokemon lineups. */
+export interface BenchUtility {
+  speciesId: string;
+  utilityScore: number;
+  totalAppearances: number;
+  leadAppearances: number;
+  switchAppearances: number;
+  closerAppearances: number;
+  warnings: string[];
+}
+
+/** Bring-6 roster-level metrics derived from lineup-aware scoring. */
+export interface PlayPokemonRosterMetrics {
+  viableLineupCount: number;
+  topLineupQuality: number;
+  topNLineupDepth: number;
+  dominatingMatchupRate: number;
+  overwhelmingLossRate: number;
+  singleAnswerRisks: string[];
+  viableLeadDiversity: number;
+  benchUtilitySummary: BenchUtility[];
+}
+
+/** Configuration for fast GA scoring versus full diagnostics. */
+export type LineupAwareFitnessConfig =
+  | {
+      mode: 'fast';
+      includeDiagnostics: false;
+      recommendationLimit: 0;
+    }
+  | {
+      mode: 'full';
+      includeDiagnostics: true;
+      recommendationLimit: number;
+    };
+
 export interface Chromosome {
   team: string[];
   anchors?: number[];
