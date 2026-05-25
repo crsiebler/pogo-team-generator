@@ -11,7 +11,7 @@
 - Frontend lineup recommendations should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then render in `AnalysisPanel` with Team Analysis Summary; do not recompute lineup scoring in UI adapters or render recommendation details inside generated-team cards.
 - Frontend PlayPokemon roster diagnostics should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; display `rosterMetrics` and `benchUtility` directly and include text warning labels for low-utility or unbringable roster members.
 - `GenerationOptions` and `GenerationAnalysis` in `lib/types.ts` no longer include algorithm selectors or labels; adapters should use the canonical lineup-aware generation path and pass through lineup-aware diagnostics.
-- Follow-up UI polish should center bench warning pill text and add meaningful range labels/colors for resource path scores.
+- Recommended lineup resource path cards should show each path's strategic meaning plus a visible `weak`, `neutral`, `strong`, or `elite` quality label derived from the rounded displayed score; do not rely on score color alone.
 - Recommended lineup cards live in `AnalysisPanel` and should stay concise: no covered-threat list, `Lead`/`Switch`/`Closer` terms without repeated labels in values, and weakness ids rendered through analysis names or canonical Pokemon species names.
 - `/api/generate-team` should resolve display-facing threat ids in lineup diagnostics, such as recommended lineup weaknesses and roster single-answer risks, to readable species names before returning them so client components stay display-only.
 - PlayPokemon roster diagnostics in `TeamDisplay` should render API-provided single-answer risk labels and use `Switch` copy for role appearance counts.
@@ -547,4 +547,35 @@
   - Browser console still shows the pre-existing `/favicon.ico` 404.
 - Next iteration start:
   - US-017 - Make resource path scores meaningful
+---
+## 2026-05-25 14:50 MST - US-017
+- What was implemented
+- Added meaningful resource path displays in `AnalysisPanel` with strategic path descriptions, rounded numeric scores, visible weak/neutral/strong/elite quality labels, and coordinated color classes.
+- Added regression coverage for weak, neutral, strong, elite, rounded-threshold, and unavailable resource-path score states, including accessible descriptions so color is not the only score-quality indicator.
+- Files changed: `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-017 - Make resource path scores meaningful`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass after red failure for missing resource-path labels/descriptions; pass after review fixes; 8 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 356 tests)
+  - Browser verification with Playwright at `http://localhost:3000` (pass; generated PlayPokemon result showed Balanced, Shield spend, and Shield save cards with path descriptions, scores, and weak/neutral quality labels; observed pre-existing `/favicon.ico` 404)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`, `compliance-auditor`
+  - Findings: fixed medium findings to classify quality from the exact formatted displayed score and align shield-save copy with backline shield preservation; added low-cost unavailable/elite coverage from QA review; final review pass had no actionable findings
+- Decisions (why):
+  - Kept resource path interpretation in `AnalysisPanel` because the API already returns normalized numeric path metrics and this story is display-only UI interpretation.
+  - Used explicit text quality labels alongside color classes because accessibility criteria require color not to be the only indicator of path strength.
+  - Classified quality from the rounded displayed score because score labels and range text should not disagree at thresholds.
+  - Used compact cards instead of pills because path descriptions need space without making the label/value ambiguous.
+- **Learnings for future iterations:**
+  - Resource path display should pair numeric scores with strategic path copy and visible quality text so values like 0.54 are understandable without prior scoring knowledge.
+- Known issues / follow-ups:
+  - US-018 still needs centered bench warning pill text.
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+- Next iteration start:
+  - US-018 - Center bench warning pill text
 ---

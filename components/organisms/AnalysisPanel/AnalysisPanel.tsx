@@ -56,6 +56,51 @@ const resourcePathLabels: Record<keyof LineupResourcePathMetrics, string> = {
   shieldSave: 'Shield save',
 };
 
+const resourcePathDescriptions: Record<
+  keyof LineupResourcePathMetrics,
+  string
+> = {
+  balanced: 'Balanced shield use',
+  shieldSpend: 'Spend shields early',
+  shieldSave: 'Save shields for backline',
+};
+
+type ResourcePathQuality = 'weak' | 'neutral' | 'strong' | 'elite';
+
+function getResourcePathQuality(score: number): ResourcePathQuality {
+  const displayedScore = Number(formatScore(score));
+
+  if (displayedScore >= 0.9) {
+    return 'elite';
+  }
+
+  if (displayedScore >= 0.75) {
+    return 'strong';
+  }
+
+  if (displayedScore >= 0.55) {
+    return 'neutral';
+  }
+
+  return 'weak';
+}
+
+function getResourcePathQualityClasses(quality: ResourcePathQuality): string {
+  if (quality === 'elite') {
+    return 'bg-sky-100 text-sky-800 ring-sky-200 dark:bg-sky-950/70 dark:text-sky-200 dark:ring-sky-800';
+  }
+
+  if (quality === 'strong') {
+    return 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-200 dark:ring-emerald-800';
+  }
+
+  if (quality === 'neutral') {
+    return 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-950/70 dark:text-amber-200 dark:ring-amber-800';
+  }
+
+  return 'bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-950/70 dark:text-rose-200 dark:ring-rose-800';
+}
+
 function formatScore(score: number): string {
   return score.toFixed(2);
 }
@@ -463,22 +508,49 @@ export function AnalysisPanel({
                   </p>
                 </div>
                 {recommendedLineup.resourcePathMetrics ? (
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-emerald-800 dark:text-emerald-200">
+                  <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
                     {Object.entries(recommendedLineup.resourcePathMetrics).map(
-                      ([pathName, metric]) =>
-                        metric.available ? (
-                          <span
+                      ([pathName, metric]) => {
+                        if (!metric.available) {
+                          return null;
+                        }
+
+                        const resourcePathKey =
+                          pathName as keyof LineupResourcePathMetrics;
+                        const quality = getResourcePathQuality(metric.score);
+                        const scoreDescriptionId = `${accordionIdPrefix}-${index}-${pathName}-quality`;
+
+                        return (
+                          <div
                             key={pathName}
-                            className="rounded-full bg-emerald-100 px-2 py-1 dark:bg-emerald-900"
+                            className="rounded-lg border border-emerald-100 bg-emerald-50/80 p-2 dark:border-emerald-900 dark:bg-emerald-950/30"
                           >
-                            {
-                              resourcePathLabels[
-                                pathName as keyof LineupResourcePathMetrics
-                              ]
-                            }
-                            : {formatScore(metric.score)}
-                          </span>
-                        ) : null,
+                            <p className="font-semibold text-emerald-950 dark:text-emerald-100">
+                              {resourcePathLabels[resourcePathKey]}
+                            </p>
+                            <p className="mt-0.5 text-[0.7rem] leading-4 text-emerald-800 dark:text-emerald-200">
+                              {resourcePathDescriptions[resourcePathKey]}
+                            </p>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <span
+                                aria-describedby={scoreDescriptionId}
+                                className="font-bold text-emerald-950 dark:text-emerald-50"
+                              >
+                                {formatScore(metric.score)}
+                              </span>
+                              <span
+                                id={scoreDescriptionId}
+                                className={clsx(
+                                  'rounded-full px-2 py-0.5 font-semibold ring-1',
+                                  getResourcePathQualityClasses(quality),
+                                )}
+                              >
+                                {quality}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      },
                     )}
                   </div>
                 ) : null}

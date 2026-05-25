@@ -22,6 +22,8 @@ Lineup-aware result UI should pass `recommendedLineups` from the generate-team r
 
 Recommended lineup cards should stay concise: show role terms as `Lead`, `Switch`, and `Closer`, avoid duplicating those labels in values, omit covered-threat lists, and render API-provided readable weakness labels without importing canonical Pokemon data into client components.
 
+Recommended lineup resource path cards should show the path meaning, rounded numeric score, and visible quality label (`weak`, `neutral`, `strong`, or `elite`) with matching color classes so color is not the only indicator.
+
 PlayPokemon roster diagnostics should flow from `/api/generate-team` as `rosterMetrics` and `benchUtility` through `TeamManager` and `ResultsPanel` into `TeamDisplay`; keep the UI display-only and show warning text labels instead of relying on color alone.
 
 ## Testing

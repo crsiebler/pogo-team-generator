@@ -112,9 +112,9 @@ describe('AnalysisPanel', () => {
       weaknesses: ['Venusaur'],
       diagnosticLabel: 'ABC',
       resourcePathMetrics: {
-        balanced: { available: true, score: 0.8 },
-        shieldSpend: { available: true, score: 0.76 },
-        shieldSave: { available: false },
+        balanced: { available: true, score: 0.749 },
+        shieldSpend: { available: true, score: 0.64 },
+        shieldSave: { available: true, score: 0.42 },
       },
     },
     {
@@ -237,9 +237,47 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('Weaknesses: Venusaur')).toBeInTheDocument();
     expect(screen.queryByText('Weaknesses: venusaur')).not.toBeInTheDocument();
     expect(screen.getByText('Structure: ABC')).toBeInTheDocument();
-    expect(screen.getByText('Balanced: 0.80')).toBeInTheDocument();
-    expect(screen.getByText('Shield spend: 0.76')).toBeInTheDocument();
-    expect(screen.queryByText(/Shield save:/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Balanced')).toBeInTheDocument();
+    expect(screen.getByText('Shield spend')).toBeInTheDocument();
+    expect(screen.getByText('Shield save')).toBeInTheDocument();
+    expect(screen.getByText('Balanced shield use')).toBeInTheDocument();
+    expect(screen.getByText('Spend shields early')).toBeInTheDocument();
+    expect(screen.getByText('Save shields for backline')).toBeInTheDocument();
+    expect(screen.getByText('0.75')).toHaveAccessibleDescription('strong');
+    expect(screen.getByText('0.64')).toHaveAccessibleDescription('neutral');
+    expect(screen.getByText('0.42')).toHaveAccessibleDescription('weak');
+    expect(screen.getByText('strong')).toHaveClass('text-emerald-700');
+    expect(screen.getByText('neutral')).toHaveClass('text-amber-700');
+    expect(screen.getByText('weak')).toHaveClass('text-rose-700');
+  });
+
+  it('uses displayed resource path scores for quality ranges and omits unavailable paths', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups: [
+            {
+              ...recommendedLineups[0],
+              resourcePathMetrics: {
+                balanced: { available: true, score: 0.745 },
+                shieldSpend: { available: true, score: 0.95 },
+                shieldSave: { available: false },
+              },
+            },
+          ],
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    expect(screen.getByText('0.74')).toHaveAccessibleDescription('neutral');
+    expect(screen.getByText('0.95')).toHaveAccessibleDescription('elite');
+    expect(screen.getByText('elite')).toHaveClass('text-sky-800');
+    expect(screen.queryByText('Shield save')).not.toBeInTheDocument();
   });
 
   it('renders recommended lineups even when analysis details are unavailable', () => {
