@@ -1,4 +1,9 @@
-import type { LineupScoreResult } from './lineupScoring';
+import {
+  scoreOrderedLineup,
+  type LineupScoreResult,
+  type LineupScoringContext,
+} from './lineupScoring';
+import { validateTeamUniqueness } from '@/lib/data/pokemon';
 import type {
   BenchUtility,
   LineupRole,
@@ -19,6 +24,12 @@ export interface PlayPokemonRosterRecommendationOptions {
 export interface PlayPokemonRosterRecommendationResult {
   recommendedLineups: RecommendedLineup[];
   benchUtility: BenchUtility[];
+}
+
+/** Options for selecting a role-ordered GBL lineup recommendation. */
+export interface GblLineupRecommendationOptions {
+  context?: LineupScoringContext;
+  scoreLineup?: (lineup: OrderedLineup) => LineupScoreResult;
 }
 
 /**
@@ -46,6 +57,66 @@ export function buildPlayPokemonRosterRecommendations(
       lowUtilityThreshold,
     ),
   };
+}
+
+/** Builds the single best role-ordered lineup recommendation for a GBL team. */
+export function buildGblLineupRecommendation(
+  team: string[],
+  options: GblLineupRecommendationOptions = {},
+): RecommendedLineup {
+  if (team.length !== 3) {
+    throw new Error('GBL lineup recommendations require exactly 3 Pokemon.');
+  }
+
+  if (!validateTeamUniqueness(team) || new Set(team).size !== 3) {
+    throw new Error('GBL lineup recommendations require 3 unique Pokemon.');
+  }
+
+  const scoreLineup = createGblLineupScorer(options);
+  const bestLineup = enumerateGblOrderedLineups(team)
+    .map(scoreLineup)
+    .toSorted((first, second) => second.score - first.score)[0];
+
+  return toRecommendedLineup(bestLineup);
+}
+
+function createGblLineupScorer(
+  options: GblLineupRecommendationOptions,
+): (lineup: OrderedLineup) => LineupScoreResult {
+  if (options.scoreLineup) {
+    return options.scoreLineup;
+  }
+
+  if (!options.context) {
+    throw new Error(
+      'GBL lineup recommendations require a scoring context or scorer.',
+    );
+  }
+
+  return (lineup) => scoreOrderedLineup(lineup, options.context!);
+}
+
+function enumerateGblOrderedLineups(team: string[]): OrderedLineup[] {
+  const lineups: OrderedLineup[] = [];
+
+  for (const lead of team) {
+    for (const switchPokemon of team) {
+      if (switchPokemon === lead) {
+        continue;
+      }
+
+      const closer = team.find(
+        (speciesId) => speciesId !== lead && speciesId !== switchPokemon,
+      );
+      if (!closer) {
+        continue;
+      }
+
+      lineups.push({ lead, switch: switchPokemon, closer });
+    }
+  }
+
+  return lineups;
 }
 
 function toRecommendedLineup(

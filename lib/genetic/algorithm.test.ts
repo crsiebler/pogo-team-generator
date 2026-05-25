@@ -14,6 +14,10 @@ import {
   initializePopulation,
 } from './chromosome';
 import { evaluatePopulation } from './fitness';
+import {
+  buildGblLineupRecommendation,
+  createDefaultLineupScoringContext,
+} from './fitness';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
 vi.mock('@lib/data/rankings', () => ({
@@ -41,6 +45,8 @@ vi.mock('./chromosome', () => ({
 }));
 
 vi.mock('./fitness', () => ({
+  buildGblLineupRecommendation: vi.fn(),
+  createDefaultLineupScoringContext: vi.fn(),
   evaluatePopulation: vi.fn(),
 }));
 
@@ -86,6 +92,22 @@ describe('generateTeam format-aware candidate selection', () => {
     );
     vi.mocked(cloneChromosome).mockImplementation((chromosome) => chromosome);
     vi.mocked(evaluatePopulation).mockImplementation(() => undefined);
+    vi.mocked(createDefaultLineupScoringContext).mockReturnValue(
+      'lineup-scoring-context' as never,
+    );
+    vi.mocked(buildGblLineupRecommendation).mockReturnValue({
+      lineup: { lead: 'mewtwo', switch: 'dragonite', closer: 'mew' },
+      score: 0.88,
+      coverageMetrics: {
+        coverageRate: 0.8,
+        dominatingMatchupCount: 2,
+        overwhelmingLossCount: 0,
+        singleAnswerThreatCount: 1,
+      },
+      coveredThreats: ['azumarill'],
+      weaknesses: ['bastiodon'],
+      diagnosticLabel: 'ABC',
+    });
     vi.mocked(ensureSimulationDataAvailable).mockImplementation(
       () => undefined,
     );
@@ -239,5 +261,36 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(getBattleFrontierMasterTeamLegality).toHaveBeenCalledWith(
       illegalTeam,
     );
+  });
+
+  it('adds one role-ordered lineup recommendation for generated GBL teams', async () => {
+    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+      new Set<string>(['Mew']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('mew', 'Mew'),
+    ]);
+
+    const result = await generateTeam({
+      mode: 'GBL',
+      formatId: 'jungle-cup',
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
+      'jungle-cup',
+    );
+    expect(buildGblLineupRecommendation).toHaveBeenCalledWith(
+      ['mew', 'mewtwo', 'dragonite'],
+      { context: 'lineup-scoring-context' },
+    );
+    expect(result.team).toEqual(['mew', 'mewtwo', 'dragonite']);
+    expect(result.recommendedLineups).toEqual([
+      expect.objectContaining({
+        lineup: { lead: 'mewtwo', switch: 'dragonite', closer: 'mew' },
+        score: 0.88,
+      }),
+    ]);
   });
 });

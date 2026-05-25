@@ -34,7 +34,9 @@ export {
 } from './rosterScoring';
 
 export {
+  buildGblLineupRecommendation,
   buildPlayPokemonRosterRecommendations,
+  type GblLineupRecommendationOptions,
   type PlayPokemonRosterRecommendationOptions,
   type PlayPokemonRosterRecommendationResult,
 } from './recommendations';

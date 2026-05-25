@@ -151,6 +151,7 @@ export interface Chromosome {
   team: string[];
   anchors?: number[];
   fitness: number;
+  recommendedLineups?: RecommendedLineup[];
 }
 
 export interface GenerationOptions {

@@ -11,7 +11,11 @@ import {
   calculateDiversity,
   cloneChromosome,
 } from './chromosome';
-import { evaluatePopulation } from './fitness';
+import {
+  buildGblLineupRecommendation,
+  createDefaultLineupScoringContext,
+  evaluatePopulation,
+} from './fitness';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
 /**
@@ -213,6 +217,17 @@ export async function generateTeam(
         'Final Battle Frontier Master team is illegal. This should never happen.',
       );
     }
+  }
+
+  if (mode === 'GBL') {
+    bestOverall = {
+      ...bestOverall,
+      recommendedLineups: [
+        buildGblLineupRecommendation(bestOverall.team, {
+          context: createDefaultLineupScoringContext(formatId),
+        }),
+      ],
+    };
   }
 
   return bestOverall;

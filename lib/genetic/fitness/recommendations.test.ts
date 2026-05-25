@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'vitest';
-import type { LineupScoreResult } from './lineupScoring';
+import type { LineupScoreResult, LineupScoringContext } from './lineupScoring';
 import {
+  buildGblLineupRecommendation,
   buildPlayPokemonRosterRecommendations,
   type PlayPokemonRosterRecommendationResult,
 } from './recommendations';
-import type { OrderedLineup } from '@/lib/types';
+import type { OrderedLineup, Pokemon } from '@/lib/types';
 
 const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
 
@@ -100,6 +101,87 @@ describe('buildPlayPokemonRosterRecommendations', () => {
   });
 });
 
+describe('buildGblLineupRecommendation', () => {
+  test('scores every ordered role permutation and returns the best lineup', () => {
+    const scoredLineups: OrderedLineup[] = [];
+    const result = buildGblLineupRecommendation(['alpha', 'bravo', 'charlie'], {
+      scoreLineup: (lineup) => {
+        scoredLineups.push(lineup);
+
+        return makeLineupResult(
+          lineup,
+          lineup.lead === 'bravo' &&
+            lineup.switch === 'charlie' &&
+            lineup.closer === 'alpha'
+            ? 0.94
+            : 0.5,
+        );
+      },
+    });
+
+    expect(scoredLineups).toHaveLength(6);
+    expect(scoredLineups).toEqual(
+      expect.arrayContaining([
+        { lead: 'alpha', switch: 'bravo', closer: 'charlie' },
+        { lead: 'alpha', switch: 'charlie', closer: 'bravo' },
+        { lead: 'bravo', switch: 'alpha', closer: 'charlie' },
+        { lead: 'bravo', switch: 'charlie', closer: 'alpha' },
+        { lead: 'charlie', switch: 'alpha', closer: 'bravo' },
+        { lead: 'charlie', switch: 'bravo', closer: 'alpha' },
+      ]),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        lineup: { lead: 'bravo', switch: 'charlie', closer: 'alpha' },
+        score: 0.94,
+        coverageMetrics: expect.objectContaining({ coverageRate: 0.94 }),
+        coveredThreats: ['threat-a'],
+        weaknesses: ['threat-b'],
+        diagnosticLabel: 'ABC',
+      }),
+    );
+  });
+
+  test('rejects non-three-Pokemon GBL teams', () => {
+    expect(() => buildGblLineupRecommendation(['alpha', 'bravo'])).toThrow(
+      'GBL lineup recommendations require exactly 3 Pokemon.',
+    );
+  });
+
+  test('rejects duplicate GBL team members before scoring', () => {
+    expect(() =>
+      buildGblLineupRecommendation(['alpha', 'alpha', 'bravo']),
+    ).toThrow('GBL lineup recommendations require 3 unique Pokemon.');
+  });
+
+  test('rejects same-base GBL team members before scoring', () => {
+    expect(() =>
+      buildGblLineupRecommendation(['marowak', 'marowak_alolan', 'azumarill']),
+    ).toThrow('GBL lineup recommendations require 3 unique Pokemon.');
+  });
+
+  test('uses canonical lineup scoring when a scoring context is provided', () => {
+    const result = buildGblLineupRecommendation(['alpha', 'bravo', 'charlie'], {
+      context: createGblTestContext(),
+    });
+
+    expect(result.lineup).toEqual({
+      lead: 'bravo',
+      switch: 'charlie',
+      closer: 'alpha',
+    });
+    expect(result.coverageMetrics).toEqual({
+      coverageRate: 1,
+      dominatingMatchupCount: 0,
+      overwhelmingLossCount: 0,
+      singleAnswerThreatCount: 0,
+    });
+    expect(result.coveredThreats).toEqual(['threat-a']);
+    expect(result.weaknesses).toEqual([]);
+    expect(result.diagnosticLabel).toBe('ABC');
+  });
+});
+
 function expectBenchUtility(
   result: PlayPokemonRosterRecommendationResult,
   speciesId: string,
@@ -162,5 +244,49 @@ function makeLineupResult(
       coreBreakerReliability: 0.5,
       shieldReliability: 0.5,
     },
+  };
+}
+
+function createGblTestContext(): LineupScoringContext {
+  const pokemonById: Record<string, Pokemon> = {
+    alpha: makePokemon('alpha', ['water']),
+    bravo: makePokemon('bravo', ['steel']),
+    charlie: makePokemon('charlie', ['ghost']),
+  };
+
+  return {
+    threats: ['threat-a'],
+    getPokemon: (speciesId) => pokemonById[speciesId],
+    getRankingScore: () => 80,
+    getRoleScore: (speciesId, role) => {
+      if (
+        (speciesId === 'bravo' && role === 'lead') ||
+        (speciesId === 'charlie' && role === 'switch') ||
+        (speciesId === 'alpha' && role === 'closer')
+      ) {
+        return 1;
+      }
+
+      return 0.1;
+    },
+    getMatchupRating: () => 550,
+    getMatchupQualityScore: () => 0.5,
+  };
+}
+
+function makePokemon(speciesId: string, types: string[]): Pokemon {
+  return {
+    dex: 1,
+    speciesName: speciesId,
+    speciesId,
+    baseStats: { atk: 140, def: 140, hp: 140 },
+    types,
+    fastMoves: [],
+    chargedMoves: [],
+    tags: [],
+    defaultIVs: {},
+    buddyDistance: 3,
+    thirdMoveCost: 10000,
+    released: true,
   };
 }
