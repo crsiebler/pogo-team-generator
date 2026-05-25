@@ -152,6 +152,8 @@ export interface Chromosome {
   anchors?: number[];
   fitness: number;
   recommendedLineups?: RecommendedLineup[];
+  rosterMetrics?: PlayPokemonRosterMetrics;
+  benchUtility?: BenchUtility[];
 }
 
 export interface GenerationOptions {

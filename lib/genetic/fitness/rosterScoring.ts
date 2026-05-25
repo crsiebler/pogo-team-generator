@@ -70,7 +70,8 @@ function scoreRosterLineup(
     : scoreOrderedLineup(lineup, context);
 }
 
-function scoreFastRosterLineup(
+/** Scores one lineup with the lightweight roster path used during hot GA evaluation. */
+export function scoreFastRosterLineup(
   lineup: OrderedLineup,
   context: PlayPokemonRosterScoringContext,
 ): LineupScoreResult {

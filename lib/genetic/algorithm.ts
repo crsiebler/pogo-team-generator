@@ -13,8 +13,11 @@ import {
 } from './chromosome';
 import {
   buildGblLineupRecommendation,
+  buildPlayPokemonRosterRecommendations,
   createDefaultLineupScoringContext,
+  createLineupAwareFitnessContext,
   evaluatePopulation,
+  scorePlayPokemonRoster,
 } from './fitness';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
@@ -32,11 +35,11 @@ export async function generateTeam(
     excludedPokemon = [],
     populationSize = 150,
     generations = 75,
-    algorithm = 'individual',
     formatId = DEFAULT_BATTLE_FORMAT_ID,
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
+  const fitnessContext = createLineupAwareFitnessContext(formatId);
 
   ensureSimulationDataAvailable(formatId);
 
@@ -67,7 +70,7 @@ export async function generateTeam(
   );
 
   // Evaluate initial population
-  evaluatePopulation(population, mode, algorithm, formatId);
+  evaluatePopulation(population, mode, formatId, fitnessContext);
 
   let bestOverall = getBestChromosome(population);
 
@@ -104,7 +107,7 @@ export async function generateTeam(
     });
 
     // Evaluate new population
-    evaluatePopulation(population, mode, algorithm, formatId);
+    evaluatePopulation(population, mode, formatId, fitnessContext);
 
     // CRITICAL: Filter out any chromosomes that lost anchors
     if (anchorPokemon.length > 0) {
@@ -135,7 +138,7 @@ export async function generateTeam(
             anchorPokemon,
             formatId,
           );
-          evaluatePopulation(population, mode, algorithm, formatId);
+          evaluatePopulation(population, mode, formatId, fitnessContext);
         } else {
           // Refill population with clones of valid chromosomes
           while (population.length < populationSize) {
@@ -144,7 +147,7 @@ export async function generateTeam(
             population.push(cloneChromosome(randomValid));
           }
           // Re-evaluate the cloned chromosomes
-          evaluatePopulation(population, mode, algorithm, formatId);
+          evaluatePopulation(population, mode, formatId, fitnessContext);
         }
       }
     }
@@ -219,14 +222,34 @@ export async function generateTeam(
     }
   }
 
+  const lineupContext = createDefaultLineupScoringContext(formatId);
+
   if (mode === 'GBL') {
     bestOverall = {
       ...bestOverall,
       recommendedLineups: [
         buildGblLineupRecommendation(bestOverall.team, {
-          context: createDefaultLineupScoringContext(formatId),
+          context: lineupContext,
         }),
       ],
+    };
+  } else {
+    const rosterScore = scorePlayPokemonRoster(
+      bestOverall.team,
+      lineupContext,
+      { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
+    );
+    const recommendations = buildPlayPokemonRosterRecommendations(
+      bestOverall.team,
+      rosterScore.lineupScores ?? [],
+      { limit: 5 },
+    );
+
+    bestOverall = {
+      ...bestOverall,
+      rosterMetrics: rosterScore.metrics,
+      recommendedLineups: recommendations.recommendedLineups,
+      benchUtility: recommendations.benchUtility,
     };
   }
 

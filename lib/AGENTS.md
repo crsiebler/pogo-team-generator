@@ -50,6 +50,8 @@ For PlayPokemon recommendation output in `lib/genetic/fitness/recommendations.ts
 
 For GBL recommendation output in `lib/genetic/fitness/recommendations.ts`, pass exactly three unique species ids and use `buildGblLineupRecommendation(...)` to evaluate the six ordered lead/switch/closer permutations with canonical lineup scoring and return only the single best recommendation.
 
+For GA evaluation in `lib/genetic/fitness/index.ts`, call `evaluatePopulation(population, mode, formatId)` without an algorithm selector. It creates a per-run `LineupAwareFitnessContext`, caches `scoreFastRosterLineup(...)` for hot PlayPokemon evaluation, and leaves full PlayPokemon diagnostics to the final output pass in `lib/genetic/algorithm.ts`.
+
 ## Code Style
 
 Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for functions/variables, PascalCase for types. Absolute imports (`@/lib/...`).

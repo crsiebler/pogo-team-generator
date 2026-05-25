@@ -1,16 +1,18 @@
-import { calculateFitness as calculateFitnessIndividual } from './individual';
-import { calculateFitness as calculateFitnessTeamSynergy } from './teamSynergy';
+import {
+  createDefaultLineupScoringContext,
+  scoreOrderedLineup,
+  type LineupScoreResult,
+  type LineupScoringContext,
+} from './lineupScoring';
+import { buildGblLineupRecommendation } from './recommendations';
+import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import type { FitnessAlgorithm, Chromosome, TournamentMode } from '@/lib/types';
-
-export type { FitnessAlgorithm } from '@/lib/types';
-
-export {
-  calculateFitness as calculateFitnessIndividual,
-  evaluatePopulation as evaluatePopulationIndividual,
-} from './individual';
-
-export { calculateFitness as calculateFitnessTeamSynergy } from './teamSynergy';
+import type {
+  Chromosome,
+  LineupAwareFitnessConfig,
+  OrderedLineup,
+  TournamentMode,
+} from '@/lib/types';
 
 export {
   PlayPokemonRosterValidationError,
@@ -19,8 +21,8 @@ export {
 } from './lineupEnumeration';
 
 export {
-  calculateLineupPatternLabel,
   createDefaultLineupScoringContext,
+  calculateLineupPatternLabel,
   scoreOrderedLineup,
   type LineupComponentScores,
   type LineupScoreResult,
@@ -41,34 +43,98 @@ export {
   type PlayPokemonRosterRecommendationResult,
 } from './recommendations';
 
-type FitnessFunction = (
+const FAST_LINEUP_AWARE_CONFIG: LineupAwareFitnessConfig = {
+  mode: 'fast',
+  includeDiagnostics: false,
+  recommendationLimit: 0,
+};
+
+/** Per-run caches and data context for canonical lineup-aware fitness. */
+export interface LineupAwareFitnessContext {
+  scoringContext: LineupScoringContext;
+  scoreLineup: (lineup: OrderedLineup) => LineupScoreResult;
+  scoreFastLineup: (lineup: OrderedLineup) => LineupScoreResult;
+}
+
+/** Creates a cacheable fitness context for one generation run. */
+export function createLineupAwareFitnessContext(
+  formatId?: BattleFormatId,
+): LineupAwareFitnessContext {
+  const scoringContext = createDefaultLineupScoringContext(formatId, 30);
+  const lineupScoreCache = new Map<string, LineupScoreResult>();
+  const fastLineupScoreCache = new Map<string, LineupScoreResult>();
+
+  return {
+    scoringContext,
+    scoreLineup: (lineup) => {
+      const cacheKey = getLineupCacheKey(lineup);
+      const cached = lineupScoreCache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
+      const score = scoreOrderedLineup(lineup, scoringContext);
+      lineupScoreCache.set(cacheKey, score);
+      return score;
+    },
+    scoreFastLineup: (lineup) => {
+      const cacheKey = getLineupCacheKey(lineup);
+      const cached = fastLineupScoreCache.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
+      const score = scoreFastRosterLineup(lineup, scoringContext);
+      fastLineupScoreCache.set(cacheKey, score);
+      return score;
+    },
+  };
+}
+
+/** Calculates the canonical lineup-aware fitness for one chromosome. */
+export function calculateLineupAwareFitness(
   chromosome: Chromosome,
   mode: TournamentMode,
   formatId?: BattleFormatId,
-) => number;
+  context: LineupAwareFitnessContext = createLineupAwareFitnessContext(
+    formatId,
+  ),
+): number {
+  if (mode === 'PlayPokemon') {
+    return scorePlayPokemonRoster(
+      chromosome.team,
+      {
+        ...context.scoringContext,
+        scoreLineup: context.scoreFastLineup,
+      },
+      FAST_LINEUP_AWARE_CONFIG,
+    ).fitness;
+  }
 
-/**
- * Get the appropriate fitness function based on algorithm selection
- */
-export function getFitnessFunction(
-  algorithm: FitnessAlgorithm,
-): FitnessFunction {
-  return algorithm === 'teamSynergy'
-    ? calculateFitnessTeamSynergy
-    : calculateFitnessIndividual;
+  return buildGblLineupRecommendation(chromosome.team, {
+    scoreLineup: context.scoreLineup,
+  }).score;
 }
 
-/**
- * Evaluate population using specified algorithm
- */
+/** Evaluates a population using the canonical lineup-aware fitness path. */
 export function evaluatePopulation(
   population: Chromosome[],
   mode: TournamentMode,
-  algorithm: FitnessAlgorithm = 'individual',
   formatId?: BattleFormatId,
+  context: LineupAwareFitnessContext = createLineupAwareFitnessContext(
+    formatId,
+  ),
 ): void {
-  const fitnessFunction = getFitnessFunction(algorithm);
   for (const chromosome of population) {
-    chromosome.fitness = fitnessFunction(chromosome, mode, formatId);
+    chromosome.fitness = calculateLineupAwareFitness(
+      chromosome,
+      mode,
+      formatId,
+      context,
+    );
   }
+}
+
+function getLineupCacheKey(lineup: OrderedLineup): string {
+  return JSON.stringify([lineup.lead, lineup.switch, lineup.closer]);
 }

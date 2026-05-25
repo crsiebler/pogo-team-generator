@@ -6,6 +6,7 @@
 - PlayPokemon roster scoring lives in `lib/genetic/fitness/rosterScoring.ts`; use `PlayPokemonRosterScoringContext.scoreLineup` for cached or deterministic lineup scoring, and only request `lineupScores` through full `LineupAwareFitnessConfig` diagnostics.
 - PlayPokemon recommendation helpers live in `lib/genetic/fitness/recommendations.ts`; pass only bounded full-mode lineup diagnostics into `buildPlayPokemonRosterRecommendations(...)` so API-ready output returns recommended lineups and bench utility without exposing all 60 enumerated lineups.
 - GBL role-order recommendations use `buildGblLineupRecommendation(...)` from `lib/genetic/fitness/recommendations.ts`; it evaluates all six ordered role permutations with canonical lineup scoring and generation returns the single best recommendation on `Chromosome.recommendedLineups`.
+- GA fitness now routes through `evaluatePopulation(population, mode, formatId)` in `lib/genetic/fitness/index.ts`; use `createLineupAwareFitnessContext(...)` for per-run cached full and fast lineup scoring, fast mode during population evaluation, and full roster scoring only for final PlayPokemon diagnostics.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -230,4 +231,43 @@
   - US-009 still needs to expose the GBL recommendation through the generate-team API response.
 - Next iteration start:
   - US-008 - Integrate canonical lineup-aware fitness into the genetic algorithm
+---
+## 2026-05-25 04:00 MST - US-008
+- What was implemented
+- Replaced GA fitness routing with one canonical lineup-aware `evaluatePopulation(population, mode, formatId)` path.
+- Added cached lineup-aware fitness context for repeated lineup scoring during population evaluation.
+- Wired PlayPokemon GA fitness to fast roster scoring and final PlayPokemon output to bounded full roster diagnostics plus recommendations, roster metrics, and bench utility.
+- Kept GBL GA fitness on canonical role-ordered lineup scoring and preserved final GBL recommendation output.
+- Files changed: `lib/types.ts`, `lib/AGENTS.md`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-008 - Integrate canonical lineup-aware fitness into the genetic algorithm`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` (pass after red failures)
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass after review fixes and per-run cache fix)
+  - `npx tsc --noEmit` (pass before and after review fixes; pass after per-run cache fix)
+  - `npm run lint` (pass after fixing import order; pass after review fixes; pass after per-run cache fix)
+  - `npm test` (pass before and after review fixes; pass after per-run cache fix)
+  - `npx prettier --write "lib/types.ts" "lib/genetic/algorithm.ts" "lib/genetic/algorithm.test.ts" "lib/genetic/fitness/index.ts" "lib/genetic/fitness/index.test.ts" "prd.json"` (pass)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`
+  - Findings: fixed hot PlayPokemon fast-scoring bypass, removed legacy fitness exports from the canonical index, switched lineup cache keys to tuple JSON, added missing TSDoc for the exported fast scorer, reused one fitness context across the full GA run, and updated progress-log inventory/status before commit
+- Decisions (why):
+  - Removed algorithm routing from `generateTeam(...)` calls instead of deleting all legacy fitness modules because US-013 owns obsolete-code removal and downstream API/UI stories still reference old algorithm types.
+  - Used a shared per-run `LineupAwareFitnessContext` in `evaluatePopulation(...)` because lineup and roster scores are repeatedly requested during GA evaluation and should be cached without global state.
+  - Created that context in `generateTeam(...)` and passed it through every `evaluatePopulation(...)` call because cache lifetime needs to cover the whole GA run, not just one generation.
+  - Limited hot scoring to `LineupAwareFitnessConfig.mode === 'fast'` with a 30-threat default context because full UI diagnostics are only needed after the final team is selected.
+  - Exported `scoreFastRosterLineup(...)` from `rosterScoring.ts` so the canonical GA context can cache fast lineup scores without falling back to full `scoreOrderedLineup(...)` diagnostics during hot evaluation.
+  - Attached final PlayPokemon `rosterMetrics`, `recommendedLineups`, and `benchUtility` to `Chromosome` because later API/UI stories need those generated outputs without recomputing all 60 lineups in adapters.
+- **Learnings for future iterations:**
+  - `generateTeam(...)` no longer passes a fitness algorithm; callers may still include `GenerationOptions.algorithm` until API/frontend cleanup stories remove the contract.
+  - Hot PlayPokemon GA scoring should cache `scoreFastRosterLineup(...)`, not full `scoreOrderedLineup(...)`; use full scoring only for GBL role ordering and final PlayPokemon diagnostics.
+  - Full PlayPokemon output is built in `lib/genetic/algorithm.ts` after final team validation using `scorePlayPokemonRoster(..., { mode: 'full', recommendationLimit: 5 })` and `buildPlayPokemonRosterRecommendations(...)`.
+  - `npm test` still mutates sync fixture outputs and data files; keep staging focused on story files only.
+- Known issues / follow-ups:
+  - US-009 still needs to remove algorithm from the generate-team API contract and expose the new generated diagnostics in responses.
+  - US-013 still needs to remove obsolete individual/teamSynergy exports and remaining algorithm-selection types once API/UI callers are migrated.
+- Next iteration start:
+  - US-009 - Update generate-team API contract
 ---
