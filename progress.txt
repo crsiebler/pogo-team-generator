@@ -15,7 +15,7 @@
 - Recommended lineup cards live in `AnalysisPanel` and should stay concise: no covered-threat list, `Lead`/`Switch`/`Closer` terms without repeated labels in values, and weakness ids rendered through analysis names or canonical Pokemon species names.
 - `/api/generate-team` should resolve display-facing threat ids in lineup diagnostics, such as recommended lineup weaknesses and roster single-answer risks, to readable species names before returning them so client components stay display-only.
 - PlayPokemon roster diagnostics in `TeamDisplay` should render API-provided single-answer risk labels and use `Switch` copy for role appearance counts.
-- Follow-up scoring work should increase offensive move effectiveness and defensive resistance/weakness spread weighting while distinguishing harmful redundant primary typings from useful complementary shared secondary typings.
+- PlayPokemon roster fitness now combines lineup quality/depth with expected-meta offensive move coverage, defensive resistance/weakness spread using frequency-preserving expected threat move types when available, and a top-lineup primary-type redundancy penalty that includes all lineups tied at the cutoff; use per-Pokemon typing fallback when move metadata is missing or partially unresolved, and handle useful shared secondary typings through coverage context rather than blanket duplicate-type penalties.
 - Bench utility warning pills in `TeamDisplay` should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered.
 
 ## Iteration Log
@@ -609,4 +609,72 @@
   - US-019 still needs type diversity and coverage scoring changes.
 - Next iteration start:
   - US-019 - Increase type diversity and coverage weighting
+---
+## 2026-05-25 15:11 MST - US-019
+- What was implemented
+- Added roster-level offensive move coverage and defensive resistance/weakness spread signals to PlayPokemon roster fitness.
+- Added a contextual top-lineup primary-type redundancy penalty so harmful repeated primary typings are discouraged without blanket-penalizing complementary shared secondary typings.
+- Added regression tests for a redundant Electric-heavy roster versus broader coverage, injected expected-meta coverage, Pokemon-typing fallback with missing or partially unresolved move metadata, duplicated primary typings absent from top recommended lineups, and complementary shared Fairy secondary typings versus harmful Fairy primary duplication.
+- Files changed: `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-019 - Increase type diversity and coverage weighting`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts` (pass after red failures and review fixes; 17 tests)
+  - `npx prettier --write "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after import-order fix)
+  - `npm test` (pass; 52 files, 366 tests)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`
+  - Findings: fixed medium findings to score type coverage against injected expected-meta threats, derive defensive coverage from frequency-preserving expected-meta move types, base primary redundancy on top recommended lineups, keep Pokemon-type fallback coverage active without move metadata, and fall back per Pokemon when move metadata is partially unresolved; third review pass still found medium tie-order redundancy and same-threat duplicate move-type frequency issues, so the story was left uncommitted and `passes: false`
+- Decisions (why):
+  - Kept the new scoring inside `rosterScoring.ts` because US-019 changes bring-6 roster fitness aggregation rather than individual lineup diagnostics or UI presentation.
+  - Used expected threat Pokemon types from `context.threats` when available because offensive and defensive coverage should target the configured meta instead of a static type universe.
+  - Used recommended charged move types when available per Pokemon, falling back to that Pokemon's typing when its move metadata is missing or unresolved, because offensive coverage should reflect available attacks without dropping partially-resolved roster members.
+  - Penalized duplicate primary typings based on top recommended lineup appearances because the story targets redundant roster slots that do not contribute to practical pick-3 plans.
+  - Used Pokemon typing fallback when move metadata is not injected so existing fast fallback tests and cache-oriented scoring paths do not require diagnostic-only data; neutral defaults remain only for missing Pokemon or threat metadata.
+- **Learnings for future iterations:**
+  - Roster-level diversity scoring belongs in `calculateRosterFitness(...)`; lineup-level `typeDiversity` remains pick-3 diagnostics, while bring-6 redundancy should account for the whole roster and viable lineup appearances.
+  - Offensive coverage fallback must be per Pokemon, not roster-wide; one resolved moveset should not prevent other roster members with missing move metadata from contributing their own typings.
+  - Defensive roster coverage should use frequency-preserving expected-meta attack types from injected threat moves when available, falling back to threat typings only when move metadata is missing or unresolved.
+  - Tests for roster scoring can inject typed Pokemon and moves through `PlayPokemonRosterScoringContext` without reading checked-in Pokemon or move data.
+- Known issues / follow-ups:
+  - Blocker: primary redundancy scoring uses only the top five sorted lineups, so tied lineup scores can make useful primary-type appearances depend on roster/enumeration order. Next iteration should include all lineups tied with the cutoff, viable lineup appearances, or another deterministic score threshold before computing useful share.
+  - Blocker: defensive expected attack type collection preserves repeated types across threats but still deduplicates repeated same-type charged moves on a single threat via `getRosterAttackingTypes(...)`. Next iteration should use a defensive-specific helper that preserves per-threat move-type multiplicity.
+  - US-020 still needs lineup weakness rendering as semantic bullet lists.
+- Next iteration start:
+  - US-019 - Increase type diversity and coverage weighting
+---
+## 2026-05-25 15:42 MST - US-019
+- What was implemented
+- Completed the prior US-019 blocker fixes by making primary-type redundancy scoring include all lineups tied at the top-N cutoff and preserving duplicate charged move type frequency from the same expected-meta threat for defensive coverage weighting.
+- Added regression tests for tied-lineup order stability, fully useful duplicate-primary roster members, and same-threat duplicate charged move type weighting.
+- Files changed: `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-019 - Increase type diversity and coverage weighting`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts` (pass; 20 tests)
+  - `npx prettier --write "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 369 tests)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`
+  - Findings: fixed medium QA findings so fully useful duplicate-primary roster members no longer receive a residual redundancy penalty and repeated defensive-liability penalties apply through lineups containing non-represented roster members; final staged-diff review had no actionable findings
+- Decisions (why):
+  - Included all lineups tied with the top-N cutoff because equal-scored recommended-lineup candidates should not make useful duplicated primary-type appearances depend on roster enumeration order.
+  - Added a defensive-specific expected attack type helper because defensive coverage needs expected-meta attack frequency, while roster offensive coverage can still deduplicate one Pokemon's own charged move attack types.
+  - Removed the remaining duplicate-primary penalty when every duplicated primary roster member appears in cutoff-tied top lineups because the penalty should target unrepresented redundancy, not useful duplicate-primary picks.
+  - Scoped repeated defensive-liability penalties to lineups with roster members absent from top tied recommendations because the story targets repeated liabilities from redundant, unrepresented bring-6 slots.
+- **Learnings for future iterations:**
+  - Primary-type redundancy scoring should derive useful appearances from all top lineups tied at the recommendation cutoff, not only the first five sorted lineups.
+  - Defensive expected-meta coverage should preserve duplicate charged move type frequency per threat; do not reuse offensive roster attack-type helpers when frequency matters.
+- Known issues / follow-ups:
+  - US-020 still needs lineup weakness rendering as semantic bullet lists.
+- Next iteration start:
+  - US-020 - Render lineup weaknesses as bullet lists
 ---

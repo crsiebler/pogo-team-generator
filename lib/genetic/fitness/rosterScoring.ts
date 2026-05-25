@@ -4,6 +4,7 @@ import {
   type LineupScoreResult,
   type LineupScoringContext,
 } from './lineupScoring';
+import { calculateEffectiveness } from '@/lib/coverage/typeChart';
 import type {
   BenchUtility,
   LineupAwareFitnessConfig,
@@ -14,6 +15,26 @@ import type {
 
 const DEFAULT_VIABLE_LINEUP_SCORE = 0.55;
 const DEFAULT_TOP_LINEUP_DEPTH = 5;
+const ALL_TYPES = [
+  'normal',
+  'fire',
+  'water',
+  'electric',
+  'grass',
+  'ice',
+  'fighting',
+  'poison',
+  'ground',
+  'flying',
+  'psychic',
+  'bug',
+  'rock',
+  'ghost',
+  'dragon',
+  'dark',
+  'steel',
+  'fairy',
+];
 
 /** Injectable roster scoring context for production caches and deterministic tests. */
 export interface PlayPokemonRosterScoringContext extends LineupScoringContext {
@@ -42,7 +63,12 @@ export function scorePlayPokemonRoster(
     (lineup) => lineup.score >= DEFAULT_VIABLE_LINEUP_SCORE,
   );
   const metrics = buildRosterMetrics(roster, scoredLineups, viableLineups);
-  const fitness = calculateRosterFitness(metrics, scoredLineups);
+  const fitness = calculateRosterFitness(
+    roster,
+    context,
+    metrics,
+    scoredLineups,
+  );
   const diagnosticLimit =
     config.mode === 'full' ? Math.max(0, config.recommendationLimit) : 0;
 
@@ -272,6 +298,8 @@ function incrementRoleAppearance(
 }
 
 function calculateRosterFitness(
+  roster: string[],
+  context: PlayPokemonRosterScoringContext,
   metrics: PlayPokemonRosterMetrics,
   scoredLineups: LineupScoreResult[],
 ): number {
@@ -285,21 +313,237 @@ function calculateRosterFitness(
   const coverageBreadth = calculateCoverageBreadth(scoredLineups);
   const singleAnswerDependencyRate =
     calculateSingleAnswerDependencyRate(scoredLineups);
-  const repeatedWeaknessRate = calculateRepeatedWeaknessRate(scoredLineups);
+  const topLineups = getTopLineupsIncludingCutoffTies(
+    scoredLineups,
+    DEFAULT_TOP_LINEUP_DEPTH,
+  );
+  const repeatedWeaknessRate = calculateRepeatedWeaknessRate(
+    scoredLineups,
+    topLineups,
+  );
+  const typeCoverage = calculateRosterTypeCoverage(roster, context);
+  const primaryRedundancyPenalty = calculatePrimaryRedundancyPenalty(
+    roster,
+    context,
+    topLineups,
+  );
 
   return clamp01(
-    metrics.topLineupQuality * 0.24 +
-      metrics.topNLineupDepth * 0.2 +
-      normalizeCount(metrics.viableLineupCount, 60) * 0.16 +
+    metrics.topLineupQuality * 0.22 +
+      metrics.topNLineupDepth * 0.18 +
+      normalizeCount(metrics.viableLineupCount, 60) * 0.15 +
       normalizeCount(metrics.viableLeadDiversity, 6) * 0.12 +
       averageBenchUtility * 0.12 +
-      coverageBreadth * 0.08 +
+      coverageBreadth * 0.09 +
+      typeCoverage.offensive * 0.06 +
+      typeCoverage.defensive * 0.06 +
       metrics.dominatingMatchupRate * 0.05 -
       metrics.overwhelmingLossRate * 0.1 -
       singleAnswerDependencyRate * 0.08 -
       repeatedWeaknessRate * 0.08 -
+      primaryRedundancyPenalty * 0.08 -
       deadBenchPenalty * 0.15,
   );
+}
+
+function calculateRosterTypeCoverage(
+  roster: string[],
+  context: PlayPokemonRosterScoringContext,
+): { offensive: number; defensive: number } {
+  const pokemon = roster
+    .map((speciesId) => context.getPokemon(speciesId))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
+  if (pokemon.length === 0) {
+    return { offensive: 0.5, defensive: 0.5 };
+  }
+
+  const attackingTypes = pokemon.flatMap((entry) =>
+    getRosterAttackingTypes(entry, context),
+  );
+  const threatTypeProfiles = getThreatTypeProfiles(context);
+  const offensive = average(
+    threatTypeProfiles.map((threatTypes) =>
+      scoreBestOffensiveCoverage(attackingTypes, threatTypes),
+    ),
+  );
+  const expectedAttackTypes = getExpectedAttackTypes(context);
+  const defensive = average(
+    expectedAttackTypes.map((attackType) => {
+      const effectiveness = pokemon.map((entry) =>
+        calculateEffectiveness(entry.types, attackType),
+      );
+      const resistCount = effectiveness.filter(
+        (value) => value <= 0.625,
+      ).length;
+      const weakCount = effectiveness.filter((value) => value >= 1.6).length;
+      return clamp01(
+        (resistCount > 0 ? 0.7 : 0.35) +
+          Math.min(resistCount, 2) * 0.15 -
+          Math.max(0, weakCount - resistCount) * 0.12 -
+          Math.max(0, weakCount - 2) * 0.1,
+      );
+    }),
+  );
+
+  return { offensive, defensive };
+}
+
+function getThreatTypeProfiles(
+  context: PlayPokemonRosterScoringContext,
+): string[][] {
+  const profiles = context.threats
+    .map((speciesId) => context.getPokemon(speciesId)?.types ?? [])
+    .filter((types) => types.length > 0);
+
+  return profiles.length > 0 ? profiles : ALL_TYPES.map((type) => [type]);
+}
+
+function getExpectedAttackTypes(
+  context: PlayPokemonRosterScoringContext,
+): string[] {
+  const attackTypes = context.threats.flatMap((speciesId) => {
+    const pokemon = context.getPokemon(speciesId);
+
+    return pokemon ? getExpectedThreatAttackTypes(pokemon, context) : [];
+  });
+
+  return attackTypes.length > 0 ? attackTypes : ALL_TYPES;
+}
+
+function getExpectedThreatAttackTypes(
+  pokemon: NonNullable<
+    ReturnType<PlayPokemonRosterScoringContext['getPokemon']>
+  >,
+  context: PlayPokemonRosterScoringContext,
+): string[] {
+  const moveset = context.getRecommendedMoveset?.(pokemon.speciesId);
+  if (!moveset) {
+    return pokemon.types;
+  }
+
+  const chargedMoveIds = [moveset.chargedMove1, moveset.chargedMove2].filter(
+    (moveId): moveId is string => moveId !== null,
+  );
+  if (chargedMoveIds.length === 0) {
+    return pokemon.types;
+  }
+
+  const moveTypes = chargedMoveIds
+    .map((moveId) => context.getMove?.(moveId)?.type)
+    .filter((moveType): moveType is string => moveType !== undefined);
+
+  return moveTypes.length === chargedMoveIds.length
+    ? moveTypes
+    : [...moveTypes, ...pokemon.types];
+}
+
+function scoreBestOffensiveCoverage(
+  attackingTypes: string[],
+  threatTypes: string[],
+): number {
+  const bestMultiplier = Math.max(
+    0,
+    ...attackingTypes.map((attackType) =>
+      calculateEffectiveness(threatTypes, attackType),
+    ),
+  );
+
+  if (bestMultiplier >= 1.6) {
+    return 1;
+  }
+  if (bestMultiplier >= 1) {
+    return 0.65;
+  }
+
+  return 0.25;
+}
+
+function getRosterAttackingTypes(
+  pokemon: NonNullable<
+    ReturnType<PlayPokemonRosterScoringContext['getPokemon']>
+  >,
+  context: PlayPokemonRosterScoringContext,
+): string[] {
+  const moveset = context.getRecommendedMoveset?.(pokemon.speciesId);
+  if (!moveset) {
+    return pokemon.types;
+  }
+
+  const chargedMoveIds = [moveset.chargedMove1, moveset.chargedMove2].filter(
+    (moveId): moveId is string => moveId !== null,
+  );
+  if (chargedMoveIds.length === 0) {
+    return pokemon.types;
+  }
+
+  const moveTypes = chargedMoveIds
+    .map((moveId) => context.getMove?.(moveId)?.type)
+    .filter((moveType): moveType is string => moveType !== undefined);
+
+  return moveTypes.length === chargedMoveIds.length
+    ? uniqueSorted(moveTypes)
+    : uniqueSorted([...moveTypes, ...pokemon.types]);
+}
+
+function calculatePrimaryRedundancyPenalty(
+  roster: string[],
+  context: PlayPokemonRosterScoringContext,
+  recommendedLineups: LineupScoreResult[],
+): number {
+  const appearances = new Map<string, number>();
+  for (const lineup of recommendedLineups) {
+    for (const speciesId of [
+      lineup.lineup.lead,
+      lineup.lineup.switch,
+      lineup.lineup.closer,
+    ]) {
+      appearances.set(speciesId, (appearances.get(speciesId) ?? 0) + 1);
+    }
+  }
+
+  const speciesByPrimaryType = new Map<string, string[]>();
+  for (const speciesId of roster) {
+    const primaryType = context.getPokemon(speciesId)?.types[0];
+    if (!primaryType) {
+      continue;
+    }
+    speciesByPrimaryType.set(primaryType, [
+      ...(speciesByPrimaryType.get(primaryType) ?? []),
+      speciesId,
+    ]);
+  }
+
+  const duplicatePressure = sum(
+    [...speciesByPrimaryType.values()].map((speciesIds) => {
+      if (speciesIds.length <= 1) {
+        return 0;
+      }
+
+      const usefulShare =
+        speciesIds.filter((speciesId) => (appearances.get(speciesId) ?? 0) > 0)
+          .length / speciesIds.length;
+
+      return (speciesIds.length - 1) * (1 - usefulShare);
+    }),
+  );
+
+  return clamp01(duplicatePressure / Math.max(1, roster.length - 1));
+}
+
+function getTopLineupsIncludingCutoffTies(
+  scoredLineups: LineupScoreResult[],
+  depth: number,
+): LineupScoreResult[] {
+  if (scoredLineups.length <= depth) {
+    return scoredLineups;
+  }
+
+  const cutoffScore = scoredLineups[depth - 1]?.score;
+  if (cutoffScore === undefined) {
+    return [];
+  }
+
+  return scoredLineups.filter((lineup) => lineup.score >= cutoffScore);
 }
 
 function calculateCoverageBreadth(scoredLineups: LineupScoreResult[]): number {
@@ -327,9 +571,28 @@ function calculateSingleAnswerDependencyRate(
 
 function calculateRepeatedWeaknessRate(
   scoredLineups: LineupScoreResult[],
+  recommendedLineups: LineupScoreResult[],
 ): number {
+  const representedSpecies = new Set(
+    recommendedLineups.flatMap((lineup) => [
+      lineup.lineup.lead,
+      lineup.lineup.switch,
+      lineup.lineup.closer,
+    ]),
+  );
+  const lineupsWithUnrepresentedMembers = scoredLineups.filter((lineup) =>
+    [lineup.lineup.lead, lineup.lineup.switch, lineup.lineup.closer].some(
+      (speciesId) => !representedSpecies.has(speciesId),
+    ),
+  );
+  if (lineupsWithUnrepresentedMembers.length === 0) {
+    return 0;
+  }
+
   const weaknessCounts = new Map<string, number>();
-  for (const weakness of scoredLineups.flatMap((lineup) => lineup.weaknesses)) {
+  for (const weakness of lineupsWithUnrepresentedMembers.flatMap(
+    (lineup) => lineup.weaknesses,
+  )) {
     weaknessCounts.set(weakness, (weaknessCounts.get(weakness) ?? 0) + 1);
   }
 
@@ -338,7 +601,8 @@ function calculateRepeatedWeaknessRate(
   );
   const denominator = Math.max(
     1,
-    scoredLineups.length * getThreatUniverse(scoredLineups).size,
+    lineupsWithUnrepresentedMembers.length *
+      getThreatUniverse(scoredLineups).size,
   );
 
   return repeatedWeaknessCount / denominator;

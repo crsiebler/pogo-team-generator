@@ -42,9 +42,6 @@ describe('scorePlayPokemonRoster', () => {
     const result = scorePlayPokemonRoster(
       roster,
       createContext({
-        getPokemon: () => {
-          throw new Error('getPokemon should not be needed for fast scoring');
-        },
         getShieldScenarioMatchupRating: () => {
           throw new Error('shield paths should not be needed for fast scoring');
         },
@@ -190,6 +187,518 @@ describe('scorePlayPokemonRoster', () => {
 
     expect(broadCoverage.fitness).toBeGreaterThan(narrowCoverage.fitness);
   });
+
+  test('scores a redundant Electric-heavy roster below broader type coverage when lineup quality is comparable', () => {
+    const redundantElectricRoster = [
+      'electric-a',
+      'electric-b',
+      'electric-c',
+      'electric-d',
+      'water-a',
+      'grass-a',
+    ];
+    const broadCoverageRoster = [
+      'electric-a',
+      'water-a',
+      'grass-a',
+      'ground-a',
+      'fire-a',
+      'flying-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+
+    const redundantResult = scorePlayPokemonRoster(
+      redundantElectricRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const broadResult = scorePlayPokemonRoster(
+      broadCoverageRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness);
+  });
+
+  test('weights offensive and defensive coverage against injected meta threats', () => {
+    const metaFocusedRoster = [
+      'electric-a',
+      'rock-a',
+      'water-a',
+      'grass-a',
+      'ground-a',
+      'fire-a',
+    ];
+    const offMetaRoster = [
+      'ghost-a',
+      'poison-a',
+      'bug-a',
+      'normal-a',
+      'dark-a',
+      'psychic-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      threats: ['threat-water', 'threat-flying'],
+      scoreLineup,
+    });
+
+    const metaFocusedResult = scorePlayPokemonRoster(
+      metaFocusedRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const offMetaResult = scorePlayPokemonRoster(offMetaRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+
+    expect(metaFocusedResult.fitness).toBeGreaterThan(offMetaResult.fitness);
+  });
+
+  test('uses Pokemon typing for roster coverage when move metadata is unavailable', () => {
+    const redundantElectricRoster = [
+      'electric-a',
+      'electric-b',
+      'electric-c',
+      'electric-d',
+      'water-a',
+      'grass-a',
+    ];
+    const broadCoverageRoster = [
+      'electric-a',
+      'water-a',
+      'grass-a',
+      'ground-a',
+      'fire-a',
+      'flying-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+
+    const redundantResult = scorePlayPokemonRoster(
+      redundantElectricRoster,
+      createTypeCoverageContext({
+        getMove: undefined,
+        getRecommendedMoveset: undefined,
+        scoreLineup,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const broadResult = scorePlayPokemonRoster(
+      broadCoverageRoster,
+      createTypeCoverageContext({
+        getMove: undefined,
+        getRecommendedMoveset: undefined,
+        scoreLineup,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness);
+  });
+
+  test('falls back to each Pokemon typing when only partial move metadata resolves', () => {
+    const redundantElectricRoster = [
+      'electric-a',
+      'electric-b',
+      'electric-c',
+      'electric-d',
+      'normal-a',
+      'poison-a',
+    ];
+    const broadCoverageRoster = [
+      'electric-a',
+      'water-a',
+      'grass-a',
+      'ground-a',
+      'fire-a',
+      'flying-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, {
+        score: [lineup.lead, lineup.switch, lineup.closer].some((speciesId) =>
+          ['electric-b', 'electric-c', 'electric-d'].includes(speciesId),
+        )
+          ? 0.4
+          : 0.9,
+      });
+    const context = createTypeCoverageContext({
+      threats: ['threat-ground'],
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1:
+          speciesId === 'electric-a' ? 'electric-move' : 'missing-move',
+        chargedMove2: null,
+      }),
+      getMove: (moveId) =>
+        moveId === 'electric-move' ? { type: 'electric' } : undefined,
+      scoreLineup,
+    });
+
+    const redundantResult = scorePlayPokemonRoster(
+      redundantElectricRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const broadResult = scorePlayPokemonRoster(broadCoverageRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+
+    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness + 0.1);
+  });
+
+  test('keeps Pokemon typing when one recommended charged move is unresolved', () => {
+    const partialMoveRoster = [
+      'fire-grass-a',
+      'electric-a',
+      'bug-a',
+      'flying-a',
+      'normal-a',
+      'poison-a',
+    ];
+    const resolvedMoveRoster = [
+      'fire-a',
+      'electric-a',
+      'bug-a',
+      'flying-a',
+      'normal-a',
+      'poison-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      threats: ['threat-ground'],
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1: speciesId.startsWith('fire')
+          ? 'fire-move'
+          : `${speciesId.split('-')[0]}-move`,
+        chargedMove2: speciesId === 'fire-grass-a' ? 'missing-move' : null,
+      }),
+      getMove: (moveId) =>
+        moveId === 'missing-move'
+          ? undefined
+          : { type: moveId.replace('-move', '') },
+      scoreLineup,
+    });
+
+    const partialMoveResult = scorePlayPokemonRoster(
+      partialMoveRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const resolvedMoveResult = scorePlayPokemonRoster(
+      resolvedMoveRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(partialMoveResult.fitness).toBeGreaterThan(
+      resolvedMoveResult.fitness,
+    );
+  });
+
+  test('uses expected meta move types when scoring defensive coverage', () => {
+    const electricWeakRoster = [
+      'water-a',
+      'flying-a',
+      'water-grass-a',
+      'normal-a',
+      'poison-a',
+      'bug-a',
+    ];
+    const electricResistantRoster = [
+      'ground-a',
+      'grass-a',
+      'electric-a',
+      'rock-a',
+      'fire-a',
+      'normal-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      threats: ['threat-water'],
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1:
+          speciesId === 'threat-water'
+            ? 'electric-move'
+            : `${speciesId.split('-')[0]}-move`,
+        chargedMove2: null,
+      }),
+      getMove: (moveId) => ({ type: moveId.replace('-move', '') }),
+      scoreLineup,
+    });
+
+    const electricWeakResult = scorePlayPokemonRoster(
+      electricWeakRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const electricResistantResult = scorePlayPokemonRoster(
+      electricResistantRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(electricResistantResult.fitness).toBeGreaterThan(
+      electricWeakResult.fitness,
+    );
+  });
+
+  test('weights repeated expected meta attack move types in defensive coverage', () => {
+    const frequentGroundResistantRoster = [
+      'grass-a',
+      'flying-a',
+      'bug-a',
+      'normal-a',
+      'water-a',
+      'ground-a',
+    ];
+    const rareElectricResistantRoster = [
+      'electric-a',
+      'grass-a',
+      'ground-a',
+      'normal-a',
+      'fire-a',
+      'rock-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      threats: ['threat-ground-a', 'threat-ground-b', 'threat-electric'],
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1: speciesId.startsWith('threat-ground')
+          ? 'ground-move'
+          : speciesId === 'threat-electric'
+            ? 'electric-move'
+            : `${speciesId.split('-')[0]}-move`,
+        chargedMove2: null,
+      }),
+      getMove: (moveId) => ({ type: moveId.replace('-move', '') }),
+      scoreLineup,
+    });
+
+    const frequentGroundResult = scorePlayPokemonRoster(
+      frequentGroundResistantRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const rareElectricResult = scorePlayPokemonRoster(
+      rareElectricResistantRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(frequentGroundResult.fitness).toBeGreaterThan(
+      rareElectricResult.fitness,
+    );
+  });
+
+  test('preserves duplicate charged move types on one threat for defensive coverage weighting', () => {
+    const frequentGroundResistantRoster = [
+      'grass-a',
+      'flying-a',
+      'bug-a',
+      'normal-a',
+      'water-a',
+      'ground-a',
+    ];
+    const rareElectricResistantRoster = [
+      'electric-a',
+      'grass-a',
+      'ground-a',
+      'normal-a',
+      'fire-a',
+      'rock-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      threats: ['threat-ground-a', 'threat-electric'],
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1:
+          speciesId === 'threat-ground-a'
+            ? 'ground-move-a'
+            : speciesId === 'threat-electric'
+              ? 'electric-move'
+              : `${speciesId.split('-')[0]}-move`,
+        chargedMove2: speciesId === 'threat-ground-a' ? 'ground-move-b' : null,
+      }),
+      getMove: (moveId) => ({ type: moveId.split('-')[0] }),
+      scoreLineup,
+    });
+
+    const frequentGroundResult = scorePlayPokemonRoster(
+      frequentGroundResistantRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const rareElectricResult = scorePlayPokemonRoster(
+      rareElectricResistantRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(frequentGroundResult.fitness).toBeGreaterThan(
+      rareElectricResult.fitness,
+    );
+  });
+
+  test('penalizes duplicated primary types that are absent from top recommended lineups', () => {
+    const redundantRoster = [
+      'electric-a',
+      'electric-b',
+      'electric-c',
+      'water-a',
+      'grass-a',
+      'ground-a',
+    ];
+    const broadRoster = [
+      'electric-a',
+      'rock-a',
+      'water-a',
+      'grass-a',
+      'ground-a',
+      'fire-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, {
+        score: [lineup.lead, lineup.switch, lineup.closer].some((speciesId) =>
+          ['electric-b', 'electric-c'].includes(speciesId),
+        )
+          ? 0.4
+          : 0.9,
+      });
+
+    const redundantResult = scorePlayPokemonRoster(
+      redundantRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const broadResult = scorePlayPokemonRoster(
+      broadRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness);
+  });
+
+  test('keeps primary redundancy scoring stable when tied top lineups reorder appearances', () => {
+    const firstOrderRoster = [
+      'electric-a',
+      'electric-b',
+      'electric-c',
+      'water-a',
+      'grass-a',
+      'ground-a',
+    ];
+    const secondOrderRoster = [
+      'electric-c',
+      'ground-a',
+      'grass-a',
+      'water-a',
+      'electric-b',
+      'electric-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+
+    const firstResult = scorePlayPokemonRoster(
+      firstOrderRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const secondResult = scorePlayPokemonRoster(
+      secondOrderRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(firstResult.fitness).toBeCloseTo(secondResult.fitness, 5);
+  });
+
+  test('does not penalize duplicated primary types when all duplicate members appear in top tied lineups', () => {
+    const usefulDuplicatePrimaryRoster = [
+      'electric-water-a',
+      'electric-grass-a',
+      'electric-ground-a',
+      'fire-a',
+      'flying-a',
+      'rock-a',
+    ];
+    const primaryDistinctRoster = [
+      'water-electric-a',
+      'grass-electric-a',
+      'ground-electric-a',
+      'fire-a',
+      'flying-a',
+      'rock-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+
+    const usefulDuplicateResult = scorePlayPokemonRoster(
+      usefulDuplicatePrimaryRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const primaryDistinctResult = scorePlayPokemonRoster(
+      primaryDistinctRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(usefulDuplicateResult.fitness).toBeCloseTo(
+      primaryDistinctResult.fitness,
+      5,
+    );
+  });
+
+  test('does not over-penalize complementary shared secondary typing when roles and weaknesses differ', () => {
+    const harmfulSharedPrimaryRoster = [
+      'fairy-a',
+      'fairy-b',
+      'fairy-c',
+      'water-a',
+      'ground-a',
+      'fire-a',
+    ];
+    const complementarySharedSecondaryRoster = [
+      'water-fairy-a',
+      'steel-fairy-a',
+      'ground-a',
+      'fire-a',
+      'flying-a',
+      'grass-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+
+    const harmfulResult = scorePlayPokemonRoster(
+      harmfulSharedPrimaryRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const complementaryResult = scorePlayPokemonRoster(
+      complementarySharedSecondaryRoster,
+      createTypeCoverageContext({ scoreLineup }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(complementaryResult.fitness).toBeGreaterThan(harmfulResult.fitness);
+  });
 });
 
 function createContext(
@@ -259,5 +768,85 @@ function makePokemon(speciesId: string): Pokemon {
     buddyDistance: 3,
     thirdMoveCost: 10000,
     released: true,
+  };
+}
+
+function createTypeCoverageContext(
+  overrides: Partial<PlayPokemonRosterScoringContext> = {},
+): PlayPokemonRosterScoringContext {
+  const pokemonBySpeciesId: Record<string, Pokemon> = {
+    'electric-a': makeTypedPokemon('electric-a', ['electric']),
+    'electric-b': makeTypedPokemon('electric-b', ['electric']),
+    'electric-c': makeTypedPokemon('electric-c', ['electric']),
+    'electric-d': makeTypedPokemon('electric-d', ['electric']),
+    'water-a': makeTypedPokemon('water-a', ['water']),
+    'grass-a': makeTypedPokemon('grass-a', ['grass']),
+    'ground-a': makeTypedPokemon('ground-a', ['ground']),
+    'rock-a': makeTypedPokemon('rock-a', ['rock']),
+    'fire-a': makeTypedPokemon('fire-a', ['fire']),
+    'flying-a': makeTypedPokemon('flying-a', ['flying']),
+    'ghost-a': makeTypedPokemon('ghost-a', ['ghost']),
+    'poison-a': makeTypedPokemon('poison-a', ['poison']),
+    'bug-a': makeTypedPokemon('bug-a', ['bug']),
+    'normal-a': makeTypedPokemon('normal-a', ['normal']),
+    'dark-a': makeTypedPokemon('dark-a', ['dark']),
+    'psychic-a': makeTypedPokemon('psychic-a', ['psychic']),
+    'fairy-a': makeTypedPokemon('fairy-a', ['fairy']),
+    'fairy-b': makeTypedPokemon('fairy-b', ['fairy']),
+    'fairy-c': makeTypedPokemon('fairy-c', ['fairy']),
+    'fire-grass-a': makeTypedPokemon('fire-grass-a', ['fire', 'grass']),
+    'water-grass-a': makeTypedPokemon('water-grass-a', ['water', 'grass']),
+    'water-fairy-a': makeTypedPokemon('water-fairy-a', ['water', 'fairy']),
+    'steel-fairy-a': makeTypedPokemon('steel-fairy-a', ['steel', 'fairy']),
+    'electric-water-a': makeTypedPokemon('electric-water-a', [
+      'electric',
+      'water',
+    ]),
+    'electric-grass-a': makeTypedPokemon('electric-grass-a', [
+      'electric',
+      'grass',
+    ]),
+    'electric-ground-a': makeTypedPokemon('electric-ground-a', [
+      'electric',
+      'ground',
+    ]),
+    'water-electric-a': makeTypedPokemon('water-electric-a', [
+      'water',
+      'electric',
+    ]),
+    'grass-electric-a': makeTypedPokemon('grass-electric-a', [
+      'grass',
+      'electric',
+    ]),
+    'ground-electric-a': makeTypedPokemon('ground-electric-a', [
+      'ground',
+      'electric',
+    ]),
+    'threat-water': makeTypedPokemon('threat-water', ['water']),
+    'threat-flying': makeTypedPokemon('threat-flying', ['flying']),
+    'threat-ground': makeTypedPokemon('threat-ground', ['ground']),
+    'threat-ground-a': makeTypedPokemon('threat-ground-a', ['normal']),
+    'threat-ground-b': makeTypedPokemon('threat-ground-b', ['normal']),
+    'threat-electric': makeTypedPokemon('threat-electric', ['normal']),
+  };
+
+  return createContext({
+    getPokemon: (speciesId) => pokemonBySpeciesId[speciesId],
+    getRecommendedMoveset: (speciesId) => ({
+      fastMove: null,
+      chargedMove1: `${pokemonBySpeciesId[speciesId]?.types[0] ?? 'normal'}-move`,
+      chargedMove2: pokemonBySpeciesId[speciesId]?.types[1]
+        ? `${pokemonBySpeciesId[speciesId].types[1]}-move`
+        : null,
+    }),
+    getMove: (moveId) => ({ type: moveId.replace('-move', '') }),
+    ...overrides,
+  });
+}
+
+function makeTypedPokemon(speciesId: string, types: string[]): Pokemon {
+  return {
+    ...makePokemon(speciesId),
+    types,
   };
 }
