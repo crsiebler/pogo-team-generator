@@ -18,6 +18,15 @@ export {
   getPlayPokemonLineupKey,
 } from './lineupEnumeration';
 
+export {
+  calculateLineupPatternLabel,
+  createDefaultLineupScoringContext,
+  scoreOrderedLineup,
+  type LineupComponentScores,
+  type LineupScoreResult,
+  type LineupScoringContext,
+} from './lineupScoring';
+
 type FitnessFunction = (
   chromosome: Chromosome,
   mode: TournamentMode,

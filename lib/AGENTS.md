@@ -40,6 +40,8 @@ For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` be
 
 For PlayPokemon lineup-aware fitness, enumerate bring-6 rosters through `lib/genetic/fitness/lineupEnumeration.ts`; preserve roster input order for lead iteration, sort backline pairs canonically so duplicate backline permutations are not scored, and reject species ids containing the lineup key delimiter (`|`).
 
+For lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, prefer `LineupScoringContext` injection in tests and `createDefaultLineupScoringContext(...)` for production wiring so ranking, move, Pokemon, and simulation lookups stay deterministic and cacheable by callers.
+
 ## Code Style
 
 Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for functions/variables, PascalCase for types. Absolute imports (`@/lib/...`).
