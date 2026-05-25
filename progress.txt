@@ -437,3 +437,37 @@
 - Next iteration start:
   - US-014 - Run final validation for lineup-aware generation
 ---
+## 2026-05-25 05:06 MST - US-014
+- What was implemented
+- Completed final validation for lineup-aware generation across targeted tests, full test suite, lint, typecheck, production build, and browser verification.
+- Files changed: `prd.json`, `progress.txt`
+- Commit message: `feat: US-014 - Run final validation for lineup-aware generation`
+- Checks:
+  - `npx vitest run lib/genetic/algorithm.test.ts` (pass)
+  - `npx vitest run app/api/generate-team/route.test.ts` (pass)
+  - `npx vitest run components/organisms/TeamManager/TeamManager.test.tsx` (pass)
+  - `npx vitest run components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx` (pass)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` (pass)
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 353 tests)
+  - `npm run build` (pass)
+  - Browser verification with dev-browser at `http://localhost:3000` (pass; PlayPokemon generation rendered Recommended Lineups, Roster Metrics, Bench Utility, and text warning labels; observed pre-existing `/favicon.ico` 404)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`
+  - Findings: fixed low stale pending-review status before commit; final staged-diff review had no actionable findings
+- Decisions (why):
+  - Treated US-014 as a validation-only story because all functional lineup-aware implementation stories were already marked passing and this story's acceptance criteria are quality gates plus browser verification.
+  - Verified PlayPokemon in the browser because it exercises the richest final UI path: recommended pick-3 lineups, roster metrics, bench utility, and warning labels.
+- **Learnings for future iterations:**
+  - Full `npm test` still mutates generated data/ranking/simulation fixtures; keep final-validation commits limited to PRD/progress metadata unless validation intentionally updates fixtures.
+  - Browser validation can use the default PlayPokemon Great League flow to cover the complete lineup-aware output surface in one bounded check.
+- Known issues / follow-ups:
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+- Next iteration start:
+  - All PRD stories should now be complete after specialist review and commit.
+---
