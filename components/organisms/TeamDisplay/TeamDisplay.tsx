@@ -190,7 +190,7 @@ export function TeamDisplay({
                         {utility.warnings.map((warning) => (
                           <span
                             key={warning}
-                            className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100"
+                            className="inline-flex items-center justify-center rounded-full bg-amber-100 px-2 py-1 text-center font-semibold text-amber-900 dark:bg-amber-900/60 dark:text-amber-100"
                           >
                             Warning: {warning}
                           </span>

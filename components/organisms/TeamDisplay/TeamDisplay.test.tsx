@@ -254,6 +254,61 @@ describe('TeamDisplay', () => {
     expect(screen.getByText('Warning: unbringable')).toBeInTheDocument();
   });
 
+  it('centers bench utility warning pill text', async () => {
+    const benchUtility: BenchUtility[] = [
+      {
+        speciesId: 'registeel',
+        utilityScore: 0.12,
+        totalAppearances: 0,
+        leadAppearances: 0,
+        switchAppearances: 0,
+        closerAppearances: 0,
+        warnings: ['unbringable', 'low-utility'],
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [{ speciesId: 'registeel', speciesName: 'Registeel' }],
+        }),
+      }),
+    );
+
+    render(
+      <TeamDisplay
+        team={['registeel']}
+        mode="PlayPokemon"
+        formatId="great-league"
+        rosterMetrics={{
+          viableLineupCount: 1,
+          topLineupQuality: 0.42,
+          topNLineupDepth: 0.32,
+          dominatingMatchupRate: 0.1,
+          overwhelmingLossRate: 0.45,
+          singleAnswerRisks: [],
+          viableLeadDiversity: 1,
+          benchUtilitySummary: benchUtility,
+        }}
+        benchUtility={benchUtility}
+      />,
+    );
+
+    const unbringableWarning = await screen.findByText('Warning: unbringable');
+    const lowUtilityWarning = screen.getByText('Warning: low-utility');
+
+    [unbringableWarning, lowUtilityWarning].forEach((warning) => {
+      expect(warning).toHaveClass(
+        'inline-flex',
+        'items-center',
+        'justify-center',
+        'text-center',
+      );
+    });
+  });
+
   it('does not show PlayPokemon roster metrics for GBL results', async () => {
     vi.stubGlobal(
       'fetch',

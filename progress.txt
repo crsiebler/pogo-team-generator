@@ -16,6 +16,7 @@
 - `/api/generate-team` should resolve display-facing threat ids in lineup diagnostics, such as recommended lineup weaknesses and roster single-answer risks, to readable species names before returning them so client components stay display-only.
 - PlayPokemon roster diagnostics in `TeamDisplay` should render API-provided single-answer risk labels and use `Switch` copy for role appearance counts.
 - Follow-up scoring work should increase offensive move effectiveness and defensive resistance/weakness spread weighting while distinguishing harmful redundant primary typings from useful complementary shared secondary typings.
+- Bench utility warning pills in `TeamDisplay` should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -578,4 +579,34 @@
   - Browser console still shows the pre-existing `/favicon.ico` 404.
 - Next iteration start:
   - US-018 - Center bench warning pill text
+---
+## 2026-05-25 15:02 MST - US-018
+- What was implemented
+- Centered PlayPokemon bench utility warning pill text horizontally and vertically by using inline flex centering on warning labels.
+- Added regression coverage for both `Warning: unbringable` and `Warning: low-utility` pill centering classes.
+- Files changed: `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-018 - Center bench warning pill text`
+- Checks:
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` (pass after red failure for missing centering classes; 7 tests)
+  - `npx prettier --write "components/organisms/TeamDisplay/TeamDisplay.tsx" "components/organisms/TeamDisplay/TeamDisplay.test.tsx"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 357 tests)
+  - Browser verification with Playwright at `http://localhost:3000` (pass; generated PlayPokemon result included `Warning: unbringable` pills with computed `display: flex`, `align-items: center`, `justify-content: center`, and `text-align: center`; observed pre-existing `/favicon.ico` 404)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`, `compliance-auditor`
+  - Findings: no actionable critical/high/medium findings; fixed low stale pending-review status before commit
+- Decisions (why):
+  - Used Tailwind inline-flex centering on the existing warning span instead of introducing wrapper markup because the story only requires centering the pill text and the existing text labels already satisfy non-color warning communication.
+  - Covered both unbringable and low-utility warning variants in one focused test because both variants share the same rendering path and styling requirements.
+- **Learnings for future iterations:**
+  - Bench utility warning pills are rendered in `TeamDisplay`; keep them as text-labeled inline-flex pills so warning meaning is not color-only and text remains centered.
+- Known issues / follow-ups:
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+  - US-019 still needs type diversity and coverage scoring changes.
+- Next iteration start:
+  - US-019 - Increase type diversity and coverage weighting
 ---

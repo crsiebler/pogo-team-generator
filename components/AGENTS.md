@@ -26,6 +26,8 @@ Recommended lineup resource path cards should show the path meaning, rounded num
 
 PlayPokemon roster diagnostics should flow from `/api/generate-team` as `rosterMetrics` and `benchUtility` through `TeamManager` and `ResultsPanel` into `TeamDisplay`; keep the UI display-only and show warning text labels instead of relying on color alone.
 
+Bench utility warning pills should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered across pill widths.
+
 ## Testing
 
 Snapshot tests for UI; update via vitest. Run on changes; focus on accessibility.
