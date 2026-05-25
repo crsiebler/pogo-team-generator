@@ -12,7 +12,7 @@ import {
   isBattleFormatId,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
-import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
+import { TournamentMode } from '@/lib/types';
 
 interface TeamConfigPanelProps {
   pokemonList: string[];
@@ -24,8 +24,6 @@ interface TeamConfigPanelProps {
   onModeChange: (mode: TournamentMode) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onExclusionsChange: (exclusions: string[]) => void;
-  algorithm: FitnessAlgorithm;
-  onAlgorithmChange: (algorithm: FitnessAlgorithm) => void;
   onGenerate: () => void;
   isGenerating: boolean;
 }
@@ -40,8 +38,6 @@ export function TeamConfigPanel({
   onModeChange,
   onAnchorsChange,
   onExclusionsChange,
-  algorithm,
-  onAlgorithmChange,
   onGenerate,
   isGenerating,
 }: TeamConfigPanelProps) {
@@ -57,13 +53,6 @@ export function TeamConfigPanel({
       onExclusionsChange(exclusions);
     },
     [onExclusionsChange],
-  );
-
-  const handleAlgorithmChange = useCallback(
-    (algorithm: FitnessAlgorithm) => {
-      onAlgorithmChange(algorithm);
-    },
-    [onAlgorithmChange],
   );
 
   const handleFormatChange = useCallback(
@@ -164,8 +153,6 @@ export function TeamConfigPanel({
         }
         onAnchorsChange={handleAnchorsChange}
         onExclusionsChange={handleExclusionsChange}
-        algorithm={algorithm}
-        onAlgorithmChange={handleAlgorithmChange}
       />
 
       {/* Generate Button */}

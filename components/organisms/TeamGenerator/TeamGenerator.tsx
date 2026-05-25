@@ -2,14 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
-import {
-  AutocompleteInput,
-  PokemonTag,
-  AlgorithmToggle,
-} from '@/components/molecules';
+import { AutocompleteInput, PokemonTag } from '@/components/molecules';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
-import { TournamentMode, FitnessAlgorithm } from '@/lib/types';
+import { TournamentMode } from '@/lib/types';
 
 interface TeamGeneratorProps {
   mode: TournamentMode;
@@ -18,8 +14,6 @@ interface TeamGeneratorProps {
   battleFrontierMasterPointsByPokemonName: Record<string, number>;
   onAnchorsChange: (anchors: string[]) => void;
   onExclusionsChange: (exclusions: string[]) => void;
-  algorithm: FitnessAlgorithm;
-  onAlgorithmChange: (algorithm: FitnessAlgorithm) => void;
 }
 
 export function TeamGenerator({
@@ -29,8 +23,6 @@ export function TeamGenerator({
   battleFrontierMasterPointsByPokemonName,
   onAnchorsChange,
   onExclusionsChange,
-  algorithm,
-  onAlgorithmChange,
 }: TeamGeneratorProps) {
   const { showToast } = useToast();
   const maxAnchors = mode === 'GBL' ? 3 : 6;
@@ -160,8 +152,8 @@ export function TeamGenerator({
           'text-gray-700 dark:text-gray-400',
         )}
       >
-        Select up to {maxAnchors} Pokémon you want to use. The algorithm will
-        build a team around them.
+        Select up to {maxAnchors} Pokémon you want to use. Team generation will
+        build a lineup-aware roster around them.
       </p>
 
       <div className="space-y-2 sm:space-y-3">
@@ -246,29 +238,6 @@ export function TeamGenerator({
             ))}
           </div>
         )}
-      </div>
-
-      {/* Algorithm Toggle Section */}
-      <div className="mt-6 border-t pt-6">
-        <h3
-          className={clsx(
-            'mb-3 block text-sm font-semibold',
-            'text-gray-800 dark:text-gray-300',
-          )}
-        >
-          Algorithm Selection
-        </h3>
-        <p
-          className={clsx(
-            'mb-4 text-xs sm:text-sm',
-            'text-gray-700 dark:text-gray-400',
-          )}
-        >
-          Choose between individual scoring (fast) or team synergy analysis
-          (comprehensive).
-        </p>
-
-        <AlgorithmToggle algorithm={algorithm} onChange={onAlgorithmChange} />
       </div>
     </div>
   );

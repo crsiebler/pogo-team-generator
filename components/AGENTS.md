@@ -16,6 +16,8 @@ Keep transient generation errors in `TeamManager` state and pass them into `Team
 
 For Battle Frontier Master anchor UX, keep the live point meter in `TeamGenerator` where anchor edits already happen, and feed it from `TeamManager` via the `pokemon-list` response's `battleFrontierMasterPointsByPokemonName` map so the client mirrors server-side point resolution without duplicating CSV logic.
 
+Lineup-aware generation is the only frontend generation path. Do not add `FitnessAlgorithm` props, state, request fields, or algorithm-selection copy to `TeamManager`, `TeamConfigPanel`, or `TeamGenerator`.
+
 ## Testing
 
 Snapshot tests for UI; update via vitest. Run on changes; focus on accessibility.

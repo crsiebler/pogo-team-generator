@@ -7,6 +7,7 @@
 - PlayPokemon recommendation helpers live in `lib/genetic/fitness/recommendations.ts`; pass only bounded full-mode lineup diagnostics into `buildPlayPokemonRosterRecommendations(...)` so API-ready output returns recommended lineups and bench utility without exposing all 60 enumerated lineups.
 - GBL role-order recommendations use `buildGblLineupRecommendation(...)` from `lib/genetic/fitness/recommendations.ts`; it evaluates all six ordered role permutations with canonical lineup scoring and generation returns the single best recommendation on `Chromosome.recommendedLineups`.
 - GA fitness now routes through `evaluatePopulation(population, mode, formatId)` in `lib/genetic/fitness/index.ts`; use `createLineupAwareFitnessContext(...)` for per-run cached full and fast lineup scoring, fast mode during population evaluation, and full roster scoring only for final PlayPokemon diagnostics.
+- Frontend generation configuration no longer owns or passes `FitnessAlgorithm`; `TeamManager` sends only format, mode, anchors, and exclusions to `/api/generate-team`, and `TeamGenerator` must not render algorithm-selection UI copy.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -300,4 +301,38 @@
   - US-012 still needs to update analysis panels that currently assume algorithm-specific fitness labels.
 - Next iteration start:
   - US-010 - Remove algorithm selection from frontend configuration
+---
+## 2026-05-25 04:26 MST - US-010
+- What was implemented
+- Removed frontend algorithm-selection state, props, UI text, toggle rendering, and request payload fields from team generation configuration.
+- Added regression coverage proving config components do not pass algorithm props, generation requests omit `algorithm`, and the form renders without individual/team-synergy/fitness-mode text.
+- Files changed: `components/organisms/TeamConfigPanel/TeamConfigPanel.tsx`, `components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx`, `components/organisms/TeamGenerator/TeamGenerator.tsx`, `components/organisms/TeamGenerator/TeamGenerator.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-010 - Remove algorithm selection from frontend configuration`
+- Checks:
+  - `npx vitest run components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx components/organisms/TeamManager/TeamManager.test.tsx components/organisms/TeamGenerator/TeamGenerator.test.tsx` (pass after red failures)
+  - `npx prettier --write "components/organisms/TeamConfigPanel/TeamConfigPanel.tsx" "components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx" "components/organisms/TeamManager/TeamManager.tsx" "components/organisms/TeamManager/TeamManager.test.tsx" "components/organisms/TeamGenerator/TeamGenerator.tsx" "components/organisms/TeamGenerator/TeamGenerator.test.tsx"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 346 tests)
+  - Browser verification with dev-browser at `http://localhost:3000` (pass; no algorithm selector text, GBL mode updates controls, generation request body omitted `algorithm`)
+  - `npx vitest run components/organisms/TeamManager/TeamManager.test.tsx components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx components/organisms/TeamGenerator/TeamGenerator.test.tsx` (pass after review fix)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`
+  - Findings: fixed low test-prop-capture finding before commit; final review pass had no actionable findings; deferred commit-message format note because Ralph requires `feat: US-010 - Remove algorithm selection from frontend configuration`
+- Decisions (why):
+  - Removed algorithm state at `TeamManager` rather than hiding only the toggle because US-010 requires frontend request payloads and component props to stop carrying algorithm selection.
+  - Left `AlgorithmToggle` and `FitnessAlgorithm` type definitions in place because US-013 owns obsolete code-path removal after downstream UI/API stories finish migrating.
+  - Kept the generic phrase "genetic algorithms" in marketing/loading copy because the acceptance criteria only removes user-facing individual/teamSynergy/fitness-mode labels, not all references to the implementation technique.
+- **Learnings for future iterations:**
+  - Frontend adapters should treat lineup-aware generation as canonical and avoid adding any algorithm-selection state or request fields.
+  - `npm test` continues to mutate generated data fixtures; do not stage those unrelated data/vendor changes for frontend stories.
+  - Browser generation can be verified from GBL mode to keep the manual check bounded while still proving the request starts and omits `algorithm`.
+- Known issues / follow-ups:
+  - US-011 still needs to display recommended lineups in results.
+  - US-012 still needs to remove algorithm-specific assumptions from analysis panels.
+- Next iteration start:
+  - US-011 - Display recommended lineups in results
 ---

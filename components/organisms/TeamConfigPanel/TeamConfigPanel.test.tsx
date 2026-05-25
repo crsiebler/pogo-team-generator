@@ -11,15 +11,20 @@ vi.mock('@/components/organisms', async () => {
   const React = await import('react');
 
   return {
-    TeamGenerator: () => {
+    TeamGenerator: (props: Record<string, unknown>) => {
       const [anchorValue, setAnchorValue] = React.useState('');
 
       return (
-        <input
-          aria-label="Anchor Mock"
-          value={anchorValue}
-          onChange={(event) => setAnchorValue(event.target.value)}
-        />
+        <div>
+          <input
+            aria-label="Anchor Mock"
+            value={anchorValue}
+            onChange={(event) => setAnchorValue(event.target.value)}
+          />
+          <div data-testid="team-generator-props">
+            {Object.keys(props).join(',')}
+          </div>
+        </div>
       );
     },
   };
@@ -37,8 +42,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -70,8 +73,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -95,8 +96,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -117,8 +116,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -140,8 +137,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -165,8 +160,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -190,8 +183,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -212,8 +203,6 @@ describe('TeamConfigPanel', () => {
         onModeChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
-        algorithm="individual"
-        onAlgorithmChange={vi.fn()}
         onGenerate={vi.fn()}
         isGenerating={false}
       />,
@@ -221,5 +210,27 @@ describe('TeamConfigPanel', () => {
 
     expect(screen.queryByText('Tournament Format')).not.toBeInTheDocument();
     expect(screen.queryByText('Mode Selector')).not.toBeInTheDocument();
+  });
+
+  it('does not pass algorithm selection props to TeamGenerator', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        battleFrontierMasterPointsByPokemonName={{}}
+        selectedFormatId="great-league"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+
+    const propNames = screen.getByTestId('team-generator-props').textContent;
+
+    expect(propNames).not.toContain('algorithm');
+    expect(propNames).not.toContain('onAlgorithmChange');
   });
 });

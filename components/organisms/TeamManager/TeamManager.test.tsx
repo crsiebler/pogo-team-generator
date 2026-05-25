@@ -15,57 +15,69 @@ interface MockTeamConfigPanelProps {
   errorMessage?: string | null;
 }
 
+const teamConfigPanelProps: Array<
+  MockTeamConfigPanelProps & Record<string, unknown>
+> = [];
+
 interface MockAnalysisPanelProps {
   fitness: number | null;
   analysis: unknown;
 }
 
 vi.mock('@/components/organisms', () => ({
-  TeamConfigPanel: ({
-    selectedFormatId,
-    mode,
-    onFormatChange,
-    onModeChange,
-    onAnchorsChange,
-    onGenerate,
-    errorMessage,
-  }: MockTeamConfigPanelProps) => (
-    <div>
-      <div>Selected Format: {selectedFormatId}</div>
-      <div>Selected Mode: {mode}</div>
-      <button type="button" onClick={() => onFormatChange('ultra-league')}>
-        Set Ultra League
-      </button>
-      <button type="button" onClick={() => onModeChange('GBL')}>
-        Set GBL Mode
-      </button>
-      <button
-        type="button"
-        onClick={() => onFormatChange('battle-frontier-bayou-cup')}
-      >
-        Set Battle Frontier Bayou
-      </button>
-      <button
-        type="button"
-        onClick={() => onFormatChange('battle-frontier-master')}
-      >
-        Set Battle Frontier Master
-      </button>
-      <button
-        type="button"
-        onClick={() => onAnchorsChange(['Marowak', 'Marowak (Shadow)'])}
-      >
-        Set Invalid Anchors
-      </button>
-      <button type="button" onClick={() => onAnchorsChange(['Marowak'])}>
-        Set Single Anchor
-      </button>
-      <button type="button" onClick={onGenerate}>
-        Generate Team
-      </button>
-      {errorMessage ? <div role="alert">{errorMessage}</div> : null}
-    </div>
-  ),
+  TeamConfigPanel: (
+    props: MockTeamConfigPanelProps & Record<string, unknown>,
+  ) => {
+    teamConfigPanelProps.push(props);
+
+    const {
+      selectedFormatId,
+      mode,
+      onFormatChange,
+      onModeChange,
+      onAnchorsChange,
+      onGenerate,
+      errorMessage,
+    } = props;
+
+    return (
+      <div>
+        <div>Selected Format: {selectedFormatId}</div>
+        <div>Selected Mode: {mode}</div>
+        <button type="button" onClick={() => onFormatChange('ultra-league')}>
+          Set Ultra League
+        </button>
+        <button type="button" onClick={() => onModeChange('GBL')}>
+          Set GBL Mode
+        </button>
+        <button
+          type="button"
+          onClick={() => onFormatChange('battle-frontier-bayou-cup')}
+        >
+          Set Battle Frontier Bayou
+        </button>
+        <button
+          type="button"
+          onClick={() => onFormatChange('battle-frontier-master')}
+        >
+          Set Battle Frontier Master
+        </button>
+        <button
+          type="button"
+          onClick={() => onAnchorsChange(['Marowak', 'Marowak (Shadow)'])}
+        >
+          Set Invalid Anchors
+        </button>
+        <button type="button" onClick={() => onAnchorsChange(['Marowak'])}>
+          Set Single Anchor
+        </button>
+        <button type="button" onClick={onGenerate}>
+          Generate Team
+        </button>
+        {errorMessage ? <div role="alert">{errorMessage}</div> : null}
+      </div>
+    );
+  },
   ResultsPanel: () => <div>Results</div>,
   AnalysisPanel: ({ fitness, analysis }: MockAnalysisPanelProps) => (
     <div>
@@ -90,6 +102,7 @@ describe('TeamManager', () => {
   };
 
   beforeEach(() => {
+    teamConfigPanelProps.length = 0;
     showToastMock.mockClear();
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -241,6 +254,39 @@ describe('TeamManager', () => {
     };
 
     expect(payload.formatId).toBe('ultra-league');
+  });
+
+  it('does not pass algorithm selection props to TeamConfigPanel or generate-team', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(teamConfigPanelProps.length).toBeGreaterThan(0);
+    });
+
+    expect(teamConfigPanelProps.at(-1)).not.toHaveProperty('algorithm');
+    expect(teamConfigPanelProps.at(-1)).not.toHaveProperty('onAlgorithmChange');
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/generate-team',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    const postCall = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/generate-team',
+    );
+
+    expect(postCall).toBeDefined();
+
+    const [, options] = postCall as [string, RequestInit & { body: string }];
+    const payload = JSON.parse(options.body) as Record<string, unknown>;
+
+    expect(payload).not.toHaveProperty('algorithm');
   });
 
   it('blocks generation when anchor is not eligible for selected format', async () => {

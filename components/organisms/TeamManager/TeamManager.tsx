@@ -12,11 +12,7 @@ import {
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
-import {
-  FitnessAlgorithm,
-  GenerationAnalysis,
-  TournamentMode,
-} from '@/lib/types';
+import { GenerationAnalysis, TournamentMode } from '@/lib/types';
 
 interface TeamManagerProps {
   pokemonList?: string[];
@@ -52,8 +48,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   ] = useState<Record<string, number>>({});
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
-  const [currentAlgorithm, setCurrentAlgorithm] =
-    useState<FitnessAlgorithm>('individual');
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   const eligiblePokemonSet = useMemo(() => {
@@ -153,10 +147,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     setExcludedPokemon(exclusions);
   }, []);
 
-  const handleAlgorithmChange = useCallback((algorithm: FitnessAlgorithm) => {
-    setCurrentAlgorithm(algorithm);
-  }, []);
-
   const getBaseSpeciesName = (pokemonName: string): string =>
     pokemonName
       .replace(/\s*\([^)]*\)\s*/g, '')
@@ -231,7 +221,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
           mode: currentMode,
           anchorPokemon: selectedAnchors,
           excludedPokemon: excludedPokemon,
-          algorithm: currentAlgorithm,
         }),
       });
 
@@ -279,8 +268,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         onModeChange={handleModeChange}
         onAnchorsChange={handleAnchorsChange}
         onExclusionsChange={handleExclusionsChange}
-        algorithm={currentAlgorithm}
-        onAlgorithmChange={handleAlgorithmChange}
         onGenerate={handleGenerate}
         isGenerating={isGenerating}
       />
