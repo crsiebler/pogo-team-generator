@@ -12,6 +12,7 @@ import {
 import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
 import {
   isBattleFrontierBannedSpeciesId,
+  speciesIdToSpeciesName,
   speciesNameToId,
   validateTeamUniqueness,
 } from '@/lib/data/pokemon';
@@ -37,6 +38,7 @@ vi.mock('@/lib/data/pokemon', async () => {
   return {
     ...actual,
     isBattleFrontierBannedSpeciesId: vi.fn(),
+    speciesIdToSpeciesName: vi.fn(),
     speciesNameToId: vi.fn(),
     validateTeamUniqueness: vi.fn(),
   };
@@ -84,6 +86,17 @@ describe('POST /api/generate-team', () => {
     vi.mocked(speciesNameToId).mockImplementation((name: string) =>
       name.toLowerCase().replace(/\s+/g, '-'),
     );
+    vi.mocked(speciesIdToSpeciesName).mockImplementation(
+      (speciesId: string) => {
+        const namesById: Record<string, string> = {
+          feraligatr: 'Feraligatr',
+          morpeko_full_belly: 'Morpeko (Full Belly)',
+          venusaur: 'Venusaur',
+        };
+
+        return namesById[speciesId] ?? speciesId;
+      },
+    );
     vi.mocked(isBattleFrontierFormatId).mockImplementation((formatId) =>
       formatId.startsWith('battle-frontier-'),
     );
@@ -118,7 +131,7 @@ describe('POST /api/generate-team', () => {
             singleAnswerThreatCount: 1,
           },
           coveredThreats: ['feraligatr'],
-          weaknesses: ['venusaur'],
+          weaknesses: ['morpeko_full_belly'],
           diagnosticLabel: 'ABC',
         },
       ],
@@ -128,7 +141,7 @@ describe('POST /api/generate-team', () => {
         topNLineupDepth: 0.74,
         dominatingMatchupRate: 0.2,
         overwhelmingLossRate: 0.05,
-        singleAnswerRisks: ['venusaur'],
+        singleAnswerRisks: ['morpeko_full_belly'],
         viableLeadDiversity: 3,
         benchUtilitySummary: [],
       },
@@ -371,7 +384,7 @@ describe('POST /api/generate-team', () => {
           singleAnswerThreatCount: 1,
         },
         coveredThreats: ['feraligatr'],
-        weaknesses: ['venusaur'],
+        weaknesses: ['Venusaur'],
         diagnosticLabel: 'ABC',
       },
     ]);
@@ -528,7 +541,7 @@ describe('POST /api/generate-team', () => {
             singleAnswerThreatCount: 1,
           },
           coveredThreats: ['feraligatr'],
-          weaknesses: ['venusaur'],
+          weaknesses: ['morpeko_full_belly'],
           diagnosticLabel: 'ABC',
         },
       ],
@@ -538,7 +551,7 @@ describe('POST /api/generate-team', () => {
         topNLineupDepth: 0.74,
         dominatingMatchupRate: 0.2,
         overwhelmingLossRate: 0.05,
-        singleAnswerRisks: ['venusaur'],
+        singleAnswerRisks: ['morpeko_full_belly'],
         viableLeadDiversity: 3,
         benchUtilitySummary: [
           {
@@ -597,7 +610,7 @@ describe('POST /api/generate-team', () => {
           singleAnswerThreatCount: 1,
         },
         coveredThreats: ['feraligatr'],
-        weaknesses: ['venusaur'],
+        weaknesses: ['Morpeko (Full Belly)'],
         diagnosticLabel: 'ABC',
       },
     ]);
@@ -607,7 +620,7 @@ describe('POST /api/generate-team', () => {
       topNLineupDepth: 0.74,
       dominatingMatchupRate: 0.2,
       overwhelmingLossRate: 0.05,
-      singleAnswerRisks: ['venusaur'],
+      singleAnswerRisks: ['Morpeko (Full Belly)'],
       viableLeadDiversity: 3,
       benchUtilitySummary: [
         {

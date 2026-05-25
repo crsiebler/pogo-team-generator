@@ -186,7 +186,7 @@ describe('TeamDisplay', () => {
       topNLineupDepth: 0.76,
       dominatingMatchupRate: 0.42,
       overwhelmingLossRate: 0.14,
-      singleAnswerRisks: ['lanturn', 'venusaur'],
+      singleAnswerRisks: ['Morpeko (Full Belly)', 'Venusaur'],
       viableLeadDiversity: 3,
       benchUtilitySummary: benchUtility,
     };
@@ -230,7 +230,12 @@ describe('TeamDisplay', () => {
     expect(screen.getByText('Overwhelming Loss Rate')).toBeInTheDocument();
     expect(screen.getByText('14%')).toBeInTheDocument();
     expect(screen.getByText('Single-Answer Risks')).toBeInTheDocument();
-    expect(screen.getByText('lanturn, venusaur')).toBeInTheDocument();
+    expect(
+      screen.getByText('Morpeko (Full Belly), Venusaur'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('morpeko_full_belly, venusaur'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Viable Lead Diversity')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('Bench Utility Summary')).toBeInTheDocument();
@@ -240,8 +245,11 @@ describe('TeamDisplay', () => {
     expect(screen.getByText('Utility Score: 0.84')).toBeInTheDocument();
     expect(screen.getByText('Appearances: 4 total')).toBeInTheDocument();
     expect(
-      screen.getByText('Lead: 1 / Safe Swap: 2 / Closer: 1'),
+      screen.getByText('Lead: 1 / Switch: 2 / Closer: 1'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Lead: 1 / Safe Swap: 2 / Closer: 1'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Registeel')).toBeInTheDocument();
     expect(screen.getByText('Warning: unbringable')).toBeInTheDocument();
   });

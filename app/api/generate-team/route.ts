@@ -15,6 +15,7 @@ import {
 import {
   isBattleFrontierBannedSpeciesId,
   normalizeToChoosableSpeciesId,
+  speciesIdToSpeciesName,
   speciesNameToId,
   validateTeamUniqueness,
 } from '@/lib/data/pokemon';
@@ -24,7 +25,12 @@ import {
 } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
-import type { GenerationAnalysis, TournamentMode } from '@/lib/types';
+import type {
+  GenerationAnalysis,
+  PlayPokemonRosterMetrics,
+  RecommendedLineup,
+  TournamentMode,
+} from '@/lib/types';
 
 export const runtime = 'nodejs';
 
@@ -39,6 +45,30 @@ function getBattleFrontierMasterAnchorError(
     case 'mega-limit':
       return 'Battle Frontier Master anchors can include at most one Mega Pokemon.';
   }
+}
+
+function resolveRecommendedLineupLabels(
+  recommendedLineups: RecommendedLineup[] | undefined,
+): RecommendedLineup[] | undefined {
+  return recommendedLineups?.map((lineup) => ({
+    ...lineup,
+    weaknesses: lineup.weaknesses.map(speciesIdToSpeciesName),
+  }));
+}
+
+function resolveRosterMetricLabels(
+  rosterMetrics: PlayPokemonRosterMetrics | undefined,
+): PlayPokemonRosterMetrics | undefined {
+  if (!rosterMetrics) {
+    return undefined;
+  }
+
+  return {
+    ...rosterMetrics,
+    singleAnswerRisks: rosterMetrics.singleAnswerRisks.map(
+      speciesIdToSpeciesName,
+    ),
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -193,8 +223,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       team: result.team,
       fitness: result.fitness,
-      recommendedLineups: result.recommendedLineups,
-      rosterMetrics: result.rosterMetrics,
+      recommendedLineups: resolveRecommendedLineupLabels(
+        result.recommendedLineups,
+      ),
+      rosterMetrics: resolveRosterMetricLabels(result.rosterMetrics),
       benchUtility: result.benchUtility,
       analysis,
     });

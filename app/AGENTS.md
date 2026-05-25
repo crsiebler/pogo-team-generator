@@ -16,6 +16,8 @@ When generation fails due to missing format datasets, map `MissingRankingDataErr
 
 For `/api/generate-team`, ignore deprecated `algorithm` request fields, do not pass algorithm selectors into `generateTeam(...)`, and expose lineup-aware output fields (`recommendedLineups`, `rosterMetrics`, `benchUtility`) directly from the returned chromosome without adding algorithm labels.
 
+When `/api/generate-team` returns display-facing lineup diagnostics, resolve threat species ids such as lineup weaknesses and roster single-answer risks to readable species names in the route adapter so client components stay display-only.
+
 ## Testing
 
 Integration tests for APIs; run vitest on changes. Propagate errors/rejections.

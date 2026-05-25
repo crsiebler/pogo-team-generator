@@ -317,7 +317,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 16,
-      "passes": false,
+      "passes": true,
       "notes": ""
     },
     {
@@ -370,6 +370,24 @@
         "Typecheck passes"
       ],
       "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Render lineup weaknesses as bullet lists",
+      "description": "As a user, I want lineup weaknesses to render as a readable bulleted list so that each weakness is visually distinct and easy to scan.",
+      "acceptanceCriteria": [
+        "Recommended lineup Weaknesses render as semantic list items inside a ul or equivalent accessible list structure",
+        "Each weakness appears as its own bullet point instead of a comma-separated inline string",
+        "Weakness list items use human-readable speciesName values instead of raw speciesId values",
+        "Empty weakness lists render a concise fallback such as No major weaknesses identified instead of an empty list",
+        "Tests cover rendering multiple weaknesses as separate list items",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
       "passes": false,
       "notes": ""
     }

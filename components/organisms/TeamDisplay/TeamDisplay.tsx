@@ -181,7 +181,7 @@ export function TeamDisplay({
                     </p>
                     <p>Appearances: {utility.totalAppearances} total</p>
                     <p>
-                      Lead: {utility.leadAppearances} / Safe Swap:{' '}
+                      Lead: {utility.leadAppearances} / Switch:{' '}
                       {utility.switchAppearances} / Closer:{' '}
                       {utility.closerAppearances}
                     </p>

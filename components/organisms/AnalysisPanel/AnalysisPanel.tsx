@@ -441,26 +441,20 @@ export function AnalysisPanel({
                 <dl className="mt-2 grid gap-2 sm:grid-cols-3">
                   <div>
                     <dt className="font-semibold">Lead</dt>
-                    <dd>Lead: {recommendedLineup.lineup.lead}</dd>
+                    <dd>{recommendedLineup.lineup.lead}</dd>
                   </div>
                   <div>
-                    <dt className="font-semibold">Safe Swap</dt>
-                    <dd>Safe Swap: {recommendedLineup.lineup.switch}</dd>
+                    <dt className="font-semibold">Switch</dt>
+                    <dd>{recommendedLineup.lineup.switch}</dd>
                   </div>
                   <div>
                     <dt className="font-semibold">Closer</dt>
-                    <dd>Closer: {recommendedLineup.lineup.closer}</dd>
+                    <dd>{recommendedLineup.lineup.closer}</dd>
                   </div>
                 </dl>
                 <div className="mt-3 grid gap-1 text-emerald-900 sm:grid-cols-2 dark:text-emerald-100">
                   <p>Score: {formatScore(recommendedLineup.score)}</p>
                   <p>Structure: {recommendedLineup.diagnosticLabel}</p>
-                  <p>
-                    Covered threats:{' '}
-                    {recommendedLineup.coveredThreats.length > 0
-                      ? recommendedLineup.coveredThreats.join(', ')
-                      : 'None'}
-                  </p>
                   <p>
                     Weaknesses:{' '}
                     {recommendedLineup.weaknesses.length > 0

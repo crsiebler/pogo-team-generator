@@ -11,7 +11,10 @@
 - Frontend lineup recommendations should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then render in `AnalysisPanel` with Team Analysis Summary; do not recompute lineup scoring in UI adapters or render recommendation details inside generated-team cards.
 - Frontend PlayPokemon roster diagnostics should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; display `rosterMetrics` and `benchUtility` directly and include text warning labels for low-utility or unbringable roster members.
 - `GenerationOptions` and `GenerationAnalysis` in `lib/types.ts` no longer include algorithm selectors or labels; adapters should use the canonical lineup-aware generation path and pass through lineup-aware diagnostics.
-- Follow-up UI polish should remove verbose covered-threat lists from lineup cards, render weakness and single-answer risk species as display names, use `Switch` copy instead of `Safe Swap`, center bench warning pill text, and add meaningful range labels/colors for resource path scores.
+- Follow-up UI polish should center bench warning pill text and add meaningful range labels/colors for resource path scores.
+- Recommended lineup cards live in `AnalysisPanel` and should stay concise: no covered-threat list, `Lead`/`Switch`/`Closer` terms without repeated labels in values, and weakness ids rendered through analysis names or canonical Pokemon species names.
+- `/api/generate-team` should resolve display-facing threat ids in lineup diagnostics, such as recommended lineup weaknesses and roster single-answer risks, to readable species names before returning them so client components stay display-only.
+- PlayPokemon roster diagnostics in `TeamDisplay` should render API-provided single-answer risk labels and use `Switch` copy for role appearance counts.
 - Follow-up scoring work should increase offensive move effectiveness and defensive resistance/weakness spread weighting while distinguishing harmful redundant primary typings from useful complementary shared secondary typings.
 
 ## Iteration Log
@@ -508,4 +511,40 @@
   - Browser console still shows the pre-existing `/favicon.ico` 404.
 - Next iteration start:
   - US-016 - Simplify lineup detail display names and labels
+---
+## 2026-05-25 14:31 MST - US-016
+- What was implemented
+- Simplified recommended lineup cards in `AnalysisPanel` by removing covered-threat lists, changing Safe Swap copy to Switch, removing repeated role labels in values, and rendering weaknesses as readable species labels when analysis species names are available.
+- Updated PlayPokemon roster diagnostics in `TeamDisplay` to render API-provided single-answer risk labels and bench utility role counts with Switch copy.
+- Resolved recommended lineup weaknesses and roster single-answer risks to readable species names in `/api/generate-team` so client components remain display-only.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `app/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-016 - Simplify lineup detail display names and labels`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx components/organisms/TeamDisplay/TeamDisplay.test.tsx` (pass after red failures and review fix)
+  - `npx vitest run app/api/generate-team/route.test.ts components/organisms/AnalysisPanel/AnalysisPanel.test.tsx components/organisms/TeamDisplay/TeamDisplay.test.tsx` (pass after final review fix)
+  - `npx prettier --write "app/api/generate-team/route.ts" "app/api/generate-team/route.test.ts" "app/AGENTS.md" "components/AGENTS.md" "components/organisms/AnalysisPanel/AnalysisPanel.tsx" "components/organisms/AnalysisPanel/AnalysisPanel.test.tsx" "components/organisms/TeamDisplay/TeamDisplay.tsx" "components/organisms/TeamDisplay/TeamDisplay.test.tsx"` (pass after second review fix)
+  - `npx prettier --write "components/organisms/AnalysisPanel/AnalysisPanel.tsx" "components/organisms/AnalysisPanel/AnalysisPanel.test.tsx"` (pass after final review fix)
+  - `npx tsc --noEmit` (pass after final review fix)
+  - `npm run lint` (pass after final review fix)
+  - `npm test` (pass after final review fix; 52 files, 355 tests)
+  - Browser verification with Playwright at `http://localhost:3000` (pass after final review fix; generated PlayPokemon result showed concise Recommended Lineups with Switch labels, no covered threats, readable weaknesses, readable Single-Answer Risks, and Switch bench utility counts; no console errors in final check)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`
+  - Findings: fixed medium QA finding to resolve off-roster single-answer risks from canonical Pokemon species data, fixed medium code-review finding by moving canonical label resolution out of client components and into the route adapter, fixed final medium finding by rendering API-provided weakness labels directly in `AnalysisPanel`, and updated review status before commit; deferred low commit-message format note because Ralph requires `feat: US-016 - Simplify lineup detail display names and labels`
+- Decisions (why):
+  - Kept the changes display-only because API output already carries canonical lineup diagnostics and the story only changes how those details are presented.
+  - Used `analysis.threats.entries` to map recommended lineup weakness ids to species display names because `AnalysisPanel` owns recommendation rendering and already receives the analysis payload.
+  - Resolved canonical risk and weakness names in `/api/generate-team` instead of client components after specialist review because the route is the adapter boundary and client components should stay display-only.
+- **Learnings for future iterations:**
+  - Recommended lineup cards in `AnalysisPanel` should remain concise and avoid covered-threat lists; weakness labels should arrive from `/api/generate-team` as readable species names.
+  - `TeamDisplay` should render API-provided single-answer risk labels directly; keep canonical Pokemon data resolution in API/lib adapters, not client components.
+- Known issues / follow-ups:
+  - US-017 still needs resource path score range labels and colors.
+  - US-018 still needs centered bench warning pill text.
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+- Next iteration start:
+  - US-017 - Make resource path scores meaningful
 ---

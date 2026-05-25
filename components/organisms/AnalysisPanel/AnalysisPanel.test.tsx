@@ -30,6 +30,13 @@ const analysisFixture: GenerationAnalysis = {
         teamAnswers: 2,
         severityTier: 'medium',
       },
+      {
+        speciesId: 'venusaur',
+        pokemon: 'Venusaur',
+        rank: 4,
+        teamAnswers: 0,
+        severityTier: 'medium',
+      },
     ],
   },
   coreBreakers: {
@@ -102,7 +109,7 @@ describe('AnalysisPanel', () => {
         singleAnswerThreatCount: 1,
       },
       coveredThreats: ['lanturn'],
-      weaknesses: ['venusaur'],
+      weaknesses: ['Venusaur'],
       diagnosticLabel: 'ABC',
       resourcePathMetrics: {
         balanced: { available: true, score: 0.8 },
@@ -124,7 +131,7 @@ describe('AnalysisPanel', () => {
         singleAnswerThreatCount: 2,
       },
       coveredThreats: ['venusaur'],
-      weaknesses: ['lanturn'],
+      weaknesses: ['Lanturn'],
       diagnosticLabel: 'ABA',
     },
   ];
@@ -201,7 +208,7 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText(/algorithm/i)).not.toBeInTheDocument();
   });
 
-  it('renders recommended lineups from generated-team output in the analysis column', () => {
+  it('renders concise recommended lineup details with readable weakness names', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
@@ -217,12 +224,18 @@ describe('AnalysisPanel', () => {
 
     expect(screen.getByText('Recommended Lineups')).toBeInTheDocument();
     expect(screen.getByText('Lineup 1')).toBeInTheDocument();
-    expect(screen.getByText('Lead: azumarill')).toBeInTheDocument();
-    expect(screen.getByText('Safe Swap: skarmory')).toBeInTheDocument();
-    expect(screen.getByText('Closer: registeel')).toBeInTheDocument();
+    expect(screen.getAllByText('Lead')).toHaveLength(2);
+    expect(screen.getAllByText('azumarill')).toHaveLength(2);
+    expect(screen.getAllByText('Switch')).toHaveLength(2);
+    expect(screen.getAllByText('skarmory')).toHaveLength(2);
+    expect(screen.getAllByText('Closer')).toHaveLength(2);
+    expect(screen.getAllByText('registeel')).toHaveLength(2);
+    expect(screen.queryByText('Lead: azumarill')).not.toBeInTheDocument();
+    expect(screen.queryByText('Safe Swap: skarmory')).not.toBeInTheDocument();
     expect(screen.getByText('Score: 0.87')).toBeInTheDocument();
-    expect(screen.getByText('Covered threats: lanturn')).toBeInTheDocument();
-    expect(screen.getByText('Weaknesses: venusaur')).toBeInTheDocument();
+    expect(screen.queryByText(/Covered threats/i)).not.toBeInTheDocument();
+    expect(screen.getByText('Weaknesses: Venusaur')).toBeInTheDocument();
+    expect(screen.queryByText('Weaknesses: venusaur')).not.toBeInTheDocument();
     expect(screen.getByText('Structure: ABC')).toBeInTheDocument();
     expect(screen.getByText('Balanced: 0.80')).toBeInTheDocument();
     expect(screen.getByText('Shield spend: 0.76')).toBeInTheDocument();
@@ -244,7 +257,7 @@ describe('AnalysisPanel', () => {
     );
 
     expect(screen.getByText('Recommended Lineups')).toBeInTheDocument();
-    expect(screen.getByText('Lead: azumarill')).toBeInTheDocument();
+    expect(screen.getByText('azumarill')).toBeInTheDocument();
     expect(
       screen.getByText('Analysis unavailable for this run.'),
     ).toBeInTheDocument();
