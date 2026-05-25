@@ -282,6 +282,96 @@
       "priority": 14,
       "passes": true,
       "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Move recommended lineups to analysis column",
+      "description": "As a user, I want recommended lineup details to appear with Team Analysis Summary so that generated roster cards stay focused on the six Pokemon and analysis content stays together.",
+      "acceptanceCriteria": [
+        "Recommended Lineups heading renders in the third column with Team Analysis Summary",
+        "Recommended Lineups no longer renders inside the Generated Team card list",
+        "TeamDisplay remains focused on generated Pokemon cards and team notes",
+        "AnalysisPanel or a child component renders recommendedLineups from API output without recomputing lineup scores in the UI",
+        "Existing generated-team card rendering remains unchanged",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Simplify lineup detail display names and labels",
+      "description": "As a user, I want lineup cards to show concise, human-readable details so that weaknesses and risks are understandable without verbose species-id lists.",
+      "acceptanceCriteria": [
+        "Recommended lineup cards do not display the Covered threats section",
+        "Weaknesses display human-readable speciesName values instead of raw speciesId values",
+        "Single-Answer Risks display human-readable speciesName values instead of raw speciesId values",
+        "Recommended lineup cards do not repeat labels such as Lead and Lead: for the same row",
+        "Recommended lineup cards use Switch as the user-facing role label instead of Safe Swap",
+        "Bench utility role counts use Switch instead of Safe Swap",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Make resource path scores meaningful",
+      "description": "As a user, I want balanced, shield-spend, and shield-save scores to include ranges and colors so values like 0.54 are easy to interpret.",
+      "acceptanceCriteria": [
+        "Resource path labels explain what balanced, shield-spend, and shield-save values mean at a high level",
+        "Resource path scores show a range label such as weak, neutral, strong, or elite",
+        "Resource path scores are color coordinated to the documented range",
+        "Color is not the only indicator of score quality; text labels or accessible descriptions are included",
+        "Tests cover rendering of at least weak, neutral, and strong resource-path score states",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Center bench warning pill text",
+      "description": "As a user, I want warning pills such as Warning: unbringable to look centered and polished so bench utility warnings are readable.",
+      "acceptanceCriteria": [
+        "Warning pill text is centered horizontally and vertically",
+        "Warning pill layout works for unbringable and low-utility warnings",
+        "Warning pills use text labels and do not rely on color alone",
+        "Browser verification inspects a generated PlayPokemon result with at least one Warning: unbringable pill",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Increase type diversity and coverage weighting",
+      "description": "As a competitive player, I want roster scoring to discourage redundant type selections that do not appear in recommended lineups while preserving useful complementary shared typings.",
+      "acceptanceCriteria": [
+        "Roster scoring adds or strengthens weights for offensive move effectiveness across the expected meta",
+        "Roster scoring adds or strengthens weights for defensive resistance and weakness coverage across the expected meta",
+        "Roster scoring penalizes redundant primary typing or repeated defensive liabilities when duplicated types do not appear in recommended lineups",
+        "Secondary typing is evaluated contextually so useful pairs like Azumarill and Tinkaton are not automatically penalized only because both include Fairy typing",
+        "Tests cover a redundant Electric-heavy roster scoring lower than a roster with broader defensive and offensive type coverage when other quality signals are comparable",
+        "Tests cover a complementary shared-secondary-type case that is not over-penalized when the Pokemon cover different weaknesses or roles",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
     }
   ]
 }

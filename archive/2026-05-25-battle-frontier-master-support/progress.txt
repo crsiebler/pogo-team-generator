@@ -1,0 +1,199 @@
+## Codebase Patterns
+- Battle Frontier Master cycle point data lives in `data/battle-frontier-master-points.csv` with a `speciesId,points` header and should stay aligned with the active bundled PvPoke cup tier rules while using canonical ids from `data/pokemon.json`.
+- Battle Frontier Master shadow point inheritance belongs in code, not the CSV: inherit a listed base species cost only when the shadow variant exists in `data/pokemon.json` and is ranked for `battle-frontier-master`.
+- In `app/api/generate-team/route.ts`, validate Battle Frontier Master anchor legality after ranked-species and uniqueness checks but before `generateTeam(...)`, and map the first legality violation to a deterministic HTTP 400 message.
+- In `lib/genetic/chromosome.ts`, enforce Battle Frontier Master initialization legality while filling each slot and in the random fallback path, then keep a final legality assertion on the completed team so later operator work can reuse the same pattern.
+- In `lib/genetic/operators.ts`, thread `formatId` through `createNextGeneration(...)` into `crossover(...)` and `mutate(...)`, and fall back to the original legal parent/chromosome whenever Battle Frontier Master operator output would become illegal.
+- In `lib/genetic/algorithm.ts`, keep a final Battle Frontier Master legality assertion before returning the best team so test doubles or future operator regressions cannot leak an illegal final result.
+- For battle-format-specific setup feedback, keep `TeamManager` as the owner of transient generation errors and pass them into `TeamConfigPanel` for inline alerts; render static format-rule copy in the config panel instead of duplicating it inside `TeamGenerator`.
+- Reuse `/api/pokemon-list?formatId=battle-frontier-master` as the UI transport for `battleFrontierMasterPointsByPokemonName`, then render the live point meter inside `TeamGenerator` so anchor edits stay immediate while point resolution still comes from the server-side rules helper.
+
+## Iteration Log
+## 2026-04-15 11:40:25 MST - US-008
+- What was implemented
+- Added an algorithm-level regression test that forces an illegal Battle Frontier Master final team and verifies `generateTeam(...)` rejects it, then added a final legality backstop in `lib/genetic/algorithm.ts` so the generator cannot return an illegal team even if earlier stages regress.
+- Files changed: `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `069d513`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Added the new coverage at the `generateTeam(...)` boundary instead of only adding more unit tests around initialization or operators because the remaining gap was a missing end-to-end guard on the final returned team.
+  - Kept the production change to one final legality assertion rather than adding repair logic in the algorithm loop because initialization and operator stages already own legality preservation, and this story only needed a regression-proof backstop plus coverage.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `lib/genetic/algorithm.test.ts` is the right place to lock down final generation invariants that span multiple internals, especially when lower-level helpers are already unit-tested in isolation.
+  - Gotchas encountered (e.g., "don't forget to update Z when changing W")
+  - Husky lint-staged hooks will restage touched TypeScript files during commit, so any iteration-specific bookkeeping that needs the final commit hash must be written after the implementation commit rather than relying on pre-commit placeholders.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - The most meaningful uncovered Battle Frontier Master regression was not point lookup or route validation, but the lack of a final algorithm-level legality assertion before returning `bestOverall`.
+- Known issues / follow-ups:
+  - `prd.json` and `progress.txt` now reflect the completed story in the working tree after the implementation commit and are not included in commit `069d513`.
+- Next iteration start:
+  - No remaining PRD stories are pending; the next pass can verify the bookkeeping files are committed or conclude the branch work.
+---
+## 2026-04-15 11:35:14 MST - US-007
+- What was implemented
+- Added live Battle Frontier Master anchor point usage to the anchor UI by enriching the existing format-specific pokemon list response with server-resolved point values and rendering a running `(points / 11)` meter in `TeamGenerator`.
+- Files changed: `app/api/pokemon-list/route.ts`, `app/api/pokemon-list/route.test.ts`, `app/AGENTS.md`, `components/organisms/TeamConfigPanel/TeamConfigPanel.tsx`, `components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx`, `components/organisms/TeamGenerator/TeamGenerator.tsx`, `components/organisms/TeamGenerator/TeamGenerator.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification via `dev-browser` (pass)
+- Decisions (why):
+  - Reused the existing `/api/pokemon-list` fetch to deliver Battle Frontier Master point values so the UI could stay in sync with `getBattleFrontierMasterPointsForSpecies(...)` without adding a second frontend-specific rules path or duplicating CSV parsing in client code.
+  - Rendered the meter in `TeamGenerator` instead of `TeamConfigPanel` because `TeamGenerator` already owns anchor input state, which keeps the point display updating immediately on add, change, and removal.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - The `pokemon-list` response is now the right place to attach format-specific anchor metadata needed by the setup UI, as long as the route still delegates point resolution to `lib/` helpers.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - Browser verification for the live point meter can use Battle Frontier Master plus exact anchor names like `Palkia (Origin)` and `Palkia (Shadow)`; the meter moved to `7 / 11` after adding both and back to `2 / 11` after clearing one anchor.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-008` still needs broader automated coverage for the Battle Frontier Master rules and generator behavior that earlier iterations introduced.
+- Next iteration start:
+  - Expand automated coverage around Battle Frontier Master points, API validation, and generator legality so the new rule path is fully regression-tested.
+---
+## 2026-04-14 17:08:04 MST - US-001
+- What was implemented
+- Added the checked-in Battle Frontier Master cycle point CSV and a regression test that validates its canonical ids and current-cycle contents against the bundled cup tier rules.
+- Files changed: `data/battle-frontier-master-points.csv`, `lib/data/battleFrontierMasterPoints.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `cf64c32`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Used the bundled PvPoke `battlefrontiermaster` cup definition as the source for the CSV so the checked-in data matches the active cycle without inventing a separate manual source.
+  - Added a focused CSV regression test instead of production loader code because this iteration only covers storing validated cycle data, not rule evaluation.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - Battle Frontier Master cycle point data should stay as a flat `speciesId,points` CSV so later rules helpers can load it without format-specific parsing.
+  - Keep Battle Frontier Master point ids canonical to `data/pokemon.json`; the current cycle already matches bundled PvPoke ids.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - The active cycle tier list already exists in `vendor/pvpoke/src/data/gamemaster/cups/battlefrontiermaster.json`, which is a reliable comparison source for test coverage.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - US-002 still needs the runtime rules helper that loads this CSV and applies shadow inheritance.
+- Next iteration start:
+- Implement `US-002` by adding a cached Battle Frontier Master points helper in `lib/` that reads this CSV and resolves exact and inherited shadow costs.
+---
+## 2026-04-15 11:10:00 MST - US-004
+- What was implemented
+- Kept Battle Frontier Master random chromosome initialization legal by rejecting over-budget, extra-5-point, and extra-Mega candidates during both scored selection and fallback selection, with a final legality assertion before returning the chromosome.
+- Files changed: `lib/genetic/chromosome.ts`, `lib/genetic/chromosome.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Reused `getBattleFrontierMasterTeamLegality(...)` inside `createRandomChromosome(...)` so initialization follows the same legality rules already used by the API instead of duplicating point, Mega, and 5-point logic.
+  - Applied the legality filter in both the scored candidate loop and the fallback loop because the fallback path can otherwise bypass format constraints when the diversity scorer cannot find a candidate quickly.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `lib/genetic/chromosome.test.ts` is the focused unit-test entry point for initialization behavior, so Battle Frontier Master generator coverage can stay isolated there with mocked data helpers instead of loading full rankings or simulations.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - `createRandomChromosome(...)` now enforces Battle Frontier Master legality during initial team construction only; mutation and crossover still need equivalent guardrails in `lib/genetic/operators.ts` for `US-005`.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-005` still needs mutation and crossover legality preservation so evolved Battle Frontier Master teams cannot drift into illegal states after initialization.
+- Next iteration start:
+  - Update `lib/genetic/operators.ts` so crossover and mutation reject or repair illegal Battle Frontier Master children using the shared legality helper.
+---
+## 2026-04-14 17:14:29 MST - US-002
+- What was implemented
+- Added a cached Battle Frontier Master rules helper that loads the checked-in points CSV, resolves exact and inherited shadow costs, detects Mega species from structured Pokemon tags, and evaluates team legality for points, 5-point, and Mega limits.
+- Files changed: `lib/data/battleFrontierMasterRules.ts`, `lib/data/battleFrontierMasterRules.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `e924968`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Reused `getRankedSpeciesIds('battle-frontier-master')` to decide which shadow forms inherit costs so the helper follows active format rankings instead of assuming every `_shadow` form should count.
+  - Used Pokemon `tags` from `data/pokemon.json` for Mega detection so legality checks stay tied to structured gamemaster data instead of brittle naming heuristics.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `lib/data` runtime helpers typically lazy-load checked-in data and cache parsed results per format or feature, which keeps file I/O centralized and deterministic.
+  - Battle Frontier Master legality can treat missing point entries as zero-cost species while still enforcing point and Mega rules through one shared helper.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - `getBattleFrontierMasterTeamLegality(...)` now provides the reusable legality summary shape for upcoming API, generator, and UI wiring work.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - US-003 still needs API-level validation to turn legality violations into deterministic HTTP 400 errors.
+- Next iteration start:
+  - Wire `getBattleFrontierMasterTeamLegality(...)` into `app/api/generate-team/route.ts` so illegal Battle Frontier Master anchors are rejected before generation.
+---
+## 2026-04-14 17:18:09 MST - US-003
+- What was implemented
+- Wired Battle Frontier Master anchor validation into `POST /api/generate-team` so illegal anchor combinations fail fast with deterministic 400 errors for point-cap, 5-point, and Mega violations before team generation starts.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Reused `getBattleFrontierMasterTeamLegality(...)` in the route instead of duplicating rule checks so the API stays aligned with the shared format rules module used by later generator and UI work.
+  - Returned the first legality violation as the API error so responses stay deterministic and easy for tests and UI handling to match.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - `app/api/generate-team/route.test.ts` is the contract test for request validation, so new format-specific request guards should be added there with mocked `lib/` helpers rather than pulling real data into the route adapter tests.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - Battle Frontier Master API validation currently happens only on anchors, before `generateTeam(...)`; later generator stories still need legality enforcement during random initialization, mutation, and crossover.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - US-004 still needs generator initialization to avoid building illegal Battle Frontier Master teams without relying on API anchor validation.
+- Next iteration start:
+ - Update initial random chromosome construction in `lib/genetic/algorithm.ts` and related helpers so Battle Frontier Master teams start within the point, 5-point, and Mega limits.
+---
+## 2026-04-15 11:17:32 MST - US-005
+- What was implemented
+- Kept Battle Frontier Master crossover and mutation legal by threading `formatId` into the operator stage, rejecting illegal children, and adding focused regression tests for crossover, mutation, and algorithm-level format propagation.
+- Files changed: `lib/genetic/operators.ts`, `lib/genetic/operators.test.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Threaded `formatId` through `createNextGeneration(...)` instead of hardcoding Battle Frontier Master checks in the algorithm loop so legality stays encapsulated inside the operator layer that owns crossover and mutation.
+  - Fell back to the original legal parent/chromosome when an operator would create an illegal child because initialization already guarantees legal starting teams, making fallback the smallest behavior-preserving repair for non-Battle Frontier formats.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - Format-specific generator constraints need the selected `formatId` threaded all the way into `lib/genetic/operators.ts`; otherwise crossover and mutation silently revert to format-agnostic behavior even if initialization is format-aware.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - `lib/genetic/operators.test.ts` is now the focused place to cover crossover/mutation behavior with mocked legality helpers, while `lib/genetic/algorithm.test.ts` only needs to prove format context reaches the operator stage.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-006` still needs UI messaging so Battle Frontier Master rules and API validation failures are visible before or during team generation.
+- Next iteration start:
+  - Show Battle Frontier Master rule copy and legality errors in the team setup UI, then verify it in the browser.
+---
+## 2026-04-15 11:26:34 MST - US-006
+- What was implemented
+- Added Battle Frontier Master setup copy in `TeamConfigPanel` and surfaced generation failures as inline alerts near the configuration controls while preserving the existing toast notifications.
+- Files changed: `components/organisms/TeamConfigPanel/TeamConfigPanel.tsx`, `components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit: `<pending>`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Decisions (why):
+  - Kept the new rule copy and inline validation state in `TeamConfigPanel` because the acceptance criteria call for messaging near team setup, while `TeamManager` already owns the request lifecycle and can provide the latest generation error without duplicating API logic in child components.
+  - Preserved the existing toast behavior and added an inline alert instead of replacing toasts so legality failures remain visible both immediately and persistently without changing the established notification pattern.
+- **Learnings for future iterations:**
+  - Patterns discovered (e.g., "this codebase uses X for Y")
+  - Format-specific setup messaging fits best in `TeamConfigPanel`, while transient generate-team errors should stay in `TeamManager` state and flow down as props.
+  - Useful context (e.g., "the evaluation panel is in component X")
+  - Browser verification for this flow can use Battle Frontier Master plus two Mega anchors (for example `Swampert (Mega)` and `Gallade (Mega)`) to trigger the inline legality error deterministically.
+- Known issues / follow-ups:
+  - `progress.txt` commit hash placeholder needs to match the final git commit created in this iteration.
+  - `US-007` still needs a live Battle Frontier Master point meter in the anchor UI.
+- Next iteration start:
+  - Add Battle Frontier Master live anchor point usage to the setup UI using the shared server-side point resolution rules.
+---

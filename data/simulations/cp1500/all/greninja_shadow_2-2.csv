@@ -4,7 +4,7 @@ Abomasnow (Shadow) PS+WBI/EB,440,16,0
 Absol PC+BrS/Mh,665,7,38
 Absol (Shadow) PC+BrS/Mh,569,7,16
 Accelgor WSh+BBu/AS,791,7,67
-Accelgor (Shadow) WSh+BBu/SiB,756,7,59
+Accelgor (Shadow) WSh+BBu/EB,756,7,59
 Aegislash (Shield) PC+SB/GB,921,14,97
 Aerodactyl DB+RS/EP,560,7,14
 Aerodactyl (Shadow) DB+RS/EP,613,100,26
@@ -21,7 +21,7 @@ Amaura PS+WBI/Tb,782,7,65
 Amaura (Shadow) PS+WBI/Tb,730,7,53
 Ambipom A+AA/Re,682,7,42
 Ambipom (Shadow) A+AA/LS,604,7,24
-Amoonguss A+FoP/GK,626,9,29
+Amoonguss A+GK/FoP,626,9,29
 Amoonguss (Shadow) A+GK/FoP,608,0,25
 Ampharos VS+BrS/TBl,162,0,0
 Ampharos (Shadow) VS+BrS/TBl,143,16,0
@@ -36,7 +36,7 @@ Arbok Ac+DP/SW,630,2,30
 Arbok (Shadow) Ac+DP/SW,526,2,6
 Arboliva ML+EP/TBl,117,0,0
 Arcanine FF+WC/PsF,613,7,26
-Arcanine (Hisuian) Sn+WC/RS,891,98,90
+Arcanine (Hisuian) FF+WC/RS,721,98,51
 Arcanine (Shadow) FF+WC/PsF,547,2,11
 Archen WA+AP/Cr,682,98,42
 Archen (Shadow) WA+AP/Cr,682,84,42
@@ -105,7 +105,7 @@ Brionne Ch+AJ/DV,107,35,0
 Bronzong Cf+WBW/Pbk,808,21,71
 Bruxish Cf+AT/PsF,786,7,66
 Bulbasaur VW+PW/SeB,175,42,0
-Bulbasaur (Shadow) VW+PW/SlB,158,14,0
+Bulbasaur (Shadow) VW+PW/SeB,158,14,0
 Buneary QA+Sw/FiP,678,2,41
 Butterfree Cf+BBu/SiB,813,2,72
 Butterfree (Shadow) Cf+BBu/SiB,786,7,66
@@ -138,11 +138,11 @@ Charjabug VS+XS/D,126,0,0
 Charjabug (Shadow) VS+XS/D,115,16,0
 Charmeleon E+FiP/Re,834,7,77
 Charmeleon (Shadow) E+FiP/Ft,800,7,69
-Chatot Pk+SA/HW,543,7,10
+Chatot Pk+HW/SA,543,7,10
 Cherrim (Overcast) BS+DG/SoB,400,21,0
 Cherrim (Sunshine) BS+WBF/SoB,380,7,0
 Chesnaught LK+FP/SP,137,42,0
-Chesnaught (Shadow) LK+FP/SP,129,14,0
+Chesnaught (Shadow) VW+FP/SP,129,14,0
 Chespin VW+BS/SeB,393,7,0
 Chespin (Shadow) VW+BS/SeB,161,28,0
 Chimecho A+Psh/SB,747,7,57
@@ -217,14 +217,14 @@ Dewgong IS+IW/DR,359,28,0
 Dewott FC+AT/XS,124,28,0
 Dewott (Shadow) FC+AT/XS,130,14,0
 Dhelmise SC+PW/BrS,730,7,53
-Dialga (Shadow) DB+IH/DM,207,28,0
+Dialga (Shadow) DB+IH/T,207,28,0
 Diancie RTh+RS/M,526,2,6
 Diggersby MS+FiP/ScS,834,2,77
 Diggersby (Shadow) MS+ScS/FiP,782,2,65
 Dipplin DT+SeB/O,303,21,0
 Dodrio Pk+DrlP/BrB,300,42,0
 Dolliv ML+EP/TBl,100,14,0
-Dondozo W+S/O,497,28,0
+Dondozo W+S/O,486,28,0
 Donphan MSl+BS/TBl,341,28,0
 Donphan (Shadow) MSl+BS/TBl,341,9,0
 Dottler Cf+BBu/P,843,21,79
@@ -265,11 +265,11 @@ Dusclops (Shadow) H+IP/ShP,582,21,19
 Dusknoir A+DyP/ShP,678,7,41
 Dusknoir (Shadow) A+DyP/ShP,565,7,15
 Dustox Cf+SlB/SvW,839,0,78
-Dwebble SD+XS/RT,526,2,6
-Dwebble (Shadow) SD+XS/RT,417,42,0
+Dwebble SD+RT/XS,526,2,6
+Dwebble (Shadow) SD+RT/XS,417,42,0
 Eelektrik Ac+D/Cr,678,2,41
 Eelektross VS+DC/Tb,166,0,0
-Eevee QA+BS/Sw,730,2,53
+Eevee QA+BS/Dg,730,2,53
 Eldegoss BS+GK/EB,560,0,14
 Electabuzz TS+TP/Re,578,7,18
 Electabuzz (Shadow) TS+TP/Tb,285,28,0
@@ -289,6 +289,7 @@ Entei FF+FmC/ScS,582,7,19
 Entei (Shadow) FF+FmC/ScS,508,7,2
 Escavalier BBi+DR/RSh,134,21,0
 Escavalier (Shadow) BBi+DR/RSh,115,7,0
+Espathra Cf+Psh/DG,786,7,66
 Espeon Cf+PsF/SB,760,7,60
 Espurr Cf+Psh/EB,813,7,72
 Excadrill MS+DR/RS,782,7,65
@@ -312,15 +313,15 @@ Ferroseed (Shadow) MC+GB/IH,795,0,68
 Ferrothorn BS+PW/T,608,0,25
 Ferrothorn (Shadow) BS+PW/T,351,21,0
 Flaaffy CB+D/TBl,617,2,27
-Flaaffy (Shadow) CB+TBl/D,569,7,16
-Flabebe VW+DG/P,630,2,30
+Flaaffy (Shadow) CB+D/TBl,569,7,16
+Flabebe VW+DG/PlB,630,2,30
 Flamigo WA+UH/BrB,626,2,29
 Flapple DB+SeB/DgP,427,7,0
 Flareon E+SP/HW,782,7,65
 Fletchinder Pk+Fl/HW,630,7,30
 Fletchinder (Shadow) Pk+Fl/HW,526,2,6
 Floatzel W+AJ/Sw,556,21,13
-Floette VW+DG/P,578,2,18
+Floette VW+DG/PlB,578,2,18
 Floragato Lf+GK/PR,103,0,0
 Florges FW+CW/DV,450,11,0
 Flygon DT+ST/Tw,543,2,10
@@ -452,7 +453,7 @@ Heliolisk (Shadow) VS+BkS/PbC,176,16,0
 Heracross FC+UH/RT,184,0,0
 Herdier SdA+Dg/Tb,778,2,64
 Hippopotas SdA+RT/BS,665,7,38
-Hippopotas (Shadow) SdA+BS/RT,665,7,38
+Hippopotas (Shadow) SdA+RT/BS,665,7,38
 Hippowdon SdA+WBR/ScS,678,7,41
 Hippowdon (Shadow) SdA+WBR/ScS,678,7,41
 Hitmonchan C+IP/TP,158,35,0
@@ -467,7 +468,7 @@ Honchkrow Pk+BrB/DP,337,42,0
 Honchkrow (Shadow) Pk+BrB/DP,296,9,0
 Honedge PC+GB/IH,886,7,89
 Hoopa Cf+SB/P,760,7,60
-Houndoom Sn+FoP/Ft,817,7,73
+Houndoom FF+FoP/Ft,600,7,23
 Houndoom (Shadow) Sn+FoP/Ft,843,100,79
 Houndour E+Cr/Ft,817,100,73
 Houndour (Shadow) E+Cr/Ft,821,98,74
@@ -480,7 +481,7 @@ Hypno Cf+SB/TP,778,0,64
 Hypno (Shadow) Cf+TP/IP,782,21,65
 Illumise Tk+SvW/DG,630,16,30
 Incineroar FF+BrS/BB,678,7,41
-Indeedee (Female) Ex+P/EB,839,7,78
+Indeedee (Female) Ex+EB/P,839,7,78
 Indeedee (Male) Ex+SB/P,839,7,78
 Infernape FS+CC/BB,643,7,33
 Infernape (Shadow) FS+CC/BB,660,100,37
@@ -498,17 +499,17 @@ Kabuto (Shadow) MS+AJ/RT,782,7,65
 Kabutops FC+SE/WP,210,49,0
 Kabutops (Shadow) FC+SE/WP,200,35,0
 Kadabra Cf+SB/DG,734,7,54
-Kadabra (Shadow) Cf+SB/DG,682,7,42
+Kadabra (Shadow) PC+SB/DG,834,7,77
 Kangaskhan LK+BkB/Cr,530,2,7
-Karrablast FC+XS/DR,240,49,0
-Karrablast (Shadow) FC+XS/DR,220,35,0
+Karrablast FC+DR/XS,240,49,0
+Karrablast (Shadow) FC+DR/XS,220,35,0
 Kartana FC+LB/SSw,164,35,0
 Kecleon SkP+FoP/T,730,2,53
 Kilowattrel TS+Acr/AA,313,42,0
 Kingambit MSo+FoP/IH,782,2,65
 Kingdra DB+Sw/O,330,7,0
 Kingdra (Shadow) DB+Sw/O,97,28,0
-Kingler B+Crbh/XS,747,7,57
+Kingler B+Crbh/VG,747,7,57
 Klang MSo+VG/Tb,782,2,65
 Klawf MSl+Bd/RT,565,2,15
 Kleavor FC+XS/RS,317,30,0
@@ -546,8 +547,8 @@ Lickilicky RO+BS/SB,390,35,0
 Lickitung L+BS/PW,686,4,43
 Liepard Sn+DP/PR,795,2,68
 Liepard (Shadow) Sn+DP/PR,795,7,68
-Lileep Ac+AP/GK,643,0,33
-Lileep (Shadow) Ac+AP/GK,626,16,29
+Lileep Ac+GK/AP,643,0,33
+Lileep (Shadow) Ac+GK/AP,626,16,29
 Lilligant Ch+PlB/HB,92,21,0
 Lilligant (Hisuian) BS+UH/PlB,363,21,0
 Linoone SC+Sw/GK,800,2,69
@@ -557,7 +558,7 @@ Litleo I+FmC/Cr,639,7,32
 Lokix SkP+XS/TBl,582,2,19
 Lombre B+Sc/GK,752,0,58
 Lopunny LK+TAx/FB,578,16,18
-Loudred Bi+St/DV,656,2,36
+Loudred Bi+DV/St,656,2,36
 Loudred (Shadow) Bi+St/DV,656,7,36
 Lucario FPm+AuS/SB,123,2,0
 Ludicolo A+WBW/LfS,656,0,36
@@ -572,7 +573,7 @@ Luxray Sp+WC/PsF,210,14,0
 Luxray (Shadow) Sn+WC/PsF,795,7,68
 Lycanroc (Dusk) SkP+SE/TBl,621,7,28
 Lycanroc (Midday) SkP+SE/DR,656,7,36
-Lycanroc (Midnight) C+SE/PsF,263,0,0
+Lycanroc (Midnight) C+SE/TBl,263,0,0
 Machamp KC+CrC/RS,201,14,0
 Machamp (Shadow) KC+CrC/RS,209,0,0
 Machoke KC+CrC/Re,227,28,0
@@ -582,10 +583,10 @@ Machop (Shadow) KC+CrC/BkB,232,49,0
 Magby KC+FiP/BkB,416,28,0
 Magcargo E+RT/Ov,834,7,77
 Magmar KC+FiP/ScS,526,2,6
-Magmar (Shadow) KC+FiP/ScS,377,14,0
+Magmar (Shadow) E+FiP/ScS,782,42,65
 Magmortar KC+FiP/Tb,490,42,0
 Magmortar (Shadow) KC+FiP/Tb,486,98,0
-Magnemite VS+MgB/D,161,16,0
+Magnemite VS+D/MgB,161,16,0
 Magnemite (Shadow) VS+MgB/D,205,16,0
 Magneton VS+MgB/D,152,16,0
 Magneton (Shadow) TS+D/MgB,294,9,0
@@ -607,7 +608,7 @@ Marowak MSl+BC/RS,526,2,6
 Marowak (Alolan) FS+BC/SBo,713,7,49
 Marowak (Alolan) (Shadow) FS+SBo/BC,678,7,41
 Marowak (Shadow) MSl+BC/RS,316,28,0
-Marshtomp MS+S/Sl,782,2,65
+Marshtomp MS+S/MB,782,2,65
 Marshtomp (Shadow) MS+S/Sl,730,7,53
 Masquerain AS+AC/Lu,565,2,15
 Maushold MS+Sw/Cr,834,2,77
@@ -618,9 +619,9 @@ Meganium VW+FP/Eq,129,42,0
 Meganium (Shadow) VW+FP/Eq,141,28,0
 Melmetal TS+DbI/SP,626,2,29
 Meltan TS+Tb/FC,656,7,36
-Meowscarada Lf+NS/FP,117,0,0
-Meowstic (Female) Cf+SB/P,813,7,72
-Meowstic (Male) Cf+P/Tb,813,7,72
+Meowscarada Lf+FP/NS,117,0,0
+Meowstic (Female) Cf+SB/EB,813,7,72
+Meowstic (Male) Cf+Tb/EB,813,7,72
 Mesprit Cf+Sw/FS,786,7,66
 Metagross SC+MM/Eq,782,7,65
 Metagross (Shadow) SC+MM/Eq,730,7,53
@@ -638,8 +639,8 @@ Miltank RO+BS/Tb,350,21,0
 Minun QA+Tb/GK,713,2,49
 Misdreavus Psy+SS/DP,778,7,64
 Misdreavus (Shadow) Psy+SS/DP,778,7,64
-Mismagius H+SB/DP,782,7,65
-Mismagius (Shadow) H+SB/DP,747,7,57
+Mismagius H+SB/DG,782,7,65
+Mismagius (Shadow) H+SB/DG,747,7,57
 Moltres WA+Fl/HW,630,7,30
 Moltres (Galarian) SkP+Fl/BrB,656,2,36
 Moltres (Shadow) WA+Fl/HW,613,100,26
@@ -669,7 +670,7 @@ Nidoking (Shadow) FC+ST/Mh,358,49,0
 Nidoqueen MSl+SE/PF,521,2,5
 Nidoqueen (Shadow) MSl+SE/PF,287,9,0
 Nidorina PSt+PF/Tb,656,16,36
-Nidorina (Shadow) PSt+PF/Dg,669,2,39
+Nidorina (Shadow) PSt+PF/SlB,669,2,39
 Nidorino PSt+SlB/Dg,730,2,53
 Nidorino (Shadow) PSt+SlB/Dg,678,7,41
 Ninetales E+WBF/Ov,834,7,77
@@ -688,8 +689,8 @@ Obstagoon (Shadow) C+CrC/NS,153,0,0
 Octillery LO+Oc/GS,552,0,12
 Oddish Ac+SeB/SlB,475,35,0
 Oddish (Shadow) Ac+SeB/SlB,526,2,6
-Oinkologne Tk+BS/TBl,207,42,0
-Oinkologne (Female) Tk+BS/TBl,521,16,5
+Oinkologne MSl+BS/TBl,582,2,19
+Oinkologne (Female) MSl+BS/TBl,500,16,0
 Omanyte MS+RT/RB,834,2,77
 Omanyte (Shadow) MS+RT/RB,782,7,65
 Omastar MS+RS/HP,834,7,77
@@ -697,7 +698,7 @@ Omastar (Shadow) MS+RS/HP,782,7,65
 Onix RTh+RS/ST,582,7,19
 Onix (Shadow) RTh+RS/ST,508,7,2
 Oranguru Cf+BrS/TBl,808,21,71
-Orbeetle PC+Psh/BBu,747,35,57
+Orbeetle Cf+Psh/BBu,778,35,64
 Oricorio (Baile) AS+AC/AA,565,7,15
 Oricorio (Pa'u) AS+AC/AA,565,7,15
 Oricorio (Pom-Pom) AS+AC/AA,565,7,15
@@ -707,7 +708,7 @@ Overqwil PSt+AT/SB,730,2,53
 Pachirisu VS+HF/TP,130,28,0
 Palkia (Shadow) DB+AT/DM,150,28,0
 Palossand A+SB/ST,643,7,33
-Palpitoad MS+WP/EP,782,2,65
+Palpitoad MS+EP/WP,782,2,65
 Pancham LK+BS/Cr,194,28,0
 Pangoro KC+CC/NS,244,28,0
 Parasect FC+XS/CP,130,14,0
@@ -720,8 +721,8 @@ Perrserker SC+CC/TBl,756,7,59
 Persian FA+NS/PG,782,2,65
 Persian (Alolan) FA+FoP/PR,713,2,49
 Persian (Shadow) FA+NS/PG,730,7,53
-Phanpy Tk+RS/BS,665,2,38
-Phanpy (Shadow) Tk+RS/BS,665,7,38
+Phanpy Tk+RS/TBl,656,2,36
+Phanpy (Shadow) Tk+RS/TBl,608,7,25
 Pidgeot WA+AC/BrB,678,7,41
 Pidgeot (Shadow) WA+BrB/AC,626,7,29
 Pidgeotto WA+AC/Tw,678,2,41
@@ -762,17 +763,17 @@ Prinplup B+IW/HP,704,0,47
 Prinplup (Shadow) B+IW/HP,656,0,36
 Probopass Sp+RS/ZC,682,2,42
 Probopass (Shadow) Sp+RS/ZC,578,2,18
-Pumpkaboo (Average) A+FoP/GK,713,7,49
-Pumpkaboo (Large) A+FoP/GK,713,7,49
-Pumpkaboo (Small) A+FoP/GK,678,7,41
-Pumpkaboo (Super) A+FoP/GK,608,35,25
+Pumpkaboo (Average) A+GK/FoP,713,7,49
+Pumpkaboo (Large) A+GK/FoP,713,7,49
+Pumpkaboo (Small) A+GK/FoP,678,7,41
+Pumpkaboo (Super) A+GK/FoP,608,35,25
 Pupitar Bi+AP/Dg,700,100,46
 Pupitar (Shadow) Bi+AP/Dg,726,98,52
 Purugly SC+AA/T,782,2,65
 Purugly (Shadow) SC+AA/T,730,7,53
 Pyroar I+FmC/DP,608,7,25
-Quagsire MS+AT/SE,490,16,0
-Quagsire (Shadow) MS+AT/SE,782,2,65
+Quagsire MS+AT/MB,468,2,0
+Quagsire (Shadow) MS+AT/MB,782,2,65
 Quaquaval WA+CC/HC,391,35,0
 Quaxwell WA+AJ/AA,420,35,0
 Quilava E+FmC/Dg,808,7,71
@@ -801,7 +802,7 @@ Regice LO+Bl/T,852,0,81
 Regice (Shadow) LO+Bl/T,882,2,88
 Regidrago DB+DrE/VG,354,7,0
 Regieleki VS+ThC/HB,172,16,0
-Regigigas HPG+CrG/FB,560,7,14
+Regigigas HPG+CrG/T,560,7,14
 Regigigas (Shadow) HPI+CrG/T,652,7,35
 Regirock LO+SE/FB,882,2,88
 Regirock (Shadow) LO+SE/FB,882,7,88
@@ -833,14 +834,14 @@ Rowlet Lf+SeB/EB,162,42,0
 Rufflet Pk+BrB/Fl,578,7,18
 Runerigus SC+SB/RT,769,7,62
 Sableye SC+FoP/PG,730,2,53
-Sableye (Shadow) SC+FoP/PG,678,7,41
+Sableye (Shadow) SC+FoP/DrP,678,2,41
 Salamence DT+Fl/BrS,188,28,0
 Salamence (Shadow) DT+Fl/BrS,188,14,0
 Salazzle I+PF/DgP,660,42,37
 Samurott FC+HC/Mh,136,28,0
 Samurott (Hisuian) FC+SSw/IW,166,28,0
 Samurott (Shadow) FC+HC/Mh,139,14,0
-Sandaconda MSl+Wr/EP,366,42,0
+Sandaconda MSl+EP/Wr,366,42,0
 Sandshrew SdA+ST/RT,647,7,34
 Sandshrew (Alolan) PS+NS/GB,752,2,58
 Sandshrew (Alolan) (Shadow) PS+NS/GB,752,7,58
@@ -861,8 +862,8 @@ Scolipede PSt+AT/Mh,730,7,53
 Scolipede (Shadow) PSt+AT/XS,678,2,41
 Scrafty C+FoP/UH,136,0,0
 Scraggy FA+UH/FoP,713,2,49
-Scyther FC+XS/NS,181,35,0
-Scyther (Shadow) FC+XS/NS,163,21,0
+Scyther FC+NS/XS,181,35,0
+Scyther (Shadow) FC+NS/XS,163,21,0
 Seadra DB+HP/DgP,445,7,0
 Seadra (Shadow) DB+HP/DgP,495,7,0
 Seaking Pk+DR/IW,460,9,0
@@ -887,7 +888,7 @@ Shiftry (Shadow) Sn+LB/FoP,817,2,73
 Shiinotic A+SeB/M,626,4,29
 Shiinotic (Shadow) A+SeB/M,560,0,14
 Sigilyph AS+AC/AP,565,7,15
-Silicobra MSl+Wr/EP,530,2,7
+Silicobra MSl+EP/Wr,530,2,7
 Simipour WG+S/Cr,591,35,21
 Simisage VW+GK/Cr,150,14,0
 Simisear FS+Cr/Ft,643,7,33
@@ -895,7 +896,7 @@ Sirfetch'd FC+LB/CC,247,49,0
 Skarmory AS+BrB/SA,526,0,6
 Skarmory (Shadow) AS+BrB/SA,565,7,15
 Skeledirge I+TSo/SB,639,7,32
-Skiddo RSm+BkB/SeB,139,42,0
+Skiddo RSm+SeB/BkB,139,42,0
 Skorupi PSt+AT/CP,782,2,65
 Skorupi (Shadow) PSt+AT/CP,730,2,53
 Skrelp Ac+AT/Tw,433,16,0
@@ -959,7 +960,7 @@ Sudowoodo C+MeB/TBl,246,9,0
 Sudowoodo (Shadow) C+MeB/TBl,246,0,0
 Suicune IF+BuB/Sc,419,42,0
 Suicune (Shadow) IF+BuB/Sc,665,0,38
-Sunflora BS+SlB/LfS,420,21,0
+Sunflora BS+LfS/SlB,420,21,0
 Swadloon BBi+EB/SvW,77,35,0
 Swalot MS+Sl/IB,513,0,3
 Swampert MS+HC/Eq,782,2,65
@@ -1001,9 +1002,9 @@ Timburr LK+BkB/RT,189,14,0
 Timburr (Shadow) LK+BkB/RT,204,49,0
 Tinkaton FW+GH/Bd,485,30,0
 Tinkatuff FW+PR/FC,469,20,0
-Tirtouga WG+S/BS,747,16,57
+Tirtouga WG+S/AP,743,16,56
 Tirtouga (Shadow) WG+S/BS,665,2,38
-Toedscool MSl+EP/SeB,604,2,24
+Toedscool MSl+SeB/EP,604,2,24
 Toedscruel MSl+SeB/Wr,190,42,0
 Togedemaru TS+FeS/WC,504,2,1
 Togekiss Pk+Psh/AuS,626,2,29
@@ -1023,11 +1024,11 @@ Toxicroak PSt+DyP/SB,678,2,41
 Toxicroak (Shadow) PSt+DyP/SB,626,7,29
 Toxtricity Ac+WC/PUP,504,2,1
 Tranquill AS+HW/AA,565,2,15
-Tranquill (Shadow) AS+HW/SA,251,28,0
+Tranquill (Shadow) AS+HW/AA,251,28,0
 Trapinch SdA+ST/Cr,700,63,46
 Trapinch (Shadow) SdA+ST/Cr,673,84,40
 Trevenant SC+SeB/SB,752,7,58
-Trevenant (Shadow) SC+SB/FoP,678,7,41
+Trevenant (Shadow) SC+SB/SeB,704,7,47
 Tropius AS+LB/BrS,441,9,0
 Trumbeak Pk+DrlP/RB,578,7,18
 Trumbeak (Shadow) Pk+DrlP/RB,526,2,6
@@ -1045,13 +1046,13 @@ Tyrantrum (Shadow) DT+Cr/RT,539,2,9
 Tyrunt DT+RT/St,608,2,25
 Tyrunt (Shadow) DT+RT/St,539,2,9
 Umbreon Sn+FoP/LR,556,8,13
-Unfezant AS+SA/HW,526,2,6
-Unfezant (Shadow) AS+SA/HW,295,28,0
+Unfezant AS+HW/SA,526,2,6
+Unfezant (Shadow) AS+HW/SA,295,28,0
 Unown HPP+Str,782,7,65
 Ursaluna Tk+Sw/HH,543,7,10
 Ursaluna (Shadow) Tk+Sw/HH,395,28,0
-Ursaring SC+Sw/CC,730,7,53
-Ursaring (Shadow) SC+Sw/CC,730,7,53
+Ursaring SC+CC/Sw,730,7,53
+Ursaring (Shadow) SC+CC/Sw,730,7,53
 Urshifu (Rapid Strike) C+AJ/DyP,103,21,0
 Urshifu (Single Strike) SkP+BkB/DyP,613,2,26
 Uxie Cf+Sw/T,808,0,71
@@ -1076,7 +1077,7 @@ Vikavolt (Shadow) VS+XS/D,184,16,0
 Vileplume Ac+SlB/PlB,416,7,0
 Vileplume (Shadow) Ac+SlB/M,526,2,6
 Vivillon G+AA/BBu,241,28,0
-Volbeat Tk+BBu/Tb,630,16,30
+Volbeat Tk+Tb/BBu,630,16,30
 Volcanion I+Sc/Ov,647,7,34
 Vullaby AS+BrB/FoP,521,39,5
 Wailmer RO+Sc/BS,334,7,0
@@ -1087,12 +1088,12 @@ Walrein PS+ISp/Eq,530,0,7
 Walrein (Shadow) PS+ISp/Eq,425,35,0
 Wartortle WG+AJ/IB,686,14,43
 Wartortle (Shadow) WG+AJ/IB,578,0,18
-Watchog LK+Cr/HF,578,2,18
+Watchog LK+Cr/GK,578,2,18
 Watchog (Shadow) LK+Cr/HF,260,28,0
 Weavile Sn+Av/FoP,817,2,73
 Weavile (Shadow) Sn+Av/FoP,817,7,73
 Weepinbell Ac+PW/SeB,460,7,0
-Weepinbell (Shadow) Ac+PW/SlB,207,28,0
+Weepinbell (Shadow) Ac+PW/SeB,207,28,0
 Weezing RO+SlB/SB,747,2,57
 Weezing (Galarian) FW+Sl/BrS,344,2,0
 Weezing (Galarian) (Shadow) FW+Sl/BrS,526,2,6

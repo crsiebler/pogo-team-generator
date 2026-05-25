@@ -11,6 +11,8 @@
 - Frontend lineup recommendations should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; do not recompute lineup scoring in UI adapters.
 - Frontend PlayPokemon roster diagnostics should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then through `ResultsPanel` into `TeamDisplay`; display `rosterMetrics` and `benchUtility` directly and include text warning labels for low-utility or unbringable roster members.
 - `GenerationOptions` and `GenerationAnalysis` in `lib/types.ts` no longer include algorithm selectors or labels; adapters should use the canonical lineup-aware generation path and pass through lineup-aware diagnostics.
+- Follow-up UI polish should move `Recommended Lineups` from the generated-team column into the analysis column, remove verbose covered-threat lists from lineup cards, render weakness and single-answer risk species as display names, use `Switch` copy instead of `Safe Swap`, center bench warning pill text, and add meaningful range labels/colors for resource path scores.
+- Follow-up scoring work should increase offensive move effectiveness and defensive resistance/weakness spread weighting while distinguishing harmful redundant primary typings from useful complementary shared secondary typings.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -469,5 +471,5 @@
 - Known issues / follow-ups:
   - Browser console still shows the pre-existing `/favicon.ico` 404.
 - Next iteration start:
-  - All PRD stories should now be complete after specialist review and commit.
+  - US-015 - Move recommended lineups to analysis column
 ---
