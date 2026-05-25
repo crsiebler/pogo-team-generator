@@ -178,6 +178,74 @@ describe('scoreOrderedLineup', () => {
       scoreOrderedLineup(stackedLineup, context).score,
     );
   });
+
+  test('computes balanced, shield-spend, and shield-save resource path metrics from shield-specific matchups', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        shieldMatchupRatings: {
+          bulky: {
+            'threat-a': { 0: 200, 1: 800, 2: 300 },
+          },
+          balanced: {
+            'threat-a': { 0: 800, 1: 200, 2: 300 },
+          },
+          closer: {
+            'threat-a': { 0: 800, 1: 200, 2: 300 },
+          },
+        },
+      }),
+    );
+
+    expect(result.resourcePathMetrics?.balanced).toEqual({
+      available: true,
+      score: expect.closeTo(0.4),
+    });
+    expect(result.resourcePathMetrics?.shieldSpend).toEqual({
+      available: true,
+      score: expect.closeTo(0.6333333333333333),
+    });
+    expect(result.resourcePathMetrics?.shieldSave).toEqual({
+      available: true,
+      score: expect.closeTo(0.26666666666666666),
+    });
+  });
+
+  test('does not treat missing shield-specific data as an automatic resource-path loss', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        shieldMatchupRatings: {
+          bulky: {
+            'threat-a': { 1: 800 },
+          },
+        },
+      }),
+    );
+
+    expect(result.resourcePathMetrics?.balanced).toEqual({
+      available: true,
+      score: expect.closeTo(0.6),
+    });
+    expect(result.resourcePathMetrics?.shieldSpend).toEqual({
+      available: false,
+    });
+    expect(result.resourcePathMetrics?.shieldSave).toEqual({
+      available: false,
+    });
+  });
 });
 
 describe('calculateLineupPatternLabel', () => {
@@ -222,6 +290,10 @@ function createContext(
       string,
       Partial<Record<'lead' | 'switch' | 'closer', number>>
     >;
+    shieldMatchupRatings?: Record<
+      string,
+      Record<string, Partial<Record<0 | 1 | 2, number>>>
+    >;
   } = {},
 ): LineupScoringContext {
   const matchupRatings = overrides.matchupRatings ?? uniformMatchups(500);
@@ -245,6 +317,9 @@ function createContext(
     getRoleScore: (speciesId, role) => roleScores[speciesId]?.[role] ?? 0.5,
     getMatchupRating: (speciesId, threatId) =>
       matchupRatings[speciesId]?.[threatId] ?? null,
+    getShieldScenarioMatchupRating: (speciesId, threatId, shields) =>
+      overrides.shieldMatchupRatings?.[speciesId]?.[threatId]?.[shields] ??
+      null,
     getMatchupQualityScore: (speciesId) =>
       matchupQualityScores[speciesId] ?? 0.5,
     getMove: (moveId) => moves[moveId],

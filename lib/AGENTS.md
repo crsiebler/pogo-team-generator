@@ -42,6 +42,8 @@ For PlayPokemon lineup-aware fitness, enumerate bring-6 rosters through `lib/gen
 
 For lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, prefer `LineupScoringContext` injection in tests and `createDefaultLineupScoringContext(...)` for production wiring so ranking, move, Pokemon, and simulation lookups stay deterministic and cacheable by callers.
 
+For lineup resource path metrics, use shield-specific matchup lookup (`getShieldScenarioMatchupRating` in tests or `getShieldScenarioMatchupResult(...)` in production) rather than aggregate matchup ratings; missing shield rows should fall back neutrally and make a path unavailable only when that path has no shield-specific data at all.
+
 ## Code Style
 
 Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for functions/variables, PascalCase for types. Absolute imports (`@/lib/...`).

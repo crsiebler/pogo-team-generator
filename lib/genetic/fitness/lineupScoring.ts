@@ -9,12 +9,15 @@ import { getAverageRankingScore, getRankingScore } from '@/lib/data/rankings';
 import {
   getMatchupQualityScore,
   getMatchupResult,
+  getShieldScenarioMatchupResult,
   getTopThreatsByRole,
 } from '@/lib/data/simulations';
 import { getRecommendedMovesetForPokemon } from '@/lib/genetic/moveset';
 import type {
   LineupCoverageMetrics,
   LineupPatternLabel,
+  LineupResourcePathMetric,
+  LineupResourcePathMetrics,
   LineupRole,
   OrderedLineup,
   Pokemon,
@@ -71,6 +74,11 @@ export interface LineupScoringContext {
     speciesId: string,
     threatSpeciesId: string,
   ) => number | null;
+  getShieldScenarioMatchupRating?: (
+    speciesId: string,
+    threatSpeciesId: string,
+    shields: 0 | 1 | 2,
+  ) => number | null;
   getMatchupQualityScore?: (speciesId: string) => number;
   getMove?: (moveId: string) => LineupMoveData | undefined;
   getRecommendedMoveset?: (speciesId: string) => LineupMoveset | undefined;
@@ -101,6 +109,7 @@ export interface LineupScoreResult {
   weaknesses: string[];
   singleAnswerRisks: string[];
   diagnosticLabel: LineupPatternLabel;
+  resourcePathMetrics?: LineupResourcePathMetrics;
   componentScores: LineupComponentScores;
 }
 
@@ -123,6 +132,13 @@ export function createDefaultLineupScoringContext(
       ) / 100,
     getMatchupRating: (speciesId, threatSpeciesId) =>
       getMatchupResult(speciesId, threatSpeciesId, formatId),
+    getShieldScenarioMatchupRating: (speciesId, threatSpeciesId, shields) =>
+      getShieldScenarioMatchupResult(
+        speciesId,
+        threatSpeciesId,
+        shields,
+        formatId,
+      ),
     getMatchupQualityScore: (speciesId) =>
       getMatchupQualityScore(speciesId, formatId),
     getMove: getMoveByMoveId,
@@ -200,6 +216,7 @@ export function scoreOrderedLineup(
     weaknesses: coverage.weaknesses,
     singleAnswerRisks: coverage.singleAnswerRisks,
     diagnosticLabel: calculateLineupPatternLabel(lineup, context),
+    resourcePathMetrics: calculateResourcePathMetrics(lineup, context),
     componentScores,
   };
 }
@@ -526,6 +543,63 @@ function calculateShieldReliability(
       clamp01(context.getMatchupQualityScore!(speciesId)),
     ),
   );
+}
+
+function calculateResourcePathMetrics(
+  lineup: OrderedLineup,
+  context: LineupScoringContext,
+): LineupResourcePathMetrics | undefined {
+  if (!context.getShieldScenarioMatchupRating) {
+    return undefined;
+  }
+
+  return {
+    balanced: calculateResourcePathMetric(lineup, context, {
+      lead: 1,
+      switch: 1,
+      closer: 1,
+    }),
+    shieldSpend: calculateResourcePathMetric(lineup, context, {
+      lead: 2,
+      switch: 0,
+      closer: 0,
+    }),
+    shieldSave: calculateResourcePathMetric(lineup, context, {
+      lead: 0,
+      switch: 2,
+      closer: 2,
+    }),
+  };
+}
+
+function calculateResourcePathMetric(
+  lineup: OrderedLineup,
+  context: LineupScoringContext,
+  shieldsByRole: Record<LineupRole, 0 | 1 | 2>,
+): LineupResourcePathMetric {
+  const ratings: number[] = [];
+  let availableRatingCount = 0;
+
+  for (const threat of context.threats) {
+    for (const role of ['lead', 'switch', 'closer'] as const) {
+      const rating = context.getShieldScenarioMatchupRating!(
+        lineup[role],
+        threat,
+        shieldsByRole[role],
+      );
+      ratings.push(rating ?? 500);
+      availableRatingCount += rating === null ? 0 : 1;
+    }
+  }
+
+  if (ratings.length === 0 || availableRatingCount === 0) {
+    return { available: false };
+  }
+
+  return {
+    available: true,
+    score: average(ratings.map((rating) => rating / 1000)),
+  };
 }
 
 function sharesType(first: Pokemon, second: Pokemon): boolean {

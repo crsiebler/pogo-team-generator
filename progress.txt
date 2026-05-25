@@ -2,6 +2,7 @@
 - Lineup-aware type contracts live in `lib/types.ts`; use `LineupAwareFitnessConfig.mode` (`fast` or `full`) to distinguish hot GA scoring from UI-ready diagnostics instead of adding another user-selectable fitness algorithm.
 - PlayPokemon lineup enumeration lives in `lib/genetic/fitness/lineupEnumeration.ts`; roster input order controls lead iteration, backline pairs are sorted canonically and represented once, and species ids containing the lineup key delimiter (`|`) are invalid.
 - Lineup scoring lives in `lib/genetic/fitness/lineupScoring.ts`; use `LineupScoringContext` injection for deterministic tests and `createDefaultLineupScoringContext(...)` when wiring production data helpers.
+- Lineup resource path metrics use shield-specific matchup ratings when `LineupScoringContext.getShieldScenarioMatchupRating` is available; missing shield rows are neutral fallbacks and paths are unavailable only when no path-specific shield data exists.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -94,4 +95,34 @@
   - US-005 still needs roster-level aggregation across all 60 enumerated PlayPokemon lineups.
 - Next iteration start:
   - US-004 - Add shield and resource path scoring
+---
+## 2026-05-25 03:18 MST - US-004
+- What was implemented
+- Added shield/resource path metrics to ordered lineup scoring for balanced, shield-spend, and shield-save paths using shield-specific matchup data when available.
+- Added neutral fallback handling for missing shield-specific rows so partial simulation coverage does not count as an automatic loss.
+- Files changed: `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-004 - Add shield and resource path scoring`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts` (pass after red failure for missing resource path output)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - `npx prettier --write "lib/genetic/fitness/lineupScoring.ts" "lib/genetic/fitness/lineupScoring.test.ts" "prd.json"` (pass)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: none
+- Decisions (why):
+  - Added shield-path scoring to `lineupScoring.ts` because US-004 extends individual ordered lineup diagnostics and later recommendation/roster stories can consume the same result.
+  - Used neutral 500 battle-rating fallbacks for missing shield-specific rows because the PRD requires missing data not to become automatic losses.
+  - Marked a path unavailable only when no path-specific shield ratings exist because partial shield coverage can still provide useful directional diagnostics without overstating missing rows.
+- **Learnings for future iterations:**
+  - Resource path metrics are available directly on `LineupScoreResult` when the scoring context provides shield-specific matchup lookup.
+  - Use `getShieldScenarioMatchupResult(...)` for production shield paths instead of deriving shield paths from weighted aggregate matchup results.
+- Known issues / follow-ups:
+  - Later stories still need roster aggregation and recommendation output to expose these resource path metrics in API/UI-ready structures.
+- Next iteration start:
+  - US-005 - Implement PlayPokemon roster scoring
 ---
