@@ -22,6 +22,7 @@
 - Optimizer scoring should follow `docs/pokemon-go-team-optimization.md` and `docs/team-optimization/*`: use normalized weighted components in priority order (synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, role), keep hard constraints limited to legality/validity, and distinguish top-threat from full-meta coverage.
 - Ranking sync/runtime data should support PvPoke Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency categories when source files exist, while preserving graceful behavior for unavailable optional categories.
 - Normalized optimizer score breakdown helpers live in `lib/genetic/fitness/scoreBreakdown.ts`; use the documented weights there and clamp every component to 0..1 before weighted aggregation.
+- Lineup scoring contexts can provide separate `topThreats` and `fullMetaThreats`; canonicalize, dedupe, and bound pools before scoring, keep `context.threats` as the union/default pool, expose `topThreatCoverage` and `fullMetaCoverage`, and weight evaluated top-threat coverage more heavily than broader full-meta coverage.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -806,4 +807,41 @@
   - US-028 still needs to integrate the weighted breakdown into lineup and roster aggregation.
 - Next iteration start:
   - US-024 - Separate top-threat and full-meta threat pools
+---
+## 2026-05-25 16:30 MST - US-024
+- What was implemented
+- Added separate top-threat and full-meta threat pools to lineup scoring contexts, with default bounded deterministic production pools and per-call canonicalization/deduping/bounds.
+- Exposed top-threat and full-meta coverage diagnostics on lineup coverage metrics, including no-answer, single-answer, dominating, and overwhelming-loss counts for each pool.
+- Weighted evaluated top-threat coverage above full-meta coverage in full lineup scoring, fast PlayPokemon roster lineup scoring, and roster coverage breadth aggregation without treating unevaluated pools as automatic holes.
+- Files changed: `lib/types.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/recommendations.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-024 - Separate top-threat and full-meta threat pools`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass after red failures for missing split-pool diagnostics and weighting)
+  - `npx vitest run lib/genetic/fitness/recommendations.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass after updating recommendation test expectation for expanded diagnostics; pass after review fixes; pass after second review fixes, 43 tests)
+  - `npx prettier --write "lib/types.ts" "lib/genetic/fitness/lineupScoring.ts" "lib/genetic/fitness/lineupScoring.test.ts" "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass before review fixes; pass after first review fixes, 53 files, 385 tests; pass after second review fixes, 53 files, 387 tests)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` before coverage scoring changes.
+  - Read `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`
+  - Findings: fixed medium compatibility, missing-data weighting, pool canonicalization/bounds, roster coverage-breadth renormalization, metric clamping, and stale-progress findings before commit; final pass had no actionable critical/high/medium findings; low recommendation pass-through and default-context coverage suggestions deferred because split diagnostics are directly covered at the scoring boundary and the default context is implicitly exercised by full generation tests; low commit-message format note deferred because Ralph requires `feat: US-024 - Separate top-threat and full-meta threat pools`
+- Decisions (why):
+  - Kept `context.threats` in the evaluated union while adding optional split pools so existing tests and callers remain valid and new scoring paths can opt into top-threat/full-meta separation.
+  - Used `getTopThreatsByRole(Math.min(10, threatCount), formatId)` for the default top-threat pool and a capped role-based threat list for full-meta coverage because hot GA scoring must remain deterministic and bounded.
+  - Exposed pool diagnostics on `LineupCoverageMetrics` instead of adding UI-only structures because recommendations, API output, and future score-breakdown UI already consume lineup coverage metrics.
+  - Added `evaluatedThreatCount` to split-pool diagnostics so missing simulation rows can be distinguished from real no-answer threats and pool weights can be renormalized safely.
+  - Canonicalized threat ids through `normalizeToChoosableSpeciesId(...)` before deduping so alias-like threat ids do not double-count within bounded pools.
+- **Learnings for future iterations:**
+  - When adding diagnostics to `LineupCoverageMetrics`, update strict object-equality tests to use `toMatchObject` when they only care about the legacy fields.
+  - Split threat-pool scoring should preserve `context.threats` as the union/default pool while using sanitized `topThreats` and `fullMetaThreats` for weighted coverage decisions.
+- Known issues / follow-ups:
+  - US-028 still needs to fold these split coverage metrics into the normalized weighted score breakdown output.
+- Next iteration start:
+  - US-025 - Implement type-effectiveness offensive and defensive ratios
 ---

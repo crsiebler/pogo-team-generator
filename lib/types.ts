@@ -78,12 +78,24 @@ export type LineupPatternLabel = 'ABC' | 'ABB' | 'ABA' | 'unknown';
 /** Ordered pick-3 lineup keyed by battle role. */
 export type OrderedLineup = Record<LineupRole, string>;
 
+/** Coverage metrics for one bounded threat pool. */
+export interface ThreatPoolCoverageMetrics {
+  coverageRate: number;
+  evaluatedThreatCount: number;
+  noAnswerThreatCount: number;
+  singleAnswerThreatCount: number;
+  dominatingMatchupCount: number;
+  overwhelmingLossCount: number;
+}
+
 /** Coverage metrics shared by fast scoring and recommendation output. */
 export interface LineupCoverageMetrics {
   coverageRate: number;
   dominatingMatchupCount: number;
   overwhelmingLossCount: number;
   singleAnswerThreatCount: number;
+  topThreatCoverage?: ThreatPoolCoverageMetrics;
+  fullMetaCoverage?: ThreatPoolCoverageMetrics;
 }
 
 /** Availability and score for one shield or resource path. */

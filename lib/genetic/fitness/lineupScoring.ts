@@ -3,6 +3,7 @@ import type { BattleFormatId } from '@/lib/data/battleFormats';
 import { getMoveByMoveId, calculatePressureScore } from '@/lib/data/moves';
 import {
   getPokemonBySpeciesId,
+  normalizeToChoosableSpeciesId,
   speciesIdToSpeciesName,
 } from '@/lib/data/pokemon';
 import { getAverageRankingScore, getRankingScore } from '@/lib/data/rankings';
@@ -63,9 +64,14 @@ const ROLE_RANKING_BY_LINEUP_ROLE: Record<
   closer: 'closers',
 };
 
+const MAX_TOP_THREAT_POOL_SIZE = 30;
+const MAX_FULL_META_THREAT_POOL_SIZE = 100;
+
 /** Injectable data access for deterministic lineup scoring. */
 export interface LineupScoringContext {
   threats: string[];
+  topThreats?: string[];
+  fullMetaThreats?: string[];
   formatId?: BattleFormatId;
   getPokemon: (speciesId: string) => Pokemon | undefined;
   getRankingScore: (speciesId: string) => number;
@@ -118,8 +124,21 @@ export function createDefaultLineupScoringContext(
   formatId?: BattleFormatId,
   threatCount: number = 100,
 ): LineupScoringContext {
+  const boundedThreatCount = clampInteger(
+    threatCount,
+    0,
+    MAX_FULL_META_THREAT_POOL_SIZE,
+  );
+  const fullMetaThreats = getTopThreatsByRole(boundedThreatCount, formatId);
+  const topThreats = getTopThreatsByRole(
+    clampInteger(threatCount, 0, 10),
+    formatId,
+  );
+
   return {
-    threats: getTopThreatsByRole(threatCount, formatId),
+    threats: fullMetaThreats,
+    topThreats,
+    fullMetaThreats,
     formatId,
     getPokemon: getPokemonBySpeciesId,
     getRankingScore: (speciesId) =>
@@ -163,6 +182,9 @@ export function scoreOrderedLineup(
     .filter((entry): entry is Pokemon => entry !== undefined);
 
   const coverage = calculateCoverage(lineup, context);
+  const weightedCoverage = calculateWeightedPoolCoverage(
+    coverage.coverageMetrics,
+  );
   // Legacy signals intentionally left outside this lineup-level helper:
   // shadow preference, GBL surprise factor, and anchor synergy remain GA concerns
   // until the canonical fitness integration story replaces algorithm routing.
@@ -177,7 +199,7 @@ export function scoreOrderedLineup(
       normalizeScore(context.getRoleScore(lineup.switch, 'switch')) * 0.35 +
       normalizeScore(context.getRoleScore(lineup.closer, 'closer')) * 0.25,
     matchupCoverage:
-      coverage.coverageMetrics.coverageRate * 0.65 +
+      weightedCoverage * 0.65 +
       calculateRoleMatchupScore(lineup.lead, context.threats, context) * 0.35,
     typeSynergy: calculateTypeSynergy(pokemon),
     typeDiversity: calculateTypeDiversity(pokemon),
@@ -257,6 +279,23 @@ function calculateCoverage(
   context: LineupScoringContext,
 ): LineupCoverageResult {
   const speciesIds = [lineup.lead, lineup.switch, lineup.closer];
+  const overallThreats = sanitizeThreatPool(
+    context.threats,
+    MAX_FULL_META_THREAT_POOL_SIZE,
+  );
+  const topThreats = sanitizeThreatPool(
+    context.topThreats ?? overallThreats,
+    MAX_TOP_THREAT_POOL_SIZE,
+  );
+  const fullMetaThreats = sanitizeThreatPool(
+    context.fullMetaThreats ?? overallThreats,
+    MAX_FULL_META_THREAT_POOL_SIZE,
+  );
+  const evaluatedThreats = uniquePreservingOrder([
+    ...overallThreats,
+    ...topThreats,
+    ...fullMetaThreats,
+  ]);
   const coveredThreats: string[] = [];
   const weaknesses: string[] = [];
   const singleAnswerRisks: string[] = [];
@@ -264,10 +303,19 @@ function calculateCoverage(
   let evaluatedThreatCount = 0;
   let overwhelmingLossCount = 0;
 
-  for (const threat of context.threats) {
-    const ratings = speciesIds
-      .map((speciesId) => context.getMatchupRating(speciesId, threat))
-      .filter((rating): rating is number => rating !== null);
+  const topThreatCoverage = calculateThreatPoolCoverage(
+    speciesIds,
+    topThreats,
+    context,
+  );
+  const fullMetaCoverage = calculateThreatPoolCoverage(
+    speciesIds,
+    fullMetaThreats,
+    context,
+  );
+
+  for (const threat of evaluatedThreats) {
+    const ratings = getThreatRatings(speciesIds, threat, context);
 
     if (ratings.length === 0) {
       continue;
@@ -299,12 +347,96 @@ function calculateCoverage(
       dominatingMatchupCount,
       overwhelmingLossCount,
       singleAnswerThreatCount: singleAnswerRisks.length,
+      topThreatCoverage,
+      fullMetaCoverage,
     },
     coveredThreats,
     weaknesses,
     singleAnswerRisks,
     evaluatedThreatCount,
   };
+}
+
+function calculateThreatPoolCoverage(
+  speciesIds: string[],
+  threats: string[],
+  context: LineupScoringContext,
+): NonNullable<LineupCoverageMetrics['topThreatCoverage']> {
+  let coveredThreatCount = 0;
+  let evaluatedThreatCount = 0;
+  let dominatingMatchupCount = 0;
+  let noAnswerThreatCount = 0;
+  let overwhelmingLossCount = 0;
+  let singleAnswerThreatCount = 0;
+
+  for (const threat of threats) {
+    const ratings = getThreatRatings(speciesIds, threat, context);
+    if (ratings.length === 0) {
+      continue;
+    }
+
+    evaluatedThreatCount++;
+    dominatingMatchupCount += ratings.filter((rating) => rating > 600).length;
+    overwhelmingLossCount += ratings.filter((rating) => rating < 400).length;
+
+    const winningRatings = ratings.filter((rating) => rating > 500);
+    if (winningRatings.length > 0) {
+      coveredThreatCount++;
+    } else {
+      noAnswerThreatCount++;
+    }
+
+    if (winningRatings.length === 1) {
+      singleAnswerThreatCount++;
+    }
+  }
+
+  return {
+    coverageRate:
+      evaluatedThreatCount > 0 ? coveredThreatCount / evaluatedThreatCount : 0,
+    evaluatedThreatCount,
+    noAnswerThreatCount,
+    singleAnswerThreatCount,
+    dominatingMatchupCount,
+    overwhelmingLossCount,
+  };
+}
+
+function getThreatRatings(
+  speciesIds: string[],
+  threat: string,
+  context: LineupScoringContext,
+): number[] {
+  return speciesIds
+    .map((speciesId) => context.getMatchupRating(speciesId, threat))
+    .filter((rating): rating is number => rating !== null);
+}
+
+function calculateWeightedPoolCoverage(
+  coverageMetrics: LineupCoverageMetrics,
+): number {
+  const weightedPools = [
+    { metrics: coverageMetrics.topThreatCoverage, weight: 0.7 },
+    { metrics: coverageMetrics.fullMetaCoverage, weight: 0.3 },
+  ].filter(
+    (
+      pool,
+    ): pool is { metrics: NonNullable<typeof pool.metrics>; weight: number } =>
+      pool.metrics !== undefined && pool.metrics.evaluatedThreatCount > 0,
+  );
+
+  if (weightedPools.length === 0) {
+    return coverageMetrics.coverageRate;
+  }
+
+  const totalWeight = weightedPools.reduce((sum, pool) => sum + pool.weight, 0);
+
+  return (
+    weightedPools.reduce(
+      (sum, pool) => sum + pool.metrics.coverageRate * pool.weight,
+      0,
+    ) / totalWeight
+  );
 }
 
 function calculateRoleMatchupScore(
@@ -614,6 +746,22 @@ function average(values: number[]): number {
   return values.length > 0
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : 0;
+}
+
+function uniquePreservingOrder(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function sanitizeThreatPool(values: string[], limit: number): string[] {
+  return uniquePreservingOrder(
+    values
+      .map((value) => normalizeToChoosableSpeciesId(value.trim()))
+      .filter((value) => value.length > 0),
+  ).slice(0, limit);
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
 function clamp01(value: number): number {

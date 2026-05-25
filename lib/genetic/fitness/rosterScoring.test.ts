@@ -188,6 +188,140 @@ describe('scorePlayPokemonRoster', () => {
     expect(broadCoverage.fitness).toBeGreaterThan(narrowCoverage.fitness);
   });
 
+  test('weights top-threat coverage above rare full-meta holes in fast roster scoring', () => {
+    const topThreatSafeRoster = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        threats: ['top-threat', 'rare-threat'],
+        topThreats: ['top-threat'],
+        fullMetaThreats: ['top-threat', 'rare-threat'],
+        getMatchupRating: (speciesId, threat) => {
+          if (threat === 'top-threat') {
+            return speciesId === 'alpha' ? 650 : 450;
+          }
+
+          return speciesId === 'alpha' ? 350 : 450;
+        },
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const topThreatHoleRoster = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        threats: ['top-threat', 'rare-threat'],
+        topThreats: ['top-threat'],
+        fullMetaThreats: ['top-threat', 'rare-threat'],
+        getMatchupRating: (speciesId, threat) => {
+          if (threat === 'top-threat') {
+            return speciesId === 'alpha' ? 350 : 450;
+          }
+
+          return speciesId === 'alpha' ? 650 : 450;
+        },
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(topThreatSafeRoster.fitness).toBeGreaterThan(
+      topThreatHoleRoster.fitness,
+    );
+  });
+
+  test('deduplicates split threat pools before fast scoring diagnostics', () => {
+    const result = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        threats: ['top-threat', 'rare-threat'],
+        topThreats: ['top-threat', 'top-threat'],
+        fullMetaThreats: ['top-threat', 'rare-threat', 'rare-threat'],
+        getMatchupRating: (speciesId, threat) => {
+          if (threat === 'top-threat') {
+            return speciesId === 'alpha' ? 650 : 450;
+          }
+
+          return speciesId === 'alpha' ? 350 : 450;
+        },
+      }),
+      { mode: 'full', includeDiagnostics: true, recommendationLimit: 1 },
+    );
+
+    expect(
+      result.lineupScores?.[0]?.coverageMetrics.topThreatCoverage
+        ?.evaluatedThreatCount,
+    ).toBe(1);
+    expect(
+      result.lineupScores?.[0]?.coverageMetrics.fullMetaCoverage
+        ?.evaluatedThreatCount,
+    ).toBe(2);
+  });
+
+  test('does not penalize roster coverage breadth for unevaluated split pools', () => {
+    const scoreLineupWithoutSplitPools = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, {
+        score: 0.68,
+        coveredThreats: ['rare-threat'],
+      });
+    const scoreLineupWithUnevaluatedTopPool = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, {
+        score: 0.68,
+        coveredThreats: ['rare-threat'],
+        topThreatCoverage: {
+          coverageRate: 0,
+          evaluatedThreatCount: 0,
+          noAnswerThreatCount: 0,
+          singleAnswerThreatCount: 0,
+          dominatingMatchupCount: 0,
+          overwhelmingLossCount: 0,
+        },
+        fullMetaCoverage: {
+          coverageRate: 1,
+          evaluatedThreatCount: 1,
+          noAnswerThreatCount: 0,
+          singleAnswerThreatCount: 1,
+          dominatingMatchupCount: 1,
+          overwhelmingLossCount: 0,
+        },
+      });
+
+    const baseline = scorePlayPokemonRoster(
+      roster,
+      createContext({ scoreLineup: scoreLineupWithoutSplitPools }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const withUnevaluatedTopPool = scorePlayPokemonRoster(
+      roster,
+      createContext({ scoreLineup: scoreLineupWithUnevaluatedTopPool }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(withUnevaluatedTopPool.fitness).toBeCloseTo(baseline.fitness, 5);
+  });
+
+  test('clamps non-finite split-pool diagnostic rates before roster aggregation', () => {
+    const result = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        scoreLineup: (lineup) =>
+          makeLineupResult(lineup, {
+            score: 0.68,
+            coveredThreats: ['rare-threat'],
+            topThreatCoverage: {
+              coverageRate: Number.POSITIVE_INFINITY,
+              evaluatedThreatCount: 1,
+              noAnswerThreatCount: 0,
+              singleAnswerThreatCount: 0,
+              dominatingMatchupCount: 0,
+              overwhelmingLossCount: 0,
+            },
+          }),
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(result.fitness).toBeGreaterThanOrEqual(0);
+    expect(result.fitness).toBeLessThanOrEqual(1);
+  });
+
   test('scores a redundant Electric-heavy roster below broader type coverage when lineup quality is comparable', () => {
     const redundantElectricRoster = [
       'electric-a',
@@ -722,6 +856,8 @@ function makeLineupResult(
     dominatingMatchupCount?: number;
     overwhelmingLossCount?: number;
     singleAnswerRisks?: string[];
+    topThreatCoverage?: LineupScoreResult['coverageMetrics']['topThreatCoverage'];
+    fullMetaCoverage?: LineupScoreResult['coverageMetrics']['fullMetaCoverage'];
     weaknesses?: string[];
   },
 ): LineupScoreResult {
@@ -733,6 +869,8 @@ function makeLineupResult(
       dominatingMatchupCount: overrides.dominatingMatchupCount ?? 0,
       overwhelmingLossCount: overrides.overwhelmingLossCount ?? 0,
       singleAnswerThreatCount: overrides.singleAnswerRisks?.length ?? 0,
+      topThreatCoverage: overrides.topThreatCoverage,
+      fullMetaCoverage: overrides.fullMetaCoverage,
     },
     coveredThreats: overrides.coveredThreats ?? [],
     weaknesses: overrides.weaknesses ?? [],

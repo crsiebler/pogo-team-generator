@@ -117,6 +117,113 @@ describe('scoreOrderedLineup', () => {
     expect(result.componentScores.coreBreakerReliability).toBeCloseTo(2 / 3);
   });
 
+  test('exposes separate top-threat and full-meta coverage diagnostics', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['top-threat', 'rare-threat'],
+        topThreats: ['top-threat'],
+        fullMetaThreats: ['top-threat', 'rare-threat'],
+        matchupRatings: {
+          bulky: { 'top-threat': 650, 'rare-threat': 450 },
+          balanced: { 'top-threat': 450, 'rare-threat': 450 },
+          closer: { 'top-threat': 450, 'rare-threat': 450 },
+        },
+      }),
+    );
+
+    expect(result.coverageMetrics.topThreatCoverage).toEqual({
+      coverageRate: 1,
+      evaluatedThreatCount: 1,
+      noAnswerThreatCount: 0,
+      singleAnswerThreatCount: 1,
+      dominatingMatchupCount: 1,
+      overwhelmingLossCount: 0,
+    });
+    expect(result.coverageMetrics.fullMetaCoverage).toEqual({
+      coverageRate: 0.5,
+      evaluatedThreatCount: 2,
+      noAnswerThreatCount: 1,
+      singleAnswerThreatCount: 1,
+      dominatingMatchupCount: 1,
+      overwhelmingLossCount: 0,
+    });
+  });
+
+  test('weights top-threat coverage higher than rare full-meta coverage', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const topThreatHole = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['top-threat', 'rare-threat'],
+        topThreats: ['top-threat'],
+        fullMetaThreats: ['top-threat', 'rare-threat'],
+        matchupRatings: {
+          bulky: { 'top-threat': 350, 'rare-threat': 650 },
+          balanced: { 'top-threat': 450, 'rare-threat': 450 },
+          closer: { 'top-threat': 450, 'rare-threat': 450 },
+        },
+      }),
+    );
+    const rareFullMetaHole = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['top-threat', 'rare-threat'],
+        topThreats: ['top-threat'],
+        fullMetaThreats: ['top-threat', 'rare-threat'],
+        matchupRatings: {
+          bulky: { 'top-threat': 650, 'rare-threat': 350 },
+          balanced: { 'top-threat': 450, 'rare-threat': 450 },
+          closer: { 'top-threat': 450, 'rare-threat': 450 },
+        },
+      }),
+    );
+
+    expect(rareFullMetaHole.score).toBeGreaterThan(topThreatHole.score);
+    expect(
+      rareFullMetaHole.coverageMetrics.topThreatCoverage?.coverageRate,
+    ).toBe(1);
+    expect(topThreatHole.coverageMetrics.topThreatCoverage?.coverageRate).toBe(
+      0,
+    );
+  });
+
+  test('does not penalize unevaluated split pools as automatic coverage holes', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['top-threat', 'rare-threat'],
+        topThreats: ['missing-top-threat'],
+        fullMetaThreats: ['rare-threat'],
+        matchupRatings: {
+          bulky: { 'rare-threat': 650 },
+          balanced: { 'rare-threat': 450 },
+          closer: { 'rare-threat': 450 },
+        },
+      }),
+    );
+
+    expect(result.coverageMetrics.topThreatCoverage).toMatchObject({
+      coverageRate: 0,
+      evaluatedThreatCount: 0,
+    });
+    expect(result.componentScores.matchupCoverage).toBeGreaterThan(0.5);
+  });
+
   test('retains ranking, role, move, energy, and shield quality signals', () => {
     const lineup: OrderedLineup = {
       lead: 'bulky',

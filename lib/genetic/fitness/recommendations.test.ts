@@ -170,7 +170,7 @@ describe('buildGblLineupRecommendation', () => {
       switch: 'charlie',
       closer: 'alpha',
     });
-    expect(result.coverageMetrics).toEqual({
+    expect(result.coverageMetrics).toMatchObject({
       coverageRate: 1,
       dominatingMatchupCount: 0,
       overwhelmingLossCount: 0,
