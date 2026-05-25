@@ -271,3 +271,33 @@
 - Next iteration start:
   - US-009 - Update generate-team API contract
 ---
+## 2026-05-25 05:13 MDT - US-009
+- What was implemented
+- Updated `/api/generate-team` to accept requests without algorithm selection, ignore deprecated `algorithm` fields, stop passing algorithm into `generateTeam(...)`, and return lineup-aware generation fields from the chromosome.
+- Removed user-facing algorithm labels from the route response analysis while preserving existing threat, core-breaker, shield-scenario, and contribution analysis sections.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `app/AGENTS.md`, `README.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-009 - Update generate-team API contract`
+- Checks:
+  - `npx vitest run app/api/generate-team/route.test.ts` (pass after red failures)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 52 files, 343 tests)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`
+  - Findings: fixed PlayPokemon response field coverage, tightened no-algorithm forwarding assertions, removed route debug logs, updated stale README API docs, and recorded full validation; code-reviewer also flagged unrelated pre-existing `data/simulations` deletions outside this story, which were not staged or modified for US-009
+- Decisions (why):
+  - Ignored deprecated `algorithm` request fields instead of rejecting them because the API contract now has one canonical generation strategy and backwards request payloads should not select internal routing.
+  - Exposed `recommendedLineups`, `rosterMetrics`, and `benchUtility` directly from `generateTeam(...)` because the route is a thin adapter and should not recompute lineup diagnostics.
+  - Omitted `analysis.algorithm` from the API response while leaving broader frontend type cleanup to US-010 and US-012, where remaining UI consumers are removed or updated.
+- **Learnings for future iterations:**
+  - `/api/generate-team` should not validate, default, forward, or return algorithm labels; route tests should assert absence as part of future API response contract changes.
+  - Lineup-aware output is already attached to generated chromosomes; API and UI adapters should pass it through rather than invoking fitness helpers again.
+- Known issues / follow-ups:
+  - US-010 still needs to remove algorithm selection from frontend request payloads and UI controls.
+  - US-012 still needs to update analysis panels that currently assume algorithm-specific fitness labels.
+- Next iteration start:
+  - US-010 - Remove algorithm selection from frontend configuration
+---

@@ -24,17 +24,9 @@ import {
 } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
-import type {
-  FitnessAlgorithm,
-  GenerationAnalysis,
-  TournamentMode,
-} from '@/lib/types';
+import type { GenerationAnalysis, TournamentMode } from '@/lib/types';
 
 export const runtime = 'nodejs';
-
-function isFitnessAlgorithm(value: string): value is FitnessAlgorithm {
-  return value === 'individual' || value === 'teamSynergy';
-}
 
 function getBattleFrontierMasterAnchorError(
   violation: BattleFrontierMasterLegalityViolation,
@@ -52,14 +44,12 @@ function getBattleFrontierMasterAnchorError(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mode, formatId, anchorPokemon, excludedPokemon, algorithm } =
-      body as {
-        mode: TournamentMode;
-        formatId?: string;
-        anchorPokemon?: string[];
-        excludedPokemon?: string[];
-        algorithm?: FitnessAlgorithm;
-      };
+    const { mode, formatId, anchorPokemon, excludedPokemon } = body as {
+      mode: TournamentMode;
+      formatId?: string;
+      anchorPokemon?: string[];
+      excludedPokemon?: string[];
+    };
 
     const resolvedFormatId = formatId ?? DEFAULT_BATTLE_FORMAT_ID;
 
@@ -83,13 +73,6 @@ export async function POST(request: NextRequest) {
           error:
             'Battle Frontier formats only support Play! Pokemon team generation.',
         },
-        { status: 400 },
-      );
-    }
-
-    if (algorithm !== undefined && !isFitnessAlgorithm(algorithm)) {
-      return NextResponse.json(
-        { error: `Invalid fitness algorithm: ${algorithm}` },
         { status: 400 },
       );
     }
@@ -147,9 +130,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('Anchor Pokemon names:', anchorPokemon);
-    console.log('Anchor Species IDs:', anchorSpeciesIds);
-
     const excludedSpeciesIds: string[] = [];
     if (excludedPokemon && excludedPokemon.length > 0) {
       for (const name of excludedPokemon) {
@@ -179,10 +159,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('Excluded Pokemon names:', excludedPokemon);
-    console.log('Excluded Species IDs:', excludedSpeciesIds);
-
-    const selectedAlgorithm = algorithm ?? 'individual';
     const teamSize = mode === 'GBL' ? 3 : 6;
 
     const result = await generateTeam({
@@ -192,14 +168,12 @@ export async function POST(request: NextRequest) {
       excludedPokemon: excludedSpeciesIds,
       populationSize: 150,
       generations: 75,
-      algorithm: selectedAlgorithm,
     });
 
     const threats = buildThreatAnalysis(result.team, resolvedFormatId);
 
-    const analysis: GenerationAnalysis = {
+    const analysis: Omit<GenerationAnalysis, 'algorithm'> = {
       mode,
-      algorithm: selectedAlgorithm,
       teamSize,
       generatedAt: new Date().toISOString(),
       threats,
@@ -216,13 +190,12 @@ export async function POST(request: NextRequest) {
       ),
     };
 
-    console.log('Generated team:', result.team);
-    console.log('Team size:', result.team.length);
-    console.log('Anchors preserved:', result.anchors);
-
     return NextResponse.json({
       team: result.team,
       fitness: result.fitness,
+      recommendedLineups: result.recommendedLineups,
+      rosterMetrics: result.rosterMetrics,
+      benchUtility: result.benchUtility,
       analysis,
     });
   } catch (error) {

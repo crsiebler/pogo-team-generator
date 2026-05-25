@@ -103,6 +103,36 @@ describe('POST /api/generate-team', () => {
       team: ['azumarill'],
       fitness: 1,
       anchors: [],
+      recommendedLineups: [
+        {
+          lineup: {
+            lead: 'azumarill',
+            switch: 'marowak',
+            closer: 'marowak-shadow',
+          },
+          score: 0.82,
+          coverageMetrics: {
+            coverageRate: 0.7,
+            dominatingMatchupCount: 4,
+            overwhelmingLossCount: 1,
+            singleAnswerThreatCount: 1,
+          },
+          coveredThreats: ['feraligatr'],
+          weaknesses: ['venusaur'],
+          diagnosticLabel: 'ABC',
+        },
+      ],
+      rosterMetrics: {
+        viableLineupCount: 12,
+        topLineupQuality: 0.82,
+        topNLineupDepth: 0.74,
+        dominatingMatchupRate: 0.2,
+        overwhelmingLossRate: 0.05,
+        singleAnswerRisks: ['venusaur'],
+        viableLeadDiversity: 3,
+        benchUtilitySummary: [],
+      },
+      benchUtility: [],
     });
     vi.mocked(buildThreatAnalysis).mockReturnValue({
       evaluatedCount: 50,
@@ -230,11 +260,30 @@ describe('POST /api/generate-team', () => {
     );
   });
 
-  it('returns team and fitness unchanged with top-level analysis', async () => {
+  it('returns team, fitness, lineup-aware fields, and top-level analysis without algorithm labels', async () => {
     vi.mocked(generateTeam).mockResolvedValue({
       team: ['lanturn', 'dewgong', 'annihilape'],
       fitness: 0.8123,
       anchors: [],
+      recommendedLineups: [
+        {
+          lineup: {
+            lead: 'lanturn',
+            switch: 'dewgong',
+            closer: 'annihilape',
+          },
+          score: 0.91,
+          coverageMetrics: {
+            coverageRate: 0.86,
+            dominatingMatchupCount: 5,
+            overwhelmingLossCount: 1,
+            singleAnswerThreatCount: 1,
+          },
+          coveredThreats: ['feraligatr'],
+          weaknesses: ['venusaur'],
+          diagnosticLabel: 'ABC',
+        },
+      ],
     });
 
     const request = new Request('http://localhost/api/generate-team', {
@@ -245,7 +294,6 @@ describe('POST /api/generate-team', () => {
         formatId: 'great-league',
         anchorPokemon: ['Marowak'],
         excludedPokemon: ['Azumarill'],
-        algorithm: 'teamSynergy',
       }),
     });
 
@@ -253,9 +301,11 @@ describe('POST /api/generate-team', () => {
     const payload = (await response.json()) as {
       team: string[];
       fitness: number;
+      recommendedLineups: unknown[];
+      rosterMetrics?: unknown;
+      benchUtility?: unknown[];
       analysis: {
         mode: string;
-        algorithm: string;
         teamSize: number;
         generatedAt: string;
         threats: {
@@ -306,9 +356,29 @@ describe('POST /api/generate-team', () => {
     expect(response.status).toBe(200);
     expect(payload.team).toEqual(['lanturn', 'dewgong', 'annihilape']);
     expect(payload.fitness).toBe(0.8123);
+    expect(payload.recommendedLineups).toEqual([
+      {
+        lineup: {
+          lead: 'lanturn',
+          switch: 'dewgong',
+          closer: 'annihilape',
+        },
+        score: 0.91,
+        coverageMetrics: {
+          coverageRate: 0.86,
+          dominatingMatchupCount: 5,
+          overwhelmingLossCount: 1,
+          singleAnswerThreatCount: 1,
+        },
+        coveredThreats: ['feraligatr'],
+        weaknesses: ['venusaur'],
+        diagnosticLabel: 'ABC',
+      },
+    ]);
+    expect(payload).not.toHaveProperty('algorithm');
+    expect(payload.analysis).not.toHaveProperty('algorithm');
     expect(payload.analysis).toMatchObject({
       mode: 'GBL',
-      algorithm: 'teamSynergy',
       teamSize: 3,
       threats: {
         evaluatedCount: 50,
@@ -403,6 +473,167 @@ describe('POST /api/generate-team', () => {
     );
   });
 
+  it('passes no algorithm into canonical team generation', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const [generationOptions] = vi.mocked(generateTeam).mock.calls[0];
+
+    expect(response.status).toBe(200);
+    expect(generationOptions).not.toHaveProperty('algorithm');
+  });
+
+  it('ignores deprecated algorithm request fields', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+        algorithm: 'broken-algorithm',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const [generationOptions] = vi.mocked(generateTeam).mock.calls[0];
+
+    expect(response.status).toBe(200);
+    expect(generationOptions).not.toHaveProperty('algorithm');
+  });
+
+  it('returns PlayPokemon lineup recommendations, roster metrics, and bench utility', async () => {
+    vi.mocked(generateTeam).mockResolvedValue({
+      team: ['azumarill', 'marowak', 'marowak-shadow'],
+      fitness: 0.765,
+      anchors: [],
+      recommendedLineups: [
+        {
+          lineup: {
+            lead: 'azumarill',
+            switch: 'marowak',
+            closer: 'marowak-shadow',
+          },
+          score: 0.82,
+          coverageMetrics: {
+            coverageRate: 0.7,
+            dominatingMatchupCount: 4,
+            overwhelmingLossCount: 1,
+            singleAnswerThreatCount: 1,
+          },
+          coveredThreats: ['feraligatr'],
+          weaknesses: ['venusaur'],
+          diagnosticLabel: 'ABC',
+        },
+      ],
+      rosterMetrics: {
+        viableLineupCount: 12,
+        topLineupQuality: 0.82,
+        topNLineupDepth: 0.74,
+        dominatingMatchupRate: 0.2,
+        overwhelmingLossRate: 0.05,
+        singleAnswerRisks: ['venusaur'],
+        viableLeadDiversity: 3,
+        benchUtilitySummary: [
+          {
+            speciesId: 'azumarill',
+            utilityScore: 1,
+            totalAppearances: 5,
+            leadAppearances: 5,
+            switchAppearances: 0,
+            closerAppearances: 0,
+            warnings: [],
+          },
+        ],
+      },
+      benchUtility: [
+        {
+          speciesId: 'azumarill',
+          utilityScore: 1,
+          totalAppearances: 5,
+          leadAppearances: 5,
+          switchAppearances: 0,
+          closerAppearances: 0,
+          warnings: [],
+        },
+      ],
+    });
+
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      recommendedLineups: unknown[];
+      rosterMetrics: unknown;
+      benchUtility: unknown[];
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.recommendedLineups).toEqual([
+      {
+        lineup: {
+          lead: 'azumarill',
+          switch: 'marowak',
+          closer: 'marowak-shadow',
+        },
+        score: 0.82,
+        coverageMetrics: {
+          coverageRate: 0.7,
+          dominatingMatchupCount: 4,
+          overwhelmingLossCount: 1,
+          singleAnswerThreatCount: 1,
+        },
+        coveredThreats: ['feraligatr'],
+        weaknesses: ['venusaur'],
+        diagnosticLabel: 'ABC',
+      },
+    ]);
+    expect(payload.rosterMetrics).toEqual({
+      viableLineupCount: 12,
+      topLineupQuality: 0.82,
+      topNLineupDepth: 0.74,
+      dominatingMatchupRate: 0.2,
+      overwhelmingLossRate: 0.05,
+      singleAnswerRisks: ['venusaur'],
+      viableLeadDiversity: 3,
+      benchUtilitySummary: [
+        {
+          speciesId: 'azumarill',
+          utilityScore: 1,
+          totalAppearances: 5,
+          leadAppearances: 5,
+          switchAppearances: 0,
+          closerAppearances: 0,
+          warnings: [],
+        },
+      ],
+    });
+    expect(payload.benchUtility).toEqual([
+      {
+        speciesId: 'azumarill',
+        utilityScore: 1,
+        totalAppearances: 5,
+        leadAppearances: 5,
+        switchAppearances: 0,
+        closerAppearances: 0,
+        warnings: [],
+      },
+    ]);
+  });
+
   it.each([['little-cup'], ['kanto-cup'], ['spring-cup']] as const)(
     'returns 400 for invalid formatId %s',
     async (formatId) => {
@@ -423,27 +654,6 @@ describe('POST /api/generate-team', () => {
       expect(generateTeam).not.toHaveBeenCalled();
     },
   );
-
-  it('returns 400 for invalid algorithm values', async () => {
-    const request = new Request('http://localhost/api/generate-team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'PlayPokemon',
-        formatId: 'great-league',
-        algorithm: 'broken-algorithm',
-      }),
-    });
-
-    const response = await POST(request as NextRequest);
-    const responseBody = (await response.json()) as { error: string };
-
-    expect(response.status).toBe(400);
-    expect(responseBody.error).toBe(
-      'Invalid fitness algorithm: broken-algorithm',
-    );
-    expect(generateTeam).not.toHaveBeenCalled();
-  });
 
   it('returns 400 when Battle Frontier requests use GBL mode', async () => {
     const request = new Request('http://localhost/api/generate-team', {

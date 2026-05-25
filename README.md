@@ -242,8 +242,7 @@ Request body:
   "formatId": "kanto-cup",
   "mode": "GBL",
   "anchorPokemon": ["Mew"],
-  "excludedPokemon": ["Hypno"],
-  "algorithm": "teamSynergy"
+  "excludedPokemon": ["Hypno"]
 }
 ```
 
@@ -251,6 +250,7 @@ Notes:
 
 - `formatId` must be a supported value from `lib/data/battleFormats.ts`
 - anchors and exclusions must be eligible in the selected format
+- team generation uses the canonical lineup-aware strategy; `algorithm` request fields are deprecated and ignored
 - missing rankings or simulations return deterministic `400` responses with sync guidance
 
 ## Project Structure
@@ -288,7 +288,7 @@ data/
 
 - Data storage is now format-specific under `data/rankings/` and `data/simulations/`.
 - Multiple battle formats are supported through a single catalog in `lib/data/battleFormats.ts`.
-- The UI now lets users choose battle format and fitness algorithm.
+- The UI now lets users choose battle format for generation.
 - The generator now validates selected Pokemon against the chosen format before running.
 - Fitness scoring relies much more on simulation-backed matchup quality and threat redundancy.
 - Recommended movesets now come from ranking data instead of purely team-context heuristics.
