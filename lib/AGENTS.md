@@ -60,6 +60,8 @@ For optimizer weighted scoring, import the canonical score contract from `lib/ge
 
 For PlayPokemon roster scoring, `scorePlayPokemonRoster(...)` returns a normalized `scoreBreakdown` alongside `fitness`; keep safety, consistency, bulk, defensive ratio, offensive ratio, role, coverage, and synergy components normalized before aggregation.
 
+For role scoring in `lib/genetic/fitness`, treat Leads, Switches, and Closers rankings as primary role-fit signals; use Chargers, Attackers, and Consistency only as supporting inputs, and keep role fit subordinate to the canonical weighted score contract.
+
 Shared generation contracts in `lib/types.ts` do not include algorithm selectors or algorithm labels. Keep deprecated request compatibility isolated to API schemas and do not add algorithm fields back to `GenerationOptions` or `GenerationAnalysis`.
 
 ## Code Style

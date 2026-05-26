@@ -1093,11 +1093,15 @@ describe('scorePlayPokemonRoster', () => {
       recommendationLimit: 0,
     });
 
-    expect(getRankingCategoryScore).toHaveBeenCalledTimes(1);
+    expect(getRankingCategoryScore).toHaveBeenCalledTimes(4);
   });
 
-  test('does not cache transient consistency ranking errors', () => {
-    const getRankingCategoryScore = vi.fn(() => {
+  test('propagates transient optional role ranking errors', () => {
+    const getRankingCategoryScore = vi.fn((_speciesId, category) => {
+      if (category === 'consistency') {
+        return 0;
+      }
+
       throw new Error('temporary ranking read failure');
     });
     const context = createTypeCoverageContext({
@@ -1105,18 +1109,22 @@ describe('scorePlayPokemonRoster', () => {
       scoreLineup: (lineup) => makeLineupResult(lineup, { score: 0.68 }),
     });
 
-    scorePlayPokemonRoster(roster, context, {
-      mode: 'fast',
-      includeDiagnostics: false,
-      recommendationLimit: 0,
-    });
-    scorePlayPokemonRoster(roster, context, {
-      mode: 'fast',
-      includeDiagnostics: false,
-      recommendationLimit: 0,
-    });
+    expect(() =>
+      scorePlayPokemonRoster(roster, context, {
+        mode: 'fast',
+        includeDiagnostics: false,
+        recommendationLimit: 0,
+      }),
+    ).toThrow('temporary ranking read failure');
+    expect(() =>
+      scorePlayPokemonRoster(roster, context, {
+        mode: 'fast',
+        includeDiagnostics: false,
+        recommendationLimit: 0,
+      }),
+    ).toThrow('temporary ranking read failure');
 
-    expect(getRankingCategoryScore).toHaveBeenCalledTimes(roster.length * 2);
+    expect(getRankingCategoryScore).toHaveBeenCalledTimes(16);
   });
 
   test('falls back to move volatility and shield stability for consistency', () => {
@@ -1276,6 +1284,136 @@ describe('scorePlayPokemonRoster', () => {
       brittleResult.scoreBreakdown.components.bulk,
     );
     expect(bulkyResult.fitness).toBeGreaterThan(brittleResult.fitness);
+  });
+
+  test('uses chargers attackers and consistency for roster role scoring', () => {
+    const specializedRoster = [
+      'normal-a',
+      'water-a',
+      'grass-a',
+      'fire-a',
+      'flying-a',
+      'rock-a',
+    ];
+    const unsupportedRoster = [
+      'ghost-a',
+      'poison-a',
+      'bug-a',
+      'dark-a',
+      'psychic-a',
+      'electric-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      scoreLineup,
+      getRoleScore: (speciesId, role) => {
+        if (specializedRoster.includes(speciesId)) {
+          return role === 'lead' || role === 'switch' || role === 'closer'
+            ? 0.75
+            : 0.5;
+        }
+
+        return 0.75;
+      },
+      getRankingCategoryScore: (speciesId, category) => {
+        if (!specializedRoster.includes(speciesId)) {
+          return 20;
+        }
+
+        return category === 'consistency' ? 85 : 90;
+      },
+    });
+
+    const specializedResult = scorePlayPokemonRoster(
+      specializedRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const unsupportedResult = scorePlayPokemonRoster(
+      unsupportedRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(specializedResult.scoreBreakdown.components.role).toBeGreaterThan(
+      unsupportedResult.scoreBreakdown.components.role,
+    );
+    expect(specializedResult.fitness).toBeGreaterThan(
+      unsupportedResult.fitness,
+    );
+  });
+
+  test('uses supporting role exports in fast lineup scoring', () => {
+    const weakSupportResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        getRoleScore: () => 0.7,
+        getRankingCategoryScore: () => 20,
+        getMatchupRating: () => 520,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const strongSupportResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        getRoleScore: () => 0.7,
+        getRankingCategoryScore: (_speciesId, category) =>
+          category === 'attackers' ? 92 : 88,
+        getMatchupRating: () => 520,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(strongSupportResult.metrics.topLineupQuality).toBeGreaterThan(
+      weakSupportResult.metrics.topLineupQuality,
+    );
+    expect(strongSupportResult.fitness).toBeGreaterThan(
+      weakSupportResult.fitness,
+    );
+  });
+
+  test('keeps primary role rankings ahead of supporting role categories', () => {
+    const primaryRoster = [
+      'normal-a',
+      'water-a',
+      'grass-a',
+      'fire-a',
+      'flying-a',
+      'rock-a',
+    ];
+    const supportOnlyRoster = [
+      'ghost-a',
+      'poison-a',
+      'bug-a',
+      'dark-a',
+      'psychic-a',
+      'electric-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      scoreLineup,
+      getRoleScore: (speciesId) =>
+        primaryRoster.includes(speciesId) ? 0.9 : 0.2,
+      getRankingCategoryScore: (speciesId) =>
+        supportOnlyRoster.includes(speciesId) ? 95 : 20,
+    });
+
+    const primaryResult = scorePlayPokemonRoster(primaryRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+    const supportOnlyResult = scorePlayPokemonRoster(
+      supportOnlyRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(primaryResult.scoreBreakdown.components.role).toBeGreaterThan(
+      supportOnlyResult.scoreBreakdown.components.role,
+    );
   });
 
   test('penalizes duplicated primary types that are absent from top recommended lineups', () => {

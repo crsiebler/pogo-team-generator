@@ -6,7 +6,11 @@ import {
   normalizeToChoosableSpeciesId,
   speciesIdToSpeciesName,
 } from '@/lib/data/pokemon';
-import { getAverageRankingScore, getRankingScore } from '@/lib/data/rankings';
+import {
+  getAverageRankingScore,
+  getRankingScore,
+  MissingRankingDataError,
+} from '@/lib/data/rankings';
 import {
   getMatchupQualityScore,
   getMatchupResult,
@@ -36,7 +40,11 @@ interface LineupMoveData {
   energy?: number;
 }
 
-type LineupRankingCategory = 'consistency';
+type LineupRankingCategory = 'chargers' | 'attackers' | 'consistency';
+const unavailableRoleRankingCategories = new WeakMap<
+  LineupScoringContext,
+  Set<LineupRankingCategory>
+>();
 
 const ALL_TYPES = [
   'normal',
@@ -208,10 +216,7 @@ export function scoreOrderedLineup(
         normalizeScore(context.getRankingScore(speciesId)),
       ),
     ),
-    roleStrength:
-      normalizeScore(context.getRoleScore(lineup.lead, 'lead')) * 0.4 +
-      normalizeScore(context.getRoleScore(lineup.switch, 'switch')) * 0.35 +
-      normalizeScore(context.getRoleScore(lineup.closer, 'closer')) * 0.25,
+    roleStrength: calculateLineupRoleStrength(lineup, context),
     matchupCoverage:
       weightedCoverage * 0.65 +
       calculateRoleMatchupScore(lineup.lead, context.threats, context) * 0.35,
@@ -255,6 +260,93 @@ export function scoreOrderedLineup(
     resourcePathMetrics: calculateResourcePathMetrics(lineup, context),
     componentScores,
   };
+}
+
+function calculateLineupRoleStrength(
+  lineup: OrderedLineup,
+  context: LineupScoringContext,
+): number {
+  return (
+    calculateRoleFitScore(lineup.lead, 'lead', context) * 0.4 +
+    calculateRoleFitScore(lineup.switch, 'switch', context) * 0.35 +
+    calculateRoleFitScore(lineup.closer, 'closer', context) * 0.25
+  );
+}
+
+function calculateRoleFitScore(
+  speciesId: string,
+  role: LineupRole,
+  context: LineupScoringContext,
+): number {
+  const primary = normalizeScore(context.getRoleScore(speciesId, role));
+  const consistency = getOptionalRankingCategoryScore(
+    speciesId,
+    'consistency',
+    context,
+  );
+
+  if (role === 'lead') {
+    return weightedAverage([
+      { score: primary, weight: 0.8 },
+      {
+        score: getOptionalRankingCategoryScore(speciesId, 'chargers', context),
+        weight: 0.1,
+      },
+      { score: consistency, weight: 0.1 },
+    ]);
+  }
+
+  if (role === 'switch') {
+    return weightedAverage([
+      { score: primary, weight: 0.65 },
+      {
+        score: getOptionalRankingCategoryScore(speciesId, 'chargers', context),
+        weight: 0.25,
+      },
+      { score: consistency, weight: 0.1 },
+    ]);
+  }
+
+  return weightedAverage([
+    { score: primary, weight: 0.65 },
+    {
+      score: getOptionalRankingCategoryScore(speciesId, 'attackers', context),
+      weight: 0.2,
+    },
+    { score: consistency, weight: 0.15 },
+  ]);
+}
+
+function getOptionalRankingCategoryScore(
+  speciesId: string,
+  category: LineupRankingCategory,
+  context: LineupScoringContext,
+): number | undefined {
+  if (!context.getRankingCategoryScore) {
+    return undefined;
+  }
+  const unavailableCategories = unavailableRoleRankingCategories.get(context);
+  if (unavailableCategories?.has(category)) {
+    return undefined;
+  }
+
+  try {
+    const score = context.getRankingCategoryScore(speciesId, category);
+
+    return normalizeScore(score);
+  } catch (error) {
+    if (error instanceof MissingRankingDataError) {
+      if (!unavailableCategories) {
+        unavailableRoleRankingCategories.set(context, new Set([category]));
+      } else {
+        unavailableCategories.add(category);
+      }
+
+      return undefined;
+    }
+
+    throw error;
+  }
 }
 
 /** Classifies a lineup structure for diagnostics only, not primary scoring. */
@@ -760,6 +852,30 @@ function average(values: number[]): number {
   return values.length > 0
     ? values.reduce((sum, value) => sum + value, 0) / values.length
     : 0;
+}
+
+function weightedAverage(
+  entries: Array<{ score: number | undefined; weight: number }>,
+): number {
+  const availableEntries = entries.filter(
+    (entry): entry is { score: number; weight: number } =>
+      entry.score !== undefined,
+  );
+  if (availableEntries.length === 0) {
+    return 0;
+  }
+
+  const totalWeight = availableEntries.reduce(
+    (total, entry) => total + entry.weight,
+    0,
+  );
+
+  return (
+    availableEntries.reduce(
+      (total, entry) => total + entry.score * entry.weight,
+      0,
+    ) / totalWeight
+  );
 }
 
 function uniquePreservingOrder(values: string[]): string[] {

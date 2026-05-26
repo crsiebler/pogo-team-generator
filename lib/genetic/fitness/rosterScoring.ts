@@ -29,6 +29,11 @@ const MAX_TOP_THREAT_POOL_SIZE = 30;
 const MAX_FULL_META_THREAT_POOL_SIZE = 100;
 const unavailableConsistencyRankingContexts =
   new WeakSet<PlayPokemonRosterScoringContext>();
+type SupportingRoleRankingCategory = 'chargers' | 'attackers' | 'consistency';
+const unavailableSupportingRoleRankingCategories = new WeakMap<
+  PlayPokemonRosterScoringContext,
+  Set<SupportingRoleRankingCategory>
+>();
 const ALL_TYPES = [
   'normal',
   'fire',
@@ -190,10 +195,7 @@ export function scoreFastRosterLineup(
       normalizeScore(context.getRankingScore(speciesId)),
     ),
   );
-  const roleStrength =
-    normalizeScore(context.getRoleScore(lineup.lead, 'lead')) * 0.4 +
-    normalizeScore(context.getRoleScore(lineup.switch, 'switch')) * 0.35 +
-    normalizeScore(context.getRoleScore(lineup.closer, 'closer')) * 0.25;
+  const roleStrength = calculateOrderedLineupRoleStrength(lineup, context);
   const singleAnswerReliability =
     evaluatedThreatCount > 0
       ? clamp01(1 - singleAnswerRisks.length / evaluatedThreatCount)
@@ -704,8 +706,9 @@ function getOptionalConsistencyRankingScore(
     // Optional role exports are allowed to be absent; fall back to local reliability proxies.
     if (error instanceof MissingRankingDataError) {
       unavailableConsistencyRankingContexts.add(context);
+      return undefined;
     }
-    return undefined;
+    throw error;
   }
 }
 
@@ -844,14 +847,122 @@ function calculateRosterRoleComponent(
   context: PlayPokemonRosterScoringContext,
 ): number {
   return average(
-    roster.map((speciesId) =>
-      Math.max(
-        normalizeScore(context.getRoleScore(speciesId, 'lead')),
-        normalizeScore(context.getRoleScore(speciesId, 'switch')),
-        normalizeScore(context.getRoleScore(speciesId, 'closer')),
-      ),
-    ),
+    roster.map((speciesId) => calculateBestRosterRoleFit(speciesId, context)),
   );
+}
+
+function calculateBestRosterRoleFit(
+  speciesId: string,
+  context: PlayPokemonRosterScoringContext,
+): number {
+  return Math.max(
+    calculateRoleFitScore(speciesId, 'lead', context),
+    calculateRoleFitScore(speciesId, 'switch', context),
+    calculateRoleFitScore(speciesId, 'closer', context),
+  );
+}
+
+function calculateOrderedLineupRoleStrength(
+  lineup: OrderedLineup,
+  context: PlayPokemonRosterScoringContext,
+): number {
+  return (
+    calculateRoleFitScore(lineup.lead, 'lead', context) * 0.4 +
+    calculateRoleFitScore(lineup.switch, 'switch', context) * 0.35 +
+    calculateRoleFitScore(lineup.closer, 'closer', context) * 0.25
+  );
+}
+
+function calculateRoleFitScore(
+  speciesId: string,
+  role: LineupRole,
+  context: PlayPokemonRosterScoringContext,
+): number {
+  const primary = normalizeScore(context.getRoleScore(speciesId, role));
+  const consistency = getOptionalSupportingRoleRankingScore(
+    speciesId,
+    'consistency',
+    context,
+  );
+
+  if (role === 'lead') {
+    return weightedAverage([
+      { score: primary, weight: 0.8 },
+      {
+        score: getOptionalSupportingRoleRankingScore(
+          speciesId,
+          'chargers',
+          context,
+        ),
+        weight: 0.1,
+      },
+      { score: consistency, weight: 0.1 },
+    ]);
+  }
+
+  if (role === 'switch') {
+    return weightedAverage([
+      { score: primary, weight: 0.65 },
+      {
+        score: getOptionalSupportingRoleRankingScore(
+          speciesId,
+          'chargers',
+          context,
+        ),
+        weight: 0.25,
+      },
+      { score: consistency, weight: 0.1 },
+    ]);
+  }
+
+  return weightedAverage([
+    { score: primary, weight: 0.65 },
+    {
+      score: getOptionalSupportingRoleRankingScore(
+        speciesId,
+        'attackers',
+        context,
+      ),
+      weight: 0.2,
+    },
+    { score: consistency, weight: 0.15 },
+  ]);
+}
+
+function getOptionalSupportingRoleRankingScore(
+  speciesId: string,
+  category: SupportingRoleRankingCategory,
+  context: PlayPokemonRosterScoringContext,
+): number | undefined {
+  if (!context.getRankingCategoryScore) {
+    return undefined;
+  }
+  const unavailableCategories =
+    unavailableSupportingRoleRankingCategories.get(context);
+  if (unavailableCategories?.has(category)) {
+    return undefined;
+  }
+
+  try {
+    const score = context.getRankingCategoryScore(speciesId, category);
+
+    return normalizeScore(score);
+  } catch (error) {
+    if (error instanceof MissingRankingDataError) {
+      if (!unavailableCategories) {
+        unavailableSupportingRoleRankingCategories.set(
+          context,
+          new Set([category]),
+        );
+      } else {
+        unavailableCategories.add(category);
+      }
+
+      return undefined;
+    }
+
+    throw error;
+  }
 }
 
 function calculateRosterTypeCoverage(
@@ -1204,6 +1315,25 @@ function sum(values: number[]): number {
 
 function average(values: number[]): number {
   return values.length > 0 ? sum(values) / values.length : 0;
+}
+
+function weightedAverage(
+  entries: Array<{ score: number | undefined; weight: number }>,
+): number {
+  const availableEntries = entries.filter(
+    (entry): entry is { score: number; weight: number } =>
+      entry.score !== undefined,
+  );
+  if (availableEntries.length === 0) {
+    return 0;
+  }
+
+  const totalWeight = sum(availableEntries.map((entry) => entry.weight));
+
+  return (
+    sum(availableEntries.map((entry) => entry.score * entry.weight)) /
+    totalWeight
+  );
 }
 
 function clamp01(value: number): number {

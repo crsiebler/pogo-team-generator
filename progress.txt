@@ -25,6 +25,7 @@
 - Lineup scoring contexts can provide separate `topThreats` and `fullMetaThreats`; canonicalize, dedupe, and bound pools before scoring, keep `context.threats` as the union/default pool, expose `topThreatCoverage` and `fullMetaCoverage`, and weight evaluated top-threat coverage more heavily than broader full-meta coverage.
 - Type-effectiveness ratio helpers live in `lib/genetic/fitness/typeEffectivenessRatios.ts`; use `data/type-effectiveness.json` through `calculateEffectiveness(...)`, include selected fast and charged move types for offensive pressure, and keep offensive/defensive ratio scores normalized to 0..1.
 - `scorePlayPokemonRoster(...)` returns `scoreBreakdown` with normalized weighted optimizer components; safety should weight top-threat no-answer/single-answer/overwhelming losses above full-meta risks, consistency should use PvPoke Consistency when available before move/shield-stability proxies, and bulk should use `defense * hp / attack` when direct bulk data is unavailable.
+- Role scoring should treat Leads, Switches, and Closers as primary role signals, with Chargers, Attackers, and Consistency as supporting signals; keep role fit normalized and subordinate to the weighted score contract rather than using Overall as a direct role substitute.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -922,4 +923,40 @@
   - US-028 still needs broader weighted lineup and roster aggregation refinements.
 - Next iteration start:
   - US-027 - Expand role scoring with chargers attackers and consistency
+---
+## 2026-05-25 17:38 MST - US-027
+- What was implemented
+- Expanded ordered-lineup role strength to blend primary Leads/Switches/Closers scores with supporting Chargers, Attackers, and Consistency ranking categories.
+- Expanded PlayPokemon roster role component to use the same primary-plus-support role fit while keeping role as the lowest weighted optimizer component.
+- Files changed: `lib/data/rankings.ts`, `lib/data/rankings.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-027 - Expand role scoring with chargers attackers and consistency`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (red first for missing supporting role signals; pass after implementation, 54 tests)
+  - `npx vitest run lib/data/rankings.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass after review fixes, 64 tests)
+  - `npx prettier --write "lib/genetic/fitness/lineupScoring.ts" "lib/genetic/fitness/lineupScoring.test.ts" "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 54 files, 415 tests after review fixes)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` and `test-driven-development` before optimizer role-scoring changes.
+  - Read `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: `gbl-optimizer` skill required by PRD, `test-driven-development` skill for feature work
+  - Used: `gbl-optimizer`, `test-driven-development`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`
+  - Findings: fixed missing optional-category aggregate fallback, unexpected optional role-ranking error propagation, zero supporting-score preservation, fast-lineup supporting role scoring, and stale final-review status before commit; final pass had no actionable critical/high/medium findings; deferred low commit-message format note because Ralph requires `feat: US-027 - Expand role scoring with chargers attackers and consistency`
+- Decisions (why):
+  - Included the runtime ranking access changes for Chargers and Attackers because the branch head only had Consistency support, and production role scoring cannot use supporting Chargers/Attackers signals without the category loader contract.
+  - Weighted primary role rankings above supporting categories because the optimizer docs require Leads/Switches/Closers to be primary role signals, while Chargers/Attackers/Consistency only support energy pressure, shield-disadvantage pressure, and volatility assumptions.
+  - Kept role contribution inside the existing normalized weighted score contract because role remains the lowest-priority optimizer category and should not dominate synergy, coverage, safety, consistency, or bulk.
+  - Treated missing optional supporting role category files as unavailable rather than hard failures because optional PvPoke category exports should not block scoring when a format lacks those files.
+  - Preserved valid zero scores from available supporting category lookups because a listed low-support Pokemon should not be treated the same as an unavailable category file.
+- **Learnings for future iterations:**
+  - `LineupScoringContext.getRankingCategoryScore(...)` now supports `chargers`, `attackers`, and `consistency` for role support; tests should inject category scores instead of reading ranking CSVs.
+  - Supporting role exports are optional hot-path inputs; cache `MissingRankingDataError` category misses on the scoring context, but do not treat transient lookup failures as permanently unavailable.
+- Known issues / follow-ups:
+  - US-028 still needs broader weighted lineup and roster aggregation refinements using all normalized components.
+- Next iteration start:
+  - US-028 - Integrate weighted lineup and roster aggregation
 ---

@@ -264,6 +264,84 @@ describe('scoreOrderedLineup', () => {
     );
   });
 
+  test('uses chargers attackers and consistency as supporting role signals', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const weakSupport = scoreOrderedLineup(
+      lineup,
+      createContext({
+        rankingScores: uniformScores(80),
+        roleScores: {
+          bulky: { lead: 0.8 },
+          balanced: { switch: 0.8 },
+          closer: { closer: 0.8 },
+        },
+        categoryScores: uniformCategoryScores(20),
+        matchupRatings: uniformMatchups(520),
+      }),
+    );
+    const strongSupport = scoreOrderedLineup(
+      lineup,
+      createContext({
+        rankingScores: uniformScores(80),
+        roleScores: {
+          bulky: { lead: 0.8 },
+          balanced: { switch: 0.8 },
+          closer: { closer: 0.8 },
+        },
+        categoryScores: {
+          bulky: { chargers: 90, attackers: 20, consistency: 90 },
+          balanced: { chargers: 92, attackers: 20, consistency: 88 },
+          closer: { chargers: 20, attackers: 94, consistency: 90 },
+        },
+        matchupRatings: uniformMatchups(520),
+      }),
+    );
+
+    expect(strongSupport.componentScores.roleStrength).toBeGreaterThan(
+      weakSupport.componentScores.roleStrength,
+    );
+    expect(strongSupport.score).toBeGreaterThan(weakSupport.score);
+  });
+
+  test('keeps primary role rankings ahead of supporting role exports', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const primaryRoleFit = scoreOrderedLineup(
+      lineup,
+      createContext({
+        rankingScores: uniformScores(80),
+        roleScores: {
+          bulky: { lead: 0.9 },
+          balanced: { switch: 0.9 },
+          closer: { closer: 0.9 },
+        },
+        categoryScores: uniformCategoryScores(20),
+        matchupRatings: uniformMatchups(520),
+      }),
+    );
+    const supportOnlyFit = scoreOrderedLineup(
+      lineup,
+      createContext({
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.2),
+        categoryScores: uniformCategoryScores(95),
+        matchupRatings: uniformMatchups(520),
+      }),
+    );
+
+    expect(primaryRoleFit.componentScores.roleStrength).toBeGreaterThan(
+      supportOnlyFit.componentScores.roleStrength,
+    );
+    expect(primaryRoleFit.score).toBeGreaterThan(supportOnlyFit.score);
+  });
+
   test('retains type synergy and diversity signals', () => {
     const diverseLineup: OrderedLineup = {
       lead: 'bulky',
@@ -385,6 +463,10 @@ function createContext(
     moves?: Record<string, { type: string }>;
     pressureScores?: Record<string, Record<string, number>>;
     rankingScores?: Record<string, number>;
+    categoryScores?: Record<
+      string,
+      Partial<Record<'chargers' | 'attackers' | 'consistency', number>>
+    >;
     recommendedMovesets?: Record<
       string,
       {
@@ -412,6 +494,7 @@ function createContext(
   };
   const pressureScores = overrides.pressureScores ?? {};
   const rankingScores = overrides.rankingScores ?? uniformScores(80);
+  const categoryScores = overrides.categoryScores ?? uniformCategoryScores(50);
   const recommendedMovesets =
     overrides.recommendedMovesets ??
     uniformMovesets('FAST', 'CHARGED_A', 'CHARGED_B');
@@ -422,6 +505,8 @@ function createContext(
     getPokemon: (speciesId) => pokemonById[speciesId],
     getRankingScore: (speciesId) => rankingScores[speciesId] ?? 80,
     getRoleScore: (speciesId, role) => roleScores[speciesId]?.[role] ?? 0.5,
+    getRankingCategoryScore: (speciesId, category) =>
+      categoryScores[speciesId]?.[category] ?? 50,
     getMatchupRating: (speciesId, threatId) =>
       matchupRatings[speciesId]?.[threatId] ?? null,
     getShieldScenarioMatchupRating: (speciesId, threatId, shields) =>
@@ -482,6 +567,20 @@ function uniformRoleScores(
     Object.keys(pokemonById).map((speciesId) => [
       speciesId,
       { lead: value, switch: value, closer: value },
+    ]),
+  );
+}
+
+function uniformCategoryScores(
+  value: number,
+): Record<
+  string,
+  Partial<Record<'chargers' | 'attackers' | 'consistency', number>>
+> {
+  return Object.fromEntries(
+    Object.keys(pokemonById).map((speciesId) => [
+      speciesId,
+      { chargers: value, attackers: value, consistency: value },
     ]),
   );
 }

@@ -1,12 +1,17 @@
 import { speciesNameToChoosableId } from './pokemon';
 import {
+  getAllRankingsForPokemon,
+  getAttackersRankings,
+  getChargersRankings,
   getClosersRankings,
+  getConsistencyRankings,
   getLeadsRankings,
   getMetaThreats,
   getOverallRankings,
   getRankingScore,
   getRoleBasedThreatSpeciesIds,
   getSwitchesRankings,
+  MissingRankingDataError,
 } from './rankings';
 
 describe('format-aware rankings loading', () => {
@@ -67,6 +72,59 @@ describe('format-aware rankings loading', () => {
 
     const afterFailure = getOverallRankings();
     expect(afterFailure).toBe(beforeFailure);
+  });
+
+  it('supports all documented ranking categories at runtime', () => {
+    expect(() => getChargersRankings()).toThrow(MissingRankingDataError);
+    expect(() => getAttackersRankings()).toThrow(MissingRankingDataError);
+    expect(() => getConsistencyRankings()).toThrow(MissingRankingDataError);
+
+    expect(() => getRankingScore('Azumarill', 'chargers')).toThrow(
+      MissingRankingDataError,
+    );
+    expect(() => getRankingScore('Azumarill', 'attackers')).toThrow(
+      MissingRankingDataError,
+    );
+    expect(() => getRankingScore('Azumarill', 'consistency')).toThrow(
+      MissingRankingDataError,
+    );
+  });
+
+  it('reports the missing runtime category in ranking data errors', () => {
+    expect(() => getChargersRankings()).toThrow(
+      'category chargers: rankings/cp1500/all/chargers_rankings.csv',
+    );
+  });
+
+  it('exposes all category scores in the aggregate ranking contract', () => {
+    type AllRankingScores = ReturnType<typeof getAllRankingsForPokemon>;
+    const scoreKeys: Array<keyof AllRankingScores> = [
+      'overall',
+      'leads',
+      'switches',
+      'closers',
+      'chargers',
+      'attackers',
+      'consistency',
+      'average',
+    ];
+
+    expect(scoreKeys).toContain('chargers');
+    expect(scoreKeys).toContain('attackers');
+    expect(scoreKeys).toContain('consistency');
+  });
+
+  it('keeps aggregate rankings available when optional role categories are missing', () => {
+    const rankings = getAllRankingsForPokemon('Azumarill');
+
+    expect(rankings.overall).toBeGreaterThan(0);
+    expect(rankings.leads).toBeGreaterThan(0);
+    expect(rankings.switches).toBeGreaterThan(0);
+    expect(rankings.closers).toBeGreaterThan(0);
+    expect(rankings.chargers).toBe(0);
+    expect(rankings.attackers).toBe(0);
+    expect(rankings.consistency).toBe(0);
+    expect(rankings.average).toBeGreaterThan(0);
   });
 });
 
