@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- README optimizer architecture documentation should describe `lib/genetic/fitness` responsibilities, seven-category PvPoke ranking sync inputs, normalized weighted scoring defaults, and the lib/API/UI adapter boundary; keep detailed scoring strategy links pointing at `docs/pokemon-go-team-optimization.md` and `docs/team-optimization/`.
 - Lineup-aware type contracts live in `lib/types.ts`; use `LineupAwareFitnessConfig.mode` (`fast` or `full`) to distinguish hot GA scoring from UI-ready diagnostics instead of adding another user-selectable fitness algorithm.
 - PlayPokemon lineup enumeration lives in `lib/genetic/fitness/lineupEnumeration.ts`; roster input order controls lead iteration, backline pairs are sorted canonically and represented once, and species ids containing the lineup key delimiter (`|`) are invalid.
 - Lineup scoring lives in `lib/genetic/fitness/lineupScoring.ts`; use `LineupScoringContext` injection for deterministic tests and `createDefaultLineupScoringContext(...)` when wiring production data helpers.
@@ -1144,4 +1145,32 @@
   - US-032 still needs README optimizer architecture documentation.
 - Next iteration start:
   - US-032 - Update README optimizer architecture documentation
+---
+## 2026-05-25 19:14 MST - US-032
+- What was implemented
+- Updated `README.md` with the current lineup-aware optimizer architecture, fitness module responsibilities, normalized weighted scoring model, seven-category PvPoke ranking sync inputs, optimizer docs links, and the decision to keep scoring in `lib/` with API/UI layers as adapters.
+- Files changed: `README.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-032 - Update README optimizer architecture documentation`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 55 files, 439 tests)
+  - `npx prettier --write "README.md"` (pass)
+- Implementation agents:
+  - Recommended: none
+  - Used: none
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed low README default-weight documentation gap before commit; final review pass had no actionable findings
+- Decisions (why):
+  - Added architecture documentation to the existing Team Generation and Data Layout README sections because the story asks contributors to understand current architecture, file structure, data inputs, and scoring decisions from the README.
+  - Described weights as starting defaults instead of optimal constants because the optimizer docs explicitly frame them as tunable defaults.
+  - Added the actual default weights after QA review because the README should give maintainers both the priority order and current tuning baseline.
+  - Kept API/UI guidance focused on adapter boundaries because scoring behavior belongs in `lib/` and the README should not encourage recomputation in route or React layers.
+- **Learnings for future iterations:**
+  - README optimizer documentation should stay aligned with `lib/genetic/fitness/*`, `lib/data/rankings.ts`, `lib/sync/*`, and the optimizer docs when scoring architecture changes.
+- Known issues / follow-ups:
+  - Existing unrelated unstaged work remains outside this story: `.gitignore`, `lib/sync/*`, `tasks/prd-lineup-aware-team-generation.md`, and `docs/battle-frontier-rules.md`.
+- Next iteration start:
+  - All stories currently pass; run final complete response after commit.
 ---
