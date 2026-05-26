@@ -146,6 +146,29 @@ describe('POST /api/generate-team', () => {
         benchUtilitySummary: [],
       },
       benchUtility: [],
+      scoreBreakdown: {
+        components: {
+          synergy: 0.91,
+          coverage: 0.82,
+          safety: 0.68,
+          consistency: 0.57,
+          bulk: 0.44,
+          defensiveRatio: 0.72,
+          offensiveRatio: 0.61,
+          role: 0.38,
+        },
+        weights: {
+          synergy: 0.24,
+          coverage: 0.21,
+          safety: 0.17,
+          consistency: 0.13,
+          bulk: 0.1,
+          defensiveRatio: 0.07,
+          offensiveRatio: 0.05,
+          role: 0.03,
+        },
+        score: 0.74,
+      },
     });
     vi.mocked(buildThreatAnalysis).mockReturnValue({
       evaluatedCount: 50,
@@ -645,6 +668,47 @@ describe('POST /api/generate-team', () => {
         warnings: [],
       },
     ]);
+  });
+
+  it('returns optimizer score breakdown for analysis display', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      scoreBreakdown?: unknown;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.scoreBreakdown).toEqual({
+      components: {
+        synergy: 0.91,
+        coverage: 0.82,
+        safety: 0.68,
+        consistency: 0.57,
+        bulk: 0.44,
+        defensiveRatio: 0.72,
+        offensiveRatio: 0.61,
+        role: 0.38,
+      },
+      weights: {
+        synergy: 0.24,
+        coverage: 0.21,
+        safety: 0.17,
+        consistency: 0.13,
+        bulk: 0.1,
+        defensiveRatio: 0.07,
+        offensiveRatio: 0.05,
+        role: 0.03,
+      },
+      score: 0.74,
+    });
   });
 
   it.each([['little-cup'], ['kanto-cup'], ['spring-cup']] as const)(

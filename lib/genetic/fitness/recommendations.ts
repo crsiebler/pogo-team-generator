@@ -125,6 +125,7 @@ function toRecommendedLineup(
   return {
     lineup: scoreResult.lineup,
     score: scoreResult.score,
+    scoreBreakdown: scoreResult.scoreBreakdown,
     coverageMetrics: scoreResult.coverageMetrics,
     coveredThreats: [...scoreResult.coveredThreats],
     weaknesses: [...scoreResult.weaknesses],

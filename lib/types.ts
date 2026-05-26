@@ -75,6 +75,30 @@ export type LineupRole = 'lead' | 'switch' | 'closer';
 /** Diagnostic label for common PvP lineup structures. */
 export type LineupPatternLabel = 'ABC' | 'ABB' | 'ABA' | 'unknown';
 
+/** Canonical optimizer score components shown in priority order. */
+export type OptimizerScoreComponent =
+  | 'synergy'
+  | 'coverage'
+  | 'safety'
+  | 'consistency'
+  | 'bulk'
+  | 'defensiveRatio'
+  | 'offensiveRatio'
+  | 'role';
+
+/** Normalized optimizer component scores. */
+export type OptimizerScoreComponents = Record<OptimizerScoreComponent, number>;
+
+/** Weight table used to aggregate optimizer score components. */
+export type OptimizerScoreWeights = Readonly<OptimizerScoreComponents>;
+
+/** UI/API-ready normalized optimizer score breakdown. */
+export interface OptimizerScoreBreakdown {
+  components: OptimizerScoreComponents;
+  weights: OptimizerScoreWeights;
+  score: number;
+}
+
 /** Ordered pick-3 lineup keyed by battle role. */
 export type OrderedLineup = Record<LineupRole, string>;
 
@@ -114,6 +138,7 @@ export interface LineupResourcePathMetrics {
 export interface RecommendedLineup {
   lineup: OrderedLineup;
   score: number;
+  scoreBreakdown?: OptimizerScoreBreakdown;
   coverageMetrics: LineupCoverageMetrics;
   coveredThreats: string[];
   weaknesses: string[];
@@ -161,6 +186,7 @@ export interface Chromosome {
   team: string[];
   anchors?: number[];
   fitness: number;
+  scoreBreakdown?: OptimizerScoreBreakdown;
   recommendedLineups?: RecommendedLineup[];
   rosterMetrics?: PlayPokemonRosterMetrics;
   benchUtility?: BenchUtility[];

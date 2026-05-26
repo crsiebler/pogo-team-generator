@@ -15,6 +15,7 @@ import { useToast } from '@/lib/hooks/useToast';
 import type {
   BenchUtility,
   GenerationAnalysis,
+  OptimizerScoreBreakdown,
   PlayPokemonRosterMetrics,
   RecommendedLineup,
   TournamentMode,
@@ -28,6 +29,7 @@ interface GeneratedTeamResult {
   team: string[];
   formatId: BattleFormatId;
   recommendedLineups?: RecommendedLineup[];
+  scoreBreakdown?: OptimizerScoreBreakdown;
   rosterMetrics?: PlayPokemonRosterMetrics;
   benchUtility?: BenchUtility[];
 }
@@ -245,6 +247,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         team: string[];
         fitness?: number;
         recommendedLineups?: RecommendedLineup[];
+        scoreBreakdown?: OptimizerScoreBreakdown;
         rosterMetrics?: PlayPokemonRosterMetrics;
         benchUtility?: BenchUtility[];
         analysis?: GenerationAnalysis;
@@ -253,6 +256,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         team: data.team,
         formatId: currentFormatId,
         recommendedLineups: data.recommendedLineups,
+        scoreBreakdown: data.scoreBreakdown,
         rosterMetrics: data.rosterMetrics,
         benchUtility: data.benchUtility,
       });

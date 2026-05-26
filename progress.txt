@@ -29,6 +29,8 @@
 - `scoreOrderedLineup(...)` now returns `scoreBreakdown` and sets `score` from the canonical normalized weighted optimizer contract; use the breakdown components for future lineup aggregation and UI explanation instead of reintroducing ad hoc lineup score weights, compute lineup offensive/defensive ratio components through `typeEffectivenessRatios.ts`, weight both offensive defender pools and defensive expected attack-type pools with top-threat priority over full-meta, and keep top-threat ratio pools bounded to the top-threat limit.
 - `scoreFastRosterLineup(...)` is the hot GA fallback for PlayPokemon lineup scoring and must keep its `scoreBreakdown` components semantically aligned with full lineup scoring, including offensive/defensive type-effectiveness ratio components instead of fixed proxy constants and sanitized/bounded split threat pools.
 - Optimizer validation fixtures live in `lib/genetic/fitness/optimizerValidationFixtures.test.ts`; add documented tradeoff regressions there with deterministic injected contexts before tuning scoring weights or lineup/roster aggregation behavior.
+- Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render in `AnalysisPanel`; do not recompute weighted score categories in client components.
+- Conditional `AnalysisPanel` accordion sections must derive keyboard focus order from rendered sections so Arrow/Home/End navigation does not focus hidden section refs.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -1074,4 +1076,40 @@
   - Full `npm test` still mutates generated data/ranking/simulation fixtures; keep staging focused on the story files only.
 - Next iteration start:
   - US-030 - Display optimizer score breakdown in analysis panel
+---
+## 2026-05-25 18:50 MST - US-030
+- What was implemented
+- Added API and frontend pass-through for the normalized optimizer `scoreBreakdown` returned by lineup-aware generation.
+- Added an `Optimizer Score Breakdown` accordion in `AnalysisPanel` that renders synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, and role in documented priority order with numeric scores, visible range labels, and explanations.
+- Added distinct top-threat and full-meta coverage diagnostic cards when split coverage metrics are available from recommended lineup output.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/AGENTS.md`, `lib/types.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/fitness/recommendations.ts`, `lib/genetic/fitness/scoreBreakdown.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-030 - Display optimizer score breakdown in analysis panel`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx components/organisms/TeamManager/TeamManager.test.tsx app/api/generate-team/route.test.ts` (red first: score breakdown not displayed/passed through; pass after implementation; pass after review fixes, 52 tests)
+  - `npx prettier --write "app/api/generate-team/route.ts" "app/api/generate-team/route.test.ts" "components/organisms/AnalysisPanel/AnalysisPanel.tsx" "components/organisms/AnalysisPanel/AnalysisPanel.test.tsx" "components/organisms/TeamManager/TeamManager.tsx" "components/organisms/TeamManager/TeamManager.test.tsx" "lib/genetic/algorithm.ts" "lib/genetic/fitness/recommendations.ts" "lib/genetic/fitness/scoreBreakdown.ts" "lib/types.ts"` (pass)
+  - `npx tsc --noEmit` (pass after moving shared optimizer score breakdown types into `lib/types.ts`)
+  - `npm run lint` (pass)
+  - `npm test` (pass before review fixes, 55 files, 438 tests; pass after review fixes, 55 files, 439 tests)
+  - Browser verification with dev-browser at `http://localhost:3000` (pass; generated PlayPokemon result displayed expanded Optimizer Score Breakdown with all eight categories and distinct top-threat/full-meta coverage cards; observed pre-existing `/favicon.ico` 404)
+- Implementation agents:
+  - Recommended: none
+  - Used: `test-driven-development`, `dev-browser`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `security-auditor`, `documentation-engineer`, `compliance-auditor`
+  - Findings: fixed medium accordion keyboard navigation and neutral label contrast findings before commit; final staged-diff review had no actionable critical/high/medium findings; deferred low commit-message format note because Ralph requires `feat: US-030 - Display optimizer score breakdown in analysis panel`
+- Decisions (why):
+  - Added `scoreBreakdown` to shared generation contracts and passed it through `/api/generate-team` and `TeamManager` because the UI should explain the canonical optimizer output without recomputing score categories client-side.
+  - Used an accordion in `AnalysisPanel` because US-030 specifically places the explanation under Team Analysis Summary and existing analysis drill-down sections already use accessible native accordion buttons.
+  - Reused visible weak/neutral/strong/elite labels and color classes from resource-path display so category states are consistent and not color-only.
+  - Rendered split top-threat and full-meta coverage from recommended lineup coverage metrics because those diagnostics already flow from scoring and keep the UI adapter display-only.
+  - Derived accordion keyboard focus order from rendered sections after review because conditional optimizer output should not make keyboard navigation target hidden refs.
+- **Learnings for future iterations:**
+  - `Chromosome.scoreBreakdown` is the top-level API/UI source for optimizer category explanations; recommended lineups may also carry lineup-level score breakdowns, but analysis summary should prefer the generated team's top-level breakdown.
+  - `AnalysisPanel` accordion sections are driven by `ANALYSIS_ACCORDION_SECTIONS`; add new section ids there, initialize `expandedSections` and `accordionButtonRefs`, and keep native button `aria-expanded`/`aria-controls` behavior.
+  - Conditional accordion sections need a visible-section focus list for Arrow/Home/End keyboard handling.
+- Known issues / follow-ups:
+  - Browser console still shows the pre-existing `/favicon.ico` 404.
+  - US-031 still needs AGENTS optimizer guidance updates.
+- Next iteration start:
+  - US-031 - Update AGENTS optimizer guidance
 ---

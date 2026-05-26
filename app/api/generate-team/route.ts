@@ -226,6 +226,7 @@ export async function POST(request: NextRequest) {
       recommendedLineups: resolveRecommendedLineupLabels(
         result.recommendedLineups,
       ),
+      scoreBreakdown: result.scoreBreakdown,
       rosterMetrics: resolveRosterMetricLabels(result.rosterMetrics),
       benchUtility: result.benchUtility,
       analysis,

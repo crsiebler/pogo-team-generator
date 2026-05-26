@@ -26,6 +26,10 @@ Recommended lineup resource path cards should show the path meaning, rounded num
 
 Recommended lineup weakness display should use semantic `ul`/`li` lists with one weakness per item and a concise fallback when the weakness list is empty; do not return to comma-separated inline weakness strings.
 
+Optimizer score breakdown display should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render in `AnalysisPanel`; keep category explanations display-only and do not recompute weighted optimizer categories in client components.
+
+When `AnalysisPanel` accordion sections are conditional, derive keyboard focus order from the rendered section list so Arrow/Home/End navigation never targets a hidden section.
+
 PlayPokemon roster diagnostics should flow from `/api/generate-team` as `rosterMetrics` and `benchUtility` through `TeamManager` and `ResultsPanel` into `TeamDisplay`; keep the UI display-only and show warning text labels instead of relying on color alone.
 
 Bench utility warning pills should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered across pill widths.

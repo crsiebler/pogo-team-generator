@@ -4,6 +4,7 @@ import { TeamManager } from './TeamManager';
 import { type BattleFormatId } from '@/lib/data/battleFormats';
 import type {
   BenchUtility,
+  OptimizerScoreBreakdown,
   PlayPokemonRosterMetrics,
   RecommendedLineup,
 } from '@/lib/types';
@@ -27,6 +28,7 @@ const teamConfigPanelProps: Array<
 interface MockAnalysisPanelProps {
   generatedTeam: {
     recommendedLineups?: RecommendedLineup[];
+    scoreBreakdown?: OptimizerScoreBreakdown;
   } | null;
   fitness: number | null;
   analysis: unknown;
@@ -110,6 +112,9 @@ vi.mock('@/components/organisms', () => ({
       {generatedTeam?.recommendedLineups?.[0]
         ? ` ${generatedTeam.recommendedLineups.length} lineups ${generatedTeam.recommendedLineups[0].lineup.lead} ${generatedTeam.recommendedLineups[0].score} ${generatedTeam.recommendedLineups[0].diagnosticLabel}`
         : ''}
+      {generatedTeam?.scoreBreakdown
+        ? ` optimizer ${generatedTeam.scoreBreakdown.components.synergy} ${generatedTeam.scoreBreakdown.components.role}`
+        : ''}
     </div>
   ),
 }));
@@ -185,6 +190,29 @@ describe('TeamManager', () => {
               warnings: [],
             },
           ],
+          scoreBreakdown: {
+            components: {
+              synergy: 0.91,
+              coverage: 0.82,
+              safety: 0.68,
+              consistency: 0.57,
+              bulk: 0.44,
+              defensiveRatio: 0.72,
+              offensiveRatio: 0.61,
+              role: 0.38,
+            },
+            weights: {
+              synergy: 0.24,
+              coverage: 0.21,
+              safety: 0.17,
+              consistency: 0.13,
+              bulk: 0.1,
+              defensiveRatio: 0.07,
+              offensiveRatio: 0.05,
+              role: 0.03,
+            },
+            score: 0.74,
+          },
           analysis: { generatedAt: '2026-03-15T00:00:00.000Z' },
         }),
       });
@@ -441,6 +469,27 @@ describe('TeamManager', () => {
     await waitFor(() => {
       expect(
         screen.getByText(/Analysis 0.75 loaded 1 lineups azumarill 0.82 ABC/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('passes optimizer score breakdown response data to AnalysisPanel', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Analysis 0.75 loaded .* optimizer 0.91 0.38/),
       ).toBeInTheDocument();
     });
   });

@@ -6,6 +6,8 @@ import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type {
   GenerationAnalysis,
   LineupResourcePathMetrics,
+  OptimizerScoreBreakdown,
+  OptimizerScoreComponent,
   PokemonContributionRiskTier,
   RecommendedLineup,
   ShieldScenarioKey,
@@ -15,6 +17,7 @@ interface GeneratedTeamResult {
   team: string[];
   formatId: BattleFormatId;
   recommendedLineups?: RecommendedLineup[];
+  scoreBreakdown?: OptimizerScoreBreakdown;
 }
 
 interface AnalysisPanelProps {
@@ -42,6 +45,7 @@ interface CategoryMetric {
 
 const ANALYSIS_ACCORDION_SECTIONS = [
   'summaryStatistics',
+  'optimizerScoreBreakdown',
   'fitnessContributionCategories',
   'perPokemonContributions',
 ] as const;
@@ -49,6 +53,63 @@ const ANALYSIS_ACCORDION_SECTIONS = [
 type AnalysisAccordionSectionId = (typeof ANALYSIS_ACCORDION_SECTIONS)[number];
 
 const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
+
+const OPTIMIZER_SCORE_COMPONENT_ORDER: OptimizerScoreComponent[] = [
+  'synergy',
+  'coverage',
+  'safety',
+  'consistency',
+  'bulk',
+  'defensiveRatio',
+  'offensiveRatio',
+  'role',
+];
+
+const optimizerScoreComponentDetails: Record<
+  OptimizerScoreComponent,
+  { label: string; description: string }
+> = {
+  synergy: {
+    label: 'Synergy',
+    description:
+      'Pick-3 cohesion, complementary typing, and role interaction across the generated team.',
+  },
+  coverage: {
+    label: 'Coverage',
+    description:
+      'How broadly the roster answers expected threats, weighted toward top-threat matchups.',
+  },
+  safety: {
+    label: 'Safety',
+    description:
+      'Risk control against no-answer threats, single-answer dependencies, bad leads, and sweep paths.',
+  },
+  consistency: {
+    label: 'Consistency',
+    description:
+      'Reliability from consistency rankings, shield stability, neutral damage, and low bait dependence.',
+  },
+  bulk: {
+    label: 'Bulk',
+    description:
+      'Durability from bulk/stat balance so the roster avoids brittle low-bulk compositions.',
+  },
+  defensiveRatio: {
+    label: 'Defensive Ratio',
+    description:
+      'Resistance versus weakness spread into expected incoming attack types.',
+  },
+  offensiveRatio: {
+    label: 'Offensive Ratio',
+    description:
+      'Fast and charged move pressure into top-threat and full-meta defenders.',
+  },
+  role: {
+    label: 'Role',
+    description:
+      'Lineup role fit from lead, switch, closer, charger, attacker, and consistency signals.',
+  },
+};
 
 const resourcePathLabels: Record<keyof LineupResourcePathMetrics, string> = {
   balanced: 'Balanced',
@@ -66,6 +127,10 @@ const resourcePathDescriptions: Record<
 };
 
 type ResourcePathQuality = 'weak' | 'neutral' | 'strong' | 'elite';
+
+function getNormalizedScoreQuality(score: number): ResourcePathQuality {
+  return getResourcePathQuality(score);
+}
 
 function getResourcePathQuality(score: number): ResourcePathQuality {
   const displayedScore = Number(formatScore(score));
@@ -95,10 +160,37 @@ function getResourcePathQualityClasses(quality: ResourcePathQuality): string {
   }
 
   if (quality === 'neutral') {
-    return 'bg-amber-100 text-amber-700 ring-amber-200 dark:bg-amber-950/70 dark:text-amber-200 dark:ring-amber-800';
+    return 'bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-950/70 dark:text-amber-200 dark:ring-amber-800';
   }
 
   return 'bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-950/70 dark:text-rose-200 dark:ring-rose-800';
+}
+
+function getOptimizerScoreMetrics(
+  scoreBreakdown: OptimizerScoreBreakdown,
+): Array<{
+  component: OptimizerScoreComponent;
+  label: string;
+  value: string;
+  quality: ResourcePathQuality;
+  description: string;
+}> {
+  return OPTIMIZER_SCORE_COMPONENT_ORDER.map((component) => {
+    const details = optimizerScoreComponentDetails[component];
+    const score = scoreBreakdown.components[component];
+
+    return {
+      component,
+      label: details.label,
+      value: formatScore(score),
+      quality: getNormalizedScoreQuality(score),
+      description: details.description,
+    };
+  });
+}
+
+function formatCoverageRate(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }
 
 function formatScore(score: number): string {
@@ -361,6 +453,7 @@ export function AnalysisPanel({
     Record<AnalysisAccordionSectionId, boolean>
   >({
     summaryStatistics: false,
+    optimizerScoreBreakdown: false,
     fitnessContributionCategories: false,
     perPokemonContributions: false,
   });
@@ -368,6 +461,7 @@ export function AnalysisPanel({
     Record<AnalysisAccordionSectionId, HTMLButtonElement | null>
   >({
     summaryStatistics: null,
+    optimizerScoreBreakdown: null,
     fitnessContributionCategories: null,
     perPokemonContributions: null,
   });
@@ -381,6 +475,15 @@ export function AnalysisPanel({
     analysis !== null ? buildContributionMetrics(analysis) : [];
   const pokemonEntries = analysis?.pokemonContributions.entries ?? [];
   const recommendedLineups = generatedTeam?.recommendedLineups ?? [];
+  const scoreBreakdown = generatedTeam?.scoreBreakdown;
+  const optimizerScoreMetrics = scoreBreakdown
+    ? getOptimizerScoreMetrics(scoreBreakdown)
+    : [];
+  const splitCoverageMetrics = recommendedLineups.find(
+    (lineup) =>
+      lineup.coverageMetrics.topThreatCoverage ||
+      lineup.coverageMetrics.fullMetaCoverage,
+  )?.coverageMetrics;
   const hasRecommendedLineups = recommendedLineups.length > 0;
   const maxThreatsHandled = Math.max(
     ...pokemonEntries.map((entry) => entry.threatsHandled),
@@ -394,6 +497,11 @@ export function AnalysisPanel({
     ...pokemonEntries.map((entry) => entry.highSeverityRelief),
     0,
   );
+  const visibleAccordionSections: AnalysisAccordionSectionId[] = scoreBreakdown
+    ? [...ANALYSIS_ACCORDION_SECTIONS]
+    : ANALYSIS_ACCORDION_SECTIONS.filter(
+        (sectionId) => sectionId !== 'optimizerScoreBreakdown',
+      );
 
   function toggleSection(sectionId: AnalysisAccordionSectionId): void {
     setExpandedSections((current) => ({
@@ -410,31 +518,35 @@ export function AnalysisPanel({
     event: KeyboardEvent<HTMLButtonElement>,
     sectionId: AnalysisAccordionSectionId,
   ): void {
-    const currentIndex = ANALYSIS_ACCORDION_SECTIONS.indexOf(sectionId);
+    const currentIndex = visibleAccordionSections.indexOf(sectionId);
+
+    if (currentIndex === -1) {
+      return;
+    }
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      const nextIndex = (currentIndex + 1) % ANALYSIS_ACCORDION_SECTIONS.length;
-      focusSection(ANALYSIS_ACCORDION_SECTIONS[nextIndex]);
+      const nextIndex = (currentIndex + 1) % visibleAccordionSections.length;
+      focusSection(visibleAccordionSections[nextIndex]);
     }
 
     if (event.key === 'ArrowUp') {
       event.preventDefault();
       const previousIndex =
-        (currentIndex - 1 + ANALYSIS_ACCORDION_SECTIONS.length) %
-        ANALYSIS_ACCORDION_SECTIONS.length;
-      focusSection(ANALYSIS_ACCORDION_SECTIONS[previousIndex]);
+        (currentIndex - 1 + visibleAccordionSections.length) %
+        visibleAccordionSections.length;
+      focusSection(visibleAccordionSections[previousIndex]);
     }
 
     if (event.key === 'Home') {
       event.preventDefault();
-      focusSection(ANALYSIS_ACCORDION_SECTIONS[0]);
+      focusSection(visibleAccordionSections[0]);
     }
 
     if (event.key === 'End') {
       event.preventDefault();
       focusSection(
-        ANALYSIS_ACCORDION_SECTIONS[ANALYSIS_ACCORDION_SECTIONS.length - 1],
+        visibleAccordionSections[visibleAccordionSections.length - 1],
       );
     }
   }
@@ -627,6 +739,102 @@ export function AnalysisPanel({
                   </div>
                 ),
               },
+              ...(scoreBreakdown
+                ? [
+                    {
+                      id: 'optimizerScoreBreakdown' as const,
+                      title: 'Optimizer Score Breakdown',
+                      content: (
+                        <div className="space-y-3 px-3 pb-3">
+                          <p className="text-xs leading-5 text-gray-700 dark:text-gray-300">
+                            Normalized optimizer categories explain the
+                            generated score in priority order. Range labels are
+                            shown with colors so category strength is not
+                            communicated by color alone.
+                          </p>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            {optimizerScoreMetrics.map((metric) => {
+                              const qualityDescriptionId = `${accordionIdPrefix}-${metric.component}-optimizer-quality`;
+
+                              return (
+                                <article
+                                  key={metric.component}
+                                  className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <p
+                                      data-testid="optimizer-score-category-label"
+                                      className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300"
+                                    >
+                                      {metric.label}
+                                    </p>
+                                    <span
+                                      id={qualityDescriptionId}
+                                      className={clsx(
+                                        'rounded-full px-2 py-0.5 text-xs font-semibold ring-1',
+                                        getResourcePathQualityClasses(
+                                          metric.quality,
+                                        ),
+                                      )}
+                                    >
+                                      {metric.quality}
+                                    </span>
+                                  </div>
+                                  <p
+                                    aria-describedby={qualityDescriptionId}
+                                    className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-50"
+                                  >
+                                    {metric.value}
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
+                                    {metric.description}
+                                  </p>
+                                </article>
+                              );
+                            })}
+                          </div>
+                          {splitCoverageMetrics?.topThreatCoverage ||
+                          splitCoverageMetrics?.fullMetaCoverage ? (
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              {splitCoverageMetrics.topThreatCoverage ? (
+                                <article className="rounded-lg border border-indigo-200 bg-indigo-50/80 p-3 dark:border-indigo-900/60 dark:bg-indigo-950/25">
+                                  <p className="text-xs font-semibold tracking-wide text-indigo-700 uppercase dark:text-indigo-300">
+                                    Top-threat coverage
+                                  </p>
+                                  <p className="mt-1 text-lg font-bold text-indigo-950 dark:text-indigo-100">
+                                    {formatCoverageRate(
+                                      splitCoverageMetrics.topThreatCoverage
+                                        .coverageRate,
+                                    )}
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-indigo-900 dark:text-indigo-100">
+                                    {`${splitCoverageMetrics.topThreatCoverage.noAnswerThreatCount} no-answer, ${splitCoverageMetrics.topThreatCoverage.singleAnswerThreatCount} single-answer risks`}
+                                  </p>
+                                </article>
+                              ) : null}
+                              {splitCoverageMetrics.fullMetaCoverage ? (
+                                <article className="rounded-lg border border-cyan-200 bg-cyan-50/80 p-3 dark:border-cyan-900/60 dark:bg-cyan-950/25">
+                                  <p className="text-xs font-semibold tracking-wide text-cyan-700 uppercase dark:text-cyan-300">
+                                    Full-meta coverage
+                                  </p>
+                                  <p className="mt-1 text-lg font-bold text-cyan-950 dark:text-cyan-100">
+                                    {formatCoverageRate(
+                                      splitCoverageMetrics.fullMetaCoverage
+                                        .coverageRate,
+                                    )}
+                                  </p>
+                                  <p className="mt-1 text-xs leading-5 text-cyan-900 dark:text-cyan-100">
+                                    {`${splitCoverageMetrics.fullMetaCoverage.noAnswerThreatCount} no-answer, ${splitCoverageMetrics.fullMetaCoverage.singleAnswerThreatCount} single-answer risks`}
+                                  </p>
+                                </article>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      ),
+                    },
+                  ]
+                : []),
               {
                 id: 'fitnessContributionCategories' as const,
                 title: 'Fitness Contribution Categories',

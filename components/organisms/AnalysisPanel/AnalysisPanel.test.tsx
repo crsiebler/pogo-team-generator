@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AnalysisPanel } from './AnalysisPanel';
-import type { GenerationAnalysis, RecommendedLineup } from '@/lib/types';
+import type {
+  GenerationAnalysis,
+  OptimizerScoreBreakdown,
+  RecommendedLineup,
+} from '@/lib/types';
 
 const analysisFixture: GenerationAnalysis = {
   mode: 'GBL',
@@ -136,6 +140,30 @@ describe('AnalysisPanel', () => {
     },
   ];
 
+  const optimizerScoreBreakdown: OptimizerScoreBreakdown = {
+    components: {
+      synergy: 0.91,
+      coverage: 0.82,
+      safety: 0.68,
+      consistency: 0.57,
+      bulk: 0.44,
+      defensiveRatio: 0.72,
+      offensiveRatio: 0.61,
+      role: 0.38,
+    },
+    weights: {
+      synergy: 0.24,
+      coverage: 0.21,
+      safety: 0.17,
+      consistency: 0.13,
+      bulk: 0.1,
+      defensiveRatio: 0.07,
+      offensiveRatio: 0.05,
+      role: 0.03,
+    },
+    score: 0.74,
+  };
+
   it('renders accordion sections collapsed by default', () => {
     render(
       <AnalysisPanel
@@ -208,6 +236,125 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText(/algorithm/i)).not.toBeInTheDocument();
   });
 
+  it('renders optimizer score breakdown categories in documented priority order', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups,
+          scoreBreakdown: optimizerScoreBreakdown,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Optimizer Score Breakdown' }),
+    );
+
+    const section = screen.getByRole('region', {
+      name: 'Optimizer Score Breakdown',
+    });
+    const labels = within(section)
+      .getAllByTestId('optimizer-score-category-label')
+      .map((label) => label.textContent);
+
+    expect(labels).toEqual([
+      'Synergy',
+      'Coverage',
+      'Safety',
+      'Consistency',
+      'Bulk',
+      'Defensive Ratio',
+      'Offensive Ratio',
+      'Role',
+    ]);
+    expect(within(section).getByText('0.91')).toHaveAccessibleDescription(
+      'elite',
+    );
+    expect(within(section).getByText('0.57')).toHaveAccessibleDescription(
+      'neutral',
+    );
+    expect(within(section).getByText('0.44')).toHaveAccessibleDescription(
+      'weak',
+    );
+    expect(within(section).getByText('elite')).toHaveClass('text-sky-800');
+    expect(within(section).getAllByText('neutral')[0]).toHaveClass(
+      'text-amber-800',
+    );
+    expect(within(section).getAllByText('weak')[0]).toHaveClass(
+      'text-rose-700',
+    );
+    expect(
+      within(section).getByText(/Lineup role fit from lead, switch, closer/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  });
+
+  it('distinguishes top-threat and full-meta coverage diagnostics', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups: [
+            {
+              ...recommendedLineups[0],
+              coverageMetrics: {
+                ...recommendedLineups[0].coverageMetrics,
+                topThreatCoverage: {
+                  coverageRate: 0.8,
+                  evaluatedThreatCount: 10,
+                  noAnswerThreatCount: 1,
+                  singleAnswerThreatCount: 2,
+                  dominatingMatchupCount: 4,
+                  overwhelmingLossCount: 1,
+                },
+                fullMetaCoverage: {
+                  coverageRate: 0.62,
+                  evaluatedThreatCount: 40,
+                  noAnswerThreatCount: 8,
+                  singleAnswerThreatCount: 11,
+                  dominatingMatchupCount: 9,
+                  overwhelmingLossCount: 6,
+                },
+              },
+            },
+          ],
+          scoreBreakdown: optimizerScoreBreakdown,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Optimizer Score Breakdown' }),
+    );
+
+    const topThreatCard = screen
+      .getByText('Top-threat coverage')
+      .closest('article');
+    const fullMetaCard = screen
+      .getByText('Full-meta coverage')
+      .closest('article');
+
+    expect(topThreatCard).toHaveClass('border-indigo-200');
+    expect(fullMetaCard).toHaveClass('border-cyan-200');
+    expect(within(topThreatCard!).getByText('80%')).toBeInTheDocument();
+    expect(within(fullMetaCard!).getByText('62%')).toBeInTheDocument();
+    expect(
+      within(topThreatCard!).getByText('1 no-answer, 2 single-answer risks'),
+    ).toBeInTheDocument();
+    expect(
+      within(fullMetaCard!).getByText('8 no-answer, 11 single-answer risks'),
+    ).toBeInTheDocument();
+  });
+
   it('renders concise recommended lineup details with readable weakness names', () => {
     render(
       <AnalysisPanel
@@ -251,8 +398,42 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('0.64')).toHaveAccessibleDescription('neutral');
     expect(screen.getByText('0.42')).toHaveAccessibleDescription('weak');
     expect(screen.getByText('strong')).toHaveClass('text-emerald-700');
-    expect(screen.getByText('neutral')).toHaveClass('text-amber-700');
+    expect(screen.getByText('neutral')).toHaveClass('text-amber-800');
     expect(screen.getByText('weak')).toHaveClass('text-rose-700');
+  });
+
+  it('keeps accordion keyboard focus on rendered sections when score breakdown is unavailable', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'gastrodon', 'dunsparce'],
+          formatId: 'great-league',
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    const summaryButton = screen.getByRole('button', {
+      name: 'Summary Statistics',
+    });
+    const contributionButton = screen.getByRole('button', {
+      name: 'Fitness Contribution Categories',
+    });
+
+    expect(
+      screen.queryByRole('button', { name: 'Optimizer Score Breakdown' }),
+    ).not.toBeInTheDocument();
+
+    summaryButton.focus();
+    fireEvent.keyDown(summaryButton, { key: 'ArrowDown' });
+
+    expect(contributionButton).toHaveFocus();
+
+    fireEvent.keyDown(contributionButton, { key: 'ArrowUp' });
+
+    expect(summaryButton).toHaveFocus();
   });
 
   it('uses displayed resource path scores for quality ranges and omits unavailable paths', () => {

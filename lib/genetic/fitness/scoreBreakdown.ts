@@ -1,15 +1,16 @@
-export type OptimizerScoreComponent =
-  | 'synergy'
-  | 'coverage'
-  | 'safety'
-  | 'consistency'
-  | 'bulk'
-  | 'defensiveRatio'
-  | 'offensiveRatio'
-  | 'role';
+import type {
+  OptimizerScoreBreakdown,
+  OptimizerScoreComponent,
+  OptimizerScoreComponents,
+  OptimizerScoreWeights,
+} from '@/lib/types';
 
-export type OptimizerScoreComponents = Record<OptimizerScoreComponent, number>;
-export type OptimizerScoreWeights = Readonly<OptimizerScoreComponents>;
+export type {
+  OptimizerScoreBreakdown,
+  OptimizerScoreComponent,
+  OptimizerScoreComponents,
+  OptimizerScoreWeights,
+} from '@/lib/types';
 
 export type OptimizerHardConstraintCategory = 'validity' | 'legality';
 
@@ -29,12 +30,6 @@ export const OPTIMIZER_SCORE_COMPONENT_WEIGHTS: OptimizerScoreWeights =
 /** Strategic scoring hard constraints are limited to validity and legality. */
 export const OPTIMIZER_HARD_CONSTRAINT_CATEGORIES: readonly OptimizerHardConstraintCategory[] =
   ['validity', 'legality'];
-
-export interface OptimizerScoreBreakdown {
-  components: OptimizerScoreComponents;
-  weights: OptimizerScoreWeights;
-  score: number;
-}
 
 /** Creates a normalized weighted optimizer score breakdown. */
 export function createNormalizedScoreBreakdown(

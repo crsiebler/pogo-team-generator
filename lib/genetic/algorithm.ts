@@ -225,13 +225,14 @@ export async function generateTeam(
   const lineupContext = createDefaultLineupScoringContext(formatId);
 
   if (mode === 'GBL') {
+    const recommendedLineup = buildGblLineupRecommendation(bestOverall.team, {
+      context: lineupContext,
+    });
+
     bestOverall = {
       ...bestOverall,
-      recommendedLineups: [
-        buildGblLineupRecommendation(bestOverall.team, {
-          context: lineupContext,
-        }),
-      ],
+      scoreBreakdown: recommendedLineup.scoreBreakdown,
+      recommendedLineups: [recommendedLineup],
     };
   } else {
     const rosterScore = scorePlayPokemonRoster(
@@ -247,6 +248,7 @@ export async function generateTeam(
 
     bestOverall = {
       ...bestOverall,
+      scoreBreakdown: rosterScore.scoreBreakdown,
       rosterMetrics: rosterScore.metrics,
       recommendedLineups: recommendations.recommendedLineups,
       benchUtility: recommendations.benchUtility,
