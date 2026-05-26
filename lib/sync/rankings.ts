@@ -77,6 +77,9 @@ const RANKING_CATEGORIES: RankingCategory[] = [
   'leads',
   'switches',
   'closers',
+  'chargers',
+  'attackers',
+  'consistency',
 ];
 
 const RANKING_HEADER =

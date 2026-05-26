@@ -49,6 +49,20 @@ lineup-aware scorer or explicitly documented as intentionally removed.
   pools, and per-run caches for matchup, role, lineup, and roster calculations.
 - Preserve existing data safety and graceful fallback behavior when matchup or
   shield-specific data is missing.
+- Refactor lineup-aware scoring into a normalized weighted model using the
+  documented priority order: synergy, coverage, safety, consistency, bulk,
+  defensive resistance/weakness ratio, offensive effectiveness/resistance ratio,
+  and role.
+- Sync and consume PvPoke Chargers, Attackers, and Consistency ranking exports in
+  addition to Overall, Leads, Switches, and Closers.
+- Score top-threat coverage separately from full-meta coverage so common meta
+  failures are weighted more heavily than rare matchup holes.
+- Use `data/type-effectiveness.json` as the source of truth for Pokemon GO type
+  multipliers, including dual-type multiplication and immunity-style `0.39x`
+  interactions.
+- Add validation fixtures for weighted tradeoffs, ABC/ABB/ABA behavior, shared
+  weaknesses, top-threat versus full-meta coverage, type effectiveness, multiple
+  viable lineups, one-line teams, poor bulk, and poor synergy.
 
 ## User Stories
 
@@ -280,6 +294,295 @@ rosters cover more offensive and defensive situations.
       over-penalized when the Pokemon cover different weaknesses or roles.
 - [ ] Typecheck/lint/tests pass.
 
+### US-013: Render Weaknesses As Bullet Lists
+
+**Description:** As a user, I want lineup weaknesses to render as a readable
+bulleted list so that each weakness is visually distinct and easy to scan.
+
+**Acceptance Criteria:**
+
+- [ ] Recommended lineup `Weaknesses` render as semantic list items inside a
+      `ul` or equivalent accessible list structure.
+- [ ] Each weakness appears as its own bullet point instead of a comma-separated
+      inline string.
+- [ ] Weakness list items use human-readable `speciesName` values, not raw
+      `speciesId` values.
+- [ ] Empty weakness lists render a concise fallback such as `No major weaknesses
+      identified` instead of an empty list.
+- [ ] Tests cover rendering multiple weaknesses as separate list items.
+- [ ] Typecheck/lint/tests pass.
+- [ ] Verify in browser using dev-browser skill.
+
+### US-014: Sync Additional PvPoke Ranking Categories
+
+**Description:** As a maintainer, I want ranking sync to gather Chargers,
+Attackers, and Consistency exports so the optimizer can use the full documented
+PvPoke role model.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Ranking category types include `overall`, `leads`, `switches`, `closers`,
+      `chargers`, `attackers`, and `consistency`.
+- [ ] PvPoke adapter accepts `chargers`, `attackers`, and `consistency` category
+      paths.
+- [ ] Ranking sync iterates all seven categories for every supported battle
+      format.
+- [ ] Synced files are written deterministically under
+      `data/rankings/cp{cp}/{cup}/{category}_rankings.csv`.
+- [ ] Sync tests cover the three new categories.
+- [ ] Existing `overall`, `leads`, `switches`, and `closers` sync behavior remains
+      unchanged.
+- [ ] Typecheck/lint/tests pass.
+
+### US-015: Expose Runtime Ranking Access For All Categories
+
+**Description:** As an optimizer developer, I want normalized runtime ranking
+access for all PvPoke role categories so scoring can use category-specific
+signals without reading raw files.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Runtime ranking category types include `overall`, `leads`, `switches`,
+      `closers`, `chargers`, `attackers`, and `consistency`.
+- [ ] Ranking cache includes all seven categories per format without cross-format
+      contamination.
+- [ ] `getRankingScore` or its replacement supports all seven categories.
+- [ ] `getAllRankingsForPokemon` returns all seven category scores plus an
+      aggregate score.
+- [ ] Missing ranking files throw `MissingRankingDataError` with the missing
+      category in the message.
+- [ ] Existing callers for `overall`, `leads`, `switches`, and `closers` continue
+      to work.
+- [ ] Typecheck/lint/tests pass.
+
+### US-016: Add Normalized Weighted Score Components
+
+**Description:** As an optimizer developer, I want a normalized weighted score
+contract so lineup and roster scoring combine documented metrics consistently.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Add a score breakdown type or module with normalized components:
+      `synergy`, `coverage`, `safety`, `consistency`, `bulk`, `defensiveRatio`,
+      `offensiveRatio`, and `role`.
+- [ ] Each component is bounded to `0..1` before weighted aggregation.
+- [ ] Starting weights are synergy `0.24`, coverage `0.21`, safety `0.17`,
+      consistency `0.13`, bulk `0.10`, defensiveRatio `0.07`, offensiveRatio
+      `0.05`, and role `0.03`.
+- [ ] Hard constraints remain limited to legality and validity checks.
+- [ ] Tests prove lower-priority categories can influence close outcomes without
+      dominating higher-priority categories.
+- [ ] Tests prove role score alone cannot dominate the final score.
+- [ ] Typecheck/lint/tests pass.
+
+### US-017: Separate Top-Threat And Full-Meta Coverage
+
+**Description:** As a competitive player, I want coverage scoring to distinguish
+common top threats from broader full-meta robustness so severe meta weaknesses
+are not hidden by broad rare-matchup coverage.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Threat-pool construction produces separate top-threat and full-meta pools.
+- [ ] Top-threat coverage is weighted higher than full-meta coverage.
+- [ ] Coverage diagnostics expose top-threat and full-meta results separately.
+- [ ] No-answer and single-answer threat counts are computed for both pools where
+      data exists.
+- [ ] A lineup that loses hard to a top threat scores lower than a lineup with
+      only rare full-meta holes when other signals are comparable.
+- [ ] Threat pools are bounded and deterministic for hot GA scoring paths.
+- [ ] Typecheck/lint/tests pass.
+
+### US-018: Implement Type Effectiveness Offensive And Defensive Ratios
+
+**Description:** As an optimizer developer, I want Pokemon GO type-effectiveness
+ratios so the scorer can measure offensive move pressure and defensive
+resistance versus weakness spread.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Type-effectiveness calculations use `data/type-effectiveness.json` as the
+      source of truth.
+- [ ] Dual-type defenders multiply both defender-type effectiveness values.
+- [ ] Pokemon GO immunity-style interactions use `0.39x`, not zero damage.
+- [ ] Offensive ratio scoring evaluates selected fast and charged move types into
+      top-threat and full-meta defenders.
+- [ ] Defensive ratio scoring evaluates weaknesses, resistances, double
+      weaknesses, double resistances, and shared weaknesses.
+- [ ] Ratio scores are normalized to `0..1` before weighted aggregation.
+- [ ] Tests cover dual-type multiplication, immunity-style interactions, neutral
+      cancellation, double resistance, and double super effectiveness.
+- [ ] Typecheck/lint/tests pass.
+
+### US-019: Implement Safety, Consistency, And Bulk Components
+
+**Description:** As a competitive player, I want the scorer to reward reliable
+teams that avoid catastrophic losses, volatile bait dependence, and brittle
+low-bulk compositions.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Safety scoring accounts for overwhelming losses, no-answer threats,
+      single-answer threats, bad-lead recovery, and sweep risk.
+- [ ] Overwhelming losses against the top-threat pool are weighted more heavily
+      than rare full-meta losses.
+- [ ] Consistency scoring uses PvPoke consistency ranking data when available.
+- [ ] Consistency scoring falls back to shield stability, damage per energy,
+      energy cost, useful neutral damage, second-move value, and bait-dependence
+      proxies when consistency rankings are unavailable.
+- [ ] Bulk scoring uses normalized `defense * hp / attack` when direct bulk data
+      is unavailable.
+- [ ] Safety, consistency, and bulk are separate normalized components before
+      aggregation.
+- [ ] Tests cover poor bulk, bait-dependent volatility, shield-scenario
+      instability, and no-answer or single-answer fragility.
+- [ ] Typecheck/lint/tests pass.
+
+### US-020: Expand Role Scoring With Chargers, Attackers, And Consistency
+
+**Description:** As a competitive player, I want role scoring to use PvPoke
+role-specific exports so leads, switches, closers, chargers, attackers, and
+consistent Pokemon are evaluated according to their actual battle jobs.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Lead scoring uses Leads data as the primary role signal.
+- [ ] Switch scoring uses Switches data as the primary role signal.
+- [ ] Closer scoring uses Closers data as the primary role signal.
+- [ ] Energy-pressure support uses Chargers data where available.
+- [ ] Shield-disadvantage pressure uses Attackers data where available.
+- [ ] Volatility or bait-dependence support uses Consistency data where
+      available.
+- [ ] Overall ranking is treated as broad candidate quality, not a direct role
+      substitute.
+- [ ] Role score remains the lowest-weight component in the weighted model.
+- [ ] Typecheck/lint/tests pass.
+
+### US-021: Integrate Weighted Lineup And Roster Aggregation
+
+**Description:** As a competitive player, I want generated rosters to optimize
+multiple playable lineups using the documented normalized weighted model.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Lineup scoring combines normalized synergy, coverage, safety, consistency,
+      bulk, defensiveRatio, offensiveRatio, and role components.
+- [ ] Roster scoring aggregates best lineup score, top-N lineup average, viable
+      lineup count, viable lead diversity, and bench utility.
+- [ ] Roster scoring penalizes one-line teams where one excellent trio carries
+      otherwise dead bench slots.
+- [ ] ABC, ABB, and ABA labels remain diagnostic rather than primary scoring
+      inputs.
+- [ ] ABB lineups can score well when the A Pokemon covers the B pair's shared
+      weakness.
+- [ ] ABA shared weakness is penalized when it creates lead-alignment fragility
+      against top threats.
+- [ ] Multiple viable lineups score higher than one obvious best line when other
+      signals are comparable.
+- [ ] Typecheck/lint/tests pass.
+
+### US-022: Add Optimizer Validation Fixture Suite
+
+**Description:** As a maintainer, I want deterministic validation fixtures for
+documented optimizer tradeoffs so future scoring changes can be evaluated safely.
+
+**Acceptance Criteria:**
+
+- [ ] Before implementation, Ralph reads or invokes the `gbl-optimizer` skill and
+      records the docs read in `progress.txt`.
+- [ ] Fixtures cover weighted tradeoffs where synergy can beat slightly better
+      coverage.
+- [ ] Fixtures cover ABC, coherent ABB, unsupported ABB, ABA shared weakness, and
+      ABA shared strength behavior.
+- [ ] Fixtures cover severe shared weakness penalties.
+- [ ] Fixtures cover separate top-threat and full-meta coverage behavior.
+- [ ] Fixtures cover dual-type type-effectiveness calculations.
+- [ ] Fixtures cover multiple viable lineups beating a one-line roster.
+- [ ] Fixtures cover one excellent trio with three dead roster slots.
+- [ ] Fixtures cover strong coverage with poor bulk.
+- [ ] Fixtures cover strong individual Pokemon with poor pick-3 synergy.
+- [ ] Typecheck/lint/tests pass.
+
+### US-023: Add Optimizer Score Breakdown UI
+
+**Description:** As a user, I want the analysis panel to explain optimizer score
+categories so I understand why a generated roster is strong, risky, or
+matchup-dependent.
+
+**Acceptance Criteria:**
+
+- [ ] `Team Analysis Summary` includes an `Optimizer Score Breakdown` accordion.
+- [ ] The accordion displays synergy, coverage, safety, consistency, bulk,
+      defensive ratio, offensive ratio, and role in documented priority order.
+- [ ] Each category displays a normalized score, a visible range label, and a
+      concise explanation.
+- [ ] Category score states are not communicated by color alone.
+- [ ] Top-threat coverage and full-meta coverage are visually distinct.
+- [ ] The UI does not expose scoring weights as controls.
+- [ ] Tests cover rendering all eight categories.
+- [ ] Typecheck/lint/tests pass.
+- [ ] Verify in browser using dev-browser skill.
+
+### US-024: Update AGENTS.md With Optimizer Documentation Guidance
+
+**Description:** As an agent working in this repository, I need AGENTS.md to
+point me to the optimizer docs and skill so future scoring and sync work follows
+the documented strategy.
+
+**Acceptance Criteria:**
+
+- [ ] Root `AGENTS.md` references the `gbl-optimizer` skill for optimizer scoring,
+      role ranking, PvPoke sync, type effectiveness, coverage, safety,
+      consistency, bulk, and lineup strategy changes.
+- [ ] `lib/AGENTS.md` references the optimizer docs required before changing
+      `lib/genetic/fitness`, ranking sync, runtime ranking data, simulations, or
+      type-effectiveness scoring.
+- [ ] AGENTS guidance lists the key docs under `docs/pokemon-go-team-optimization.md`
+      and `docs/team-optimization/`.
+- [ ] Guidance tells agents to record which optimizer docs they read in
+      `progress.txt` for Ralph iterations.
+- [ ] Typecheck/lint/tests pass if touched files require validation.
+
+### US-025: Update README With Optimizer Architecture And Data Inputs
+
+**Description:** As a contributor or maintainer, I want the README to describe
+the current optimizer architecture, file structure, data inputs, and scoring
+decisions so future work has clear implementation context.
+
+**Acceptance Criteria:**
+
+- [ ] README describes the lineup-aware optimizer architecture at a high level.
+- [ ] README documents the fitness module file structure and the responsibilities
+      of lineup enumeration, lineup scoring, roster scoring, recommendations,
+      ranking data, and sync modules.
+- [ ] README documents that sync exports Overall, Leads, Switches, Closers,
+      Chargers, Attackers, and Consistency rankings when source files exist.
+- [ ] README explains the weighted component model as starting defaults, not
+      guaranteed optimal tuning constants.
+- [ ] README links to `docs/pokemon-go-team-optimization.md` and relevant
+      `docs/team-optimization/` references.
+- [ ] README states that PvPoke rankings are signals for candidate quality, role
+      fit, consistency, and threat weighting rather than immutable truth.
+- [ ] README documents the decision to keep scoring logic in `lib/` and UI/API
+      adapters as display/pass-through layers.
+- [ ] Typecheck/lint/tests pass if touched files require validation.
+
 ## Functional Requirements
 
 1. FR-1: The system must remove `FitnessAlgorithm = 'individual' | 'teamSynergy'`
@@ -368,6 +671,38 @@ rosters cover more offensive and defensive situations.
 38. FR-38: Type-diversity scoring must evaluate primary and secondary typing in
     context so complementary shared secondary typings are not automatically
     over-penalized.
+39. FR-39: Recommended lineup weaknesses must render as semantic bullet-list
+    items, one weakness per `li`, using human-readable species names.
+40. FR-40: The canonical scorer must combine normalized component scores using a
+    weighted model with starting weights: synergy `0.24`, coverage `0.21`,
+    safety `0.17`, consistency `0.13`, bulk `0.10`, defensive ratio `0.07`,
+    offensive ratio `0.05`, and role `0.03`.
+41. FR-41: Hard constraints must remain limited to legality and validity rules;
+    strategic scoring signals must remain weighted tradeoffs.
+42. FR-42: Ranking sync must export Overall, Leads, Switches, Closers, Chargers,
+    Attackers, and Consistency rankings for each supported battle format when
+    source files exist.
+43. FR-43: Runtime ranking access must support normalized score lookup for
+    Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency
+    without cross-format cache contamination.
+44. FR-44: Coverage scoring must maintain separate top-threat and full-meta pools
+    and expose separate diagnostics for both.
+45. FR-45: Safety scoring must account for overwhelming losses, no-answer
+    threats, single-answer threats, bad-lead recovery, and sweep risk.
+46. FR-46: Consistency scoring must prefer PvPoke Consistency exports when
+    available and otherwise fall back to shield stability, damage per energy,
+    energy cost, neutral damage, second-move value, and bait-dependence proxies.
+47. FR-47: Bulk scoring must use normalized `defense * hp / attack` when direct
+    stat-product or bulk data is unavailable.
+48. FR-48: Offensive and defensive type scoring must use
+    `data/type-effectiveness.json`, dual-type multiplication, selected move
+    types, and bounded normalized ratios.
+49. FR-49: Role scoring must use role-specific rankings for lead, switch, closer,
+    charger, attacker, and consistency signals while ensuring role remains the
+    lowest-weight component.
+50. FR-50: Roster aggregation must include top lineup quality, top-N lineup depth,
+    viable lineup count, viable lead diversity, bench utility, and a one-line
+    team penalty.
 
 ## Non-Goals
 
@@ -448,6 +783,29 @@ rosters cover more offensive and defensive situations.
   weaknesses, and shield scenario reliability.
 - Shadow preference or other current form-specific scoring where it remains
   competitively useful.
+
+### Optimizer Refactor Guidance
+
+- Ralph stories that touch optimizer scoring, PvPoke ranking sync, runtime
+  ranking data, type effectiveness, coverage, safety, consistency, bulk, roles,
+  or lineup strategy must read or invoke the `gbl-optimizer` skill before
+  implementation.
+- Ralph should use appropriate context or implementation specialists for these
+  stories, especially `refactoring-specialist`, `javascript-pro`,
+  `test-driven-development`, `test-runner`, `nextjs-developer`,
+  `ux-researcher`, `ui-designer`, and `documentation-engineer` depending on the
+  story scope.
+- Ralph iteration notes in `progress.txt` must list the optimizer docs read and
+  briefly explain how the implementation aligns with the documented strategy.
+- The weighted scorer should expose normalized score breakdowns for `synergy`,
+  `coverage`, `safety`, `consistency`, `bulk`, `defensiveRatio`,
+  `offensiveRatio`, and `role`.
+- The starting weights encode current strategy preferences and are not guaranteed
+  optimal tuning constants. Future tuning should be validated against regression
+  fixtures, known good teams, known bad teams, and current meta review.
+- Ranking sync should extend ranking categories from `overall`, `leads`,
+  `switches`, and `closers` to include `chargers`, `attackers`, and
+  `consistency`.
 
 ### Runtime Mitigation Requirements
 

@@ -47,6 +47,15 @@ describe('createPvpokeAdapter', () => {
     ).toBe(
       '/source/pvpoke/src/data/rankings/battlefrontiermaster/overall/rankings-10000.json',
     );
+    expect(adapter.getRankingFilePath('chargers', 1500)).toBe(
+      '/source/pvpoke/src/data/rankings/all/chargers/rankings-1500.json',
+    );
+    expect(adapter.getRankingFilePath('attackers', 1500)).toBe(
+      '/source/pvpoke/src/data/rankings/all/attackers/rankings-1500.json',
+    );
+    expect(adapter.getRankingFilePath('consistency', 1500)).toBe(
+      '/source/pvpoke/src/data/rankings/all/consistency/rankings-1500.json',
+    );
   });
 
   it('reads and parses JSON through the adapter boundary', async () => {

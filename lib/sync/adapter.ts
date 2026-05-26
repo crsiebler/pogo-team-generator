@@ -10,7 +10,15 @@ const GAMEMASTER_RELATIVE_PATHS = {
   moves: 'src/data/gamemaster/moves.json',
 } as const;
 
-const RANKING_CATEGORIES = ['overall', 'leads', 'switches', 'closers'] as const;
+const RANKING_CATEGORIES = [
+  'overall',
+  'leads',
+  'switches',
+  'closers',
+  'chargers',
+  'attackers',
+  'consistency',
+] as const;
 const RANKING_CUPS = [
   'all',
   'jungle',
