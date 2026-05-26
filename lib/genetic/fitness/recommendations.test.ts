@@ -5,6 +5,7 @@ import {
   buildPlayPokemonRosterRecommendations,
   type PlayPokemonRosterRecommendationResult,
 } from './recommendations';
+import { createNormalizedScoreBreakdown } from '@/lib/genetic/fitness/scoreBreakdown';
 import type { OrderedLineup, Pokemon } from '@/lib/types';
 
 const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
@@ -244,6 +245,16 @@ function makeLineupResult(
       coreBreakerReliability: 0.5,
       shieldReliability: 0.5,
     },
+    scoreBreakdown: createNormalizedScoreBreakdown({
+      synergy: score,
+      coverage: score,
+      safety: score,
+      consistency: 0.5,
+      bulk: 0.5,
+      defensiveRatio: 0.5,
+      offensiveRatio: 0.5,
+      role: 0.5,
+    }),
   };
 }
 

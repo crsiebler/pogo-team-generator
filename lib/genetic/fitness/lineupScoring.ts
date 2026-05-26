@@ -17,6 +17,15 @@ import {
   getShieldScenarioMatchupResult,
   getTopThreatsByRole,
 } from '@/lib/data/simulations';
+import {
+  createNormalizedScoreBreakdown,
+  type OptimizerScoreBreakdown,
+  type OptimizerScoreComponents,
+} from '@/lib/genetic/fitness/scoreBreakdown';
+import {
+  calculateDefensiveTypeRatio,
+  calculateOffensiveTypeRatio,
+} from '@/lib/genetic/fitness/typeEffectivenessRatios';
 import { getRecommendedMovesetForPokemon } from '@/lib/genetic/moveset';
 import type {
   LineupCoverageMetrics,
@@ -78,6 +87,8 @@ const ROLE_RANKING_BY_LINEUP_ROLE: Record<
 
 const MAX_TOP_THREAT_POOL_SIZE = 30;
 const MAX_FULL_META_THREAT_POOL_SIZE = 100;
+const MATCHUP_WIN_THRESHOLD = 500;
+const MATCHUP_LOSS_THRESHOLD = 500;
 
 /** Injectable data access for deterministic lineup scoring. */
 export interface LineupScoringContext {
@@ -133,6 +144,7 @@ export interface LineupScoreResult {
   diagnosticLabel: LineupPatternLabel;
   resourcePathMetrics?: LineupResourcePathMetrics;
   componentScores: LineupComponentScores;
+  scoreBreakdown: OptimizerScoreBreakdown;
 }
 
 /** Builds the production data context for lineup scoring. */
@@ -236,30 +248,257 @@ export function scoreOrderedLineup(
     shieldReliability: calculateShieldReliability(speciesIds, context),
   };
 
-  const score =
-    componentScores.rankingQuality * 0.16 +
-    componentScores.roleStrength * 0.16 +
-    componentScores.matchupCoverage * 0.18 +
-    componentScores.typeSynergy * 0.08 +
-    componentScores.typeDiversity * 0.07 +
-    componentScores.moveCoverage * 0.07 +
-    componentScores.energyPressure * 0.05 +
-    componentScores.statBalance * 0.11 +
-    componentScores.singleAnswerReliability * 0.05 +
-    componentScores.coreBreakerReliability * 0.05 +
-    componentScores.shieldReliability * 0.02;
+  const diagnosticLabel = calculateLineupPatternLabel(lineup, context);
+  const scoreBreakdown = createLineupScoreBreakdown(
+    lineup,
+    pokemon,
+    componentScores,
+    context,
+  );
 
   return {
     lineup,
-    score,
+    score: scoreBreakdown.score,
     coverageMetrics: coverage.coverageMetrics,
     coveredThreats: coverage.coveredThreats,
     weaknesses: coverage.weaknesses,
     singleAnswerRisks: coverage.singleAnswerRisks,
-    diagnosticLabel: calculateLineupPatternLabel(lineup, context),
+    diagnosticLabel,
     resourcePathMetrics: calculateResourcePathMetrics(lineup, context),
     componentScores,
+    scoreBreakdown,
   };
+}
+
+function createLineupScoreBreakdown(
+  lineup: OrderedLineup,
+  pokemon: Pokemon[],
+  componentScores: LineupComponentScores,
+  context: LineupScoringContext,
+): OptimizerScoreBreakdown {
+  const structureSafetyAdjustment = calculateStructureSafetyAdjustment(
+    lineup,
+    context,
+  );
+  const typeRatios = calculateLineupTypeRatios(pokemon, context);
+  const components: OptimizerScoreComponents = {
+    synergy: clamp01(
+      componentScores.typeSynergy * 0.45 +
+        componentScores.typeDiversity * 0.25 +
+        componentScores.singleAnswerReliability * 0.15 +
+        componentScores.coreBreakerReliability * 0.15 +
+        structureSafetyAdjustment,
+    ),
+    coverage: clamp01(
+      componentScores.matchupCoverage * 0.7 +
+        componentScores.moveCoverage * 0.3,
+    ),
+    safety: clamp01(
+      componentScores.singleAnswerReliability * 0.35 +
+        componentScores.coreBreakerReliability * 0.35 +
+        componentScores.shieldReliability * 0.2 +
+        structureSafetyAdjustment * 0.1,
+    ),
+    consistency: clamp01(
+      componentScores.energyPressure * 0.35 +
+        componentScores.shieldReliability * 0.35 +
+        componentScores.rankingQuality * 0.3,
+    ),
+    bulk: componentScores.statBalance,
+    defensiveRatio: typeRatios.defensive,
+    offensiveRatio: typeRatios.offensive,
+    role: componentScores.roleStrength,
+  };
+
+  return createNormalizedScoreBreakdown(components);
+}
+
+function calculateStructureSafetyAdjustment(
+  lineup: OrderedLineup,
+  context: LineupScoringContext,
+): number {
+  const topThreats = sanitizeThreatPool(
+    context.topThreats ?? context.threats,
+    MAX_TOP_THREAT_POOL_SIZE,
+  );
+  if (topThreats.length === 0) {
+    return 0;
+  }
+
+  const reward = leadCoversBacklineWeakness(lineup, context, topThreats)
+    ? 0.08
+    : 0;
+  const penalty = hasAbaLeadAlignmentFragility(lineup, context, topThreats)
+    ? -0.12
+    : 0;
+
+  return reward + penalty;
+}
+
+function leadCoversBacklineWeakness(
+  lineup: OrderedLineup,
+  context: LineupScoringContext,
+  topThreats: string[],
+): boolean {
+  return topThreats.some((threat) => {
+    const leadRating = context.getMatchupRating(lineup.lead, threat);
+    const switchRating = context.getMatchupRating(lineup.switch, threat);
+    const closerRating = context.getMatchupRating(lineup.closer, threat);
+
+    return (
+      leadRating !== null &&
+      switchRating !== null &&
+      closerRating !== null &&
+      leadRating > MATCHUP_WIN_THRESHOLD &&
+      switchRating < MATCHUP_LOSS_THRESHOLD &&
+      closerRating < MATCHUP_LOSS_THRESHOLD
+    );
+  });
+}
+
+function hasAbaLeadAlignmentFragility(
+  lineup: OrderedLineup,
+  context: LineupScoringContext,
+  topThreats: string[],
+): boolean {
+  return topThreats.some((threat) => {
+    const leadRating = context.getMatchupRating(lineup.lead, threat);
+    const switchRating = context.getMatchupRating(lineup.switch, threat);
+    const closerRating = context.getMatchupRating(lineup.closer, threat);
+
+    return (
+      leadRating !== null &&
+      switchRating !== null &&
+      closerRating !== null &&
+      leadRating < MATCHUP_LOSS_THRESHOLD &&
+      switchRating > MATCHUP_WIN_THRESHOLD &&
+      closerRating < MATCHUP_LOSS_THRESHOLD
+    );
+  });
+}
+
+function calculateLineupTypeRatios(
+  pokemon: Pokemon[],
+  context: LineupScoringContext,
+): { offensive: number; defensive: number } {
+  if (pokemon.length === 0) {
+    return { offensive: 0.5, defensive: 0.5 };
+  }
+
+  const attackingMoveTypes = pokemon.flatMap((entry) =>
+    getLineupAttackingTypes(entry, context),
+  );
+  const offensive = calculateWeightedTypePoolScore(
+    calculateOffensiveTypeRatio({
+      attackingMoveTypes,
+      defenderTypeProfiles: getThreatTypeProfiles(
+        context,
+        context.topThreats ?? context.threats,
+        MAX_TOP_THREAT_POOL_SIZE,
+      ),
+    }),
+    calculateOffensiveTypeRatio({
+      attackingMoveTypes,
+      defenderTypeProfiles: getThreatTypeProfiles(
+        context,
+        context.fullMetaThreats ?? context.threats,
+      ),
+    }),
+  );
+  const defensive = calculateWeightedTypePoolScore(
+    calculateDefensiveTypeRatio({
+      defenderTypes: pokemon.map((entry) => entry.types),
+      incomingAttackTypes: getExpectedAttackTypes(
+        context,
+        context.topThreats ?? context.threats,
+        MAX_TOP_THREAT_POOL_SIZE,
+      ),
+    }),
+    calculateDefensiveTypeRatio({
+      defenderTypes: pokemon.map((entry) => entry.types),
+      incomingAttackTypes: getExpectedAttackTypes(
+        context,
+        context.fullMetaThreats ?? context.threats,
+      ),
+    }),
+  );
+
+  return { offensive, defensive };
+}
+
+function calculateWeightedTypePoolScore(
+  topThreatScore: number,
+  fullMetaScore: number,
+): number {
+  return clamp01(topThreatScore * 0.7 + fullMetaScore * 0.3);
+}
+
+function getThreatTypeProfiles(
+  context: LineupScoringContext,
+  threats: string[],
+  limit: number = MAX_FULL_META_THREAT_POOL_SIZE,
+): string[][] {
+  const profiles = sanitizeThreatPool(threats, limit)
+    .map((speciesId) => context.getPokemon(speciesId)?.types ?? [])
+    .filter((types) => types.length > 0);
+
+  return profiles.length > 0 ? profiles : ALL_TYPES.map((type) => [type]);
+}
+
+function getExpectedAttackTypes(
+  context: LineupScoringContext,
+  threats: string[],
+  limit: number = MAX_FULL_META_THREAT_POOL_SIZE,
+): string[] {
+  const attackTypes = sanitizeThreatPool(threats, limit).flatMap(
+    (speciesId) => {
+      const pokemon = context.getPokemon(speciesId);
+
+      return pokemon ? getExpectedThreatAttackTypes(pokemon, context) : [];
+    },
+  );
+
+  return attackTypes.length > 0 ? attackTypes : ALL_TYPES;
+}
+
+function getExpectedThreatAttackTypes(
+  pokemon: Pokemon,
+  context: LineupScoringContext,
+): string[] {
+  const moveset = getContextMoveset(pokemon, context);
+  const moveTypes = [
+    moveset.fastMove,
+    moveset.chargedMove1,
+    moveset.chargedMove2,
+  ]
+    .filter((moveId): moveId is string => moveId !== null)
+    .map((moveId) => getContextMove(moveId, context)?.type)
+    .filter((moveType): moveType is string => moveType !== undefined);
+
+  return moveTypes.length > 0 ? moveTypes : pokemon.types;
+}
+
+function getLineupAttackingTypes(
+  pokemon: Pokemon,
+  context: LineupScoringContext,
+): string[] {
+  const moveset = getContextMoveset(pokemon, context);
+  const moveIds = [
+    moveset.fastMove,
+    moveset.chargedMove1,
+    moveset.chargedMove2,
+  ].filter((moveId): moveId is string => moveId !== null);
+  if (moveIds.length === 0) {
+    return pokemon.types;
+  }
+
+  const moveTypes = moveIds
+    .map((moveId) => getContextMove(moveId, context)?.type)
+    .filter((moveType): moveType is string => moveType !== undefined);
+
+  return moveTypes.length === moveIds.length
+    ? uniquePreservingOrder(moveTypes)
+    : uniquePreservingOrder([...moveTypes, ...pokemon.types]);
 }
 
 function calculateLineupRoleStrength(

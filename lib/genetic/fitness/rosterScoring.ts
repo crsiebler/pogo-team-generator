@@ -209,15 +209,43 @@ export function scoreFastRosterLineup(
       ? clamp01(1 - overwhelmingLossCount / (evaluatedThreatCount * 3))
       : 1;
 
+  const componentScores = {
+    rankingQuality,
+    roleStrength,
+    matchupCoverage: weightedCoverage,
+    typeSynergy: 0.5,
+    typeDiversity: 0.5,
+    moveCoverage: 0.5,
+    energyPressure: 0.5,
+    statBalance: 0.5,
+    singleAnswerReliability,
+    coreBreakerReliability,
+    shieldReliability: 0.5,
+  };
+  const typeRatios = calculateFastLineupTypeRatios(speciesIds, context);
+  const scoreBreakdown = createNormalizedScoreBreakdown({
+    synergy: clamp01(
+      componentScores.typeSynergy * 0.4 +
+        componentScores.typeDiversity * 0.25 +
+        componentScores.singleAnswerReliability * 0.2 +
+        componentScores.coreBreakerReliability * 0.15,
+    ),
+    coverage: componentScores.matchupCoverage,
+    safety: clamp01(
+      componentScores.singleAnswerReliability * 0.4 +
+        componentScores.coreBreakerReliability * 0.4 +
+        overwhelmingReliability * 0.2,
+    ),
+    consistency: componentScores.rankingQuality,
+    bulk: componentScores.statBalance,
+    defensiveRatio: typeRatios.defensive,
+    offensiveRatio: typeRatios.offensive,
+    role: componentScores.roleStrength,
+  });
+
   return {
     lineup,
-    score:
-      rankingQuality * 0.22 +
-      roleStrength * 0.23 +
-      weightedCoverage * 0.3 +
-      singleAnswerReliability * 0.1 +
-      coreBreakerReliability * 0.1 +
-      overwhelmingReliability * 0.05,
+    score: scoreBreakdown.score,
     coverageMetrics: {
       coverageRate,
       dominatingMatchupCount,
@@ -235,20 +263,61 @@ export function scoreFastRosterLineup(
       context,
       evaluatedThreats,
     ),
-    componentScores: {
-      rankingQuality,
-      roleStrength,
-      matchupCoverage: weightedCoverage,
-      typeSynergy: 0.5,
-      typeDiversity: 0.5,
-      moveCoverage: 0.5,
-      energyPressure: 0.5,
-      statBalance: 0.5,
-      singleAnswerReliability,
-      coreBreakerReliability,
-      shieldReliability: 0.5,
-    },
+    componentScores,
+    scoreBreakdown,
   };
+}
+
+function calculateFastLineupTypeRatios(
+  speciesIds: string[],
+  context: PlayPokemonRosterScoringContext,
+): { offensive: number; defensive: number } {
+  const pokemon = speciesIds
+    .map((speciesId) => context.getPokemon(speciesId))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== undefined);
+  if (pokemon.length === 0) {
+    return { offensive: 0.5, defensive: 0.5 };
+  }
+
+  const attackingMoveTypes = pokemon.flatMap((entry) =>
+    getRosterAttackingTypes(entry, context),
+  );
+  const offensive = calculateWeightedTypePoolScore(
+    calculateOffensiveTypeRatio({
+      attackingMoveTypes,
+      defenderTypeProfiles: getThreatTypeProfiles(
+        context,
+        context.topThreats ?? context.threats,
+        MAX_TOP_THREAT_POOL_SIZE,
+      ),
+    }),
+    calculateOffensiveTypeRatio({
+      attackingMoveTypes,
+      defenderTypeProfiles: getThreatTypeProfiles(
+        context,
+        context.fullMetaThreats ?? context.threats,
+      ),
+    }),
+  );
+  const defensive = calculateWeightedTypePoolScore(
+    calculateDefensiveTypeRatio({
+      defenderTypes: pokemon.map((entry) => entry.types),
+      incomingAttackTypes: getExpectedAttackTypes(
+        context,
+        context.topThreats ?? context.threats,
+        MAX_TOP_THREAT_POOL_SIZE,
+      ),
+    }),
+    calculateDefensiveTypeRatio({
+      defenderTypes: pokemon.map((entry) => entry.types),
+      incomingAttackTypes: getExpectedAttackTypes(
+        context,
+        context.fullMetaThreats ?? context.threats,
+      ),
+    }),
+  );
+
+  return { offensive, defensive };
 }
 
 function calculateFastResourcePathMetrics(
@@ -776,6 +845,7 @@ function calculateUsefulNeutralDamageScore(
       defenderTypeProfiles: getThreatTypeProfiles(
         context,
         context.topThreats ?? context.threats,
+        MAX_TOP_THREAT_POOL_SIZE,
       ),
     }),
     calculateOffensiveTypeRatio({
@@ -985,6 +1055,7 @@ function calculateRosterTypeCoverage(
       defenderTypeProfiles: getThreatTypeProfiles(
         context,
         context.topThreats ?? context.threats,
+        MAX_TOP_THREAT_POOL_SIZE,
       ),
     }),
     calculateOffensiveTypeRatio({
@@ -995,11 +1066,23 @@ function calculateRosterTypeCoverage(
       ),
     }),
   );
-  const expectedAttackTypes = getExpectedAttackTypes(context);
-  const defensive = calculateDefensiveTypeRatio({
-    defenderTypes: pokemon.map((entry) => entry.types),
-    incomingAttackTypes: expectedAttackTypes,
-  });
+  const defensive = calculateWeightedTypePoolScore(
+    calculateDefensiveTypeRatio({
+      defenderTypes: pokemon.map((entry) => entry.types),
+      incomingAttackTypes: getExpectedAttackTypes(
+        context,
+        context.topThreats ?? context.threats,
+        MAX_TOP_THREAT_POOL_SIZE,
+      ),
+    }),
+    calculateDefensiveTypeRatio({
+      defenderTypes: pokemon.map((entry) => entry.types),
+      incomingAttackTypes: getExpectedAttackTypes(
+        context,
+        context.fullMetaThreats ?? context.threats,
+      ),
+    }),
+  );
 
   return { offensive, defensive };
 }
@@ -1014,8 +1097,9 @@ function calculateWeightedTypePoolScore(
 function getThreatTypeProfiles(
   context: PlayPokemonRosterScoringContext,
   threats: string[],
+  limit: number = MAX_FULL_META_THREAT_POOL_SIZE,
 ): string[][] {
-  const profiles = threats
+  const profiles = sanitizeThreatPool(threats, limit)
     .map((speciesId) => context.getPokemon(speciesId)?.types ?? [])
     .filter((types) => types.length > 0);
 
@@ -1024,12 +1108,16 @@ function getThreatTypeProfiles(
 
 function getExpectedAttackTypes(
   context: PlayPokemonRosterScoringContext,
+  threats: string[],
+  limit: number = MAX_FULL_META_THREAT_POOL_SIZE,
 ): string[] {
-  const attackTypes = context.threats.flatMap((speciesId) => {
-    const pokemon = context.getPokemon(speciesId);
+  const attackTypes = sanitizeThreatPool(threats, limit).flatMap(
+    (speciesId) => {
+      const pokemon = context.getPokemon(speciesId);
 
-    return pokemon ? getExpectedThreatAttackTypes(pokemon, context) : [];
-  });
+      return pokemon ? getExpectedThreatAttackTypes(pokemon, context) : [];
+    },
+  );
 
   return attackTypes.length > 0 ? attackTypes : ALL_TYPES;
 }

@@ -58,7 +58,9 @@ For GA evaluation in `lib/genetic/fitness/index.ts`, call `evaluatePopulation(po
 
 For optimizer weighted scoring, import the canonical score contract from `lib/genetic/fitness/scoreBreakdown.ts`; keep components normalized to 0..1 before aggregation and treat only validity or legality as hard constraints.
 
-For PlayPokemon roster scoring, `scorePlayPokemonRoster(...)` returns a normalized `scoreBreakdown` alongside `fitness`; keep safety, consistency, bulk, defensive ratio, offensive ratio, role, coverage, and synergy components normalized before aggregation.
+For ordered lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, `scoreOrderedLineup(...)` returns `scoreBreakdown` and sets `score` from the normalized weighted optimizer contract; use those components for aggregation and explanations rather than adding ad hoc lineup score weights, compute lineup offensive/defensive ratio components through `typeEffectivenessRatios.ts`, weight both offensive defender pools and defensive expected attack-type pools with top-threat priority over full-meta, and keep top-threat ratio pools bounded to the top-threat limit.
+
+For PlayPokemon roster scoring, `scorePlayPokemonRoster(...)` returns a normalized `scoreBreakdown` alongside `fitness`; keep safety, consistency, bulk, defensive ratio, offensive ratio, role, coverage, and synergy components normalized before aggregation, and keep `scoreFastRosterLineup(...)` component semantics aligned with full lineup scoring even when using lightweight hot-path diagnostics, including sanitized and bounded split threat pools.
 
 For role scoring in `lib/genetic/fitness`, treat Leads, Switches, and Closers rankings as primary role-fit signals; use Chargers, Attackers, and Consistency only as supporting inputs, and keep role fit subordinate to the canonical weighted score contract.
 

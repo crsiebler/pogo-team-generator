@@ -5,6 +5,7 @@ import {
   type PlayPokemonRosterScoringContext,
 } from './rosterScoring';
 import { MissingRankingDataError } from '@/lib/data/rankings';
+import { createNormalizedScoreBreakdown } from '@/lib/genetic/fitness/scoreBreakdown';
 import type { OrderedLineup, Pokemon } from '@/lib/types';
 
 const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
@@ -1373,6 +1374,133 @@ describe('scorePlayPokemonRoster', () => {
     );
   });
 
+  test('fast lineup scoring computes type-effectiveness ratio components', () => {
+    const waterPressureResult = scorePlayPokemonRoster(
+      ['water-a', 'water-grass-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a'],
+      createTypeCoverageContext({
+        threats: ['threat-fire-rock'],
+        topThreats: ['threat-fire-rock'],
+        fullMetaThreats: ['threat-fire-rock'],
+        getMatchupRating: () => 520,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const resistedPressureResult = scorePlayPokemonRoster(
+      ['dragon-a', 'dragon-b', 'dragon-c', 'ground-a', 'fire-a', 'flying-a'],
+      createTypeCoverageContext({
+        threats: ['threat-steel-fairy'],
+        topThreats: ['threat-steel-fairy'],
+        fullMetaThreats: ['threat-steel-fairy'],
+        getMatchupRating: () => 520,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(waterPressureResult.metrics.topLineupQuality).toBeGreaterThan(
+      resistedPressureResult.metrics.topLineupQuality,
+    );
+    expect(
+      waterPressureResult.scoreBreakdown.components.offensiveRatio,
+    ).toBeGreaterThan(
+      resistedPressureResult.scoreBreakdown.components.offensiveRatio,
+    );
+    expect(
+      waterPressureResult.scoreBreakdown.components.defensiveRatio,
+    ).not.toBe(0.5);
+  });
+
+  test('deduplicates split threat pools before offensive ratio scoring', () => {
+    const context = createTypeCoverageContext({
+      threats: ['threat-fire-rock', 'threat-steel-fairy'],
+      fullMetaThreats: ['threat-fire-rock', 'threat-steel-fairy'],
+      getMatchupRating: () => 520,
+    });
+    const dedupedResult = scorePlayPokemonRoster(
+      ['water-a', 'water-grass-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a'],
+      {
+        ...context,
+        topThreats: ['threat-fire-rock', 'threat-steel-fairy'],
+      },
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const duplicatedResult = scorePlayPokemonRoster(
+      ['water-a', 'water-grass-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a'],
+      {
+        ...context,
+        topThreats: [
+          'threat-fire-rock',
+          'threat-fire-rock',
+          'threat-steel-fairy',
+        ],
+      },
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(
+      duplicatedResult.scoreBreakdown.components.offensiveRatio,
+    ).toBeCloseTo(dedupedResult.scoreBreakdown.components.offensiveRatio, 5);
+  });
+
+  test('bounds top-threat defender pools before offensive ratio scoring', () => {
+    const topThreats = [
+      'threat-fire-rock',
+      'water-a',
+      'grass-a',
+      'ground-a',
+      'rock-a',
+      'fire-a',
+      'flying-a',
+      'ghost-a',
+      'poison-a',
+      'bug-a',
+      'normal-a',
+      'dark-a',
+      'psychic-a',
+      'fairy-a',
+      'fairy-b',
+      'fairy-c',
+      'fire-b',
+      'fire-c',
+      'dragon-a',
+      'dragon-b',
+      'dragon-c',
+      'fire-grass-a',
+      'water-grass-a',
+      'water-fairy-a',
+      'steel-fairy-a',
+      'electric-water-a',
+      'electric-grass-a',
+      'electric-ground-a',
+      'water-electric-a',
+      'grass-electric-a',
+    ];
+    const context = createTypeCoverageContext({
+      threats: ['threat-steel-fairy'],
+      fullMetaThreats: ['threat-steel-fairy'],
+      getMatchupRating: () => 520,
+    });
+    const boundedResult = scorePlayPokemonRoster(
+      ['water-a', 'water-grass-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a'],
+      {
+        ...context,
+        topThreats,
+      },
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const oversizedResult = scorePlayPokemonRoster(
+      ['water-a', 'water-grass-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a'],
+      {
+        ...context,
+        topThreats: [...topThreats, 'threat-steel-fairy'],
+      },
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(
+      oversizedResult.scoreBreakdown.components.offensiveRatio,
+    ).toBeCloseTo(boundedResult.scoreBreakdown.components.offensiveRatio, 5);
+  });
+
   test('keeps primary role rankings ahead of supporting role categories', () => {
     const primaryRoster = [
       'normal-a',
@@ -1618,6 +1746,16 @@ function makeLineupResult(
       coreBreakerReliability: 0.5,
       shieldReliability: 0.5,
     },
+    scoreBreakdown: createNormalizedScoreBreakdown({
+      synergy: overrides.score,
+      coverage: overrides.score,
+      safety: overrides.score,
+      consistency: 0.5,
+      bulk: 0.5,
+      defensiveRatio: 0.5,
+      offensiveRatio: 0.5,
+      role: 0.5,
+    }),
   };
 }
 

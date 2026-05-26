@@ -26,6 +26,8 @@
 - Type-effectiveness ratio helpers live in `lib/genetic/fitness/typeEffectivenessRatios.ts`; use `data/type-effectiveness.json` through `calculateEffectiveness(...)`, include selected fast and charged move types for offensive pressure, and keep offensive/defensive ratio scores normalized to 0..1.
 - `scorePlayPokemonRoster(...)` returns `scoreBreakdown` with normalized weighted optimizer components; safety should weight top-threat no-answer/single-answer/overwhelming losses above full-meta risks, consistency should use PvPoke Consistency when available before move/shield-stability proxies, and bulk should use `defense * hp / attack` when direct bulk data is unavailable.
 - Role scoring should treat Leads, Switches, and Closers as primary role signals, with Chargers, Attackers, and Consistency as supporting signals; keep role fit normalized and subordinate to the weighted score contract rather than using Overall as a direct role substitute.
+- `scoreOrderedLineup(...)` now returns `scoreBreakdown` and sets `score` from the canonical normalized weighted optimizer contract; use the breakdown components for future lineup aggregation and UI explanation instead of reintroducing ad hoc lineup score weights, compute lineup offensive/defensive ratio components through `typeEffectivenessRatios.ts`, weight both offensive defender pools and defensive expected attack-type pools with top-threat priority over full-meta, and keep top-threat ratio pools bounded to the top-threat limit.
+- `scoreFastRosterLineup(...)` is the hot GA fallback for PlayPokemon lineup scoring and must keep its `scoreBreakdown` components semantically aligned with full lineup scoring, including offensive/defensive type-effectiveness ratio components instead of fixed proxy constants and sanitized/bounded split threat pools.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -959,4 +961,77 @@
   - US-028 still needs broader weighted lineup and roster aggregation refinements using all normalized components.
 - Next iteration start:
   - US-028 - Integrate weighted lineup and roster aggregation
+---
+## 2026-05-25 17:55 MST - US-028
+- What was implemented
+- Integrated ordered lineup scoring with the canonical normalized weighted score-breakdown contract so lineup `score` is derived from synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, and role components.
+- Preserved roster aggregation through best lineup quality, top-N depth, viable lineup count, viable lead diversity, and bench utility while keeping one-line/dead-bench penalties in the weighted model.
+- Added regression coverage for normalized lineup score breakdown output, type-effectiveness ratio influence, coherent ABB support, matchup-profile ABB support without type-share labels, and ABA shared-weakness lead-alignment fragility.
+- Files changed: `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/recommendations.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-028 - Integrate weighted lineup and roster aggregation`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts` (red first: missing lineup `scoreBreakdown`; pass after implementation)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/recommendations.test.ts` (pass; 65 tests; pass after first review fix; pass after second review fix, 66 tests)
+  - `npx tsc --noEmit` (pass after adding score breakdown to fast/test lineup results)
+  - `npm run lint` (pass after import-order fix)
+  - `npm test` (pass; 54 files, 418 tests; pass after first review fix; pass after second review fix, 419 tests)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` and `test-driven-development` before optimizer aggregation changes.
+  - Read `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: `gbl-optimizer` skill required by PRD, `test-driven-development` skill for feature work
+  - Used: `gbl-optimizer`, `test-driven-development`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed medium role-specific ABB/ABA scoring adjustment finding, then fixed medium lineup ratio-component and diagnostic-label-gating findings; third pass still found medium blockers, so the story was left uncommitted and `passes: false`
+- Decisions (why):
+  - Reused `createNormalizedScoreBreakdown(...)` for ordered lineup scoring because US-028 requires the same documented component contract at lineup and roster levels.
+  - Used `typeEffectivenessRatios.ts` for lineup offensive and defensive ratio components after review because score-breakdown category names should reflect actual normalized ratio calculations, not legacy proxy fields.
+  - Kept ABC/ABB/ABA labels as diagnostics by making bounded safety/synergy adjustments depend on role-specific top-threat matchup ratings rather than the diagnostic label, because the optimizer docs require structure labels to explain rather than dominate scoring.
+  - Left roster aggregation in `rosterScoring.ts` and updated fast lineup results to carry a compatible breakdown because hot GA scoring still needs cheap deterministic lineup scores.
+- **Learnings for future iterations:**
+  - Ordered lineup scoring now has a normalized score breakdown; downstream analysis should consume `scoreBreakdown.components` instead of reconstructing optimizer categories from legacy component fields.
+  - Test helpers that construct `LineupScoreResult` must include `scoreBreakdown` when the interface is used directly.
+- Known issues / follow-ups:
+  - Blocker: `calculateStructureSafetyAdjustment(...)` currently short-circuits reward before checking fragility; next iteration should compute reward and penalty independently or give top-threat fragility precedence.
+  - Blocker: lineup `defensiveRatio` should calculate top-threat and full-meta expected attack type ratios separately, then combine with the same weighted pool helper used by offensive ratio.
+  - Blocker: `scoreFastRosterLineup(...)` should compute fast-path offensive/defensive ratio components from type-effectiveness helpers or an equivalent lightweight helper instead of fixed proxy values.
+- Next iteration start:
+  - US-028 - Integrate weighted lineup and roster aggregation
+---
+## 2026-05-25 18:14 MST - US-028
+- What was implemented
+- Completed the prior US-028 blocker fixes by making structure safety combine lead-covered backline weakness rewards with ABA lead-alignment fragility penalties, weighting lineup defensive ratio across top-threat and full-meta expected attack pools separately, and computing fast roster lineup offensive/defensive ratio components from type-effectiveness helpers.
+- Added regression coverage for top-threat defensive-ratio weighting and fast lineup type-effectiveness ratio components.
+- Files changed: `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/recommendations.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-028 - Integrate weighted lineup and roster aggregation`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (red first for split defensive-ratio and fast ratio-component blockers; pass after implementation)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/recommendations.test.ts` (pass; 73 tests after review fixes)
+  - `npx prettier --write "lib/genetic/fitness/lineupScoring.ts" "lib/genetic/fitness/lineupScoring.test.ts" "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 54 files, 426 tests after review fixes)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` and `test-driven-development` before optimizer aggregation fixes.
+  - Read `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: `gbl-optimizer` skill required by PRD, `test-driven-development` skill for feature work
+  - Used: `gbl-optimizer`, `test-driven-development`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed medium findings for sub-500 structure-fragility thresholds, unsanitized roster offensive threat pools, and oversized top-threat ratio pools before commit; final review had no actionable critical/high/medium findings; deferred low symmetric bound-test expansion because the modified scoring paths are covered by focused representative lineup/roster bound tests and low findings do not block this iteration
+- Decisions (why):
+  - Combined the structure reward and fragility penalty independently because ABB-style support and ABA lead-alignment risk can coexist across different top threats and neither should hide the other.
+  - Weighted lineup defensive ratios by separate top-threat and full-meta expected attack types because defensive exposure should follow the same meta-priority model as offensive pressure and split coverage.
+  - Reused roster type-effectiveness helpers in `scoreFastRosterLineup(...)` because hot GA scoring needs cheap diagnostics but the normalized component names must still represent the documented ratio semantics.
+  - Switched structure checks from severe-loss thresholds to normal matchup loss thresholds because ABA lead-alignment fragility should apply when both A slots lose, not only when both losses are overwhelming.
+  - Applied top-threat bounds to type-ratio pool construction because the 70% top-threat component should not be diluted by oversized caller-provided pools.
+- **Learnings for future iterations:**
+  - Fast and full lineup score breakdown components should stay semantically aligned even when the fast path omits explanation-heavy diagnostics.
+  - Defensive type-ratio scoring should preserve top-threat versus full-meta attack-type weighting; do not collapse defensive expected attacks to `context.threats` only.
+- Known issues / follow-ups:
+  - US-029 still needs deterministic optimizer validation fixtures for the documented tradeoffs.
+- Next iteration start:
+  - US-029 - Add optimizer validation fixture suite
 ---

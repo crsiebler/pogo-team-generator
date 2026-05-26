@@ -9,6 +9,7 @@ import type { OrderedLineup, Pokemon } from '@/lib/types';
 const pokemonById: Record<string, Pokemon> = {
   bulky: makePokemon('bulky', ['water'], { atk: 100, def: 180, hp: 170 }),
   balanced: makePokemon('balanced', ['steel'], { atk: 130, def: 150, hp: 150 }),
+  fire: makePokemon('fire', ['fire'], { atk: 140, def: 135, hp: 135 }),
   glass: makePokemon('glass', ['fire'], { atk: 190, def: 95, hp: 95 }),
   closer: makePokemon('closer', ['ghost'], { atk: 150, def: 145, hp: 155 }),
   electric: makePokemon('electric', ['electric'], {
@@ -16,8 +17,25 @@ const pokemonById: Record<string, Pokemon> = {
     def: 130,
     hp: 130,
   }),
+  flyer: makePokemon('flyer', ['flying'], { atk: 140, def: 135, hp: 135 }),
+  ground: makePokemon('ground', ['ground'], { atk: 140, def: 135, hp: 135 }),
   grass: makePokemon('grass', ['grass'], { atk: 140, def: 135, hp: 135 }),
   water: makePokemon('water', ['water'], { atk: 140, def: 135, hp: 135 }),
+  'electric-threat': makePokemon('electric-threat', ['electric'], {
+    atk: 140,
+    def: 135,
+    hp: 135,
+  }),
+  'grass-threat': makePokemon('grass-threat', ['grass'], {
+    atk: 140,
+    def: 135,
+    hp: 135,
+  }),
+  'threat-fire-rock': makePokemon('threat-fire-rock', ['fire', 'rock'], {
+    atk: 140,
+    def: 135,
+    hp: 135,
+  }),
 };
 
 const defaultThreats = ['threat-a', 'threat-b', 'threat-c', 'threat-d'];
@@ -261,6 +279,465 @@ describe('scoreOrderedLineup', () => {
 
     expect(scoreOrderedLineup(lineup, strongContext).score).toBeGreaterThan(
       scoreOrderedLineup(lineup, weakContext).score,
+    );
+  });
+
+  test('combines lineup scoring through normalized weighted optimizer components', () => {
+    const waterPressure = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'bulky',
+        closer: 'ground',
+      },
+      createContext({
+        threats: ['threat-fire-rock'],
+        topThreats: ['threat-fire-rock'],
+        fullMetaThreats: ['threat-fire-rock'],
+        matchupRatings: uniformMatchups(560),
+        rankingScores: uniformScores(90),
+        roleScores: uniformRoleScores(0.8),
+        recommendedMovesets: uniformMovesets('WATER_A', 'WATER_A', 'WATER_B'),
+        moves: {
+          WATER_A: { type: 'water' },
+          WATER_B: { type: 'water' },
+        },
+      }),
+    );
+    const resistedPressure = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'bulky',
+        closer: 'ground',
+      },
+      createContext({
+        threats: ['threat-fire-rock'],
+        topThreats: ['threat-fire-rock'],
+        fullMetaThreats: ['threat-fire-rock'],
+        matchupRatings: uniformMatchups(560),
+        rankingScores: uniformScores(90),
+        roleScores: uniformRoleScores(0.8),
+        recommendedMovesets: uniformMovesets(
+          'DRAGON_A',
+          'DRAGON_A',
+          'DRAGON_B',
+        ),
+        moves: {
+          DRAGON_A: { type: 'dragon' },
+          DRAGON_B: { type: 'dragon' },
+        },
+      }),
+    );
+
+    expect(waterPressure.scoreBreakdown.components).toEqual({
+      synergy: expect.any(Number),
+      coverage: expect.any(Number),
+      safety: expect.any(Number),
+      consistency: expect.any(Number),
+      bulk: expect.any(Number),
+      defensiveRatio: expect.any(Number),
+      offensiveRatio: expect.any(Number),
+      role: expect.any(Number),
+    });
+    expect(waterPressure.score).toBe(waterPressure.scoreBreakdown.score);
+    expect(
+      Object.values(waterPressure.scoreBreakdown.components).every(
+        (score) => score >= 0 && score <= 1,
+      ),
+    ).toBe(true);
+    expect(
+      waterPressure.scoreBreakdown.components.offensiveRatio,
+    ).toBeGreaterThan(
+      resistedPressure.scoreBreakdown.components.offensiveRatio,
+    );
+  });
+
+  test('allows coherent ABB lineups to score well when the lead covers the backline weakness', () => {
+    const coherentAbb = scoreOrderedLineup(
+      {
+        lead: 'ground',
+        switch: 'water',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          ground: { 'electric-threat': 700 },
+          water: { 'electric-threat': 350 },
+          bulky: { 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+    const unsupportedAbb = scoreOrderedLineup(
+      {
+        lead: 'fire',
+        switch: 'water',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          fire: { 'electric-threat': 450 },
+          water: { 'electric-threat': 350 },
+          bulky: { 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+    const backlineAnswerAbb = scoreOrderedLineup(
+      {
+        lead: 'fire',
+        switch: 'water',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          fire: { 'electric-threat': 350 },
+          water: { 'electric-threat': 700 },
+          bulky: { 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+
+    expect(coherentAbb.diagnosticLabel).toBe('ABB');
+    expect(coherentAbb.score).toBeGreaterThan(unsupportedAbb.score);
+    expect(coherentAbb.scoreBreakdown.components.synergy).toBeGreaterThan(
+      unsupportedAbb.scoreBreakdown.components.synergy,
+    );
+    expect(coherentAbb.scoreBreakdown.components.synergy).toBeGreaterThan(
+      backlineAnswerAbb.scoreBreakdown.components.synergy,
+    );
+  });
+
+  test('rewards matchup-profile ABB support without relying on type-share labels', () => {
+    const matchupSupported = scoreOrderedLineup(
+      {
+        lead: 'ground',
+        switch: 'balanced',
+        closer: 'closer',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          ground: { 'electric-threat': 700 },
+          balanced: { 'electric-threat': 350 },
+          closer: { 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+    const unsupported = scoreOrderedLineup(
+      {
+        lead: 'fire',
+        switch: 'balanced',
+        closer: 'closer',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          fire: { 'electric-threat': 450 },
+          balanced: { 'electric-threat': 350 },
+          closer: { 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+
+    expect(matchupSupported.diagnosticLabel).toBe('ABC');
+    expect(matchupSupported.scoreBreakdown.components.synergy).toBeGreaterThan(
+      unsupported.scoreBreakdown.components.synergy,
+    );
+  });
+
+  test('penalizes ABA shared weakness when it creates top-threat lead-alignment fragility', () => {
+    const fragileAba = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'ground',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          water: { 'electric-threat': 350 },
+          ground: { 'electric-threat': 700 },
+          bulky: { 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+    const redundantAnswerAba = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'ground',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          water: { 'electric-threat': 650 },
+          ground: { 'electric-threat': 700 },
+          bulky: { 'electric-threat': 650 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+
+    expect(fragileAba.diagnosticLabel).toBe('ABA');
+    expect(redundantAnswerAba.score).toBeGreaterThan(fragileAba.score);
+    expect(redundantAnswerAba.scoreBreakdown.components.safety).toBeGreaterThan(
+      fragileAba.scoreBreakdown.components.safety,
+    );
+  });
+
+  test('applies top-threat ABA fragility even when another threat is lead-covered', () => {
+    const supportedButFragile = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'ground',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['grass-threat', 'electric-threat'],
+        topThreats: ['grass-threat', 'electric-threat'],
+        matchupRatings: {
+          water: { 'grass-threat': 700, 'electric-threat': 350 },
+          ground: { 'grass-threat': 350, 'electric-threat': 700 },
+          bulky: { 'grass-threat': 350, 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+    const supportedOnly = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'ground',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['grass-threat', 'electric-threat'],
+        topThreats: ['grass-threat', 'electric-threat'],
+        matchupRatings: {
+          water: { 'grass-threat': 700, 'electric-threat': 550 },
+          ground: { 'grass-threat': 350, 'electric-threat': 700 },
+          bulky: { 'grass-threat': 350, 'electric-threat': 350 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+
+    expect(supportedButFragile.diagnosticLabel).toBe('ABA');
+    expect(supportedButFragile.scoreBreakdown.components.safety).toBeLessThan(
+      supportedOnly.scoreBreakdown.components.safety,
+    );
+    expect(supportedButFragile.scoreBreakdown.components.synergy).toBeLessThan(
+      supportedOnly.scoreBreakdown.components.synergy,
+    );
+  });
+
+  test('treats sub-500 top-threat losses as structure fragility', () => {
+    const fragileAba = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'ground',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          water: { 'electric-threat': 450 },
+          ground: { 'electric-threat': 700 },
+          bulky: { 'electric-threat': 450 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+    const neutralAba = scoreOrderedLineup(
+      {
+        lead: 'water',
+        switch: 'ground',
+        closer: 'bulky',
+      },
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        matchupRatings: {
+          water: { 'electric-threat': 500 },
+          ground: { 'electric-threat': 700 },
+          bulky: { 'electric-threat': 500 },
+        },
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+      }),
+    );
+
+    expect(neutralAba.scoreBreakdown.components.synergy).toBeGreaterThan(
+      fragileAba.scoreBreakdown.components.synergy,
+    );
+  });
+
+  test('weights defensive ratio by top-threat and full-meta expected attack types separately', () => {
+    const lineup: OrderedLineup = {
+      lead: 'ground',
+      switch: 'water',
+      closer: 'flyer',
+    };
+    const fullMetaOnlyElectric = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['grass-threat'],
+        topThreats: ['electric-threat'],
+        fullMetaThreats: ['grass-threat'],
+        matchupRatings: uniformMatchups(520),
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+        recommendedMovesets: {
+          ...uniformMovesets('FAST', 'WATER_A', 'GHOST_A'),
+          'electric-threat': {
+            fastMove: 'ELECTRIC_FAST',
+            chargedMove1: 'ELECTRIC_A',
+            chargedMove2: 'ELECTRIC_B',
+          },
+          'grass-threat': {
+            fastMove: 'GRASS_FAST',
+            chargedMove1: 'GRASS_A',
+            chargedMove2: 'GRASS_B',
+          },
+        },
+        moves: {
+          WATER_A: { type: 'water' },
+          GHOST_A: { type: 'ghost' },
+          ELECTRIC_FAST: { type: 'electric' },
+          ELECTRIC_A: { type: 'electric' },
+          ELECTRIC_B: { type: 'electric' },
+          GRASS_FAST: { type: 'grass' },
+          GRASS_A: { type: 'grass' },
+          GRASS_B: { type: 'grass' },
+        },
+      }),
+    );
+    const fullMetaOnlyGrass = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['grass-threat'],
+        topThreats: ['grass-threat'],
+        fullMetaThreats: ['grass-threat'],
+        matchupRatings: uniformMatchups(520),
+        rankingScores: uniformScores(80),
+        roleScores: uniformRoleScores(0.7),
+        recommendedMovesets: {
+          ...uniformMovesets('FAST', 'WATER_A', 'GHOST_A'),
+          'grass-threat': {
+            fastMove: 'GRASS_FAST',
+            chargedMove1: 'GRASS_A',
+            chargedMove2: 'GRASS_B',
+          },
+        },
+        moves: {
+          WATER_A: { type: 'water' },
+          GHOST_A: { type: 'ghost' },
+          GRASS_FAST: { type: 'grass' },
+          GRASS_A: { type: 'grass' },
+          GRASS_B: { type: 'grass' },
+        },
+      }),
+    );
+
+    expect(
+      fullMetaOnlyElectric.scoreBreakdown.components.defensiveRatio,
+    ).toBeGreaterThan(
+      fullMetaOnlyGrass.scoreBreakdown.components.defensiveRatio,
+    );
+  });
+
+  test('bounds top-threat expected attack pools before defensive ratio scoring', () => {
+    const topElectricThreats = Array.from(
+      { length: 30 },
+      (_value, index) => `electric-top-${index}`,
+    );
+    const lineup: OrderedLineup = {
+      lead: 'ground',
+      switch: 'water',
+      closer: 'flyer',
+    };
+    const context = createContext({
+      threats: ['grass-threat'],
+      fullMetaThreats: ['grass-threat'],
+      matchupRatings: uniformMatchups(520),
+      rankingScores: uniformScores(80),
+      roleScores: uniformRoleScores(0.7),
+      getPokemon: (speciesId) => {
+        if (speciesId.startsWith('electric-top-')) {
+          return makePokemon(speciesId, ['electric'], {
+            atk: 140,
+            def: 135,
+            hp: 135,
+          });
+        }
+
+        return pokemonById[speciesId];
+      },
+      getRecommendedMoveset: (speciesId) => {
+        if (speciesId.startsWith('electric-top-')) {
+          return {
+            fastMove: 'ELECTRIC_FAST',
+            chargedMove1: 'ELECTRIC_A',
+            chargedMove2: 'ELECTRIC_B',
+          };
+        }
+        if (speciesId === 'grass-threat') {
+          return {
+            fastMove: 'GRASS_FAST',
+            chargedMove1: 'GRASS_A',
+            chargedMove2: 'GRASS_B',
+          };
+        }
+
+        return uniformMovesets('FAST', 'WATER_A', 'GHOST_A')[speciesId];
+      },
+      moves: {
+        WATER_A: { type: 'water' },
+        GHOST_A: { type: 'ghost' },
+        ELECTRIC_FAST: { type: 'electric' },
+        ELECTRIC_A: { type: 'electric' },
+        ELECTRIC_B: { type: 'electric' },
+        GRASS_FAST: { type: 'grass' },
+        GRASS_A: { type: 'grass' },
+        GRASS_B: { type: 'grass' },
+      },
+    });
+    const bounded = scoreOrderedLineup(lineup, {
+      ...context,
+      topThreats: topElectricThreats,
+    });
+    const oversized = scoreOrderedLineup(lineup, {
+      ...context,
+      topThreats: [...topElectricThreats, 'grass-threat'],
+    });
+
+    expect(oversized.scoreBreakdown.components.defensiveRatio).toBeCloseTo(
+      bounded.scoreBreakdown.components.defensiveRatio,
+      5,
     );
   });
 
