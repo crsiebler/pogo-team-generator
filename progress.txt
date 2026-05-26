@@ -24,6 +24,7 @@
 - Normalized optimizer score breakdown helpers live in `lib/genetic/fitness/scoreBreakdown.ts`; use the documented weights there and clamp every component to 0..1 before weighted aggregation.
 - Lineup scoring contexts can provide separate `topThreats` and `fullMetaThreats`; canonicalize, dedupe, and bound pools before scoring, keep `context.threats` as the union/default pool, expose `topThreatCoverage` and `fullMetaCoverage`, and weight evaluated top-threat coverage more heavily than broader full-meta coverage.
 - Type-effectiveness ratio helpers live in `lib/genetic/fitness/typeEffectivenessRatios.ts`; use `data/type-effectiveness.json` through `calculateEffectiveness(...)`, include selected fast and charged move types for offensive pressure, and keep offensive/defensive ratio scores normalized to 0..1.
+- `scorePlayPokemonRoster(...)` returns `scoreBreakdown` with normalized weighted optimizer components; safety should weight top-threat no-answer/single-answer/overwhelming losses above full-meta risks, consistency should use PvPoke Consistency when available before move/shield-stability proxies, and bulk should use `defense * hp / attack` when direct bulk data is unavailable.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -880,4 +881,45 @@
   - US-028 still needs final integration of normalized offensiveRatio and defensiveRatio components into weighted lineup and roster aggregation.
 - Next iteration start:
   - US-026 - Implement safety consistency and bulk components
+---
+## 2026-05-25 17:03 MST - US-026
+- What was implemented
+- Added normalized roster `scoreBreakdown` output and wired PlayPokemon roster fitness through the canonical weighted component contract.
+- Added safety scoring for top-threat/full-meta no-answer, single-answer, and overwhelming-loss risks; consistency scoring from PvPoke Consistency rankings when available with move-volatility and shield-stability fallbacks; and bulk scoring from `defense * hp / attack`.
+- Added minimal runtime loading for the PvPoke Consistency ranking category so the production scoring context can use the injected category hook without staging broader Chargers/Attackers ranking work.
+- Files changed: `lib/data/rankings.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-026 - Implement safety consistency and bulk components`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts` (red first: missing scoreBreakdown and new components; pass after implementation)
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts lib/genetic/algorithm.test.ts` (pass; 45 tests after final review fixes)
+  - `npx prettier --write "lib/genetic/fitness/lineupScoring.ts" "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts" "lib/genetic/algorithm.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass after updating mocked roster result)
+  - `npm run lint` (pass after import-order fix)
+  - `npm test` (pass; 54 files, 409 tests after final review fixes)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` and `test-driven-development` before optimizer scoring changes.
+  - Read `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: `gbl-optimizer` skill required by PRD, `test-driven-development` skill for feature work
+  - Used: `gbl-optimizer`, `test-driven-development`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed medium findings to blend fallback safety risks with split-pool risks, use per-species proxy consistency when individual Consistency rankings are missing, include resource-path recovery in safety and fast scoring, score useful neutral-or-better charged damage in fallback consistency, cache only missing-ranking Consistency lookup failures per scoring context, use neutral missing shield rows, and bound fast resource-path checks to the sanitized threat pool
+- Decisions (why):
+  - Returned `scoreBreakdown` from roster scoring because later analysis/UI stories need category-level optimizer explanations and US-026 requires safety, consistency, and bulk to be separate normalized components before aggregation.
+  - Extended `LineupScoringContext` with optional category ranking access instead of reading ranking files directly in roster scoring so tests and production GA contexts keep dependency injection boundaries.
+  - Wired the default lineup scoring context through the optional category ranking hook and staged only minimal Consistency ranking loading because US-027 owns broader Chargers/Attackers category expansion and sync coverage.
+  - Treated missing consistency ranking files and unavailable shield-scenario rows as explicit fallback cases because optional data should not block fast scoring or become automatic losses.
+  - Blended split-pool safety risk with fallback fragility signals after review because no-answer, single-answer, repeated-weakness, and breadth risks should all affect the normalized safety component.
+  - Added resource-path recovery to safety and charged-move neutral damage to consistency after second review because those are the available local signals for bad-lead recovery and useful neutral damage.
+  - Cached only `MissingRankingDataError` consistency lookup failures on the injected context because optional category files should not create repeated exception-driven hot-path scoring, while transient read errors should be retried.
+  - Mirrored full-mode shield-resource semantics in fast scoring because missing shield rows are neutral unevaluated matchups, not losses or excluded easy wins.
+- **Learnings for future iterations:**
+  - Roster safety, consistency, and bulk now live as normalized weighted-model components in `scorePlayPokemonRoster(...).scoreBreakdown`; future aggregation and UI work should consume that contract instead of recomputing categories.
+  - Fast roster scoring can use shield stability only when injected shield data is available; absent or throwing shield lookups fall back to move consistency rather than requiring diagnostic shield paths.
+- Known issues / follow-ups:
+  - US-027 still needs role scoring expansion with Chargers, Attackers, and Consistency category support.
+  - US-028 still needs broader weighted lineup and roster aggregation refinements.
+- Next iteration start:
+  - US-027 - Expand role scoring with chargers attackers and consistency
 ---

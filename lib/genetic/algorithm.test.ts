@@ -140,6 +140,29 @@ describe('generateTeam format-aware candidate selection', () => {
     vi.mocked(scorePlayPokemonRoster).mockReturnValue({
       roster: ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
       fitness: 0.9,
+      scoreBreakdown: {
+        components: {
+          synergy: 0.9,
+          coverage: 0.8,
+          safety: 0.85,
+          consistency: 0.75,
+          bulk: 0.7,
+          defensiveRatio: 0.65,
+          offensiveRatio: 0.7,
+          role: 0.6,
+        },
+        weights: {
+          synergy: 0.24,
+          coverage: 0.21,
+          safety: 0.17,
+          consistency: 0.13,
+          bulk: 0.1,
+          defensiveRatio: 0.07,
+          offensiveRatio: 0.05,
+          role: 0.03,
+        },
+        score: 0.9,
+      },
       evaluatedLineupCount: 60,
       metrics: {
         viableLineupCount: 12,

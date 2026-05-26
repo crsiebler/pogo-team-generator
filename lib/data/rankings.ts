@@ -9,13 +9,19 @@ import {
   speciesIdToSpeciesName,
 } from './pokemon';
 
-type RankingCategory = 'overall' | 'leads' | 'switches' | 'closers';
+export type RankingCategory =
+  | 'overall'
+  | 'leads'
+  | 'switches'
+  | 'closers'
+  | 'consistency';
 
 interface FormatRankingsCache {
   overall: RankedPokemon[] | null;
   leads: RankedPokemon[] | null;
   switches: RankedPokemon[] | null;
   closers: RankedPokemon[] | null;
+  consistency: RankedPokemon[] | null;
 }
 
 const formatRankingsCache: Map<BattleFormatId, FormatRankingsCache> = new Map();
@@ -90,6 +96,7 @@ function getFormatRankingsCache(
     leads: null,
     switches: null,
     closers: null,
+    consistency: null,
   };
 
   formatRankingsCache.set(resolvedFormatId, newCache);
@@ -231,11 +238,26 @@ export function getClosersRankings(formatId?: BattleFormatId): RankedPokemon[] {
 }
 
 /**
+ * Get consistency rankings (lazy loaded)
+ */
+export function getConsistencyRankings(
+  formatId?: BattleFormatId,
+): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.consistency) {
+    cache.consistency = parseRankingCSV('consistency', formatId);
+  }
+
+  return cache.consistency;
+}
+
+/**
  * Get ranking score for a specific Pokémon in a specific role
  */
 export function getRankingScore(
   pokemonName: string,
-  role: 'overall' | 'leads' | 'switches' | 'closers',
+  role: RankingCategory,
   formatId?: BattleFormatId,
 ): number {
   const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
@@ -253,6 +275,9 @@ export function getRankingScore(
       break;
     case 'closers':
       rankings = getClosersRankings(formatId);
+      break;
+    case 'consistency':
+      rankings = getConsistencyRankings(formatId);
       break;
   }
 
@@ -404,7 +429,7 @@ export function getTopRankedPokemonNames(
  * Get top N Pokémon by role
  */
 export function getTopPokemon(
-  role: 'overall' | 'leads' | 'switches' | 'closers',
+  role: RankingCategory,
   count: number,
   formatId?: BattleFormatId,
 ): RankedPokemon[] {
@@ -422,6 +447,9 @@ export function getTopPokemon(
       break;
     case 'closers':
       rankings = getClosersRankings(formatId);
+      break;
+    case 'consistency':
+      rankings = getConsistencyRankings(formatId);
       break;
   }
 
@@ -490,7 +518,7 @@ export function speciesIdToRankingName(speciesId: string): string {
  */
 export function getRankingForSpeciesId(
   speciesId: string,
-  role: 'overall' | 'leads' | 'switches' | 'closers',
+  role: RankingCategory,
   formatId?: BattleFormatId,
 ): RankedPokemon | undefined {
   const rankingName = speciesIdToRankingName(speciesId);
@@ -509,6 +537,9 @@ export function getRankingForSpeciesId(
       break;
     case 'closers':
       rankings = getClosersRankings(formatId);
+      break;
+    case 'consistency':
+      rankings = getConsistencyRankings(formatId);
       break;
   }
 

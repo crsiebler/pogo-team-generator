@@ -32,7 +32,11 @@ interface LineupMoveset {
 
 interface LineupMoveData {
   type: string;
+  power?: number;
+  energy?: number;
 }
+
+type LineupRankingCategory = 'consistency';
 
 const ALL_TYPES = [
   'normal',
@@ -76,6 +80,10 @@ export interface LineupScoringContext {
   getPokemon: (speciesId: string) => Pokemon | undefined;
   getRankingScore: (speciesId: string) => number;
   getRoleScore: (speciesId: string, role: LineupRole) => number;
+  getRankingCategoryScore?: (
+    speciesId: string,
+    category: LineupRankingCategory,
+  ) => number;
   getMatchupRating: (
     speciesId: string,
     threatSpeciesId: string,
@@ -147,6 +155,12 @@ export function createDefaultLineupScoringContext(
       getRankingScore(
         speciesIdToSpeciesName(speciesId),
         ROLE_RANKING_BY_LINEUP_ROLE[role],
+        formatId,
+      ) / 100,
+    getRankingCategoryScore: (speciesId, category) =>
+      getRankingScore(
+        speciesIdToSpeciesName(speciesId),
+        category as Parameters<typeof getRankingScore>[1],
         formatId,
       ) / 100,
     getMatchupRating: (speciesId, threatSpeciesId) =>

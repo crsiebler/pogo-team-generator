@@ -4,6 +4,7 @@ import {
   scorePlayPokemonRoster,
   type PlayPokemonRosterScoringContext,
 } from './rosterScoring';
+import { MissingRankingDataError } from '@/lib/data/rankings';
 import type { OrderedLineup, Pokemon } from '@/lib/types';
 
 const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
@@ -51,6 +52,51 @@ describe('scorePlayPokemonRoster', () => {
 
     expect(result.evaluatedLineupCount).toBe(60);
     expect(result.lineupScores).toBeUndefined();
+  });
+
+  test('fast mode uses shield resource paths for safety when available', () => {
+    const resilientResult = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        getShieldScenarioMatchupRating: (_speciesId, _threat, shields) =>
+          shields === 0 ? 540 : shields === 1 ? 580 : 620,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const brittleResult = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        getShieldScenarioMatchupRating: (_speciesId, _threat, shields) =>
+          shields === 0 ? 320 : shields === 1 ? 420 : 480,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(resilientResult.scoreBreakdown.components.safety).toBeGreaterThan(
+      brittleResult.scoreBreakdown.components.safety,
+    );
+  });
+
+  test('fast mode treats missing shield rows neutrally', () => {
+    const completeResult = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        getShieldScenarioMatchupRating: () => 900,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const sparseResult = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        getShieldScenarioMatchupRating: (_speciesId, threat) =>
+          threat === 'threat-a' ? 900 : null,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(completeResult.scoreBreakdown.components.safety).toBeGreaterThan(
+      sparseResult.scoreBreakdown.components.safety,
+    );
   });
 
   test('uses full mode to keep bounded finalist diagnostics', () => {
@@ -294,7 +340,9 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(withUnevaluatedTopPool.fitness).toBeCloseTo(baseline.fitness, 5);
+    expect(
+      withUnevaluatedTopPool.scoreBreakdown.components.coverage,
+    ).toBeCloseTo(baseline.scoreBreakdown.components.coverage, 5);
   });
 
   test('clamps non-finite split-pool diagnostic rates before roster aggregation', () => {
@@ -737,6 +785,499 @@ describe('scorePlayPokemonRoster', () => {
     expect(waterFastResult.fitness).toBeGreaterThan(neutralFastResult.fitness);
   });
 
+  test('exposes normalized safety consistency and bulk components before aggregation', () => {
+    const result = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        scoreLineup: (lineup) => makeLineupResult(lineup, { score: 0.68 }),
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(result.scoreBreakdown.components.safety).toBeGreaterThanOrEqual(0);
+    expect(result.scoreBreakdown.components.safety).toBeLessThanOrEqual(1);
+    expect(result.scoreBreakdown.components.consistency).toBeGreaterThanOrEqual(
+      0,
+    );
+    expect(result.scoreBreakdown.components.consistency).toBeLessThanOrEqual(1);
+    expect(result.scoreBreakdown.components.bulk).toBeGreaterThanOrEqual(0);
+    expect(result.scoreBreakdown.components.bulk).toBeLessThanOrEqual(1);
+  });
+
+  test('weights overwhelming top-threat losses more heavily than rare full-meta losses', () => {
+    const scoreLineupWithTopThreatLosses = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, {
+        score: 0.68,
+        topThreatCoverage: {
+          coverageRate: 0.8,
+          evaluatedThreatCount: 5,
+          noAnswerThreatCount: 1,
+          singleAnswerThreatCount: 1,
+          dominatingMatchupCount: 3,
+          overwhelmingLossCount: 6,
+        },
+        fullMetaCoverage: {
+          coverageRate: 0.9,
+          evaluatedThreatCount: 20,
+          noAnswerThreatCount: 2,
+          singleAnswerThreatCount: 2,
+          dominatingMatchupCount: 8,
+          overwhelmingLossCount: 0,
+        },
+      });
+    const scoreLineupWithRareLosses = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, {
+        score: 0.68,
+        topThreatCoverage: {
+          coverageRate: 0.8,
+          evaluatedThreatCount: 5,
+          noAnswerThreatCount: 1,
+          singleAnswerThreatCount: 1,
+          dominatingMatchupCount: 3,
+          overwhelmingLossCount: 0,
+        },
+        fullMetaCoverage: {
+          coverageRate: 0.9,
+          evaluatedThreatCount: 20,
+          noAnswerThreatCount: 2,
+          singleAnswerThreatCount: 2,
+          dominatingMatchupCount: 8,
+          overwhelmingLossCount: 6,
+        },
+      });
+
+    const topThreatLossResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        scoreLineup: scoreLineupWithTopThreatLosses,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const rareLossResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({ scoreLineup: scoreLineupWithRareLosses }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(rareLossResult.scoreBreakdown.components.safety).toBeGreaterThan(
+      topThreatLossResult.scoreBreakdown.components.safety,
+    );
+    expect(rareLossResult.fitness).toBeGreaterThan(topThreatLossResult.fitness);
+  });
+
+  test('keeps repeated weakness and coverage-breadth risks in safety when split pools exist', () => {
+    const splitCoverage = {
+      coverageRate: 0.9,
+      evaluatedThreatCount: 10,
+      noAnswerThreatCount: 1,
+      singleAnswerThreatCount: 1,
+      dominatingMatchupCount: 5,
+      overwhelmingLossCount: 0,
+    };
+    const resilientResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        scoreLineup: (lineup) =>
+          makeLineupResult(lineup, {
+            score: 0.68,
+            coveredThreats: [lineup.lead, lineup.switch, lineup.closer],
+            topThreatCoverage: splitCoverage,
+            fullMetaCoverage: splitCoverage,
+          }),
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const fragileResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        scoreLineup: (lineup) =>
+          makeLineupResult(lineup, {
+            score: 0.68,
+            coveredThreats: ['threat-a'],
+            weaknesses: lineup.lead === 'alpha' ? ['sweep-risk'] : [],
+            singleAnswerRisks:
+              lineup.lead === 'alpha' ? ['alignment-fragility'] : [],
+            topThreatCoverage: splitCoverage,
+            fullMetaCoverage: splitCoverage,
+          }),
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(resilientResult.scoreBreakdown.components.safety).toBeGreaterThan(
+      fragileResult.scoreBreakdown.components.safety,
+    );
+  });
+
+  test('uses available resource paths as bad-lead recovery safety signals', () => {
+    const splitCoverage = {
+      coverageRate: 0.9,
+      evaluatedThreatCount: 10,
+      noAnswerThreatCount: 1,
+      singleAnswerThreatCount: 1,
+      dominatingMatchupCount: 5,
+      overwhelmingLossCount: 0,
+    };
+    const resilientResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        scoreLineup: (lineup) =>
+          makeLineupResult(lineup, {
+            score: 0.68,
+            topThreatCoverage: splitCoverage,
+            fullMetaCoverage: splitCoverage,
+            resourcePathMetrics: {
+              balanced: { available: true, score: 0.75 },
+              shieldSpend: { available: true, score: 0.72 },
+              shieldSave: { available: true, score: 0.7 },
+            },
+          }),
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const brittleResult = scorePlayPokemonRoster(
+      roster,
+      createTypeCoverageContext({
+        scoreLineup: (lineup) =>
+          makeLineupResult(lineup, {
+            score: 0.68,
+            topThreatCoverage: splitCoverage,
+            fullMetaCoverage: splitCoverage,
+            resourcePathMetrics: {
+              balanced: { available: true, score: 0.45 },
+              shieldSpend: { available: true, score: 0.35 },
+              shieldSave: { available: true, score: 0.32 },
+            },
+          }),
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(resilientResult.scoreBreakdown.components.safety).toBeGreaterThan(
+      brittleResult.scoreBreakdown.components.safety,
+    );
+  });
+
+  test('uses PvPoke consistency ranking data when available', () => {
+    const consistentRoster = [
+      'consistent-a',
+      'consistent-b',
+      'consistent-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const volatileRoster = [
+      'volatile-a',
+      'volatile-b',
+      'volatile-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      scoreLineup,
+      getRankingCategoryScore: (speciesId, category) =>
+        category === 'consistency' && speciesId.startsWith('consistent')
+          ? 92
+          : category === 'consistency' && speciesId.startsWith('volatile')
+            ? 28
+            : 70,
+    });
+
+    const consistentResult = scorePlayPokemonRoster(consistentRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+    const volatileResult = scorePlayPokemonRoster(volatileRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+
+    expect(
+      consistentResult.scoreBreakdown.components.consistency,
+    ).toBeGreaterThan(volatileResult.scoreBreakdown.components.consistency);
+    expect(consistentResult.fitness).toBeGreaterThan(volatileResult.fitness);
+  });
+
+  test('uses proxy consistency for roster members missing consistency rankings', () => {
+    const partiallyRankedRoster = [
+      'consistent-a',
+      'bait-a',
+      'bait-b',
+      'bait-c',
+      'normal-a',
+      'water-a',
+    ];
+    const fullyRankedRoster = [
+      'consistent-a',
+      'stable-a',
+      'stable-b',
+      'stable-c',
+      'normal-a',
+      'water-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      scoreLineup,
+      getRankingCategoryScore: (speciesId, category) =>
+        category === 'consistency' && speciesId === 'consistent-a' ? 95 : 0,
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1: speciesId.startsWith('bait')
+          ? 'bait-move'
+          : 'stable-move',
+        chargedMove2: speciesId.startsWith('bait')
+          ? 'nuke-move'
+          : 'coverage-move',
+      }),
+      getMove: (moveId) => {
+        if (moveId === 'bait-move')
+          return { type: 'normal', power: 20, energy: 35 };
+        if (moveId === 'nuke-move')
+          return { type: 'normal', power: 150, energy: 80 };
+        if (moveId === 'stable-move')
+          return { type: 'normal', power: 90, energy: 50 };
+        return { type: 'water', power: 80, energy: 50 };
+      },
+    });
+
+    const partiallyRankedResult = scorePlayPokemonRoster(
+      partiallyRankedRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const fullyRankedResult = scorePlayPokemonRoster(
+      fullyRankedRoster,
+      context,
+      {
+        mode: 'fast',
+        includeDiagnostics: false,
+        recommendationLimit: 0,
+      },
+    );
+
+    expect(
+      fullyRankedResult.scoreBreakdown.components.consistency,
+    ).toBeGreaterThan(
+      partiallyRankedResult.scoreBreakdown.components.consistency,
+    );
+  });
+
+  test('caches unavailable consistency rankings on the scoring context', () => {
+    const getRankingCategoryScore = vi.fn(() => {
+      throw new MissingRankingDataError(
+        'great-league',
+        'overall',
+        'rankings/cp1500/all/consistency_rankings.csv',
+      );
+    });
+    const context = createTypeCoverageContext({
+      getRankingCategoryScore,
+      scoreLineup: (lineup) => makeLineupResult(lineup, { score: 0.68 }),
+    });
+
+    scorePlayPokemonRoster(roster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+    scorePlayPokemonRoster(roster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+
+    expect(getRankingCategoryScore).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not cache transient consistency ranking errors', () => {
+    const getRankingCategoryScore = vi.fn(() => {
+      throw new Error('temporary ranking read failure');
+    });
+    const context = createTypeCoverageContext({
+      getRankingCategoryScore,
+      scoreLineup: (lineup) => makeLineupResult(lineup, { score: 0.68 }),
+    });
+
+    scorePlayPokemonRoster(roster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+    scorePlayPokemonRoster(roster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+
+    expect(getRankingCategoryScore).toHaveBeenCalledTimes(roster.length * 2);
+  });
+
+  test('falls back to move volatility and shield stability for consistency', () => {
+    const stableRoster = [
+      'stable-a',
+      'stable-b',
+      'stable-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const baitDependentRoster = [
+      'bait-a',
+      'bait-b',
+      'bait-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      scoreLineup,
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1: speciesId.startsWith('bait')
+          ? 'bait-move'
+          : 'stable-move',
+        chargedMove2: speciesId.startsWith('bait')
+          ? 'nuke-move'
+          : 'coverage-move',
+      }),
+      getMove: (moveId) => {
+        if (moveId === 'bait-move')
+          return { type: 'normal', power: 20, energy: 35 };
+        if (moveId === 'nuke-move')
+          return { type: 'normal', power: 150, energy: 80 };
+        if (moveId === 'stable-move')
+          return { type: 'normal', power: 90, energy: 50 };
+        return { type: 'water', power: 80, energy: 50 };
+      },
+      getShieldScenarioMatchupRating: (speciesId, _threat, shields) => {
+        if (speciesId.startsWith('bait')) {
+          return shields === 2 ? 720 : shields === 1 ? 500 : 330;
+        }
+
+        return shields === 2 ? 610 : shields === 1 ? 570 : 530;
+      },
+    });
+
+    const stableResult = scorePlayPokemonRoster(stableRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+    const baitResult = scorePlayPokemonRoster(baitDependentRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+
+    expect(stableResult.scoreBreakdown.components.consistency).toBeGreaterThan(
+      baitResult.scoreBreakdown.components.consistency,
+    );
+    expect(stableResult.fitness).toBeGreaterThan(baitResult.fitness);
+  });
+
+  test('rewards useful neutral-or-better charged damage in consistency fallback', () => {
+    const neutralDamageRoster = [
+      'fire-a',
+      'fire-b',
+      'fire-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const resistedDamageRoster = [
+      'dragon-a',
+      'dragon-b',
+      'dragon-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({
+      threats: ['threat-steel-fairy'],
+      scoreLineup,
+      getRecommendedMoveset: (speciesId) => ({
+        fastMove: null,
+        chargedMove1: speciesId.startsWith('dragon')
+          ? 'dragon-move'
+          : speciesId.startsWith('fire')
+            ? 'fire-move'
+            : 'normal-move',
+        chargedMove2: null,
+      }),
+      getMove: (moveId) => ({
+        type: moveId.replace('-move', ''),
+        power: 90,
+        energy: 50,
+      }),
+    });
+
+    const neutralDamageResult = scorePlayPokemonRoster(
+      neutralDamageRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const resistedDamageResult = scorePlayPokemonRoster(
+      resistedDamageRoster,
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(
+      neutralDamageResult.scoreBreakdown.components.consistency,
+    ).toBeGreaterThan(
+      resistedDamageResult.scoreBreakdown.components.consistency,
+    );
+  });
+
+  test('penalizes brittle low-bulk rosters using defense hp over attack', () => {
+    const bulkyRoster = [
+      'bulky-a',
+      'bulky-b',
+      'bulky-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const brittleRoster = [
+      'brittle-a',
+      'brittle-b',
+      'brittle-c',
+      'normal-a',
+      'water-a',
+      'grass-a',
+    ];
+    const scoreLineup = (lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.68 });
+    const context = createTypeCoverageContext({ scoreLineup });
+
+    const bulkyResult = scorePlayPokemonRoster(bulkyRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+    const brittleResult = scorePlayPokemonRoster(brittleRoster, context, {
+      mode: 'fast',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    });
+
+    expect(bulkyResult.scoreBreakdown.components.bulk).toBeGreaterThan(
+      brittleResult.scoreBreakdown.components.bulk,
+    );
+    expect(bulkyResult.fitness).toBeGreaterThan(brittleResult.fitness);
+  });
+
   test('penalizes duplicated primary types that are absent from top recommended lineups', () => {
     const redundantRoster = [
       'electric-a',
@@ -906,6 +1447,7 @@ function makeLineupResult(
     singleAnswerRisks?: string[];
     topThreatCoverage?: LineupScoreResult['coverageMetrics']['topThreatCoverage'];
     fullMetaCoverage?: LineupScoreResult['coverageMetrics']['fullMetaCoverage'];
+    resourcePathMetrics?: LineupScoreResult['resourcePathMetrics'];
     weaknesses?: string[];
   },
 ): LineupScoreResult {
@@ -924,6 +1466,7 @@ function makeLineupResult(
     weaknesses: overrides.weaknesses ?? [],
     singleAnswerRisks: overrides.singleAnswerRisks ?? [],
     diagnosticLabel: 'ABC',
+    resourcePathMetrics: overrides.resourcePathMetrics,
     componentScores: {
       rankingQuality: 0.5,
       roleStrength: 0.5,
@@ -980,6 +1523,11 @@ function createTypeCoverageContext(
     'fairy-a': makeTypedPokemon('fairy-a', ['fairy']),
     'fairy-b': makeTypedPokemon('fairy-b', ['fairy']),
     'fairy-c': makeTypedPokemon('fairy-c', ['fairy']),
+    'fire-b': makeTypedPokemon('fire-b', ['fire']),
+    'fire-c': makeTypedPokemon('fire-c', ['fire']),
+    'dragon-a': makeTypedPokemon('dragon-a', ['dragon']),
+    'dragon-b': makeTypedPokemon('dragon-b', ['dragon']),
+    'dragon-c': makeTypedPokemon('dragon-c', ['dragon']),
     'fire-grass-a': makeTypedPokemon('fire-grass-a', ['fire', 'grass']),
     'water-grass-a': makeTypedPokemon('water-grass-a', ['water', 'grass']),
     'water-fairy-a': makeTypedPokemon('water-fairy-a', ['water', 'fairy']),
@@ -1015,6 +1563,52 @@ function createTypeCoverageContext(
     'threat-ground-b': makeTypedPokemon('threat-ground-b', ['normal']),
     'threat-electric': makeTypedPokemon('threat-electric', ['normal']),
     'threat-fire-rock': makeTypedPokemon('threat-fire-rock', ['fire', 'rock']),
+    'threat-steel-fairy': makeTypedPokemon('threat-steel-fairy', [
+      'steel',
+      'fairy',
+    ]),
+    'consistent-a': makeTypedPokemon('consistent-a', ['normal']),
+    'consistent-b': makeTypedPokemon('consistent-b', ['water']),
+    'consistent-c': makeTypedPokemon('consistent-c', ['grass']),
+    'volatile-a': makeTypedPokemon('volatile-a', ['normal']),
+    'volatile-b': makeTypedPokemon('volatile-b', ['water']),
+    'volatile-c': makeTypedPokemon('volatile-c', ['grass']),
+    'stable-a': makeTypedPokemon('stable-a', ['normal']),
+    'stable-b': makeTypedPokemon('stable-b', ['water']),
+    'stable-c': makeTypedPokemon('stable-c', ['grass']),
+    'bait-a': makeTypedPokemon('bait-a', ['normal']),
+    'bait-b': makeTypedPokemon('bait-b', ['water']),
+    'bait-c': makeTypedPokemon('bait-c', ['grass']),
+    'bulky-a': makeTypedPokemonWithStats('bulky-a', ['normal'], {
+      atk: 90,
+      def: 180,
+      hp: 180,
+    }),
+    'bulky-b': makeTypedPokemonWithStats('bulky-b', ['water'], {
+      atk: 90,
+      def: 180,
+      hp: 180,
+    }),
+    'bulky-c': makeTypedPokemonWithStats('bulky-c', ['grass'], {
+      atk: 90,
+      def: 180,
+      hp: 180,
+    }),
+    'brittle-a': makeTypedPokemonWithStats('brittle-a', ['normal'], {
+      atk: 220,
+      def: 80,
+      hp: 80,
+    }),
+    'brittle-b': makeTypedPokemonWithStats('brittle-b', ['water'], {
+      atk: 220,
+      def: 80,
+      hp: 80,
+    }),
+    'brittle-c': makeTypedPokemonWithStats('brittle-c', ['grass'], {
+      atk: 220,
+      def: 80,
+      hp: 80,
+    }),
   };
 
   return createContext({
@@ -1035,5 +1629,16 @@ function makeTypedPokemon(speciesId: string, types: string[]): Pokemon {
   return {
     ...makePokemon(speciesId),
     types,
+  };
+}
+
+function makeTypedPokemonWithStats(
+  speciesId: string,
+  types: string[],
+  baseStats: Pokemon['baseStats'],
+): Pokemon {
+  return {
+    ...makeTypedPokemon(speciesId, types),
+    baseStats,
   };
 }
