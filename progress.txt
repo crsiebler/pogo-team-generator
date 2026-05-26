@@ -1113,3 +1113,35 @@
 - Next iteration start:
   - US-031 - Update AGENTS optimizer guidance
 ---
+## 2026-05-25 19:01 MST - US-031
+- What was implemented
+- Updated root `AGENTS.md` GBL optimizer guidance to explicitly require `gbl-optimizer` for optimizer scoring, show-6 lineup strategy, PvPoke ranking sync/runtime inputs, type effectiveness, coverage, safety, consistency, bulk, role ranking, and ABC/ABB/ABA strategy changes.
+- Added `lib/AGENTS.md` optimizer guidance requiring the skill and optimizer docs before changing `lib/genetic/fitness`, ranking sync, runtime ranking data, simulations, or type-effectiveness scoring.
+- Included the referenced optimizer docs and project `gbl-optimizer` skill in the staged story so the new guidance does not point future agents to missing paths.
+- Files changed: `AGENTS.md`, `lib/AGENTS.md`, `.opencode/skills/gbl-optimizer/SKILL.md`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-031 - Update AGENTS optimizer guidance`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 55 files, 439 tests)
+  - `npx prettier --check "AGENTS.md" "lib/AGENTS.md" ".opencode/skills/gbl-optimizer/SKILL.md" "docs/pokemon-go-team-optimization.md" "docs/team-optimization/*.md" "prd.json"` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer` skill required by repository optimizer guidance
+  - Used: `gbl-optimizer`, `customize-opencode`
+  - Optimizer docs read: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`, `documentation-engineer`
+  - Findings: fixed medium QA finding by staging the referenced optimizer docs and project `gbl-optimizer` skill; fixed high/medium skill documentation findings by replacing nonexistent `make` commands with repository-supported checks and aligning architecture guidance with `lib/genetic/fitness`, `lib/data`, `lib/sync`, API, and UI boundaries; final review pass had no actionable findings
+- Decisions (why):
+  - Updated the root guide instead of only relying on progress patterns because the acceptance criteria require global agent guidance for future optimizer work.
+  - Added a lib-scoped optimizer section because future scoring, sync, simulation, and type-effectiveness changes happen under `lib/` and should have nearby required-reading instructions.
+  - Staged the referenced docs and skill because AGENTS guidance should not require paths that are absent from the committed repository.
+  - Updated the skill's architecture and testing sections after specialist review because reusable agent guidance must match this repository's actual module layout and available commands.
+  - Did not add tests because this story changes contributor guidance and PRD/progress metadata only; typecheck, lint, and full tests remain the quality gates.
+- **Learnings for future iterations:**
+  - `AGENTS.md` and `lib/AGENTS.md` are the durable homes for optimizer workflow requirements; keep story-specific implementation details in `progress.txt` instead.
+- Known issues / follow-ups:
+  - US-032 still needs README optimizer architecture documentation.
+- Next iteration start:
+  - US-032 - Update README optimizer architecture documentation
+---

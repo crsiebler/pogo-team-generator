@@ -1,0 +1,45 @@
+# Validation Strategy
+
+Validate the optimizer with known battle concepts, known meta teams, and controlled edge cases.
+
+## Required Checks
+
+- Dual-type effectiveness multiplication is correct.
+- Pokemon GO immunity-style interactions use `0.39x`.
+- Top-threat coverage is scored separately from full-meta coverage.
+- Weighted scoring allows tradeoffs instead of acting like a tier list.
+- Synergy is weighted above coverage.
+- Coverage is weighted above safety.
+- Role scoring does not dominate the result.
+- ABB and ABA structures can score well when strategically coherent.
+- ABA shared weakness is penalized when it creates lead-alignment fragility.
+- ABA shared strength can be rewarded when it creates redundant answers.
+- Teams with severe shared weaknesses are penalized.
+- Teams with one Pokemon covering too many key threats are flagged as fragile.
+- Multiple viable lineups are preferred over one obvious best line.
+
+## Useful Fixtures
+
+Create small deterministic fixtures for:
+
+- A team with strong full-roster coverage but poor pick-3 lineup synergy.
+- A team with one excellent trio and three dead roster slots.
+- An ABB lineup where the A Pokemon correctly covers the B pair.
+- An ABB lineup where the shared weakness is not covered.
+- An ABA shared-weakness lineup into a common lead threat.
+- An ABA shared-strength lineup with redundant answers.
+- A roster with strong coverage but poor bulk.
+- A roster with high type diversity but poor matrix performance.
+
+## Explainability Review
+
+Every recommendation should make sense to a human reviewer. If the optimizer returns a surprising team, diagnostics should show why:
+
+- Which top threats are covered.
+- Which top threats are risky.
+- Which lineups are most viable.
+- Which shared weaknesses exist.
+- Which Pokemon are single points of failure.
+- Which role assumptions were used.
+
+If diagnostics cannot explain the recommendation, improve the score breakdown before tuning weights.

@@ -68,6 +68,14 @@ Optimizer validation fixtures live in `lib/genetic/fitness/optimizerValidationFi
 
 Shared generation contracts in `lib/types.ts` do not include algorithm selectors or algorithm labels. Keep deprecated request compatibility isolated to API schemas and do not add algorithm fields back to `GenerationOptions` or `GenerationAnalysis`.
 
+## Optimizer Guidance
+
+Before changing `lib/genetic/fitness`, ranking sync, runtime ranking data, simulations, or type-effectiveness scoring, invoke the `gbl-optimizer` skill and read the optimizer references in `docs/pokemon-go-team-optimization.md` and `docs/team-optimization/`.
+
+Required optimizer subdocs are `scoring-model.md`, `lineup-structures.md`, `coverage-threat-pools.md`, `safety-consistency-bulk.md`, `type-effectiveness.md`, `role-scoring.md`, `data-inputs.md`, and `validation.md`.
+
+For Ralph iterations, record which optimizer docs and skills were read in `progress.txt` before marking the story complete.
+
 ## Code Style
 
 Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for functions/variables, PascalCase for types. Absolute imports (`@/lib/...`).

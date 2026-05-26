@@ -100,6 +100,14 @@ All code must be built, linted, and tested with full compliance to these steps:
 - All data ingest (esp. new Pokémon/moves/rankings) **must** use safe, typed loader utilities (see `lib/data/`)
 - New entries **must** be validated for uniqueness, reference validity, etc.—never inject directly
 
+### 2.7 GBL Optimizer References
+
+- Project-agnostic Pokemon GO Battle League optimization guidance lives in `docs/pokemon-go-team-optimization.md`; read it before changing roster or lineup scoring strategy.
+- Detailed optimization subdocs live under `docs/team-optimization/`, including `scoring-model.md`, `lineup-structures.md`, `coverage-threat-pools.md`, `safety-consistency-bulk.md`, `type-effectiveness.md`, `role-scoring.md`, `data-inputs.md`, and `validation.md`.
+- OpenCode skill `gbl-optimizer` lives in `.opencode/skills/gbl-optimizer/SKILL.md`; use it when changing optimizer scoring, show-6 pick-3 lineup strategy, PvPoke ranking sync or runtime inputs, type effectiveness, coverage, safety, consistency, bulk, role ranking, or ABC/ABB/ABA strategy.
+- Type effectiveness implementation guidance is in `docs/team-optimization/type-effectiveness.md`, and the Pokemon GO type chart source data is `data/type-effectiveness.json`.
+- Ralph iterations that touch optimizer behavior or data inputs must record the optimizer docs and skills read in `progress.txt`.
+
 ---
 
 ## 3. Copilot/AI Developer Rules
