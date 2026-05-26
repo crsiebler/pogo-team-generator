@@ -64,6 +64,8 @@ For PlayPokemon roster scoring, `scorePlayPokemonRoster(...)` returns a normaliz
 
 For role scoring in `lib/genetic/fitness`, treat Leads, Switches, and Closers rankings as primary role-fit signals; use Chargers, Attackers, and Consistency only as supporting inputs, and keep role fit subordinate to the canonical weighted score contract.
 
+Optimizer validation fixtures live in `lib/genetic/fitness/optimizerValidationFixtures.test.ts`; add deterministic injected-context regressions there for documented tradeoffs before changing scoring weights, type-effectiveness behavior, lineup structures, threat-pool weighting, or roster aggregation.
+
 Shared generation contracts in `lib/types.ts` do not include algorithm selectors or algorithm labels. Keep deprecated request compatibility isolated to API schemas and do not add algorithm fields back to `GenerationOptions` or `GenerationAnalysis`.
 
 ## Code Style

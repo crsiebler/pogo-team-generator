@@ -28,6 +28,7 @@
 - Role scoring should treat Leads, Switches, and Closers as primary role signals, with Chargers, Attackers, and Consistency as supporting signals; keep role fit normalized and subordinate to the weighted score contract rather than using Overall as a direct role substitute.
 - `scoreOrderedLineup(...)` now returns `scoreBreakdown` and sets `score` from the canonical normalized weighted optimizer contract; use the breakdown components for future lineup aggregation and UI explanation instead of reintroducing ad hoc lineup score weights, compute lineup offensive/defensive ratio components through `typeEffectivenessRatios.ts`, weight both offensive defender pools and defensive expected attack-type pools with top-threat priority over full-meta, and keep top-threat ratio pools bounded to the top-threat limit.
 - `scoreFastRosterLineup(...)` is the hot GA fallback for PlayPokemon lineup scoring and must keep its `scoreBreakdown` components semantically aligned with full lineup scoring, including offensive/defensive type-effectiveness ratio components instead of fixed proxy constants and sanitized/bounded split threat pools.
+- Optimizer validation fixtures live in `lib/genetic/fitness/optimizerValidationFixtures.test.ts`; add documented tradeoff regressions there with deterministic injected contexts before tuning scoring weights or lineup/roster aggregation behavior.
 
 ## Iteration Log
 ## 2026-05-25 02:43 MST - US-001
@@ -1034,4 +1035,43 @@
   - US-029 still needs deterministic optimizer validation fixtures for the documented tradeoffs.
 - Next iteration start:
   - US-029 - Add optimizer validation fixture suite
+---
+## 2026-05-25 18:33 MST - US-029
+- What was implemented
+- Added a deterministic optimizer validation fixture suite covering documented weighted scoring tradeoffs, ABC/coherent ABB/unsupported ABB/ABA shared weakness and shared strength behavior, severe shared weakness penalties, separate top-threat versus full-meta coverage, dual-type type-effectiveness edge cases, roster depth versus one-line teams, dead bench slots, poor bulk, and poor pick-3 synergy despite strong individual signals.
+- Files changed: `lib/genetic/fitness/optimizerValidationFixtures.test.ts`, `lib/AGENTS.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-029 - Add optimizer validation fixture suite`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/optimizerValidationFixtures.test.ts` (red first: two fixture assertions failed; pass after correcting fixture inputs)
+  - `npx vitest run lib/genetic/fitness/optimizerValidationFixtures.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/typeEffectivenessRatios.test.ts` (pass; 82 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 55 files, 434 tests)
+  - `npx vitest run lib/genetic/fitness/optimizerValidationFixtures.test.ts` (pass after specialist review fixes)
+  - `npx tsc --noEmit` (pass after specialist review fixes)
+  - `npm run lint` (pass after specialist review fixes)
+  - `npx vitest run lib/genetic/fitness/optimizerValidationFixtures.test.ts` (pass after second specialist review fix)
+  - `npx tsc --noEmit` (pass after second specialist review fix)
+  - `npm run lint` (pass after second specialist review fix)
+- Optimizer docs / skills read:
+  - Invoked `gbl-optimizer` and `test-driven-development` before optimizer validation work.
+  - Read `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+- Implementation agents:
+  - Recommended: `gbl-optimizer` skill required by PRD, `test-driven-development` skill for feature work
+  - Used: `gbl-optimizer`, `test-driven-development`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed medium findings to assert full-meta coverage independently, verify all three dead bench slots, and isolate lineup-structure fixture assertions before commit; deferred low optional duplicate label assertions because existing structure labels plus component/order assertions cover the acceptance criteria; deferred low commit-message format note because Ralph requires `feat: US-029 - Add optimizer validation fixture suite`
+- Decisions (why):
+  - Added a separate `optimizerValidationFixtures.test.ts` suite instead of spreading validation scenarios across existing unit files because US-029 is a regression fixture story and future scoring changes need one discoverable place for documented tradeoffs.
+  - Used public scoring APIs with injected contexts instead of reading CSV fixtures because deterministic contexts make validation tradeoffs clear and avoid coupling tests to volatile ranking or simulation exports.
+  - Kept this story test-only for scoring behavior because the current optimizer already satisfies the fixture expectations after correcting the fixture inputs.
+- **Learnings for future iterations:**
+  - Validation fixtures should assert relative component behavior and final ordering together so regressions show whether a tradeoff failed in coverage, synergy, safety, bulk, or aggregation.
+  - `scorePlayPokemonRoster(...)` tests can isolate roster aggregation with injected `scoreLineup`, while `scoreOrderedLineup(...)` fixtures are better for lineup-structure and split threat-pool behavior.
+- Known issues / follow-ups:
+  - Browser verification is not required for this backend test-suite story.
+  - Full `npm test` still mutates generated data/ranking/simulation fixtures; keep staging focused on the story files only.
+- Next iteration start:
+  - US-030 - Display optimizer score breakdown in analysis panel
 ---
