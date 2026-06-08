@@ -12,6 +12,7 @@
 - `lib/analysis/pokemonContributionAnalysis.ts` returns concise per-Pokemon numeric contribution diagnostics only; do not reintroduce generated rationale text unless a current UI/API consumer explicitly needs display copy.
 - `TeamDisplay` should not render PlayPokemon `Roster Metrics`; keep `rosterMetrics` and `benchUtility` as internal optimizer/domain diagnostics unless a current story explicitly reintroduces a display consumer.
 - Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render display-only explanations in `AnalysisPanel`.
+- Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
 - Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
@@ -180,4 +181,35 @@
   - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
 - Next iteration start:
   - US-005 - Convert Recommended Lineups to analysis accordion section
+---
+
+## 2026-06-08 15:04 MST - US-005
+- Converted Recommended Lineups from a standalone panel into the `AnalysisPanel` accordion, placed it immediately after Summary Statistics, preserved concise lineup cards inside the expanded panel, and kept keyboard navigation derived from rendered accordion sections.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`, `prd.json`
+- Commit message: `feat: US-005 - Convert Recommended Lineups to analysis accordion section`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; Recommended Lineups rendered directly after Summary Statistics as an accordion section, expanded to show role assignments/structure/weaknesses, and ArrowDown moved focus to the next rendered section; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing resource 404 observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `ui-designer`
+  - Used: `frontend-developer`, `ui-designer`; each returned concise implementation or review guidance through the Task mechanism, with local tool limitations noted in their outputs but still provided actionable guidance
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed low test coverage/assertion brittleness and low progress traceability issues from first pass; second pass returned no actionable code, QA, UI, or UX findings; deferred low scoped-commit-format documentation suggestion because Ralph explicitly requires `feat: US-005 - Convert Recommended Lineups to analysis accordion section`
+- Decisions (why):
+  - Extended the existing accordion section model instead of creating separate lineup accordion state so `aria-expanded`, `aria-controls`, region labeling, focus refs, and Arrow/Home/End navigation stay consistent across analysis sections.
+  - Preserved recommended lineup rendering when analysis details are unavailable by allowing the visible accordion section list to include lineups independently of Summary Statistics and Per-Pokemon Contribution.
+  - Kept lineup cards concise and display-only because API output already resolves display-facing labels and the UI should not recompute optimizer diagnostics.
+- **Learnings for future iterations:**
+  - `AnalysisPanel` accordion visibility is now data-driven per section: Summary Statistics and Per-Pokemon Contribution require analysis/fitness, Recommended Lineups requires lineup data, and Optimizer Score Breakdown requires score breakdown data.
+  - Tests that assert recommended lineup contents need to expand the Recommended Lineups accordion before querying card details.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Existing resource 404 appears in browser console and was not introduced by this story.
+  - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
+- Next iteration start:
+  - US-006 - Reorder Optimizer Score Breakdown fields
 ---

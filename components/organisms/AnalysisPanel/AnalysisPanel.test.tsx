@@ -364,7 +364,19 @@ describe('AnalysisPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Recommended Lineups')).toBeInTheDocument();
+    const recommendedLineupsButton = screen.getByRole('button', {
+      name: 'Recommended Lineups',
+    });
+
+    expect(recommendedLineupsButton).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Lineup 1')).not.toBeInTheDocument();
+
+    fireEvent.click(recommendedLineupsButton);
+
+    expect(recommendedLineupsButton).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('region', { name: 'Recommended Lineups' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Lineup 1')).toBeInTheDocument();
     expect(screen.getAllByText('Lead')).toHaveLength(2);
     expect(screen.getAllByText('azumarill')).toHaveLength(2);
@@ -393,12 +405,44 @@ describe('AnalysisPanel', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('places recommended lineups directly after summary statistics in full accordion order', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups,
+          scoreBreakdown: optimizerScoreBreakdown,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    const accordion = screen.getByRole('region', {
+      name: 'Team analysis drill-down sections',
+    });
+    const accordionButtons = within(accordion).getAllByRole('button');
+
+    expect(accordionButtons).toHaveLength(4);
+    expect(accordionButtons[0]).toHaveAccessibleName('Summary Statistics');
+    expect(accordionButtons[1]).toHaveAccessibleName('Recommended Lineups');
+    expect(accordionButtons[2]).toHaveAccessibleName(
+      'Optimizer Score Breakdown',
+    );
+    expect(accordionButtons[3]).toHaveAccessibleName(
+      'Per-Pokemon Contribution',
+    );
+  });
+
   it('keeps accordion keyboard focus on rendered sections when score breakdown is unavailable', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
           team: ['azumarill', 'gastrodon', 'dunsparce'],
           formatId: 'great-league',
+          recommendedLineups,
         }}
         isGenerating={false}
         fitness={0.78}
@@ -412,6 +456,9 @@ describe('AnalysisPanel', () => {
     const perPokemonButton = screen.getByRole('button', {
       name: 'Per-Pokemon Contribution',
     });
+    const recommendedLineupsButton = screen.getByRole('button', {
+      name: 'Recommended Lineups',
+    });
 
     expect(
       screen.queryByRole('button', { name: 'Optimizer Score Breakdown' }),
@@ -420,11 +467,15 @@ describe('AnalysisPanel', () => {
     summaryButton.focus();
     fireEvent.keyDown(summaryButton, { key: 'ArrowDown' });
 
+    expect(recommendedLineupsButton).toHaveFocus();
+
+    fireEvent.keyDown(recommendedLineupsButton, { key: 'ArrowDown' });
+
     expect(perPokemonButton).toHaveFocus();
 
     fireEvent.keyDown(perPokemonButton, { key: 'ArrowUp' });
 
-    expect(summaryButton).toHaveFocus();
+    expect(recommendedLineupsButton).toHaveFocus();
   });
 
   it('omits resource path labels from recommended lineup cards', () => {
@@ -443,6 +494,10 @@ describe('AnalysisPanel', () => {
         fitness={0.78}
         analysis={analysisFixture}
       />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Recommended Lineups' }),
     );
 
     expect(screen.queryByText('Balanced')).not.toBeInTheDocument();
@@ -473,6 +528,10 @@ describe('AnalysisPanel', () => {
       />,
     );
 
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Recommended Lineups' }),
+    );
+
     const weaknessList = screen.getByRole('list', {
       name: 'Lineup 1 weaknesses',
     });
@@ -501,11 +560,17 @@ describe('AnalysisPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Recommended Lineups')).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Recommended Lineups' }),
+    );
+
     expect(screen.getByText('azumarill')).toBeInTheDocument();
     expect(
       screen.getByText('Analysis unavailable for this run.'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Per-Pokemon Contribution' }),
+    ).not.toBeInTheDocument();
   });
 
   it('grades displayed percentages and fitness values using the shown rounded values', () => {

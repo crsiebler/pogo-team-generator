@@ -20,6 +20,8 @@ Lineup-aware generation is the only frontend generation path. Do not add `Fitnes
 
 Lineup-aware result UI should pass `recommendedLineups` from the generate-team response through `TeamManager` into `AnalysisPanel`; frontend adapters should display these diagnostics in the analysis column rather than recomputing lineup scoring or rendering them inside generated-team cards.
 
+Recommended Lineups should render as an `AnalysisPanel` accordion section immediately after Summary Statistics. Keep it in the shared rendered-section list so accordion keyboard navigation follows the visible section order.
+
 Recommended lineup cards should stay concise: show role terms as `Lead`, `Switch`, and `Closer`, avoid duplicating those labels in values, omit covered-threat lists, and render API-provided readable weakness labels without importing canonical Pokemon data into client components.
 
 Recommended lineup cards should not render resource path metrics (`Balanced`, `Shield spend`, or `Shield save`); keep those shield-path diagnostics internal to optimizer scoring unless a current story explicitly reintroduces a display consumer.
