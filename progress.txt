@@ -12,6 +12,7 @@
 - `lib/analysis/pokemonContributionAnalysis.ts` returns concise per-Pokemon numeric contribution diagnostics only; do not reintroduce generated rationale text unless a current UI/API consumer explicitly needs display copy.
 - `TeamDisplay` should not render PlayPokemon `Roster Metrics`; keep `rosterMetrics` and `benchUtility` as internal optimizer/domain diagnostics unless a current story explicitly reintroduces a display consumer.
 - Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render display-only explanations in `AnalysisPanel`.
+- Optimizer Score Breakdown ratio cards should render in a dedicated two-card row when they need side-by-side comparison; do not rely on a single auto-flow grid when an odd number of cards precedes the pair.
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
@@ -212,4 +213,34 @@
   - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
 - Next iteration start:
   - US-006 - Reorder Optimizer Score Breakdown fields
+---
+
+## 2026-06-08 15:17 MST - US-006
+- Reordered Optimizer Score Breakdown display so Offensive Ratio appears before Defensive Ratio, rendered both ratio cards in a dedicated responsive two-card row for side-by-side comparison, and kept Role after the ratio pair while preserving existing labels, values, descriptions, and quality badges.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`, `prd.json`
+- Commit message: `feat: US-006 - Reorder Optimizer Score Breakdown fields`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; Optimizer Score Breakdown rendered `Offensive Ratio` and `Defensive Ratio` side-by-side at desktop width, stacked in order on mobile, with `Role` after both; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing 404 resource error observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `ui-designer`
+  - Used: `frontend-developer`, `ui-designer`; each returned concise implementation/design guidance through the Task mechanism, with local tool limitations noted in their outputs but still provided actionable guidance
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `ui-designer`, `ux-researcher`
+  - Findings: none; all reviewers returned empty actionable findings lists, with residual risk limited to relying on the already completed checks/browser verification during review
+- Decisions (why):
+  - Chose a dedicated ratio-card grid row over only swapping component order because five primary cards precede the ratio pair; a single two-column auto-flow grid would place Offensive Ratio below Bulk instead of beside Defensive Ratio.
+  - Kept all optimizer score values and descriptions display-only in `AnalysisPanel` because score computation and API payload construction remain outside the client component.
+- **Learnings for future iterations:**
+  - Optimizer Score Breakdown source order is now `Synergy`, `Coverage`, `Safety`, `Consistency`, `Bulk`, `Offensive Ratio`, `Defensive Ratio`, then `Role`.
+  - To compare two score cards side-by-side after an odd number of preceding cards, render the pair in its own `sm:grid-cols-2` group instead of depending on the parent grid auto-placement.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Existing 404 resource error appears in browser console and was not introduced by this story.
+  - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
+- Next iteration start:
+  - All current stories expected complete after final PRD metadata update.
 ---

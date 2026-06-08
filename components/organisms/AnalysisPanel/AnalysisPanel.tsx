@@ -51,8 +51,8 @@ const OPTIMIZER_SCORE_COMPONENT_ORDER: OptimizerScoreComponent[] = [
   'safety',
   'consistency',
   'bulk',
-  'defensiveRatio',
   'offensiveRatio',
+  'defensiveRatio',
   'role',
 ];
 
@@ -371,6 +371,20 @@ export function AnalysisPanel({
   const optimizerScoreMetrics = scoreBreakdown
     ? getOptimizerScoreMetrics(scoreBreakdown)
     : [];
+  const primaryOptimizerScoreMetrics = optimizerScoreMetrics.filter(
+    (metric) =>
+      metric.component !== 'offensiveRatio' &&
+      metric.component !== 'defensiveRatio' &&
+      metric.component !== 'role',
+  );
+  const ratioOptimizerScoreMetrics = optimizerScoreMetrics.filter(
+    (metric) =>
+      metric.component === 'offensiveRatio' ||
+      metric.component === 'defensiveRatio',
+  );
+  const roleOptimizerScoreMetric = optimizerScoreMetrics.find(
+    (metric) => metric.component === 'role',
+  );
   const splitCoverageMetrics = recommendedLineups.find(
     (lineup) =>
       lineup.coverageMetrics.topThreatCoverage ||
@@ -442,6 +456,46 @@ export function AnalysisPanel({
       );
     }
   }
+
+  const renderOptimizerScoreMetric = (
+    metric: (typeof optimizerScoreMetrics)[number],
+  ) => {
+    const qualityDescriptionId = `${accordionIdPrefix}-${metric.component}-optimizer-quality`;
+
+    return (
+      <article
+        key={metric.component}
+        className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <p
+            data-testid="optimizer-score-category-label"
+            className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300"
+          >
+            {metric.label}
+          </p>
+          <span
+            id={qualityDescriptionId}
+            className={clsx(
+              'rounded-full px-2 py-0.5 text-xs font-semibold ring-1',
+              getResourcePathQualityClasses(metric.quality),
+            )}
+          >
+            {metric.quality}
+          </span>
+        </div>
+        <p
+          aria-describedby={qualityDescriptionId}
+          className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-50"
+        >
+          {metric.value}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
+          {metric.description}
+        </p>
+      </article>
+    );
+  };
 
   return (
     <div
@@ -617,46 +671,20 @@ export function AnalysisPanel({
                               communicated by color alone.
                             </p>
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              {optimizerScoreMetrics.map((metric) => {
-                                const qualityDescriptionId = `${accordionIdPrefix}-${metric.component}-optimizer-quality`;
-
-                                return (
-                                  <article
-                                    key={metric.component}
-                                    className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <p
-                                        data-testid="optimizer-score-category-label"
-                                        className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300"
-                                      >
-                                        {metric.label}
-                                      </p>
-                                      <span
-                                        id={qualityDescriptionId}
-                                        className={clsx(
-                                          'rounded-full px-2 py-0.5 text-xs font-semibold ring-1',
-                                          getResourcePathQualityClasses(
-                                            metric.quality,
-                                          ),
-                                        )}
-                                      >
-                                        {metric.quality}
-                                      </span>
-                                    </div>
-                                    <p
-                                      aria-describedby={qualityDescriptionId}
-                                      className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-50"
-                                    >
-                                      {metric.value}
-                                    </p>
-                                    <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                                      {metric.description}
-                                    </p>
-                                  </article>
-                                );
-                              })}
+                              {primaryOptimizerScoreMetrics.map(
+                                renderOptimizerScoreMetric,
+                              )}
                             </div>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                              {ratioOptimizerScoreMetrics.map(
+                                renderOptimizerScoreMetric,
+                              )}
+                            </div>
+                            {roleOptimizerScoreMetric
+                              ? renderOptimizerScoreMetric(
+                                  roleOptimizerScoreMetric,
+                                )
+                              : null}
                             {splitCoverageMetrics?.topThreatCoverage ||
                             splitCoverageMetrics?.fullMetaCoverage ? (
                               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -263,10 +263,16 @@ describe('AnalysisPanel', () => {
       'Safety',
       'Consistency',
       'Bulk',
-      'Defensive Ratio',
       'Offensive Ratio',
+      'Defensive Ratio',
       'Role',
     ]);
+    expect(labels.indexOf('Offensive Ratio')).toBeLessThan(
+      labels.indexOf('Defensive Ratio'),
+    );
+    expect(labels.indexOf('Defensive Ratio')).toBeLessThan(
+      labels.indexOf('Role'),
+    );
     expect(within(section).getByText('0.91')).toHaveAccessibleDescription(
       'elite',
     );
