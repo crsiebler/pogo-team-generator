@@ -7,9 +7,10 @@
 - `/api/generate-team` should resolve display-facing threat and lineup ids to readable species names before returning them so client components stay display-only.
 - Keep core optimizer/domain models species-id based. Resolve species names at API/UI adapter boundaries rather than by importing Pokemon data into client analysis components.
 - `lib/genetic/fitness/rosterScoring.ts` uses roster metrics internally for `scoreBreakdown` and fitness. Do not delete `buildRosterMetrics` or internal `PlayPokemonRosterScoreResult.metrics` unless scoring is intentionally refactored.
+- `Chromosome` results should not expose top-level `rosterMetrics` or `benchUtility`; keep roster metrics inside `scorePlayPokemonRoster(...)` internals unless a current API/UI consumer requires a new explicit adapter field.
 - `lib/genetic/fitness/lineupScoring.ts` uses resource path metrics for lineup/roster safety scoring. Remove shield path display fields only from API/UI output unless internals are proven unused.
 - `lib/analysis/pokemonContributionAnalysis.ts` currently generates contribution rationale text. Remove this only after confirming no remaining UI/API/test consumer needs the string.
-- `TeamDisplay` should no longer render PlayPokemon `Roster Metrics` for this feature. If roster diagnostics are removed from UI/API pass-through, preserve internal optimizer scoring behavior.
+- `TeamDisplay` should not render PlayPokemon `Roster Metrics`; keep `rosterMetrics` and `benchUtility` as internal optimizer/domain diagnostics unless a current story explicitly reintroduces a display consumer.
 - Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render display-only explanations in `AnalysisPanel`.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
@@ -46,4 +47,41 @@
   - None.
 - Next iteration start:
   - US-002 - Remove Roster Metrics display and unused display-only generation
+---
+
+## 2026-06-08 14:02 MST - US-002
+- Removed PlayPokemon Roster Metrics and Bench Utility display from generated-team cards, removed frontend pass-through through `TeamManager` and `ResultsPanel`, and removed unused display-facing `rosterMetrics`/`benchUtility` API response fields from `/api/generate-team` while preserving internal optimizer/domain diagnostics.
+- Files changed: `app/AGENTS.md`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `components/AGENTS.md`, `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `lib/AGENTS.md`, `lib/types.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/fitness/recommendations.ts`, `lib/genetic/fitness/recommendations.test.ts`, `progress.txt`
+- Commit message: `feat: US-002 - Remove Roster Metrics display and unused display-only generation`
+- Checks:
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx app/api/generate-team/route.test.ts` (pass)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx app/api/generate-team/route.test.ts lib/genetic/algorithm.test.ts lib/genetic/fitness/recommendations.test.ts lib/genetic/fitness/index.test.ts` (pass after specialist review fix)
+  - `npx vitest run app/api/generate-team/route.test.ts lib/genetic/algorithm.test.ts lib/genetic/fitness/recommendations.test.ts` (pass after second specialist review fix)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile viewport (pass; generated team rendered with `Team Notes` and without `Roster Metrics` or `Bench Utility`; `/api/generate-team` and `/api/team-details` returned 200; unrelated `favicon.ico` 404 observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `backend-developer`, `api-designer`
+  - Used: `frontend-developer`, `backend-developer`, `api-designer`; each returned guidance through the Task mechanism, with local tool limitations noted in their outputs but still provided actionable implementation advice
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed medium unused `rosterMetrics`/`benchUtility` generation exposure from `generateTeam`/recommendation output; fixed medium API negative-test gap by retaining stale mocked diagnostics and asserting response omission; fixed low stale recommendation helper signature, recommendation output assertion, and progress metadata before final review pass; final pass returned no code/QA/UI/UX findings and one low progress-note clarity issue fixed before metadata staging
+- Decisions (why):
+  - Chose to remove `rosterMetrics` and `benchUtility` from the `/api/generate-team` response because the only discovered consumers were the removed display pass-through path and no public API schema was found.
+  - Preserved `lib/genetic/fitness/rosterScoring.ts` metrics because roster metrics still support optimizer scoring, finalist diagnostics, and domain tests.
+  - Removed top-level `Chromosome.rosterMetrics`, `Chromosome.benchUtility`, and recommendation-output bench utility because no remaining API/UI consumer exists after the Roster Metrics display removal.
+  - Removed the now-unused `roster` parameter from `buildPlayPokemonRosterRecommendations(...)` because lineup recommendation conversion no longer depends on roster-wide bench utility output.
+  - Updated nearby `AGENTS.md` guidance because existing component/API instructions still told future agents to pass roster diagnostics into generated-team cards.
+  - Deferred staging `prd.json` until after final specialist review because Ralph marks story metadata passing only once implementation checks and staged review have passed.
+- **Learnings for future iterations:**
+  - `TeamDisplay` generated-team cards now only render team Pokemon and notes/export controls; analysis diagnostics should remain in `AnalysisPanel` or API-adapter fields with active consumers.
+  - `/api/generate-team` should not expose display-only roster diagnostics without a current UI/API consumer; keep roster metrics inside scoring results such as `PlayPokemonRosterScoreResult.metrics` rather than top-level `Chromosome` output.
+  - `buildPlayPokemonRosterRecommendations(...)` now returns recommended lineups only; bench utility warning generation should stay out unless a current display/API consumer is reintroduced.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Local dev server was started for browser verification and `.ralph-dev-server.log` was left untracked and unstaged.
+  - Existing `favicon.ico` 404 appears in browser console/network and was not introduced by this story.
+- Next iteration start:
+  - US-003 - Simplify recommended lineup card content
 ---

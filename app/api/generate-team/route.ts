@@ -27,7 +27,6 @@ import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
 import type {
   GenerationAnalysis,
-  PlayPokemonRosterMetrics,
   RecommendedLineup,
   TournamentMode,
 } from '@/lib/types';
@@ -59,21 +58,6 @@ function resolveRecommendedLineupLabels(
     },
     weaknesses: lineup.weaknesses.map(speciesIdToSpeciesName),
   }));
-}
-
-function resolveRosterMetricLabels(
-  rosterMetrics: PlayPokemonRosterMetrics | undefined,
-): PlayPokemonRosterMetrics | undefined {
-  if (!rosterMetrics) {
-    return undefined;
-  }
-
-  return {
-    ...rosterMetrics,
-    singleAnswerRisks: rosterMetrics.singleAnswerRisks.map(
-      speciesIdToSpeciesName,
-    ),
-  };
 }
 
 export async function POST(request: NextRequest) {
@@ -232,8 +216,6 @@ export async function POST(request: NextRequest) {
         result.recommendedLineups,
       ),
       scoreBreakdown: result.scoreBreakdown,
-      rosterMetrics: resolveRosterMetricLabels(result.rosterMetrics),
-      benchUtility: result.benchUtility,
       analysis,
     });
   } catch (error) {

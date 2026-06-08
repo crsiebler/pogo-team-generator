@@ -30,9 +30,7 @@ Optimizer score breakdown display should consume API-provided `scoreBreakdown` t
 
 When `AnalysisPanel` accordion sections are conditional, derive keyboard focus order from the rendered section list so Arrow/Home/End navigation never targets a hidden section.
 
-PlayPokemon roster diagnostics should flow from `/api/generate-team` as `rosterMetrics` and `benchUtility` through `TeamManager` and `ResultsPanel` into `TeamDisplay`; keep the UI display-only and show warning text labels instead of relying on color alone.
-
-Bench utility warning pills should use inline flex centering (`inline-flex`, `items-center`, `justify-center`, and `text-center`) so warning labels stay horizontally and vertically centered across pill widths.
+PlayPokemon roster diagnostics are internal optimizer diagnostics unless a current feature explicitly reintroduces a display consumer; do not pass `rosterMetrics` or `benchUtility` through `TeamManager`, `ResultsPanel`, or `TeamDisplay` for generated-team cards.
 
 ## Testing
 

@@ -135,7 +135,6 @@ describe('generateTeam format-aware candidate selection', () => {
           diagnosticLabel: 'ABC',
         },
       ],
-      benchUtility: [],
     });
     vi.mocked(scorePlayPokemonRoster).mockReturnValue({
       roster: ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
@@ -409,19 +408,16 @@ describe('generateTeam format-aware candidate selection', () => {
       expect.any(Object),
       { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
     );
-    expect(buildPlayPokemonRosterRecommendations).toHaveBeenCalledWith(
-      result.team,
-      [],
-      { limit: 5 },
-    );
+    expect(buildPlayPokemonRosterRecommendations).toHaveBeenCalledWith([], {
+      limit: 5,
+    });
     expect(result.recommendedLineups).toEqual([
       expect.objectContaining({
         lineup: { lead: 'mew', switch: 'mewtwo', closer: 'dragonite' },
       }),
     ]);
-    expect(result.rosterMetrics).toEqual(
-      expect.objectContaining({ viableLineupCount: 12 }),
-    );
+    expect(result).not.toHaveProperty('rosterMetrics');
+    expect(result).not.toHaveProperty('benchUtility');
   });
 
   it('reuses one lineup-aware fitness context across the GA run', async () => {

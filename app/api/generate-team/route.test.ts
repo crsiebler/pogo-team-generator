@@ -141,17 +141,6 @@ describe('POST /api/generate-team', () => {
           diagnosticLabel: 'ABC',
         },
       ],
-      rosterMetrics: {
-        viableLineupCount: 12,
-        topLineupQuality: 0.82,
-        topNLineupDepth: 0.74,
-        dominatingMatchupRate: 0.2,
-        overwhelmingLossRate: 0.05,
-        singleAnswerRisks: ['morpeko_full_belly'],
-        viableLeadDiversity: 3,
-        benchUtilitySummary: [],
-      },
-      benchUtility: [],
       scoreBreakdown: {
         components: {
           synergy: 0.91,
@@ -343,8 +332,6 @@ describe('POST /api/generate-team', () => {
       team: string[];
       fitness: number;
       recommendedLineups: unknown[];
-      rosterMetrics?: unknown;
-      benchUtility?: unknown[];
       analysis: {
         mode: string;
         teamSize: number;
@@ -549,8 +536,8 @@ describe('POST /api/generate-team', () => {
     expect(generationOptions).not.toHaveProperty('algorithm');
   });
 
-  it('returns PlayPokemon lineup recommendations, roster metrics, and bench utility', async () => {
-    vi.mocked(generateTeam).mockResolvedValue({
+  it('returns PlayPokemon lineup recommendations without roster metrics display payload', async () => {
+    const generatedTeamResult = {
       team: ['azumarill', 'marowak', 'marowak-shadow'],
       fitness: 0.765,
       anchors: [],
@@ -604,7 +591,9 @@ describe('POST /api/generate-team', () => {
           warnings: [],
         },
       ],
-    });
+    } as unknown as Awaited<ReturnType<typeof generateTeam>>;
+
+    vi.mocked(generateTeam).mockResolvedValue(generatedTeamResult);
 
     const request = new Request('http://localhost/api/generate-team', {
       method: 'POST',
@@ -618,8 +607,6 @@ describe('POST /api/generate-team', () => {
     const response = await POST(request as NextRequest);
     const payload = (await response.json()) as {
       recommendedLineups: unknown[];
-      rosterMetrics: unknown;
-      benchUtility: unknown[];
     };
 
     expect(response.status).toBe(200);
@@ -642,37 +629,8 @@ describe('POST /api/generate-team', () => {
         diagnosticLabel: 'ABC',
       },
     ]);
-    expect(payload.rosterMetrics).toEqual({
-      viableLineupCount: 12,
-      topLineupQuality: 0.82,
-      topNLineupDepth: 0.74,
-      dominatingMatchupRate: 0.2,
-      overwhelmingLossRate: 0.05,
-      singleAnswerRisks: ['Morpeko (Full Belly)'],
-      viableLeadDiversity: 3,
-      benchUtilitySummary: [
-        {
-          speciesId: 'azumarill',
-          utilityScore: 1,
-          totalAppearances: 5,
-          leadAppearances: 5,
-          switchAppearances: 0,
-          closerAppearances: 0,
-          warnings: [],
-        },
-      ],
-    });
-    expect(payload.benchUtility).toEqual([
-      {
-        speciesId: 'azumarill',
-        utilityScore: 1,
-        totalAppearances: 5,
-        leadAppearances: 5,
-        switchAppearances: 0,
-        closerAppearances: 0,
-        warnings: [],
-      },
-    ]);
+    expect(payload).not.toHaveProperty('rosterMetrics');
+    expect(payload).not.toHaveProperty('benchUtility');
   });
 
   it('returns optimizer score breakdown for analysis display', async () => {

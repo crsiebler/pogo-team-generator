@@ -1,7 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamDisplay } from './TeamDisplay';
-import type { BenchUtility, PlayPokemonRosterMetrics } from '@/lib/types';
 
 vi.mock('@/components/molecules', () => ({
   PokemonCard: () => <div>Pokemon Card</div>,
@@ -159,38 +158,7 @@ describe('TeamDisplay', () => {
     expect(screen.queryByText('Lineup 2')).not.toBeInTheDocument();
   });
 
-  it('shows PlayPokemon roster metrics and bench utility warnings', async () => {
-    const benchUtility: BenchUtility[] = [
-      {
-        speciesId: 'azumarill',
-        utilityScore: 0.84,
-        totalAppearances: 4,
-        leadAppearances: 1,
-        switchAppearances: 2,
-        closerAppearances: 1,
-        warnings: [],
-      },
-      {
-        speciesId: 'registeel',
-        utilityScore: 0.12,
-        totalAppearances: 0,
-        leadAppearances: 0,
-        switchAppearances: 0,
-        closerAppearances: 0,
-        warnings: ['unbringable'],
-      },
-    ];
-    const rosterMetrics: PlayPokemonRosterMetrics = {
-      viableLineupCount: 12,
-      topLineupQuality: 0.88,
-      topNLineupDepth: 0.76,
-      dominatingMatchupRate: 0.42,
-      overwhelmingLossRate: 0.14,
-      singleAnswerRisks: ['Morpeko (Full Belly)', 'Venusaur'],
-      viableLeadDiversity: 3,
-      benchUtilitySummary: benchUtility,
-    };
-
+  it('omits PlayPokemon roster metrics and bench utility from generated team cards', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -209,104 +177,18 @@ describe('TeamDisplay', () => {
         team={['azumarill', 'registeel']}
         mode="PlayPokemon"
         formatId="great-league"
-        rosterMetrics={rosterMetrics}
-        benchUtility={benchUtility}
       />,
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Roster Metrics')).toBeInTheDocument();
-      expect(screen.getByText('Bench Utility')).toBeInTheDocument();
+      expect(screen.getAllByText('Pokemon Card')).toHaveLength(2);
     });
 
-    expect(screen.getByText('Viable Lineups')).toBeInTheDocument();
-    expect(screen.getByText('12')).toBeInTheDocument();
-    expect(screen.getByText('Top Lineup Quality')).toBeInTheDocument();
-    expect(screen.getByText('0.88')).toBeInTheDocument();
-    expect(screen.getByText('Top-N Lineup Depth')).toBeInTheDocument();
-    expect(screen.getByText('0.76')).toBeInTheDocument();
-    expect(screen.getByText('Dominating Matchup Rate')).toBeInTheDocument();
-    expect(screen.getByText('42%')).toBeInTheDocument();
-    expect(screen.getByText('Overwhelming Loss Rate')).toBeInTheDocument();
-    expect(screen.getByText('14%')).toBeInTheDocument();
-    expect(screen.getByText('Single-Answer Risks')).toBeInTheDocument();
-    expect(
-      screen.getByText('Morpeko (Full Belly), Venusaur'),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('morpeko_full_belly, venusaur'),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('Viable Lead Diversity')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('Bench Utility Summary')).toBeInTheDocument();
-    expect(screen.getByText('2 roster members tracked')).toBeInTheDocument();
-
-    expect(screen.getByText('Azumarill')).toBeInTheDocument();
-    expect(screen.getByText('Utility Score: 0.84')).toBeInTheDocument();
-    expect(screen.getByText('Appearances: 4 total')).toBeInTheDocument();
-    expect(
-      screen.getByText('Lead: 1 / Switch: 2 / Closer: 1'),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText('Lead: 1 / Safe Swap: 2 / Closer: 1'),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('Registeel')).toBeInTheDocument();
-    expect(screen.getByText('Warning: unbringable')).toBeInTheDocument();
-  });
-
-  it('centers bench utility warning pill text', async () => {
-    const benchUtility: BenchUtility[] = [
-      {
-        speciesId: 'registeel',
-        utilityScore: 0.12,
-        totalAppearances: 0,
-        leadAppearances: 0,
-        switchAppearances: 0,
-        closerAppearances: 0,
-        warnings: ['unbringable', 'low-utility'],
-      },
-    ];
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          pokemon: [{ speciesId: 'registeel', speciesName: 'Registeel' }],
-        }),
-      }),
-    );
-
-    render(
-      <TeamDisplay
-        team={['registeel']}
-        mode="PlayPokemon"
-        formatId="great-league"
-        rosterMetrics={{
-          viableLineupCount: 1,
-          topLineupQuality: 0.42,
-          topNLineupDepth: 0.32,
-          dominatingMatchupRate: 0.1,
-          overwhelmingLossRate: 0.45,
-          singleAnswerRisks: [],
-          viableLeadDiversity: 1,
-          benchUtilitySummary: benchUtility,
-        }}
-        benchUtility={benchUtility}
-      />,
-    );
-
-    const unbringableWarning = await screen.findByText('Warning: unbringable');
-    const lowUtilityWarning = screen.getByText('Warning: low-utility');
-
-    [unbringableWarning, lowUtilityWarning].forEach((warning) => {
-      expect(warning).toHaveClass(
-        'inline-flex',
-        'items-center',
-        'justify-center',
-        'text-center',
-      );
-    });
+    expect(screen.queryByText('Roster Metrics')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bench Utility')).not.toBeInTheDocument();
+    expect(screen.queryByText('Viable Lineups')).not.toBeInTheDocument();
+    expect(screen.queryByText('Single-Answer Risks')).not.toBeInTheDocument();
+    expect(screen.queryByText('Warning: unbringable')).not.toBeInTheDocument();
   });
 
   it('does not show PlayPokemon roster metrics for GBL results', async () => {
@@ -323,16 +205,6 @@ describe('TeamDisplay', () => {
         team={['azumarill', 'registeel']}
         mode="GBL"
         formatId="great-league"
-        rosterMetrics={{
-          viableLineupCount: 12,
-          topLineupQuality: 0.88,
-          topNLineupDepth: 0.76,
-          dominatingMatchupRate: 0.42,
-          overwhelmingLossRate: 0.14,
-          singleAnswerRisks: [],
-          viableLeadDiversity: 3,
-          benchUtilitySummary: [],
-        }}
       />,
     );
 

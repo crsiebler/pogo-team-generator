@@ -3,16 +3,13 @@ import type { LineupScoreResult, LineupScoringContext } from './lineupScoring';
 import {
   buildGblLineupRecommendation,
   buildPlayPokemonRosterRecommendations,
-  type PlayPokemonRosterRecommendationResult,
 } from './recommendations';
 import { createNormalizedScoreBreakdown } from '@/lib/genetic/fitness/scoreBreakdown';
 import type { OrderedLineup, Pokemon } from '@/lib/types';
 
-const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
-
 describe('buildPlayPokemonRosterRecommendations', () => {
   test('returns the top five recommended lineups by default with diagnostics', () => {
-    const result = buildPlayPokemonRosterRecommendations(roster, [
+    const result = buildPlayPokemonRosterRecommendations([
       makeLineupResult(
         { lead: 'alpha', switch: 'bravo', closer: 'charlie' },
         0.91,
@@ -40,6 +37,8 @@ describe('buildPlayPokemonRosterRecommendations', () => {
       ),
     ]);
 
+    expect(Object.keys(result)).toEqual(['recommendedLineups']);
+    expect(result).not.toHaveProperty('benchUtility');
     expect(result.recommendedLineups).toHaveLength(5);
     expect(result.recommendedLineups[0]).toEqual(
       expect.objectContaining({
@@ -57,48 +56,6 @@ describe('buildPlayPokemonRosterRecommendations', () => {
     expect(result.recommendedLineups.map((lineup) => lineup.score)).toEqual([
       0.91, 0.86, 0.82, 0.78, 0.74,
     ]);
-  });
-
-  test('calculates bench utility from recommended lineup appearances', () => {
-    const result = buildPlayPokemonRosterRecommendations(
-      roster,
-      [
-        makeLineupResult(
-          { lead: 'alpha', switch: 'bravo', closer: 'charlie' },
-          0.9,
-        ),
-        makeLineupResult(
-          { lead: 'alpha', switch: 'delta', closer: 'echo' },
-          0.8,
-        ),
-      ],
-      { limit: 2, lowUtilityThreshold: 0.6 },
-    );
-
-    expectBenchUtility(result, 'alpha', {
-      utilityScore: 1,
-      totalAppearances: 2,
-      leadAppearances: 2,
-      switchAppearances: 0,
-      closerAppearances: 0,
-      warnings: [],
-    });
-    expectBenchUtility(result, 'bravo', {
-      utilityScore: 0.5,
-      totalAppearances: 1,
-      leadAppearances: 0,
-      switchAppearances: 1,
-      closerAppearances: 0,
-      warnings: ['low-utility'],
-    });
-    expectBenchUtility(result, 'foxtrot', {
-      utilityScore: 0,
-      totalAppearances: 0,
-      leadAppearances: 0,
-      switchAppearances: 0,
-      closerAppearances: 0,
-      warnings: ['unbringable'],
-    });
   });
 });
 
@@ -182,30 +139,6 @@ describe('buildGblLineupRecommendation', () => {
     expect(result.diagnosticLabel).toBe('ABC');
   });
 });
-
-function expectBenchUtility(
-  result: PlayPokemonRosterRecommendationResult,
-  speciesId: string,
-  expected: {
-    utilityScore: number;
-    totalAppearances: number;
-    leadAppearances: number;
-    switchAppearances: number;
-    closerAppearances: number;
-    warnings: string[];
-  },
-): void {
-  const utility = result.benchUtility.find(
-    (benchUtility) => benchUtility.speciesId === speciesId,
-  );
-
-  expect(utility).toEqual(
-    expect.objectContaining({
-      ...expected,
-      utilityScore: expect.closeTo(expected.utilityScore, 3),
-    }),
-  );
-}
 
 function makeLineupResult(
   lineup: OrderedLineup,

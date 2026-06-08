@@ -2,12 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import { TeamManager } from './TeamManager';
 import { type BattleFormatId } from '@/lib/data/battleFormats';
-import type {
-  BenchUtility,
-  OptimizerScoreBreakdown,
-  PlayPokemonRosterMetrics,
-  RecommendedLineup,
-} from '@/lib/types';
+import type { OptimizerScoreBreakdown, RecommendedLineup } from '@/lib/types';
 
 const showToastMock = vi.fn();
 
@@ -36,8 +31,7 @@ interface MockAnalysisPanelProps {
 
 interface MockResultsPanelProps {
   generatedTeam: {
-    rosterMetrics?: PlayPokemonRosterMetrics;
-    benchUtility?: BenchUtility[];
+    team?: string[];
   } | null;
 }
 
@@ -96,11 +90,7 @@ vi.mock('@/components/organisms', () => ({
     );
   },
   ResultsPanel: ({ generatedTeam }: MockResultsPanelProps) => (
-    <div>
-      Results roster metrics{' '}
-      {generatedTeam?.rosterMetrics?.viableLineupCount ?? 'none'} bench utility{' '}
-      {generatedTeam?.benchUtility?.[0]?.speciesId ?? 'none'}
-    </div>
+    <div>Results team {generatedTeam?.team?.join(', ') ?? 'none'}</div>
   ),
   AnalysisPanel: ({
     generatedTeam,
@@ -167,27 +157,6 @@ describe('TeamManager', () => {
               coveredThreats: [],
               weaknesses: [],
               diagnosticLabel: 'ABC',
-            },
-          ],
-          rosterMetrics: {
-            viableLineupCount: 12,
-            topLineupQuality: 0.88,
-            topNLineupDepth: 0.76,
-            dominatingMatchupRate: 0.42,
-            overwhelmingLossRate: 0.14,
-            singleAnswerRisks: ['lanturn'],
-            viableLeadDiversity: 3,
-            benchUtilitySummary: [],
-          },
-          benchUtility: [
-            {
-              speciesId: 'azumarill',
-              utilityScore: 0.84,
-              totalAppearances: 4,
-              leadAppearances: 1,
-              switchAppearances: 2,
-              closerAppearances: 1,
-              warnings: [],
             },
           ],
           scoreBreakdown: {
@@ -494,7 +463,7 @@ describe('TeamManager', () => {
     });
   });
 
-  it('passes roster metrics and bench utility response data to ResultsPanel', async () => {
+  it('passes generated team data to ResultsPanel without roster metrics display diagnostics', async () => {
     const fetchMock = vi.mocked(fetch);
 
     render(<TeamManager />);
@@ -509,9 +478,7 @@ describe('TeamManager', () => {
     fireEvent.click(screen.getByText('Generate Team'));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Results roster metrics 12 bench utility azumarill/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Results team Azumarill/)).toBeInTheDocument();
     });
   });
 

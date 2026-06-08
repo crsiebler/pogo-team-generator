@@ -188,8 +188,6 @@ export interface Chromosome {
   fitness: number;
   scoreBreakdown?: OptimizerScoreBreakdown;
   recommendedLineups?: RecommendedLineup[];
-  rosterMetrics?: PlayPokemonRosterMetrics;
-  benchUtility?: BenchUtility[];
 }
 
 export interface GenerationOptions {

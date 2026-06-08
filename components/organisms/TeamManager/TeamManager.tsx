@@ -13,10 +13,8 @@ import {
 } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
 import type {
-  BenchUtility,
   GenerationAnalysis,
   OptimizerScoreBreakdown,
-  PlayPokemonRosterMetrics,
   RecommendedLineup,
   TournamentMode,
 } from '@/lib/types';
@@ -30,8 +28,6 @@ interface GeneratedTeamResult {
   formatId: BattleFormatId;
   recommendedLineups?: RecommendedLineup[];
   scoreBreakdown?: OptimizerScoreBreakdown;
-  rosterMetrics?: PlayPokemonRosterMetrics;
-  benchUtility?: BenchUtility[];
 }
 
 interface PokemonListResponse {
@@ -248,8 +244,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         fitness?: number;
         recommendedLineups?: RecommendedLineup[];
         scoreBreakdown?: OptimizerScoreBreakdown;
-        rosterMetrics?: PlayPokemonRosterMetrics;
-        benchUtility?: BenchUtility[];
         analysis?: GenerationAnalysis;
       };
       setGeneratedTeam({
@@ -257,8 +251,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         formatId: currentFormatId,
         recommendedLineups: data.recommendedLineups,
         scoreBreakdown: data.scoreBreakdown,
-        rosterMetrics: data.rosterMetrics,
-        benchUtility: data.benchUtility,
       });
       setFitness(data.fitness ?? null);
       setAnalysis(data.analysis ?? null);

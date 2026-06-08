@@ -241,7 +241,6 @@ export async function generateTeam(
       { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
     );
     const recommendations = buildPlayPokemonRosterRecommendations(
-      bestOverall.team,
       rosterScore.lineupScores ?? [],
       { limit: 5 },
     );
@@ -249,9 +248,7 @@ export async function generateTeam(
     bestOverall = {
       ...bestOverall,
       scoreBreakdown: rosterScore.scoreBreakdown,
-      rosterMetrics: rosterScore.metrics,
       recommendedLineups: recommendations.recommendedLineups,
-      benchUtility: recommendations.benchUtility,
     };
   }
 

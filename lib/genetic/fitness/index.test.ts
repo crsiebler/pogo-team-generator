@@ -62,7 +62,6 @@ vi.mock('./recommendations', () => ({
   })),
   buildPlayPokemonRosterRecommendations: vi.fn(() => ({
     recommendedLineups: [],
-    benchUtility: [],
   })),
 }));
 
