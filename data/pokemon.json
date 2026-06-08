@@ -2375,7 +2375,8 @@
       "BRAVE_BIRD",
       "HURRICANE",
       "FEATHER_DANCE",
-      "HEAT_WAVE"
+      "HEAT_WAVE",
+      "TWISTER"
     ],
     "defaultIVs": {
       "cp500": [
@@ -2440,7 +2441,8 @@
       "BRAVE_BIRD",
       "HURRICANE",
       "FEATHER_DANCE",
-      "HEAT_WAVE"
+      "HEAT_WAVE",
+      "TWISTER"
     ],
     "defaultIVs": {
       "cp500": [
@@ -2503,7 +2505,8 @@
       "BRAVE_BIRD",
       "HURRICANE",
       "FEATHER_DANCE",
-      "HEAT_WAVE"
+      "HEAT_WAVE",
+      "TWISTER"
     ],
     "defaultIVs": {
       "cp500": [
@@ -5604,7 +5607,7 @@
       "FLAMETHROWER",
       "ENERGY_BALL"
     ],
-    "searchPriority": 3,
+    "searchPriority": 8,
     "buddyDistance": 3,
     "thirdMoveCost": 50000,
     "released": true,
@@ -5675,7 +5678,7 @@
         15
       ]
     },
-    "searchPriority": 8,
+    "searchPriority": 5,
     "buddyDistance": 3,
     "thirdMoveCost": 50000,
     "released": true,
@@ -5747,7 +5750,6 @@
         15
       ]
     },
-    "searchPriority": 5,
     "buddyDistance": 3,
     "thirdMoveCost": 50000,
     "released": true,
@@ -15152,7 +15154,7 @@
       ]
     },
     "level25CP": 1090,
-    "searchPriority": 5,
+    "searchPriority": 3,
     "buddyDistance": 3,
     "thirdMoveCost": 50000,
     "released": true,
@@ -15216,7 +15218,7 @@
         15
       ]
     },
-    "searchPriority": 5,
+    "searchPriority": 3,
     "buddyDistance": 3,
     "thirdMoveCost": 50000,
     "released": true,
@@ -15284,7 +15286,7 @@
     "nicknames": [
       "kwak"
     ],
-    "searchPriority": 10
+    "searchPriority": 6
   },
   {
     "dex": 106,
@@ -16877,7 +16879,8 @@
     "family": {
       "id": "FAMILY_GOLDEEN",
       "parent": "goldeen"
-    }
+    },
+    "searchPriority": 5
   },
   {
     "dex": 120,
@@ -17036,7 +17039,8 @@
       "PSYBEAM",
       "PSYCHIC",
       "THUNDER",
-      "SURF"
+      "SURF",
+      "AQUA_JET"
     ],
     "legacyMoves": [
       "QUICK_ATTACK"
@@ -17124,7 +17128,8 @@
       "PSYBEAM",
       "PSYCHIC",
       "THUNDER",
-      "SURF"
+      "SURF",
+      "AQUA_JET"
     ],
     "defaultIVs": {
       "cp500": [
@@ -19410,7 +19415,8 @@
     "chargedMoves": [
       "ANCIENT_POWER",
       "STONE_EDGE",
-      "WATER_PULSE"
+      "WATER_PULSE",
+      "AQUA_JET"
     ],
     "defaultIVs": {
       "cp500": [
@@ -19469,7 +19475,8 @@
     "chargedMoves": [
       "ANCIENT_POWER",
       "STONE_EDGE",
-      "WATER_PULSE"
+      "WATER_PULSE",
+      "AQUA_JET"
     ],
     "defaultIVs": {
       "cp500": [
@@ -20037,7 +20044,8 @@
       "flying"
     ],
     "fastMoves": [
-      "COUNTER"
+      "COUNTER",
+      "LOW_KICK"
     ],
     "chargedMoves": [
       "CLOSE_COMBAT",
@@ -20794,6 +20802,132 @@
     "nicknames": [
       "m2"
     ]
+  },
+  {
+    "dex": 150,
+    "speciesName": "Mewtwo (Mega X)",
+    "speciesId": "mewtwo_mega_x",
+    "baseStats": {
+      "atk": 399,
+      "def": 215,
+      "hp": 214
+    },
+    "types": [
+      "psychic",
+      "fighting"
+    ],
+    "fastMoves": [
+      "CONFUSION",
+      "PSYCHO_CUT"
+    ],
+    "chargedMoves": [
+      "FLAMETHROWER",
+      "FOCUS_BLAST",
+      "HYPER_BEAM",
+      "ICE_BEAM",
+      "PSYCHIC",
+      "SHADOW_BALL",
+      "THUNDERBOLT",
+      "PSYSTRIKE"
+    ],
+    "tags": [
+      "legendary",
+      "shadoweligible",
+      "mega"
+    ],
+    "defaultIVs": {
+      "cp500": [
+        3.5,
+        7,
+        4,
+        6
+      ],
+      "cp1500": [
+        9,
+        14,
+        11,
+        14
+      ],
+      "cp2500": [
+        15,
+        9,
+        12,
+        15
+      ]
+    },
+    "level25CP": 2641,
+    "eliteMoves": [
+      "PSYSTRIKE",
+      "SHADOW_BALL",
+      "HYPER_BEAM"
+    ],
+    "buddyDistance": 20,
+    "thirdMoveCost": 100000,
+    "released": true,
+    "levelFloor": 15
+  },
+  {
+    "dex": 150,
+    "speciesName": "Mewtwo (Mega Y)",
+    "speciesId": "mewtwo_mega_y",
+    "baseStats": {
+      "atk": 413,
+      "def": 228,
+      "hp": 214
+    },
+    "types": [
+      "psychic",
+      "none"
+    ],
+    "fastMoves": [
+      "CONFUSION",
+      "PSYCHO_CUT"
+    ],
+    "chargedMoves": [
+      "FLAMETHROWER",
+      "FOCUS_BLAST",
+      "HYPER_BEAM",
+      "ICE_BEAM",
+      "PSYCHIC",
+      "SHADOW_BALL",
+      "THUNDERBOLT",
+      "PSYSTRIKE"
+    ],
+    "tags": [
+      "legendary",
+      "shadoweligible",
+      "mega"
+    ],
+    "defaultIVs": {
+      "cp500": [
+        3,
+        9,
+        15,
+        14
+      ],
+      "cp1500": [
+        8.5,
+        12,
+        15,
+        11
+      ],
+      "cp2500": [
+        14.5,
+        4,
+        9,
+        12
+      ]
+    },
+    "level25CP": 2641,
+    "eliteMoves": [
+      "PSYSTRIKE",
+      "SHADOW_BALL",
+      "HYPER_BEAM"
+    ],
+    "buddyDistance": 20,
+    "thirdMoveCost": 100000,
+    "released": true,
+    "levelFloor": 15
   },
   {
     "dex": 150,
@@ -22077,7 +22211,7 @@
       "id": "FAMILY_TOTODILE",
       "parent": "croconaw"
     },
-    "searchPriority": 3
+    "searchPriority": 5
   },
   {
     "dex": 160,
@@ -22242,7 +22376,7 @@
         15
       ]
     },
-    "searchPriority": 10,
+    "searchPriority": 6,
     "buddyDistance": 1,
     "thirdMoveCost": 10000,
     "released": true,
@@ -22485,13 +22619,15 @@
     "fastMoves": [
       "BUG_BITE",
       "STRUGGLE_BUG",
-      "COUNTER"
+      "COUNTER",
+      "ROLLOUT"
     ],
     "chargedMoves": [
       "AERIAL_ACE",
       "BUG_BUZZ",
       "SILVER_WIND",
-      "DYNAMIC_PUNCH"
+      "DYNAMIC_PUNCH",
+      "ACROBATICS"
     ],
     "defaultIVs": {
       "cp500": [
@@ -22547,13 +22683,15 @@
     "fastMoves": [
       "BUG_BITE",
       "STRUGGLE_BUG",
-      "COUNTER"
+      "COUNTER",
+      "ROLLOUT"
     ],
     "chargedMoves": [
       "AERIAL_ACE",
       "BUG_BUZZ",
       "SILVER_WIND",
-      "DYNAMIC_PUNCH"
+      "DYNAMIC_PUNCH",
+      "ACROBATICS"
     ],
     "defaultIVs": {
       "cp500": [
@@ -23449,7 +23587,8 @@
       "AERIAL_ACE",
       "FUTURE_SIGHT",
       "OMINOUS_WIND",
-      "PSYSHOCK"
+      "PSYSHOCK",
+      "SHADOW_BALL"
     ],
     "defaultIVs": {
       "cp500": [
@@ -23505,7 +23644,8 @@
       "AERIAL_ACE",
       "FUTURE_SIGHT",
       "OMINOUS_WIND",
-      "PSYSHOCK"
+      "PSYSHOCK",
+      "SHADOW_BALL"
     ],
     "defaultIVs": {
       "cp500": [
@@ -26377,7 +26517,7 @@
     "tags": [
       "shadoweligible"
     ],
-    "searchPriority": 7,
+    "searchPriority": 10,
     "buddyDistance": 5,
     "thirdMoveCost": 75000,
     "released": true,
@@ -27055,7 +27195,8 @@
       "SLUDGE_WAVE",
       "ACID_SPRAY",
       "FELL_STINGER",
-      "SCALD"
+      "SCALD",
+      "SHADOW_BALL"
     ],
     "defaultIVs": {
       "cp500": [
@@ -27168,7 +27309,8 @@
       "SLUDGE_WAVE",
       "ACID_SPRAY",
       "FELL_STINGER",
-      "SCALD"
+      "SCALD",
+      "SHADOW_BALL"
     ],
     "defaultIVs": {
       "cp500": [
@@ -28736,7 +28878,8 @@
       "AERIAL_ACE",
       "ICE_BEAM",
       "WATER_PULSE",
-      "BUBBLE_BEAM"
+      "BUBBLE_BEAM",
+      "TWISTER"
     ],
     "defaultIVs": {
       "cp500": [
@@ -28758,7 +28901,7 @@
         15
       ]
     },
-    "searchPriority": 5,
+    "searchPriority": 6,
     "buddyDistance": 5,
     "thirdMoveCost": 75000,
     "released": true,
@@ -29166,7 +29309,8 @@
       "HYDRO_PUMP",
       "OUTRAGE",
       "OCTAZOOKA",
-      "SWIFT"
+      "SWIFT",
+      "SURF"
     ],
     "defaultIVs": {
       "cp500": [
@@ -29233,7 +29377,8 @@
       "HYDRO_PUMP",
       "OUTRAGE",
       "OCTAZOOKA",
-      "SWIFT"
+      "SWIFT",
+      "SURF"
     ],
     "defaultIVs": {
       "cp500": [
@@ -41973,7 +42118,9 @@
       "FOUL_PLAY",
       "ICE_BEAM",
       "SHADOW_SNEAK",
-      "THUNDER"
+      "THUNDER",
+      "THUNDER_PUNCH",
+      "DYNAMIC_PUNCH"
     ],
     "defaultIVs": {
       "cp500": [
@@ -50054,7 +50201,9 @@
       "FIRE_PUNCH",
       "FOCUS_BLAST",
       "HYPER_BEAM",
-      "TRIPLE_AXEL"
+      "TRIPLE_AXEL",
+      "THUNDER_PUNCH",
+      "SHADOW_BALL"
     ],
     "defaultIVs": {
       "cp500": [
@@ -50107,7 +50256,9 @@
       "FIRE_PUNCH",
       "FOCUS_BLAST",
       "HYPER_BEAM",
-      "TRIPLE_AXEL"
+      "TRIPLE_AXEL",
+      "THUNDER_PUNCH",
+      "SHADOW_BALL"
     ],
     "defaultIVs": {
       "cp500": [
@@ -52733,7 +52884,8 @@
     ],
     "fastMoves": [
       "WATER_GUN",
-      "WATERFALL"
+      "WATERFALL",
+      "GUST"
     ],
     "chargedMoves": [
       "BLIZZARD",
@@ -53438,7 +53590,8 @@
       "SKULL_BASH",
       "SUPER_POWER",
       "ROCK_WRECKER",
-      "BREAKING_SWIPE"
+      "BREAKING_SWIPE",
+      "DRILL_RUN"
     ],
     "defaultIVs": {
       "cp500": [
@@ -53500,7 +53653,8 @@
       "SKULL_BASH",
       "SUPER_POWER",
       "ROCK_WRECKER",
-      "BREAKING_SWIPE"
+      "BREAKING_SWIPE",
+      "DRILL_RUN"
     ],
     "defaultIVs": {
       "cp500": [
@@ -57902,7 +58056,7 @@
         15
       ]
     },
-    "searchPriority": 8,
+    "searchPriority": 2,
     "buddyDistance": 3,
     "thirdMoveCost": 10000,
     "released": true,
@@ -57968,7 +58122,6 @@
         15
       ]
     },
-    "searchPriority": 8,
     "buddyDistance": 3,
     "thirdMoveCost": 10000,
     "released": true,
@@ -60590,7 +60743,8 @@
     ],
     "fastMoves": [
       "MUD_SLAP",
-      "SMACK_DOWN"
+      "SMACK_DOWN",
+      "LOCK_ON"
     ],
     "chargedMoves": [
       "ROCK_SLIDE",
@@ -60649,7 +60803,8 @@
     ],
     "fastMoves": [
       "MUD_SLAP",
-      "SMACK_DOWN"
+      "SMACK_DOWN",
+      "LOCK_ON"
     ],
     "chargedMoves": [
       "ROCK_SLIDE",
@@ -61382,7 +61537,8 @@
     ],
     "fastMoves": [
       "COUNTER",
-      "POISON_JAB"
+      "POISON_JAB",
+      "FORCE_PALM"
     ],
     "chargedMoves": [
       "DYNAMIC_PUNCH",
@@ -61440,7 +61596,8 @@
     ],
     "fastMoves": [
       "COUNTER",
-      "POISON_JAB"
+      "POISON_JAB",
+      "FORCE_PALM"
     ],
     "chargedMoves": [
       "DYNAMIC_PUNCH",
@@ -61613,7 +61770,8 @@
     "chargedMoves": [
       "MUDDY_WATER",
       "EARTH_POWER",
-      "SLUDGE_BOMB"
+      "SLUDGE_BOMB",
+      "ICY_WIND"
     ],
     "defaultIVs": {
       "cp500": [
@@ -66048,13 +66206,15 @@
     ],
     "fastMoves": [
       "WATER_GUN",
-      "AIR_SLASH"
+      "AIR_SLASH",
+      "GUST"
     ],
     "chargedMoves": [
       "ICE_BEAM",
       "BUBBLE_BEAM",
       "HURRICANE",
-      "FLY"
+      "FLY",
+      "AQUA_JET"
     ],
     "defaultIVs": {
       "cp500": [
@@ -66103,13 +66263,15 @@
     ],
     "fastMoves": [
       "WATER_GUN",
-      "AIR_SLASH"
+      "AIR_SLASH",
+      "GUST"
     ],
     "chargedMoves": [
       "ICE_BEAM",
       "BUBBLE_BEAM",
       "HURRICANE",
-      "FLY"
+      "FLY",
+      "AQUA_JET"
     ],
     "defaultIVs": {
       "cp500": [
@@ -69797,7 +69959,7 @@
         15
       ]
     },
-    "searchPriority": 9,
+    "searchPriority": 3,
     "buddyDistance": 5,
     "thirdMoveCost": 75000,
     "released": true,
@@ -73348,7 +73510,7 @@
         15
       ]
     },
-    "searchPriority": 15,
+    "searchPriority": 9,
     "buddyDistance": 1,
     "thirdMoveCost": 10000,
     "released": true,
@@ -73410,7 +73572,6 @@
         15
       ]
     },
-    "searchPriority": 15,
     "buddyDistance": 1,
     "thirdMoveCost": 10000,
     "released": true,
@@ -74597,7 +74758,8 @@
     ],
     "fastMoves": [
       "CHARM",
-      "CHARGE_BEAM"
+      "CHARGE_BEAM",
+      "FAIRY_WIND"
     ],
     "chargedMoves": [
       "MOONBLAST",
@@ -75024,7 +75186,6 @@
         15
       ]
     },
-    "searchPriority": 7,
     "buddyDistance": 3,
     "thirdMoveCost": 50000,
     "released": true,
@@ -76077,14 +76238,16 @@
     ],
     "fastMoves": [
       "CHARM",
-      "QUICK_ATTACK"
+      "QUICK_ATTACK",
+      "FAIRY_WIND"
     ],
     "chargedMoves": [
       "MOONBLAST",
       "DAZZLING_GLEAM",
       "DRAINING_KISS",
       "LAST_RESORT",
-      "PSYSHOCK"
+      "PSYSHOCK",
+      "SHADOW_BALL"
     ],
     "eliteMoves": [
       "LAST_RESORT",
@@ -76344,13 +76507,15 @@
     ],
     "fastMoves": [
       "WATER_GUN",
-      "TACKLE"
+      "TACKLE",
+      "DRAGON_BREATH"
     ],
     "chargedMoves": [
       "DRAGON_PULSE",
       "SLUDGE_WAVE",
       "MUDDY_WATER",
-      "WATER_PULSE"
+      "WATER_PULSE",
+      "BODY_SLAM"
     ],
     "defaultIVs": {
       "cp500": [
@@ -76381,7 +76546,8 @@
       "evolutions": [
         "goodra"
       ]
-    }
+    },
+    "searchPriority": 4
   },
   {
     "dex": 706,
@@ -84897,31 +85063,38 @@
     "chargedMoves": [
       "THUNDER_PUNCH",
       "DISCHARGE",
-      "WILD_CHARGE"
+      "WILD_CHARGE",
+      "PLASMA_FISTS"
     ],
     "defaultIVs": {
       "cp500": [
         5.5,
-        9,
-        14,
-        15
+        12,
+        11,
+        12
       ],
       "cp1500": [
-        16,
-        5,
-        14,
-        15
+        15.5,
+        11,
+        15,
+        13
       ],
       "cp2500": [
-        27,
-        4,
-        10,
-        15
+        26.5,
+        11,
+        11,
+        10
       ]
     },
     "buddyDistance": 20,
     "thirdMoveCost": 100000,
-    "released": false
+    "released": true,
+    "levelFloor": 15,
+    "tags": [
+      "mythical",
+      "untradeable"
+    ],
+    "searchPriority": 2
   },
   {
     "dex": 808,
@@ -84999,7 +85172,8 @@
       "ROCK_SLIDE",
       "THUNDERBOLT",
       "SUPER_POWER",
-      "DOUBLE_IRON_BASH"
+      "DOUBLE_IRON_BASH",
+      "DYNAMIC_PUNCH"
     ],
     "eliteMoves": [
       "DOUBLE_IRON_BASH"
@@ -88472,6 +88646,55 @@
     "released": true
   },
   {
+    "dex": 870,
+    "speciesName": "Falinks (Mega)",
+    "speciesId": "falinks_mega",
+    "baseStats": {
+      "atk": 267,
+      "def": 229,
+      "hp": 163
+    },
+    "types": [
+      "fighting",
+      "none"
+    ],
+    "fastMoves": [
+      "ROCK_SMASH",
+      "COUNTER"
+    ],
+    "chargedMoves": [
+      "SUPER_POWER",
+      "BRICK_BREAK",
+      "MEGAHORN"
+    ],
+    "defaultIVs": {
+      "cp500": [
+        5,
+        15,
+        15,
+        15
+      ],
+      "cp1500": [
+        15,
+        4,
+        11,
+        15
+      ],
+      "cp2500": [
+        25,
+        4,
+        14,
+        13
+      ]
+    },
+    "buddyDistance": 5,
+    "thirdMoveCost": 75000,
+    "released": true,
+    "tags": [
+      "mega"
+    ]
+  },
+  {
     "dex": 871,
     "speciesName": "Pincurchin",
     "speciesId": "pincurchin",
@@ -91426,7 +91649,8 @@
     ],
     "fastMoves": [
       "WATER_GUN",
-      "WING_ATTACK"
+      "WING_ATTACK",
+      "LOW_KICK"
     ],
     "chargedMoves": [
       "AQUA_JET",
@@ -94232,7 +94456,7 @@
         15
       ]
     },
-    "searchPriority": 8,
+    "searchPriority": 10,
     "buddyDistance": 3,
     "thirdMoveCost": 75000,
     "released": true,

@@ -252,7 +252,6 @@ describe('POST /api/generate-team', () => {
     ['great-league'],
     ['ultra-league'],
     ['master-league'],
-    ['fantasy-cup'],
     ['naic-2026-championship-cup'],
     ['battle-frontier-bayou-cup'],
     ['battle-frontier-spellcraft-cup'],

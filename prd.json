@@ -1,638 +1,109 @@
 {
   "project": "pogo-team-generator",
   "branchName": "ralph/lineup-aware-team-generation",
-  "description": "Lineup-Aware Team Generation - replace selectable fitness algorithms with one canonical lineup-aware fitness path that preserves existing bulk/safety/team-quality optimization, scores PlayPokemon bring-6 rosters by ordered pick-3 lineups, and controls runtime with staged cached scoring.",
+  "description": "Overhaul Team Analysis Summary and lineup presentation by simplifying display-only analysis output, improving recommended lineup layout, resolving lineup role species names, and reordering optimizer score breakdown fields.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add lineup-aware generation types",
-      "description": "As a developer, I need typed lineup, roster metric, bench utility, and recommendation structures so that lineup-aware fitness can be implemented safely.",
+      "title": "Resolve lineup role species names in generate-team API",
+      "description": "As a user, I want recommended lineup lead, switch, and closer entries to show species names instead of internal IDs so that lineup recommendations are readable.",
       "acceptanceCriteria": [
-        "Add types for ordered lineup roles: lead, switch, and closer",
-        "Add types for recommended lineup output including score, coverage metrics, covered threats, weaknesses, ABC/ABB/ABA diagnostic label, and optional resource path metrics",
-        "Add types for PlayPokemon roster metrics including viable lineup count, top lineup quality, top-N lineup depth, dominating matchup rate, overwhelming loss rate, single-answer risks, viable lead diversity, and bench utility summary",
-        "Add types for bench utility including utility score, total appearances, lead appearances, switch appearances, closer appearances, and warnings",
-        "Add types or configuration structures that support fast fitness scoring separately from full UI-ready diagnostics",
-        "Do not expose FitnessAlgorithm as a user-selectable API or UI option in new types",
+        "Update app/api/generate-team/route.ts so recommended lineup lead, switch, and closer role values are resolved to species names before reaching the UI",
+        "Species-name resolution follows the existing approach used for lineup weakness names",
+        "Existing lineup weakness species-name behavior is preserved",
+        "Add or update relevant Vitest coverage for role species-name resolution",
         "Tests pass",
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "@backend-developer implement route/data mapping; @api-designer review response contract and backward compatibility; @frontend-developer verify UI consumes names without extra client mapping."
     },
     {
       "id": "US-002",
-      "title": "Implement PlayPokemon lineup enumeration",
-      "description": "As a developer, I need deterministic lineup enumeration so that every bring-6 roster is scored against the same 60 ordered pick-3 options.",
+      "title": "Remove Roster Metrics display and unused display-only generation",
+      "description": "As a user, I want the team display to omit Roster Metrics so that the analysis view is less cluttered.",
       "acceptanceCriteria": [
-        "Add a pure lineup enumeration module under lib/genetic/fitness",
-        "Given six unique Pokemon, enumeration returns exactly 60 lineups",
-        "Enumeration includes exactly six distinct leads",
-        "Each lead has exactly ten canonical unordered backline pairs",
-        "Backline pair order is canonicalized and duplicate backline permutations are not returned",
-        "Lead identity is part of lineup identity, so the same three Pokemon with a different lead is a distinct lineup",
-        "Enumeration throws or returns a typed error for non-six-Pokemon PlayPokemon roster input",
+        "Remove the Roster Metrics output display from TeamDisplay.tsx",
+        "Remove code that generates Roster Metrics display values when those values have no remaining consumer",
+        "Do not delete internal optimizer/domain scoring calculations in lib/genetic/fitness/rosterScoring.ts unless proven unused outside display generation",
+        "Add or update relevant Vitest coverage for removed display-only output where applicable",
         "Tests pass",
-        "Typecheck passes"
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "@frontend-developer remove TeamDisplay UI; @backend-developer audit display-value generation; @api-designer review whether API payload fields should be removed or retained."
     },
     {
       "id": "US-003",
-      "title": "Implement lineup scoring helpers",
-      "description": "As a developer, I need pure lineup scoring helpers so that individual ordered pick-3 lineups can be evaluated consistently.",
+      "title": "Simplify recommended lineup card content",
+      "description": "As a user, I want recommended lineup cards to focus on role assignments and matchup details without extra score or shield strategy labels.",
       "acceptanceCriteria": [
-        "Add a pure lineup scoring module under lib/genetic/fitness",
-        "Audit existing fitness factors in individual.ts and teamSynergy.ts before removing or retiring old scoring code",
-        "Lineup score preserves retained existing quality signals for ranking quality, bulk/stat balance, role strength, type synergy, type diversity, move coverage, energy pressure, simulation coverage, single-counter risk, core-breaker risk, and shield scenario reliability where data exists",
-        "Lineup score accounts for lead performance against threats",
-        "Lineup score accounts for backline coverage and shared weaknesses",
-        "Lineup score accounts for safe-swap quality for the switch role",
-        "Lineup score accounts for closer or no-shield strength for the closer role",
-        "Lineup score accounts for threat coverage and single-answer risks",
-        "Dominating matchup count uses battle rating greater than 600",
-        "Overwhelming loss count uses battle rating less than 400",
-        "ABC/ABB/ABA label is returned as diagnostics and is not used as a primary scoring input",
-        "Lead-specific matchup data can change the score for the same three Pokemon",
-        "At least one test proves a retained bulk, safety, or equivalent team-quality signal can affect lineup score",
-        "Any current fitness factor that is intentionally not migrated is documented in code comments or test notes",
+        "Remove Score from the recommended lineup card display",
+        "Remove Balanced, Shield spend, and Shield save display from recommended lineup cards",
+        "Remove display-only generation for Balanced, Shield spend, and Shield save values when unused by remaining consumers",
+        "Do not delete internal lineup scoring calculations in lib/genetic/fitness/lineupScoring.ts unless proven unused outside display generation",
+        "Add or update relevant Vitest coverage for simplified lineup card data where applicable",
         "Tests pass",
-        "Typecheck passes"
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "@frontend-developer simplify AnalysisPanel lineup card UI; @backend-developer audit and prune unused display-only generation; @api-designer review removed display fields."
     },
     {
       "id": "US-004",
-      "title": "Add shield and resource path scoring",
-      "description": "As a developer, I need shield-path scoring so that lineups use shield-specific matchup data when available without treating missing data as losses.",
+      "title": "Remove unused Per-Pokemon Contribution explanatory sections",
+      "description": "As a user, I want the Per-Pokemon Contribution section to be concise and avoid redundant grading and rationale text.",
       "acceptanceCriteria": [
-        "Balanced path uses lead 1-shield data and backline 1-shield data when available",
-        "Shield-spend path uses lead 2-shield data and backline 0-shield data when available",
-        "Shield-save path uses lead 0-shield data and backline 2-shield data when available",
-        "Missing shield-specific matchup data is marked unavailable or falls back neutrally",
-        "Missing shield-specific matchup data is not counted as an automatic loss",
-        "Resource path metrics are omitted or marked unavailable when there is insufficient data to compute them safely",
+        "Remove the Fitness Contribution Categories section from the analysis UI",
+        "Remove the Relative grading guide from Per-Pokemon Contribution",
+        "Remove per-Pokemon contribution rationale text from the UI",
+        "Remove generation of Fitness Contribution Categories and contribution rationale only when no remaining consumer exists",
+        "Update lib/analysis/pokemonContributionAnalysis.ts only for display-only rationale generation that is no longer consumed",
+        "Add or update relevant Vitest coverage for contribution analysis output changes",
         "Tests pass",
-        "Typecheck passes"
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "@frontend-developer update AnalysisPanel contribution UI; @backend-developer audit pokemonContributionAnalysis generation; @api-designer review contribution payload shape."
     },
     {
       "id": "US-005",
-      "title": "Implement PlayPokemon roster scoring",
-      "description": "As a developer, I need roster-level fitness aggregation so that bring-6 teams are rewarded for lineup depth instead of one isolated best lineup.",
+      "title": "Convert Recommended Lineups to analysis accordion section",
+      "description": "As a user, I want Recommended Lineup(s) presented as an accordion matching the Summary Statistics and Per-Pokemon Contribution style so that analysis sections are visually consistent.",
       "acceptanceCriteria": [
-        "Add a pure roster scoring module under lib/genetic/fitness",
-        "Roster scoring evaluates exactly 60 enumerated lineups for each six-Pokemon roster",
-        "Roster scoring can use a fast scoring mode for hot GA evaluation and a full scoring mode for finalist or final output diagnostics",
-        "Roster scoring rewards multiple viable lineups",
-        "Roster scoring rewards strong top lineup quality and top-N lineup depth",
-        "Roster scoring rewards viable lead diversity",
-        "Roster scoring rewards broad threat coverage and useful bench Pokemon",
-        "Roster scoring penalizes one excellent lineup with a dead or unbringable bench",
-        "Roster scoring penalizes single-answer dependency, repeated shared weaknesses, poor lead diversity, and high overwhelming-loss rate",
-        "Dominating and overwhelming metrics are calculated at lineup level before roster aggregation",
-        "Tests cover that staged scoring avoids requiring full UI-ready diagnostics for every roster evaluation",
-        "Tests pass",
-        "Typecheck passes"
+        "Convert Recommended Lineup(s) in AnalysisPanel.tsx into an accordion section",
+        "Recommended Lineup(s) accordion has similar look and feel to Summary Statistics and Per-Pokemon Contribution",
+        "Move Recommended Lineup(s) below Summary Statistics",
+        "Accordion expanded/collapsed behavior works consistently with adjacent analysis sections",
+        "Existing recommended lineup data remains visible inside the accordion when expanded",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": ""
+      "passes": false,
+      "notes": "@frontend-developer implement accordion placement and behavior; @ui-designer review visual consistency, spacing, hierarchy, and responsive behavior."
     },
     {
       "id": "US-006",
-      "title": "Implement lineup recommendations and bench utility",
-      "description": "As a developer, I need recommendation and bench utility helpers so that generated rosters include actionable pick-3 plans and warnings.",
+      "title": "Reorder Optimizer Score Breakdown fields",
+      "description": "As a user, I want the Optimizer Score Breakdown ordered so that offensive and defensive ratios are compared side-by-side before role information.",
       "acceptanceCriteria": [
-        "Add recommendation helpers under lib/genetic/fitness",
-        "PlayPokemon recommendation output includes the top five recommended pick-3 lineups by default",
-        "Each recommended lineup includes lead, switch, closer, score, coverage metrics, covered threats, weaknesses, ABC/ABB/ABA diagnostic label, and resource path metrics when available",
-        "Full resource path details and explanation-heavy diagnostics are built only for recommended or finalist lineups, not every chromosome in every generation",
-        "Bench utility is calculated for every roster member",
-        "Bench utility includes utility score, total recommended lineup appearances, lead appearances, switch appearances, and closer appearances",
-        "Pokemon with zero recommended lineup appearances receive an unbringable warning",
-        "Pokemon below the low-utility threshold receive a low-utility warning",
-        "API-ready recommendation output does not return all 60 lineups by default",
-        "Tests pass",
-        "Typecheck passes"
+        "Update Optimizer Score Breakdown display order so Offensive Ratio and Defensive Ratio are side-by-side",
+        "Display Role after Offensive Ratio and Defensive Ratio",
+        "Preserve existing values and labels other than the requested ordering",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-007",
-      "title": "Add GBL role-order recommendations",
-      "description": "As a GBL user, I want generated teams of three to include lead, switch, and closer recommendations so that I know how to pilot the team.",
-      "acceptanceCriteria": [
-        "Given a three-Pokemon GBL team, generation produces one recommended ordered lineup",
-        "The ordered lineup includes lead, switch, closer, score, coverage metrics, covered threats, weaknesses, and ABC/ABB/ABA diagnostic label",
-        "GBL generation continues returning exactly three Pokemon",
-        "GBL role ordering uses the canonical lineup scoring helpers",
-        "Existing GBL team generation remains functional",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 7,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-008",
-      "title": "Integrate canonical lineup-aware fitness into the genetic algorithm",
-      "description": "As a developer, I need the genetic algorithm to use one canonical lineup-aware fitness path so that individual versus team synergy branching is removed.",
-      "acceptanceCriteria": [
-        "Update lib/genetic/algorithm.ts to call one canonical fitness function",
-        "Update lib/genetic/fitness/index.ts to expose one canonical lineup-aware fitness entry point",
-        "Per-run caches are used for repeated matchup, shield matchup, role score, lineup score, or roster score calculations in the GA evaluation path",
-        "Hot GA scoring uses bounded deterministic threat pools rather than unbounded full-meta sweeps for every chromosome",
-        "Remove backend branching between individual and teamSynergy fitness paths",
-        "PlayPokemon GA fitness uses roster scoring for six-Pokemon rosters",
-        "GBL GA fitness preserves genetic fitness selection while using role-ordered lineup scoring for three-Pokemon teams",
-        "The algorithm no longer accepts an algorithm selection parameter for fitness routing",
-        "Full UI-ready lineup diagnostics are computed for the final selected team or bounded finalists, not for every chromosome",
-        "Existing generation tests are updated to assert lineup-aware output",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-009",
-      "title": "Update generate-team API contract",
-      "description": "As an API consumer, I want generation requests to omit algorithm selection because there is now one canonical generation strategy.",
-      "acceptanceCriteria": [
-        "app/api/generate-team/route.ts no longer validates an algorithm field",
-        "The API no longer passes algorithm into generateTeam",
-        "Valid generation requests without algorithm succeed",
-        "Requests that include deprecated algorithm are handled according to the route schema behavior and covered by tests",
-        "API responses for PlayPokemon include recommended lineups, roster metrics, and bench utility",
-        "API responses for GBL include one recommended role-ordered lineup",
-        "API responses do not include user-facing individual or teamSynergy algorithm labels",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-010",
-      "title": "Remove algorithm selection from frontend configuration",
-      "description": "As a user, I should not see or choose an internal fitness algorithm so that team generation uses one clear competitive model.",
-      "acceptanceCriteria": [
-        "Remove the algorithm toggle or switch from TeamConfigPanel",
-        "TeamManager no longer owns currentAlgorithm state",
-        "Frontend components no longer receive algorithm props",
-        "Team generation requests sent from the frontend do not include algorithm",
-        "All other existing generation options remain visible and configurable",
-        "The team generation form renders without text for individual algorithm, team synergy algorithm, or fitness mode",
-        "Generation can still be started from the UI",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-011",
-      "title": "Display recommended lineups in results",
-      "description": "As a competitive player, I want generated results to show recommended lineups so that I can choose practical battle plans.",
-      "acceptanceCriteria": [
-        "ResultsPanel or TeamDisplay shows a Recommended Lineups section when lineup recommendations are present",
-        "PlayPokemon results show multiple recommended pick-3 lineups",
-        "Each displayed lineup shows Lead, Safe Swap, Closer, score, covered threats, weaknesses, and ABC/ABB/ABA diagnostic label",
-        "Resource path metrics are displayed only when present in the response",
-        "GBL results show the single recommended lead, safe swap, and closer order",
-        "Lineup detail expand or collapse controls use native buttons with aria-expanded and aria-controls when collapsible UI is used",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-012",
-      "title": "Display roster metrics and bench utility warnings",
-      "description": "As a competitive player, I want roster metrics and bench utility warnings so that I can identify weak or unbringable roster slots.",
-      "acceptanceCriteria": [
-        "AnalysisPanel or ResultsPanel displays roster metrics for PlayPokemon results",
-        "Displayed roster metrics include viable lineup count, top lineup quality, top-N lineup depth, dominating matchup rate, overwhelming loss rate, single-answer risks, viable lead diversity, and bench utility summary",
-        "Bench utility is displayed for each PlayPokemon roster member",
-        "Bench utility display includes utility score and lineup appearance counts",
-        "Bench utility display distinguishes lead, switch, and closer appearances when role data exists",
-        "Low-utility and unbringable warnings include text labels and do not rely on color alone",
-        "Analysis panels render without missing or undefined algorithm labels",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-013",
-      "title": "Remove obsolete algorithm code paths",
-      "description": "As a developer, I need obsolete algorithm-selection code removed so that the codebase has one maintainable fitness implementation.",
-      "acceptanceCriteria": [
-        "Remove or retire unused individual versus teamSynergy branching code from lib/genetic/fitness",
-        "Remove unused FitnessAlgorithm imports, props, state, and validation references",
-        "No frontend text references individual algorithm, team synergy algorithm, or fitness mode",
-        "No API or generation code path branches on algorithm",
-        "Existing public exports remain compatible unless replaced by the canonical lineup-aware export",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-014",
-      "title": "Run final validation for lineup-aware generation",
-      "description": "As a maintainer, I need the complete feature validated so that lineup-aware generation is safe to merge.",
-      "acceptanceCriteria": [
-        "npx vitest run lib/genetic/algorithm.test.ts passes",
-        "npx vitest run app/api/generate-team/route.test.ts passes",
-        "npx vitest run components/organisms/TeamManager/TeamManager.test.tsx passes when the test file exists",
-        "npx vitest run components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx passes when the test file exists",
-        "npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx passes when the test file exists",
-        "npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx passes when the test file exists",
-        "npm test passes",
-        "npm run lint passes",
-        "npm run build passes",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-015",
-      "title": "Move recommended lineups to analysis column",
-      "description": "As a user, I want recommended lineup details to appear with Team Analysis Summary so that generated roster cards stay focused on the six Pokemon and analysis content stays together.",
-      "acceptanceCriteria": [
-        "Recommended Lineups heading renders in the third column with Team Analysis Summary",
-        "Recommended Lineups no longer renders inside the Generated Team card list",
-        "TeamDisplay remains focused on generated Pokemon cards and team notes",
-        "AnalysisPanel or a child component renders recommendedLineups from API output without recomputing lineup scores in the UI",
-        "Existing generated-team card rendering remains unchanged",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-016",
-      "title": "Simplify lineup detail display names and labels",
-      "description": "As a user, I want lineup cards to show concise, human-readable details so that weaknesses and risks are understandable without verbose species-id lists.",
-      "acceptanceCriteria": [
-        "Recommended lineup cards do not display the Covered threats section",
-        "Weaknesses display human-readable speciesName values instead of raw speciesId values",
-        "Single-Answer Risks display human-readable speciesName values instead of raw speciesId values",
-        "Recommended lineup cards do not repeat labels such as Lead and Lead: for the same row",
-        "Recommended lineup cards use Switch as the user-facing role label instead of Safe Swap",
-        "Bench utility role counts use Switch instead of Safe Swap",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 16,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-017",
-      "title": "Make resource path scores meaningful",
-      "description": "As a user, I want balanced, shield-spend, and shield-save scores to include ranges and colors so values like 0.54 are easy to interpret.",
-      "acceptanceCriteria": [
-        "Resource path labels explain what balanced, shield-spend, and shield-save values mean at a high level",
-        "Resource path scores show a range label such as weak, neutral, strong, or elite",
-        "Resource path scores are color coordinated to the documented range",
-        "Color is not the only indicator of score quality; text labels or accessible descriptions are included",
-        "Tests cover rendering of at least weak, neutral, and strong resource-path score states",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 17,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-018",
-      "title": "Center bench warning pill text",
-      "description": "As a user, I want warning pills such as Warning: unbringable to look centered and polished so bench utility warnings are readable.",
-      "acceptanceCriteria": [
-        "Warning pill text is centered horizontally and vertically",
-        "Warning pill layout works for unbringable and low-utility warnings",
-        "Warning pills use text labels and do not rely on color alone",
-        "Browser verification inspects a generated PlayPokemon result with at least one Warning: unbringable pill",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 18,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-019",
-      "title": "Increase type diversity and coverage weighting",
-      "description": "As a competitive player, I want roster scoring to discourage redundant type selections that do not appear in recommended lineups while preserving useful complementary shared typings.",
-      "acceptanceCriteria": [
-        "Roster scoring adds or strengthens weights for offensive move effectiveness across the expected meta",
-        "Roster scoring adds or strengthens weights for defensive resistance and weakness coverage across the expected meta",
-        "Roster scoring penalizes redundant primary typing or repeated defensive liabilities when duplicated types do not appear in recommended lineups",
-        "Secondary typing is evaluated contextually so useful pairs like Azumarill and Tinkaton are not automatically penalized only because both include Fairy typing",
-        "Tests cover a redundant Electric-heavy roster scoring lower than a roster with broader defensive and offensive type coverage when other quality signals are comparable",
-        "Tests cover a complementary shared-secondary-type case that is not over-penalized when the Pokemon cover different weaknesses or roles",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 19,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-020",
-      "title": "Render lineup weaknesses as bullet lists",
-      "description": "As a user, I want lineup weaknesses to render as a readable bulleted list so that each weakness is visually distinct and easy to scan.",
-      "acceptanceCriteria": [
-        "Recommended lineup Weaknesses render as semantic list items inside a ul or equivalent accessible list structure",
-        "Each weakness appears as its own bullet point instead of a comma-separated inline string",
-        "Weakness list items use human-readable speciesName values instead of raw speciesId values",
-        "Empty weakness lists render a concise fallback such as No major weaknesses identified instead of an empty list",
-        "Tests cover rendering multiple weaknesses as separate list items",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 20,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-021",
-      "title": "Sync chargers attackers and consistency rankings",
-      "description": "As a maintainer, I need PvPoke Chargers, Attackers, and Consistency ranking exports synced with existing ranking data so optimizer scoring can use all documented role and consistency signals. Ralph must read or invoke the gbl-optimizer skill before sync work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing ranking sync code",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Ranking category types include overall, leads, switches, closers, chargers, attackers, and consistency",
-        "PvPoke adapter accepts chargers, attackers, and consistency categories",
-        "Ranking sync iterates all seven categories for every supported battle format",
-        "Synced files are written deterministically under data/rankings/cp{cp}/{cup}/{category}_rankings.csv",
-        "Sync tests cover the three new categories",
-        "Existing overall, leads, switches, and closers sync behavior remains unchanged",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 21,
-      "passes": true,
-      "notes": "Expanded ranking sync categories to include chargers, attackers, and consistency in the PvPoke adapter and ranking sync loop; focused sync tests and typecheck pass."
-    },
-    {
-      "id": "US-022",
-      "title": "Expose runtime ranking access for all role categories",
-      "description": "As an optimizer developer, I need normalized runtime access to Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency scores so scoring can use category-specific signals without raw file access. Ralph must read or invoke the gbl-optimizer skill before optimizer data-access work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing runtime ranking access",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Runtime ranking category types include overall, leads, switches, closers, chargers, attackers, and consistency",
-        "Ranking cache includes all seven categories per format without cross-format contamination",
-        "getRankingScore or its replacement supports all seven categories",
-        "getAllRankingsForPokemon returns all seven category scores plus an aggregate score",
-        "Missing ranking files throw MissingRankingDataError with the missing category in the message",
-        "Existing callers for overall, leads, switches, and closers continue to work",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 22,
-      "passes": true,
-      "notes": "Expanded runtime ranking category types, cache buckets, lazy loaders, getRankingScore, getAllRankingsForPokemon, getTopPokemon, and getRankingForSpeciesId to support chargers, attackers, and consistency; missing files throw MissingRankingDataError with the missing category. Focused runtime tests, typecheck, and lint pass."
-    },
-    {
-      "id": "US-023",
-      "title": "Add normalized weighted score component contract",
-      "description": "As an optimizer developer, I need a normalized weighted score contract so lineup and roster scoring combine documented metrics consistently. Ralph must read or invoke the gbl-optimizer skill before optimizer scoring work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing scoring contracts",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Add a score breakdown type or module with normalized components: synergy, coverage, safety, consistency, bulk, defensiveRatio, offensiveRatio, and role",
-        "Each component is bounded to 0..1 before weighted aggregation",
-        "Starting weights are synergy 0.24, coverage 0.21, safety 0.17, consistency 0.13, bulk 0.10, defensiveRatio 0.07, offensiveRatio 0.05, and role 0.03",
-        "Hard constraints remain limited to legality and validity checks",
-        "Tests prove lower-priority categories can influence close outcomes without dominating higher-priority categories",
-        "Tests prove role score alone cannot dominate the final score",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 23,
-      "passes": true,
-      "notes": "Added normalized weighted optimizer score breakdown contract with documented component weights, hard-constraint categories, bounded aggregation, and regression tests for lower-priority influence and role-score limits."
-    },
-    {
-      "id": "US-024",
-      "title": "Separate top-threat and full-meta threat pools",
-      "description": "As a competitive player, I need coverage scoring to distinguish common top threats from broader full-meta robustness so generated teams do not hide severe meta weaknesses. Ralph must read or invoke the gbl-optimizer skill before coverage scoring work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing threat-pool or coverage scoring code",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Threat-pool construction produces separate top-threat and full-meta pools",
-        "Top-threat coverage is weighted higher than full-meta coverage",
-        "Coverage diagnostics expose top-threat and full-meta results separately",
-        "No-answer and single-answer threat counts are computed for both pools where data exists",
-        "A lineup that loses hard to a top threat scores lower than a lineup with only rare full-meta holes when other signals are comparable",
-        "Threat pools are bounded and deterministic for hot GA scoring paths",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 24,
-      "passes": true,
-      "notes": "Added bounded canonicalized separate topThreats/fullMetaThreats scoring context pools, exposed topThreatCoverage and fullMetaCoverage diagnostics on lineup coverage metrics, and weighted evaluated top-threat coverage above full-meta coverage in full and fast lineup scoring. Focused fitness tests, typecheck, lint, and full test suite pass."
-    },
-    {
-      "id": "US-025",
-      "title": "Implement type-effectiveness offensive and defensive ratios",
-      "description": "As an optimizer developer, I need Pokemon GO type-effectiveness ratios so the scorer can measure offensive move pressure and defensive resistance versus weakness spread. Ralph must read or invoke the gbl-optimizer skill before type-effectiveness scoring work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing type-effectiveness scoring",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Type-effectiveness calculations use data/type-effectiveness.json as the source of truth",
-        "Dual-type defenders multiply both defender-type effectiveness values",
-        "Pokemon GO immunity-style interactions use 0.39x, not zero damage",
-        "Offensive ratio scoring evaluates selected fast and charged move types into top-threat and full-meta defenders",
-        "Defensive ratio scoring evaluates weaknesses, resistances, double weaknesses, double resistances, and shared weaknesses",
-        "Ratio scores are normalized to 0..1 before weighted aggregation",
-        "Tests cover dual-type multiplication, immunity-style interactions, neutral cancellation, double resistance, and double super effectiveness",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 25,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-026",
-      "title": "Implement safety consistency and bulk components",
-      "description": "As a competitive player, I need the scorer to reward reliable teams that avoid catastrophic losses, volatile bait dependence, and brittle low-bulk compositions. Ralph must read or invoke the gbl-optimizer skill before safety, consistency, or bulk scoring work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing safety, consistency, or bulk scoring",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Safety scoring accounts for overwhelming losses, no-answer threats, single-answer threats, bad-lead recovery, and sweep risk",
-        "Overwhelming losses against the top-threat pool are weighted more heavily than rare full-meta losses",
-        "Consistency scoring uses PvPoke consistency ranking data when available",
-        "Consistency scoring falls back to shield stability, damage per energy, energy cost, useful neutral damage, second-move value, and bait-dependence proxies when consistency rankings are unavailable",
-        "Bulk scoring uses normalized defense * hp / attack when direct bulk data is unavailable",
-        "Safety, consistency, and bulk are separate normalized components before aggregation",
-        "Tests cover poor bulk, bait-dependent volatility, shield-scenario instability, and no-answer or single-answer fragility",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 26,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-027",
-      "title": "Expand role scoring with chargers attackers and consistency",
-      "description": "As a competitive player, I need role scoring to use PvPoke role-specific exports so leads, switches, closers, chargers, attackers, and consistent Pokemon are evaluated according to their actual battle jobs. Ralph must read or invoke the gbl-optimizer skill before role scoring work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing role scoring",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Lead scoring uses Leads data as the primary role signal",
-        "Switch scoring uses Switches data as the primary role signal",
-        "Closer scoring uses Closers data as the primary role signal",
-        "Energy-pressure support uses Chargers data where available",
-        "Shield-disadvantage pressure uses Attackers data where available",
-        "Volatility or bait-dependence support uses Consistency data where available",
-        "Overall ranking is treated as broad candidate quality, not a direct role substitute",
-        "Role score remains the lowest-weight component in the weighted model",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 27,
-      "passes": true,
-      "notes": "Expanded lineup and roster role scoring to blend primary Leads/Switches/Closers signals with supporting Chargers, Attackers, and Consistency category scores while keeping role as the lowest weighted score-breakdown component. Focused role-scoring tests, typecheck, lint, and full test suite pass."
-    },
-    {
-      "id": "US-028",
-      "title": "Integrate weighted lineup and roster aggregation",
-      "description": "As a competitive player, I need generated rosters to optimize multiple playable lineups rather than one isolated trio, using the documented normalized weighted model. Ralph must read or invoke the gbl-optimizer skill before optimizer aggregation work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before changing lineup or roster aggregation",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Lineup scoring combines normalized synergy, coverage, safety, consistency, bulk, defensiveRatio, offensiveRatio, and role components",
-        "Roster scoring aggregates best lineup score, top-N lineup average, viable lineup count, viable lead diversity, and bench utility",
-        "Roster scoring penalizes one-line teams where one excellent trio carries otherwise dead bench slots",
-        "ABC, ABB, and ABA labels remain diagnostic rather than primary scoring inputs",
-        "ABB lineups can score well when the A Pokemon covers the B pair's shared weakness",
-        "ABA shared weakness is penalized when it creates lead-alignment fragility against top threats",
-        "Multiple viable lineups score higher than one obvious best line when other signals are comparable",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 28,
-      "passes": true,
-      "notes": "Completed weighted lineup and roster aggregation integration: ordered lineup scores and fast roster lineup scores use the normalized score-breakdown contract, structure safety combines ABB-style support and ABA fragility independently, and offensive/defensive ratio components use top-threat/full-meta type-effectiveness helpers. Focused fitness tests, typecheck, lint, and full test suite pass."
-    },
-    {
-      "id": "US-029",
-      "title": "Add optimizer validation fixture suite",
-      "description": "As a maintainer, I need deterministic validation fixtures for the documented optimizer tradeoffs so future scoring changes can be evaluated safely. Ralph must read or invoke the gbl-optimizer skill before validation work.",
-      "acceptanceCriteria": [
-        "Ralph reads or invokes the gbl-optimizer skill before adding optimizer validation fixtures",
-        "Ralph records the optimizer docs read in progress.txt for this iteration",
-        "Fixtures cover weighted tradeoffs where synergy can beat slightly better coverage",
-        "Fixtures cover ABC, coherent ABB, unsupported ABB, ABA shared weakness, and ABA shared strength behavior",
-        "Fixtures cover severe shared weakness penalties",
-        "Fixtures cover separate top-threat and full-meta coverage behavior",
-        "Fixtures cover dual-type type-effectiveness calculations",
-        "Fixtures cover multiple viable lineups beating a one-line roster",
-        "Fixtures cover one excellent trio with three dead roster slots",
-        "Fixtures cover strong coverage with poor bulk",
-        "Fixtures cover strong individual Pokemon with poor pick-3 synergy",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 29,
-      "passes": true,
-      "notes": "Added deterministic optimizer validation fixture suite covering documented weighted tradeoffs, lineup structures, split threat-pool behavior, type-effectiveness edge cases, roster depth, dead bench slots, bulk penalties, and poor pick-3 synergy. Focused optimizer tests, typecheck, lint, and full test suite pass."
-    },
-    {
-      "id": "US-030",
-      "title": "Display optimizer score breakdown in analysis panel",
-      "description": "As a user, I want the Team Analysis Summary to explain optimizer score categories so I understand why a generated roster is strong, risky, or matchup-dependent.",
-      "acceptanceCriteria": [
-        "Team Analysis Summary includes an Optimizer Score Breakdown accordion",
-        "The accordion displays synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, and role in documented priority order",
-        "Each category displays a normalized score, visible range label, and concise explanation",
-        "Category score states are not communicated by color alone",
-        "Top-threat coverage and full-meta coverage are visually distinct",
-        "The UI does not expose scoring weights as controls",
-        "Tests cover rendering all eight categories",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 30,
-      "passes": true,
-      "notes": ""
-    },
-    {
-      "id": "US-031",
-      "title": "Update AGENTS optimizer guidance",
-      "description": "As an agent working in this repository, I need AGENTS.md to point me to the optimizer docs and skill so future scoring and sync work follows the documented strategy.",
-      "acceptanceCriteria": [
-        "Root AGENTS.md references the gbl-optimizer skill for optimizer scoring, role ranking, PvPoke sync, type effectiveness, coverage, safety, consistency, bulk, and lineup strategy changes",
-        "lib/AGENTS.md references the optimizer docs required before changing lib/genetic/fitness, ranking sync, runtime ranking data, simulations, or type-effectiveness scoring",
-        "AGENTS guidance lists the key docs under docs/pokemon-go-team-optimization.md and docs/team-optimization/",
-        "Guidance tells agents to record which optimizer docs they read in progress.txt for Ralph iterations",
-        "Tests pass when applicable",
-        "Typecheck passes when applicable"
-      ],
-      "priority": 31,
-      "passes": true,
-      "notes": "Updated root and lib AGENTS guidance to require the gbl-optimizer skill and optimizer docs for scoring, role ranking, PvPoke sync/runtime inputs, simulations, type effectiveness, coverage, safety, consistency, bulk, and lineup strategy changes; included the referenced optimizer docs and skill in the commit; guidance tells Ralph iterations to record optimizer docs read in progress.txt."
-    },
-    {
-      "id": "US-032",
-      "title": "Update README optimizer architecture documentation",
-      "description": "As a contributor or maintainer, I want the README to describe the current optimizer architecture, file structure, data inputs, and scoring decisions so future work has clear implementation context.",
-      "acceptanceCriteria": [
-        "README describes the lineup-aware optimizer architecture at a high level",
-        "README documents the fitness module file structure and the responsibilities of lineup enumeration, lineup scoring, roster scoring, recommendations, ranking data, and sync modules",
-        "README documents that sync exports Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency rankings when source files exist",
-        "README explains the weighted component model as starting defaults, not guaranteed optimal tuning constants",
-        "README links to docs/pokemon-go-team-optimization.md and relevant docs/team-optimization/ references",
-        "README states that PvPoke rankings are signals for candidate quality, role fit, consistency, and threat weighting rather than immutable truth",
-        "README documents the decision to keep scoring logic in lib/ and UI/API adapters as display/pass-through layers",
-        "Tests pass when applicable",
-        "Typecheck passes when applicable"
-      ],
-      "priority": 32,
-      "passes": true,
-      "notes": "Documented the README optimizer architecture, fitness module responsibilities, seven-category PvPoke ranking sync inputs, normalized weighted component model, docs references, and lib/API/UI boundary decisions. Typecheck, lint, and full tests pass."
+      "passes": false,
+      "notes": "@frontend-developer update display order in AnalysisPanel.tsx; @ui-designer review side-by-side layout and readability."
     }
   ]
 }

@@ -14,13 +14,11 @@ describe('battle format catalog', () => {
       'Great League',
       'Ultra League',
       'Master League',
-      'Fantasy Cup',
       'NAIC 2026 Championship Series Cup',
       'Battle Frontier (Bayou Cup)',
       'Battle Frontier (Spellcraft Cup)',
       'Battle Frontier (UL Retro)',
       'Battle Frontier (Master)',
-      'Jungle Cup',
     ]);
   });
 
@@ -32,19 +30,19 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('great-league')).toBe(true);
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
-    expect(isBattleFormatId('fantasy-cup')).toBe(true);
     expect(isBattleFormatId('naic-2026-championship-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-bayou-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-spellcraft-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-ul-retro')).toBe(true);
     expect(isBattleFormatId('battle-frontier-master')).toBe(true);
-    expect(isBattleFormatId('jungle-cup')).toBe(true);
   });
 
   it('rejects unknown format ids', () => {
     expect(isBattleFormatId('little-cup')).toBe(false);
     expect(isBattleFormatId('kanto-cup')).toBe(false);
     expect(isBattleFormatId('spring-cup')).toBe(false);
+    expect(isBattleFormatId('fantasy-cup')).toBe(false);
+    expect(isBattleFormatId('jungle-cup')).toBe(false);
     expect(isBattleFormatId('')).toBe(false);
   });
 
@@ -56,24 +54,10 @@ describe('battle format catalog', () => {
       cp: 1500,
     });
 
-    expect(getBattleFormatById('fantasy-cup')).toEqual({
-      id: 'fantasy-cup',
-      label: 'Fantasy Cup',
-      cup: 'fantasy',
-      cp: 1500,
-    });
-
     expect(getBattleFormatById('naic-2026-championship-cup')).toEqual({
       id: 'naic-2026-championship-cup',
       label: 'NAIC 2026 Championship Series Cup',
       cup: 'naic2026',
-      cp: 1500,
-    });
-
-    expect(getBattleFormatById('jungle-cup')).toEqual({
-      id: 'jungle-cup',
-      label: 'Jungle Cup',
-      cup: 'jungle',
       cp: 1500,
     });
 
@@ -108,6 +92,8 @@ describe('battle format catalog', () => {
     expect(getBattleFormatById('little-cup')).toBeUndefined();
     expect(getBattleFormatById('kanto-cup')).toBeUndefined();
     expect(getBattleFormatById('spring-cup')).toBeUndefined();
+    expect(getBattleFormatById('fantasy-cup')).toBeUndefined();
+    expect(getBattleFormatById('jungle-cup')).toBeUndefined();
   });
 
   it('returns a read-only format list via helper', () => {

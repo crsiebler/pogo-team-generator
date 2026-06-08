@@ -21,8 +21,6 @@ const RANKING_CATEGORIES = [
 ] as const;
 const RANKING_CUPS = [
   'all',
-  'jungle',
-  'fantasy',
   'naic2026',
   'bayou',
   'spellcraft',

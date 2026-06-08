@@ -207,7 +207,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     await generateTeam({
       mode: 'GBL',
-      formatId: 'jungle-cup',
+      formatId: 'battle-frontier-bayou-cup',
       populationSize: 1,
       generations: 0,
     });
@@ -215,24 +215,26 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(getTopRankedPokemonNames).toHaveBeenCalledWith(
       80,
       150,
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
     );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
       rankedNames,
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
     );
-    expect(ensureSimulationDataAvailable).toHaveBeenCalledWith('jungle-cup');
+    expect(ensureSimulationDataAvailable).toHaveBeenCalledWith(
+      'battle-frontier-bayou-cup',
+    );
     expect(initializePopulation).toHaveBeenCalledWith(
       1,
       ['mew'],
       3,
       [],
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
     );
     expect(evaluatePopulation).toHaveBeenCalledWith(
       expect.any(Array),
       'GBL',
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
       expect.objectContaining({
         scoringContext: { threats: ['azumarill'] },
       }),
@@ -343,13 +345,13 @@ describe('generateTeam format-aware candidate selection', () => {
 
     const result = await generateTeam({
       mode: 'GBL',
-      formatId: 'jungle-cup',
+      formatId: 'battle-frontier-bayou-cup',
       populationSize: 1,
       generations: 0,
     });
 
     expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
     );
     expect(buildGblLineupRecommendation).toHaveBeenCalledWith(
       ['mew', 'mewtwo', 'dragonite'],
@@ -389,7 +391,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     const result = await generateTeam({
       mode: 'PlayPokemon',
-      formatId: 'jungle-cup',
+      formatId: 'battle-frontier-bayou-cup',
       populationSize: 1,
       generations: 0,
     });
@@ -397,7 +399,7 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(evaluatePopulation).toHaveBeenCalledWith(
       expect.any(Array),
       'PlayPokemon',
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
       expect.objectContaining({
         scoringContext: { threats: ['azumarill'] },
       }),
@@ -434,7 +436,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     await generateTeam({
       mode: 'GBL',
-      formatId: 'jungle-cup',
+      formatId: 'battle-frontier-bayou-cup',
       populationSize: 1,
       generations: 2,
     });
@@ -447,21 +449,21 @@ describe('generateTeam format-aware candidate selection', () => {
       1,
       expect.any(Array),
       'GBL',
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
       sharedContext,
     );
     expect(evaluatePopulation).toHaveBeenNthCalledWith(
       2,
       expect.any(Array),
       'GBL',
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
       sharedContext,
     );
     expect(evaluatePopulation).toHaveBeenNthCalledWith(
       3,
       expect.any(Array),
       'GBL',
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
       sharedContext,
     );
   });

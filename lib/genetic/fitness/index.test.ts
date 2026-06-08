@@ -128,12 +128,14 @@ describe('lineup-aware fitness entry point', () => {
 
   it('scores PlayPokemon chromosomes through fast roster scoring with cached lineup scoring', () => {
     const chromosome = createChromosome(['a', 'b', 'c', 'd', 'e', 'f']);
-    const context = createLineupAwareFitnessContext('jungle-cup');
+    const context = createLineupAwareFitnessContext(
+      'battle-frontier-bayou-cup',
+    );
 
     const fitness = calculateLineupAwareFitness(
       chromosome,
       'PlayPokemon',
-      'jungle-cup',
+      'battle-frontier-bayou-cup',
       context,
     );
 
@@ -165,7 +167,7 @@ describe('lineup-aware fitness entry point', () => {
       createChromosome(['g', 'h', 'i', 'j', 'k', 'l']),
     ];
 
-    evaluatePopulation(population, 'PlayPokemon', 'jungle-cup');
+    evaluatePopulation(population, 'PlayPokemon', 'battle-frontier-bayou-cup');
 
     expect(population.map((chromosome) => chromosome.fitness)).toEqual([
       0.91, 0.91,

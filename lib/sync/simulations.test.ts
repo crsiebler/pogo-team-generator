@@ -106,8 +106,6 @@ describe('generateSimulations', () => {
     const generatedCalls: Array<{
       cup:
         | 'all'
-        | 'jungle'
-        | 'fantasy'
         | 'naic2026'
         | 'bayou'
         | 'spellcraft'
@@ -162,7 +160,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(30);
+    expect(generatedCalls).toHaveLength(24);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -180,18 +178,6 @@ describe('generateSimulations', () => {
       cp: 10000,
       speciesId: 'bulbasaur',
       shields: 2,
-    });
-    expect(generatedCalls).toContainEqual({
-      cup: 'jungle',
-      cp: 1500,
-      speciesId: 'bulbasaur',
-      shields: 0,
-    });
-    expect(generatedCalls).toContainEqual({
-      cup: 'fantasy',
-      cp: 1500,
-      speciesId: 'bulbasaur',
-      shields: 1,
     });
     expect(generatedCalls).toContainEqual({
       cup: 'naic2026',
@@ -234,20 +220,6 @@ describe('generateSimulations', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp10000', 'all', 'bulbasaur_0-0.csv'),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp1500', 'jungle', 'bulbasaur_0-0.csv'),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'simulations',
-        'cp1500',
-        'fantasy',
-        'bulbasaur_1-1.csv',
-      ),
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(

@@ -40,7 +40,6 @@ describe('format-aware rankings loading', () => {
     const greatLeagueRankings = getOverallRankings('great-league');
     const ultraLeagueRankings = getOverallRankings('ultra-league');
     const masterLeagueRankings = getOverallRankings('master-league');
-    const fantasyCupRankings = getOverallRankings('fantasy-cup');
     const naic2026CupRankings = getOverallRankings(
       'naic-2026-championship-cup',
     );
@@ -52,18 +51,15 @@ describe('format-aware rankings loading', () => {
     const battleFrontierMasterRankings = getOverallRankings(
       'battle-frontier-master',
     );
-    const jungleCupRankings = getOverallRankings('jungle-cup');
 
     expect(greatLeagueRankings.length).toBeGreaterThan(0);
     expect(ultraLeagueRankings.length).toBeGreaterThan(0);
     expect(masterLeagueRankings.length).toBeGreaterThan(0);
-    expect(fantasyCupRankings.length).toBeGreaterThan(0);
     expect(naic2026CupRankings.length).toBeGreaterThan(0);
     expect(bayouCupRankings.length).toBeGreaterThan(0);
     expect(spellcraftCupRankings.length).toBeGreaterThan(0);
     expect(ulRetroRankings.length).toBeGreaterThan(0);
     expect(battleFrontierMasterRankings.length).toBeGreaterThan(0);
-    expect(jungleCupRankings.length).toBeGreaterThan(0);
   });
 
   it('keeps Great League cache stable after loading other formats', () => {
