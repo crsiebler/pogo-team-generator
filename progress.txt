@@ -13,6 +13,37 @@
 - Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render display-only explanations in `AnalysisPanel`.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
+- Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
 
 ## Iteration Log
 - Next iteration start: US-001 - Resolve lineup role species names in generate-team API
+
+## 2026-06-08 13:47 MST - US-001
+- Implemented API-side species-name resolution for recommended lineup `lead`, `switch`, and `closer` values while preserving existing weakness-name resolution and species-id domain output from `generateTeam`.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `lib/data/rankings.test.ts`, `progress.txt`
+- Commit message: `feat: US-001 - Resolve lineup role species names in generate-team API`
+- Checks:
+  - `npx vitest run app/api/generate-team/route.test.ts` (pass after expected red failure)
+  - `npx vitest run lib/data/rankings.test.ts` (pass after stale expectation update)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `backend-developer`, `api-designer`, `frontend-developer`
+  - Used: `backend-developer`, `api-designer`, `frontend-developer`
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed low stale test name; deferred low missing-file rankings coverage suggestion because it is outside US-001 and existing API MissingRankingDataError behavior was not changed; second review pass returned no actionable findings
+- Decisions (why):
+  - Chose API adapter mapping over client mapping because existing codebase patterns keep client analysis components display-only and already resolve lineup weaknesses in `/api/generate-team`.
+  - Kept `team`, `coveredThreats`, and optimizer/domain recommendation types species-id based because US-001 only changes display-facing role values in the API response.
+  - Updated `lib/data/rankings.test.ts` because the full quality gate exposed stale expectations that Chargers, Attackers, and Consistency ranking CSVs were missing even though current checked-in data includes them for supported formats.
+- **Learnings for future iterations:**
+  - `resolveRecommendedLineupLabels` is the route adapter seam for display-facing recommended lineup labels.
+  - Route tests mock `speciesIdToSpeciesName`; add any species ids used in expected API display labels to the local mock map.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - None.
+- Next iteration start:
+  - US-002 - Remove Roster Metrics display and unused display-only generation
+---

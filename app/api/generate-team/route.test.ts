@@ -89,7 +89,13 @@ describe('POST /api/generate-team', () => {
     vi.mocked(speciesIdToSpeciesName).mockImplementation(
       (speciesId: string) => {
         const namesById: Record<string, string> = {
+          annihilape: 'Annihilape',
+          azumarill: 'Azumarill',
+          dewgong: 'Dewgong',
           feraligatr: 'Feraligatr',
+          lanturn: 'Lanturn',
+          marowak: 'Marowak',
+          'marowak-shadow': 'Marowak (Shadow)',
           morpeko_full_belly: 'Morpeko (Full Belly)',
           venusaur: 'Venusaur',
         };
@@ -394,9 +400,9 @@ describe('POST /api/generate-team', () => {
     expect(payload.recommendedLineups).toEqual([
       {
         lineup: {
-          lead: 'lanturn',
-          switch: 'dewgong',
-          closer: 'annihilape',
+          lead: 'Lanturn',
+          switch: 'Dewgong',
+          closer: 'Annihilape',
         },
         score: 0.91,
         coverageMetrics: {
@@ -620,9 +626,9 @@ describe('POST /api/generate-team', () => {
     expect(payload.recommendedLineups).toEqual([
       {
         lineup: {
-          lead: 'azumarill',
-          switch: 'marowak',
-          closer: 'marowak-shadow',
+          lead: 'Azumarill',
+          switch: 'Marowak',
+          closer: 'Marowak (Shadow)',
         },
         score: 0.82,
         coverageMetrics: {
