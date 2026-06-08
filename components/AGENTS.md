@@ -24,6 +24,8 @@ Recommended Lineups should render as an `AnalysisPanel` accordion section immedi
 
 Recommended lineup cards should stay concise: show role terms as `Lead`, `Switch`, and `Closer`, avoid duplicating those labels in values, omit covered-threat lists, and render API-provided readable weakness labels without importing canonical Pokemon data into client components.
 
+Recommended lineup cards should not render `diagnosticLabel`/`Structure`; keep lineup structure labels as internal optimizer/API diagnostics unless a current story explicitly reintroduces a display consumer.
+
 Recommended lineup cards should not render resource path metrics (`Balanced`, `Shield spend`, or `Shield save`); keep those shield-path diagnostics internal to optimizer scoring unless a current story explicitly reintroduces a display consumer.
 
 Recommended lineup weakness display should use semantic `ul`/`li` lists with one weakness per item and a concise fallback when the weakness list is empty; do not return to comma-separated inline weakness strings.

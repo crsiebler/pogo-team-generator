@@ -621,11 +621,7 @@ export function AnalysisPanel({
                                       <dd>{recommendedLineup.lineup.closer}</dd>
                                     </div>
                                   </dl>
-                                  <div className="mt-3 grid gap-1 text-emerald-900 sm:grid-cols-2 dark:text-emerald-100">
-                                    <p>
-                                      Structure:{' '}
-                                      {recommendedLineup.diagnosticLabel}
-                                    </p>
+                                  <div className="mt-3 text-emerald-900 dark:text-emerald-100">
                                     <div>
                                       <p className="font-semibold">
                                         Weaknesses

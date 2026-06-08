@@ -400,7 +400,8 @@ describe('AnalysisPanel', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Weaknesses: Venusaur')).not.toBeInTheDocument();
     expect(screen.queryByText('Weaknesses: venusaur')).not.toBeInTheDocument();
-    expect(screen.getByText('Structure: ABC')).toBeInTheDocument();
+    expect(screen.queryByText(/Structure/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('ABC')).not.toBeInTheDocument();
     expect(screen.queryByText('Balanced')).not.toBeInTheDocument();
     expect(screen.queryByText('Shield spend')).not.toBeInTheDocument();
     expect(screen.queryByText('Shield save')).not.toBeInTheDocument();

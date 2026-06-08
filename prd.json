@@ -104,6 +104,78 @@
       "priority": 6,
       "passes": true,
       "notes": "@frontend-developer update display order in AnalysisPanel.tsx; @ui-designer review side-by-side layout and readability."
+    },
+    {
+      "id": "US-007",
+      "title": "Remove structure from recommended lineup cards",
+      "description": "As a user, I want recommended lineup cards to show only the lineup roles and remaining useful matchup details so that the card stays concise.",
+      "acceptanceCriteria": [
+        "Remove Structure from the Recommended Lineups card display",
+        "Do not remove or alter internal diagnosticLabel generation unless no remaining consumer exists",
+        "Recommended Lineups still display Lead, Switch, Closer, and Weaknesses when expanded",
+        "Add or update relevant AnalysisPanel Vitest coverage for the removed Structure text",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "@frontend-developer remove the AnalysisPanel display; @backend-developer audit diagnosticLabel only if considering contract cleanup; @ui-designer verify card hierarchy remains clear."
+    },
+    {
+      "id": "US-008",
+      "title": "Replace Summary Statistics content with optimizer score cards",
+      "description": "As a user, I want the Summary Statistics section to show optimizer score breakdown cards so that the highest-level summary uses the same metrics as the optimizer explanation.",
+      "acceptanceCriteria": [
+        "Keep the accordion section header text Summary Statistics",
+        "Replace the current Summary Statistics body content with Optimizer Score Breakdown information",
+        "Overwrite the existing Summary Statistics metric content rather than appending optimizer score cards below the current summary metrics",
+        "Remove this description from the UI: Normalized optimizer categories explain the generated score in priority order. Range labels are shown with colors so category strength is not communicated by color alone.",
+        "Do not recompute optimizer score values in client components; continue consuming API-provided scoreBreakdown data",
+        "Add or update relevant AnalysisPanel Vitest coverage for the Summary Statistics content replacement",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "@frontend-developer move/reuse the optimizer score card rendering inside Summary Statistics; @ui-designer review that the header/content pairing is understandable; @api-designer review only if API scoreBreakdown availability affects empty states."
+    },
+    {
+      "id": "US-009",
+      "title": "Move Role after Bulk in optimizer score layout",
+      "description": "As a user, I want Role to appear after Bulk and use the same card sizing as other optimizer score cards so that the score layout is consistent.",
+      "acceptanceCriteria": [
+        "Update optimizer score card display order so Role appears immediately after Bulk",
+        "Render Role with the same width and layout treatment as the other optimizer score cards",
+        "Keep Offensive Ratio and Defensive Ratio side-by-side after Role",
+        "Preserve existing optimizer score values and labels other than the requested ordering and Role card layout",
+        "Add or update relevant AnalysisPanel Vitest coverage for the new optimizer card order",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "@frontend-developer update AnalysisPanel optimizer score order/layout; @ui-designer review card width consistency and side-by-side ratio placement."
+    },
+    {
+      "id": "US-010",
+      "title": "Place Replacement Risk below Pokemon name",
+      "description": "As a user, I want the Replacement Risk pill to always appear below the Pokemon name so the Per-Pokemon Contribution header layout is stable across screen sizes.",
+      "acceptanceCriteria": [
+        "Move the Replacement Risk pill below the Pokemon name in a dedicated row",
+        "The Replacement Risk pill does not sit beside the Pokemon name on wide layouts",
+        "The Replacement Risk pill no longer only moves below the name when text wrapping occurs",
+        "Existing contribution metric boxes remain visible and unchanged",
+        "Add or update relevant AnalysisPanel Vitest coverage for the new Per-Pokemon Contribution header layout",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "@frontend-developer update Per-Pokemon Contribution markup/classes; @ui-designer verify row spacing, mobile behavior, and readability."
     }
   ]
 }
