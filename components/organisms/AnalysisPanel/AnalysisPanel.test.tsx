@@ -243,6 +243,70 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText(/algorithm/i)).not.toBeInTheDocument();
   });
 
+  it('renders replacement risk below each Pokemon name in a dedicated row', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'gastrodon', 'dunsparce'],
+          formatId: 'great-league',
+          scoreBreakdown: optimizerScoreBreakdown,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Per-Pokemon Contribution' }),
+    );
+
+    const contributionSection = screen.getByRole('region', {
+      name: 'Per-Pokemon Contribution',
+    });
+    for (const entry of analysisFixture.pokemonContributions.entries) {
+      const expectedRiskTier =
+        entry.fragilityRiskTier === 'moderate'
+          ? 'Moderate'
+          : entry.fragilityRiskTier === 'high'
+            ? 'High'
+            : 'Low';
+      const pokemonName = within(contributionSection).getByText(entry.pokemon);
+      const replacementRisk = within(contributionSection).getByText(
+        `Replacement Risk: ${expectedRiskTier}`,
+      );
+      const nameRow = pokemonName.closest(
+        '[data-testid="pokemon-contribution-name-row"]',
+      );
+      const riskRow = replacementRisk.closest(
+        '[data-testid="pokemon-contribution-risk-row"]',
+      );
+
+      expect(nameRow).not.toBeNull();
+      expect(riskRow).not.toBeNull();
+      expect(nameRow).not.toBe(riskRow);
+      expect(
+        nameRow!.compareDocumentPosition(riskRow!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        within(contributionSection).getByText(
+          `Threats Handled: ${entry.threatsHandled}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(contributionSection).getByText(
+          `Coverage Added: ${entry.coverageAdded}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(contributionSection).getByText(
+          `High-Pressure Relief: ${entry.highSeverityRelief}`,
+        ),
+      ).toBeInTheDocument();
+    }
+  });
+
   it('renders optimizer score categories in summary statistics in documented priority order', () => {
     render(
       <AnalysisPanel

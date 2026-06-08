@@ -473,18 +473,24 @@ export function AnalysisPanel({
                                 key={entry.speciesId}
                                 className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
                               >
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <p className="text-base font-bold text-gray-900 dark:text-gray-100">
-                                    {entry.pokemon}
-                                  </p>
-                                  <span
-                                    className={clsx(
-                                      'rounded-full px-2 py-1 text-xs font-semibold tracking-wide uppercase',
-                                      getBadgeClasses(entry.fragilityRiskTier),
-                                    )}
-                                  >
-                                    {`Replacement Risk: ${formatRiskTier(entry.fragilityRiskTier)}`}
-                                  </span>
+                                <div className="space-y-1">
+                                  <div data-testid="pokemon-contribution-name-row">
+                                    <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                                      {entry.pokemon}
+                                    </p>
+                                  </div>
+                                  <div data-testid="pokemon-contribution-risk-row">
+                                    <span
+                                      className={clsx(
+                                        'inline-flex rounded-full px-2 py-1 text-xs font-semibold tracking-wide uppercase',
+                                        getBadgeClasses(
+                                          entry.fragilityRiskTier,
+                                        ),
+                                      )}
+                                    >
+                                      {`Replacement Risk: ${formatRiskTier(entry.fragilityRiskTier)}`}
+                                    </span>
+                                  </div>
                                 </div>
                                 <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                                   <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">

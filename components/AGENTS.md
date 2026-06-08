@@ -36,7 +36,7 @@ When Summary Statistics optimizer score cards need a side-by-side comparison aft
 
 Optimizer score card order in Summary Statistics should render Role immediately after Bulk as a standard card, followed by Offensive Ratio and Defensive Ratio in their dedicated comparison row.
 
-Per-Pokemon Contribution in `AnalysisPanel` should stay concise: render the Pokemon name, replacement risk, Threats Handled, Coverage Added, and High-Pressure Relief only unless a current story explicitly reintroduces explanatory copy.
+Per-Pokemon Contribution in `AnalysisPanel` should stay concise: render the Pokemon name, replacement risk, Threats Handled, Coverage Added, and High-Pressure Relief only unless a current story explicitly reintroduces explanatory copy. Keep the Replacement Risk pill in its own row below the Pokemon name so it never sits beside the name on wide layouts.
 
 When `AnalysisPanel` accordion sections are conditional, derive keyboard focus order from the rendered section list so Arrow/Home/End navigation never targets a hidden section.
 

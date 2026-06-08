@@ -16,6 +16,7 @@
 - Summary Statistics in `AnalysisPanel` is the optimizer score-card section; do not reintroduce client-computed Overall Fitness, Threat Handling, Shield Stability, Core-Breaker Risk, Expected Ranges, or a separate Optimizer Score Breakdown accordion without a current story.
 - Summary Statistics optimizer score cards should render Role immediately after Bulk as a standard card, followed by Offensive Ratio and Defensive Ratio in a dedicated two-card comparison row; do not rely on a single auto-flow grid for the ratio pair.
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
+- Per-Pokemon Contribution headers should render Replacement Risk in a dedicated row below the Pokemon name; keep the metric boxes unchanged below the header.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
 - Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
@@ -341,4 +342,33 @@
   - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
 - Next iteration start:
   - US-010 - Place Replacement Risk below Pokemon name
+---
+
+## 2026-06-08 16:31 MST - US-010
+- Moved each Per-Pokemon Contribution Replacement Risk pill into a dedicated row below the Pokemon name, preserved the existing contribution metric boxes, and added structural AnalysisPanel coverage for the new header layout.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`, `prd.json`
+- Commit message: `feat: US-010 - Place Replacement Risk below Pokemon name`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (fail before implementation for missing dedicated rows, pass after implementation)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; Per-Pokemon Contribution expanded with Replacement Risk rows below Pokemon names, no row overlap, and metric boxes visible; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing generic 404 resource error observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `ui-designer`
+  - Used: `frontend-developer`, `ui-designer`; each returned concise implementation or design guidance through the Task mechanism, with local tool limitations noted in their outputs but still provided actionable guidance
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed low QA gap by asserting every contribution card has dedicated name/risk rows; fixed low pending progress review placeholders before rerunning affected checks and review
+- Decisions (why):
+  - Chose a simple vertical header stack over responsive flex wrapping because the story requires Replacement Risk to stay below the Pokemon name at all viewport widths rather than only after wrapping.
+  - Added structural test ids for the name and risk rows so regression coverage verifies row separation without brittle Tailwind class assertions.
+  - Updated nearby `components/AGENTS.md` and consolidated `progress.txt` patterns because future Per-Pokemon Contribution work should preserve the dedicated risk row.
+- **Learnings for future iterations:**
+  - Per-Pokemon Contribution header tests can assert the name row precedes the risk row with `compareDocumentPosition` while separately asserting metric boxes remain visible.
+- Known issues / follow-ups:
+  - Existing generic 404 resource error appears in browser console and was not introduced by this story.
+  - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
+- Next iteration start:
+  - All current stories expected complete after final PRD metadata update.
 ---
