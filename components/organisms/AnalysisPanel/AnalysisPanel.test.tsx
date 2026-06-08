@@ -115,11 +115,6 @@ describe('AnalysisPanel', () => {
       coveredThreats: ['lanturn'],
       weaknesses: ['Venusaur'],
       diagnosticLabel: 'ABC',
-      resourcePathMetrics: {
-        balanced: { available: true, score: 0.749 },
-        shieldSpend: { available: true, score: 0.64 },
-        shieldSave: { available: true, score: 0.42 },
-      },
     },
     {
       lineup: {
@@ -379,7 +374,7 @@ describe('AnalysisPanel', () => {
     expect(screen.getAllByText('registeel')).toHaveLength(2);
     expect(screen.queryByText('Lead: azumarill')).not.toBeInTheDocument();
     expect(screen.queryByText('Safe Swap: skarmory')).not.toBeInTheDocument();
-    expect(screen.getByText('Score: 0.87')).toBeInTheDocument();
+    expect(screen.queryByText('Score: 0.87')).not.toBeInTheDocument();
     expect(screen.queryByText(/Covered threats/i)).not.toBeInTheDocument();
     expect(screen.getAllByText('Weaknesses')).toHaveLength(2);
     expect(
@@ -388,18 +383,14 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText('Weaknesses: Venusaur')).not.toBeInTheDocument();
     expect(screen.queryByText('Weaknesses: venusaur')).not.toBeInTheDocument();
     expect(screen.getByText('Structure: ABC')).toBeInTheDocument();
-    expect(screen.getByText('Balanced')).toBeInTheDocument();
-    expect(screen.getByText('Shield spend')).toBeInTheDocument();
-    expect(screen.getByText('Shield save')).toBeInTheDocument();
-    expect(screen.getByText('Balanced shield use')).toBeInTheDocument();
-    expect(screen.getByText('Spend shields early')).toBeInTheDocument();
-    expect(screen.getByText('Save shields for backline')).toBeInTheDocument();
-    expect(screen.getByText('0.75')).toHaveAccessibleDescription('strong');
-    expect(screen.getByText('0.64')).toHaveAccessibleDescription('neutral');
-    expect(screen.getByText('0.42')).toHaveAccessibleDescription('weak');
-    expect(screen.getByText('strong')).toHaveClass('text-emerald-700');
-    expect(screen.getByText('neutral')).toHaveClass('text-amber-800');
-    expect(screen.getByText('weak')).toHaveClass('text-rose-700');
+    expect(screen.queryByText('Balanced')).not.toBeInTheDocument();
+    expect(screen.queryByText('Shield spend')).not.toBeInTheDocument();
+    expect(screen.queryByText('Shield save')).not.toBeInTheDocument();
+    expect(screen.queryByText('Balanced shield use')).not.toBeInTheDocument();
+    expect(screen.queryByText('Spend shields early')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Save shields for backline'),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps accordion keyboard focus on rendered sections when score breakdown is unavailable', () => {
@@ -436,7 +427,7 @@ describe('AnalysisPanel', () => {
     expect(summaryButton).toHaveFocus();
   });
 
-  it('uses displayed resource path scores for quality ranges and omits unavailable paths', () => {
+  it('omits resource path labels from recommended lineup cards', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
@@ -445,11 +436,6 @@ describe('AnalysisPanel', () => {
           recommendedLineups: [
             {
               ...recommendedLineups[0],
-              resourcePathMetrics: {
-                balanced: { available: true, score: 0.745 },
-                shieldSpend: { available: true, score: 0.95 },
-                shieldSave: { available: false },
-              },
             },
           ],
         }}
@@ -459,9 +445,8 @@ describe('AnalysisPanel', () => {
       />,
     );
 
-    expect(screen.getByText('0.74')).toHaveAccessibleDescription('neutral');
-    expect(screen.getByText('0.95')).toHaveAccessibleDescription('elite');
-    expect(screen.getByText('elite')).toHaveClass('text-sky-800');
+    expect(screen.queryByText('Balanced')).not.toBeInTheDocument();
+    expect(screen.queryByText('Shield spend')).not.toBeInTheDocument();
     expect(screen.queryByText('Shield save')).not.toBeInTheDocument();
   });
 

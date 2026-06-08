@@ -48,10 +48,10 @@ describe('buildPlayPokemonRosterRecommendations', () => {
         coveredThreats: ['threat-a'],
         weaknesses: ['threat-b'],
         diagnosticLabel: 'ABC',
-        resourcePathMetrics: expect.objectContaining({
-          balanced: { available: true, score: 0.8 },
-        }),
       }),
+    );
+    expect(result.recommendedLineups[0]).not.toHaveProperty(
+      'resourcePathMetrics',
     );
     expect(result.recommendedLineups.map((lineup) => lineup.score)).toEqual([
       0.91, 0.86, 0.82, 0.78, 0.74,

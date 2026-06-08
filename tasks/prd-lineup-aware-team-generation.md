@@ -79,8 +79,9 @@ flexible plans during team preview.
 - [ ] Each recommended lineup includes `lead`, `switch`, `closer`, lineup
       score, coverage metrics, covered threats, weaknesses, and ABC/ABB/ABA
       diagnostic label.
-- [ ] Each recommended lineup includes resource/shield metrics when enough data
-      exists to compute them safely.
+- [ ] Resource/shield path metrics may be computed internally for scoring, but
+      should not be included in display-facing recommended lineup output unless
+      a current UI/API consumer explicitly needs them.
 - [ ] The generator evaluates exactly 60 unique lineups for each six-Pokemon
       roster.
 - [ ] Backline pair order is not duplicated.
@@ -237,21 +238,22 @@ that important weaknesses and risks are understandable at a glance.
 - [ ] Typecheck/lint/tests pass.
 - [ ] Verify in browser using dev-browser skill.
 
-### US-010: Improve Resource Path Metric Meaning
+### US-010: Superseded Internal Resource Path Metric Display
 
-**Description:** As a user, I want balanced, shield-spend, and shield-save scores
-to have visual meaning so that values like `0.54` are easier to interpret.
+**Description:** Resource path metrics were previously considered for display,
+but US-003 keeps balanced, shield-spend, and shield-save diagnostics internal
+unless a future current UI/API consumer explicitly reintroduces them.
 
 **Acceptance Criteria:**
 
-- [ ] Resource path labels explain what the values mean at a high level.
-- [ ] Resource path scores use a visible range legend or helper copy, for example
-      weak, neutral, strong, and elite bands.
-- [ ] Resource path scores are color coordinated to the documented range.
-- [ ] Color is not the only indicator of score quality; text labels or accessible
-      descriptions are included.
-- [ ] Tests cover rendering of at least weak, neutral, and strong resource-path
-      score states.
+- [ ] Recommended lineup cards continue not to render `Balanced`, `Shield spend`,
+      or `Shield save` resource path metrics.
+- [ ] Resource path metrics remain available only as internal optimizer scoring
+      diagnostics unless a future story explicitly reintroduces a display
+      consumer.
+- [ ] If display-facing resource path output is reintroduced, labels explain what
+      values mean at a high level, visible quality labels accompany colors, and
+      tests cover weak, neutral, and strong score states.
 - [ ] Typecheck/lint/tests pass.
 - [ ] Verify in browser using dev-browser skill.
 
@@ -661,8 +663,9 @@ decisions so future work has clear implementation context.
     species names instead of raw species ids.
 34. FR-34: Recommended lineup cards must use concise non-repeating labels and
     user-facing role copy must use `Switch` instead of `Safe Swap`.
-35. FR-35: Resource path metrics must include meaningful visual bands, accessible
-    labels, and color coordination tied to a documented range.
+35. FR-35: Resource path metrics must remain internal scoring diagnostics unless
+    a current UI/API consumer explicitly reintroduces display-facing resource
+    path output with accessible labels and documented quality ranges.
 36. FR-36: Bench utility warning pills must center their text and remain readable
     for all warning labels.
 37. FR-37: Roster scoring must weight offensive move effectiveness and defensive
@@ -830,9 +833,9 @@ decisions so future work has clear implementation context.
   ids.
 - The `Warning: unbringable` pill currently renders as a block-level span with
   start-aligned text; use centered inline-flex styling or equivalent.
-- Resource path scores such as `Balanced: 0.54`, `Shield spend: 0.51`, and
-  `Shield save: 0.55` need range labels and color bands so users understand
-  whether the number is weak, neutral, strong, or elite.
+- Resource path scores such as `Balanced`, `Shield spend`, and `Shield save`
+  should remain internal scoring diagnostics unless a current UI/API consumer
+  explicitly reintroduces display-facing resource path output.
 - Recommended lineup cards currently repeat labels like `Lead` and `Lead:
   Bellibolt`; render one concise label/value row instead.
 - Use `Switch` as the user-facing role label instead of `Safe Swap`.

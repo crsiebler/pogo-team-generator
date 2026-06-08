@@ -143,7 +143,6 @@ export interface RecommendedLineup {
   coveredThreats: string[];
   weaknesses: string[];
   diagnosticLabel: LineupPatternLabel;
-  resourcePathMetrics?: LineupResourcePathMetrics;
 }
 
 /** Per-Pokemon utility in recommended PlayPokemon lineups. */

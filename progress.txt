@@ -85,3 +85,67 @@
 - Next iteration start:
   - US-003 - Simplify recommended lineup card content
 ---
+
+## 2026-06-08 14:25 MST - US-003
+- Simplified recommended lineup cards by removing the visible lineup score and shield resource path labels, removed display-facing `resourcePathMetrics` from `RecommendedLineup` output, and preserved internal lineup scoring resource path metrics for optimizer safety calculations.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `lib/genetic/fitness/recommendations.ts`, `lib/genetic/fitness/recommendations.test.ts`, `lib/types.ts`, `lib/types.lineup.test.ts`, `tasks/prd-lineup-aware-team-generation.md`, `progress.txt`
+- Commit message: `feat: US-003 - Simplify recommended lineup card content`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx lib/genetic/fitness/recommendations.test.ts app/api/generate-team/route.test.ts lib/types.lineup.test.ts` (pass)
+  - `npx tsc --noEmit` (pass after removing stale typed resource-path payload from route test defaults)
+  - `npm run lint` (pass after using the `LineupResourcePathMetrics` type fixture)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; recommended lineups rendered with role assignments, structure, and weaknesses; `Score`, `Balanced`, `Shield spend`, and `Shield save` were absent; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing `favicon.ico` 404 observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `backend-developer`, `api-designer`
+  - Used: `frontend-developer`, `backend-developer`, `api-designer`; each returned concise guidance through the Task mechanism, with local tool limitations noted in their outputs but still provided actionable implementation advice
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed medium stale task PRD guidance for removed resource path output, fixed medium stale FR-35 resource path display requirement, and fixed low progress-log placeholder; blocked after third documentation review pass found the same stale resource-path display guidance class in follow-up UI findings
+- Decisions (why):
+  - Chose to remove `resourcePathMetrics` at the recommendation adapter/API-facing `RecommendedLineup` boundary because the remaining UI no longer consumes Balanced, Shield spend, or Shield save labels and internal scoring still needs shield-path metrics.
+  - Kept `RecommendedLineup.score` in the API/domain recommendation contract because US-003 only removes score from the card display, while the value still identifies the sorted recommendation quality and existing consumers/tests use it as recommendation metadata.
+  - Rebuilt `/api/generate-team` lineup label mapping without object spread so stale display-only fields cannot leak if a mock or future caller supplies extra diagnostics.
+  - Updated `components/AGENTS.md` because prior guidance still instructed future agents to render resource path cards.
+  - Updated `tasks/prd-lineup-aware-team-generation.md` because specialist review found older resource/shield metrics acceptance and functional requirements conflicted with the current US-003 API/display contract.
+- **Learnings for future iterations:**
+  - `RecommendedLineup` remains UI-ready recommendation metadata with `score` retained but `resourcePathMetrics` omitted; shield-path metrics stay on internal `LineupScoreResult` and roster scoring diagnostics.
+  - `AnalysisPanel` recommended lineup cards now render only role assignments, structure, and weakness lists until a later story moves or restructures the section.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Blocked before commit by Ralph review stabilization limit: `tasks/prd-lineup-aware-team-generation.md` follow-up UI findings still include stale resource path display label/color-band guidance for `Balanced`, `Shield spend`, and `Shield save`; next iteration should update or mark that historical bullet superseded, then rerun specialist review.
+  - Existing `favicon.ico` 404 appears in browser console/network and was not introduced by this story.
+  - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
+- Next iteration start:
+  - US-003 continuation - Resolve stale resource path display follow-up guidance before committing
+---
+
+## 2026-06-08 14:37 MST - US-003
+- Completed the US-003 continuation by updating stale task PRD follow-up guidance so resource path metrics remain internal scoring diagnostics unless a future current UI/API consumer explicitly reintroduces display output.
+- Files changed: `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `lib/genetic/fitness/recommendations.ts`, `lib/genetic/fitness/recommendations.test.ts`, `lib/types.ts`, `lib/types.lineup.test.ts`, `tasks/prd-lineup-aware-team-generation.md`, `progress.txt`
+- Commit message: `feat: US-003 - Simplify recommended lineup card content`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx lib/genetic/fitness/recommendations.test.ts app/api/generate-team/route.test.ts lib/types.lineup.test.ts` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; recommended lineup cards show `Lead`, `Switch`, `Closer`, `Structure`, and `Weaknesses`; `Score`, `Balanced`, `Shield spend`, and `Shield save` were absent; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing 404 resource error observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `backend-developer`, `api-designer`
+  - Used: `frontend-developer`, `backend-developer`, `api-designer`; each returned concise guidance through the Task mechanism and confirmed the staged approach to keep shield-path scoring internal while removing display/API resource path output
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed low stale US-010 resource path display guidance and low missing negative type fixture for `RecommendedLineup.resourcePathMetrics`; deferred low scoped-commit-format suggestion because Ralph explicitly requires `feat: US-003 - Simplify recommended lineup card content`; updated pending review placeholders before restaging; second review pass returned no actionable findings
+- Decisions (why):
+  - Chose to resolve the blocked stale task guidance rather than alter implementation code because the staged implementation already matched US-003 and current Codebase Patterns.
+  - Kept resource path metrics documented as internal diagnostics so future work does not reintroduce `Balanced`, `Shield spend`, or `Shield save` display without an explicit consumer and accessibility range requirements.
+  - Kept the Ralph-required unscoped commit message because the user instruction for this autonomous iteration is more specific than the repository's general scoped commit convention.
+- **Learnings for future iterations:**
+  - Historical task PRD follow-up findings can conflict with newer story contracts; update superseded follow-up text when specialist review identifies stale guidance.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Existing 404 resource error appears in browser console and was not introduced by this story.
+  - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
+- Next iteration start:
+  - US-004 - Remove unused Per-Pokemon Contribution explanatory sections
+---

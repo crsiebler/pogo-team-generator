@@ -558,6 +558,11 @@ describe('POST /api/generate-team', () => {
           coveredThreats: ['feraligatr'],
           weaknesses: ['morpeko_full_belly'],
           diagnosticLabel: 'ABC',
+          resourcePathMetrics: {
+            balanced: { available: true, score: 0.8 },
+            shieldSpend: { available: true, score: 0.65 },
+            shieldSave: { available: true, score: 0.55 },
+          },
         },
       ],
       rosterMetrics: {
@@ -631,6 +636,9 @@ describe('POST /api/generate-team', () => {
     ]);
     expect(payload).not.toHaveProperty('rosterMetrics');
     expect(payload).not.toHaveProperty('benchUtility');
+    expect(payload.recommendedLineups[0]).not.toHaveProperty(
+      'resourcePathMetrics',
+    );
   });
 
   it('returns optimizer score breakdown for analysis display', async () => {

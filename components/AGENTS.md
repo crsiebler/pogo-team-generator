@@ -22,7 +22,7 @@ Lineup-aware result UI should pass `recommendedLineups` from the generate-team r
 
 Recommended lineup cards should stay concise: show role terms as `Lead`, `Switch`, and `Closer`, avoid duplicating those labels in values, omit covered-threat lists, and render API-provided readable weakness labels without importing canonical Pokemon data into client components.
 
-Recommended lineup resource path cards should show the path meaning, rounded numeric score, and visible quality label (`weak`, `neutral`, `strong`, or `elite`) with matching color classes so color is not the only indicator.
+Recommended lineup cards should not render resource path metrics (`Balanced`, `Shield spend`, or `Shield save`); keep those shield-path diagnostics internal to optimizer scoring unless a current story explicitly reintroduces a display consumer.
 
 Recommended lineup weakness display should use semantic `ul`/`li` lists with one weakness per item and a concise fallback when the weakness list is empty; do not return to comma-separated inline weakness strings.
 

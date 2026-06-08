@@ -32,6 +32,10 @@ describe('lineup-aware generation types', () => {
       shieldSpend: { available: false },
       shieldSave: { available: true, score: 0.65 },
     } satisfies LineupResourcePathMetrics;
+    expect(resourcePathMetrics.balanced).toEqual({
+      available: true,
+      score: 0.71,
+    });
 
     const missingResourcePathScore: LineupResourcePathMetrics = {
       // @ts-expect-error available resource paths must include a score.
@@ -56,6 +60,11 @@ describe('lineup-aware generation types', () => {
       coveredThreats: ['registeel', 'lanturn'],
       weaknesses: ['talonflame'],
       diagnosticLabel,
+    } satisfies RecommendedLineup;
+
+    const recommendationWithDisplayResourcePaths = {
+      ...recommendedLineup,
+      // @ts-expect-error recommended lineup output must not expose resource path metrics.
       resourcePathMetrics,
     } satisfies RecommendedLineup;
 
@@ -112,6 +121,7 @@ describe('lineup-aware generation types', () => {
     expect(fullConfig.recommendationLimit).toBe(5);
     expect(missingResourcePathScore).toBeDefined();
     expect(unavailableResourcePathWithScore).toBeDefined();
+    expect(recommendationWithDisplayResourcePaths).toBeDefined();
     expect(fastConfigWithDiagnostics).toBeDefined();
     expect(fullConfigWithoutDiagnostics).toBeDefined();
   });

@@ -114,8 +114,5 @@ function toRecommendedLineup(
     coveredThreats: [...scoreResult.coveredThreats],
     weaknesses: [...scoreResult.weaknesses],
     diagnosticLabel: scoreResult.diagnosticLabel,
-    ...(scoreResult.resourcePathMetrics
-      ? { resourcePathMetrics: scoreResult.resourcePathMetrics }
-      : {}),
   };
 }

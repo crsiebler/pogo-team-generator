@@ -50,13 +50,17 @@ function resolveRecommendedLineupLabels(
   recommendedLineups: RecommendedLineup[] | undefined,
 ): RecommendedLineup[] | undefined {
   return recommendedLineups?.map((lineup) => ({
-    ...lineup,
     lineup: {
       lead: speciesIdToSpeciesName(lineup.lineup.lead),
       switch: speciesIdToSpeciesName(lineup.lineup.switch),
       closer: speciesIdToSpeciesName(lineup.lineup.closer),
     },
+    score: lineup.score,
+    scoreBreakdown: lineup.scoreBreakdown,
+    coverageMetrics: lineup.coverageMetrics,
+    coveredThreats: lineup.coveredThreats,
     weaknesses: lineup.weaknesses.map(speciesIdToSpeciesName),
+    diagnosticLabel: lineup.diagnosticLabel,
   }));
 }
 
