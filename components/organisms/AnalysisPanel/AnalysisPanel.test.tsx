@@ -161,6 +161,7 @@ describe('AnalysisPanel', () => {
         generatedTeam={{
           team: ['azumarill', 'gastrodon', 'dunsparce'],
           formatId: 'great-league',
+          scoreBreakdown: optimizerScoreBreakdown,
         }}
         isGenerating={false}
         fitness={0.78}
@@ -181,12 +182,13 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText('Expected Ranges')).not.toBeInTheDocument();
   });
 
-  it('renders section-level legends and contribution details after expansion', () => {
+  it('renders optimizer score cards in summary statistics and contribution details after expansion', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
           team: ['azumarill', 'gastrodon', 'dunsparce'],
           formatId: 'great-league',
+          scoreBreakdown: optimizerScoreBreakdown,
         }}
         isGenerating={false}
         fitness={0.78}
@@ -199,11 +201,21 @@ describe('AnalysisPanel', () => {
       screen.getByRole('button', { name: 'Per-Pokemon Contribution' }),
     );
 
-    expect(screen.getByText('Overall Fitness')).toBeInTheDocument();
-    expect(screen.getByText('Expected Ranges')).toBeInTheDocument();
-    expect(screen.getByText('Threat Handling')).toBeInTheDocument();
-    expect(screen.getByText('Shield Stability')).toBeInTheDocument();
-    expect(screen.getByText('Core-Breaker Risk')).toBeInTheDocument();
+    const summarySection = screen.getByRole('region', {
+      name: 'Summary Statistics',
+    });
+
+    expect(within(summarySection).getByText('Synergy')).toBeInTheDocument();
+    expect(within(summarySection).getByText('Coverage')).toBeInTheDocument();
+    expect(within(summarySection).getByText('0.91')).toBeInTheDocument();
+    expect(screen.queryByText('Overall Fitness')).not.toBeInTheDocument();
+    expect(screen.queryByText('Expected Ranges')).not.toBeInTheDocument();
+    expect(screen.queryByText('Threat Handling')).not.toBeInTheDocument();
+    expect(screen.queryByText('Shield Stability')).not.toBeInTheDocument();
+    expect(screen.queryByText('Core-Breaker Risk')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Normalized optimizer categories explain/i),
+    ).not.toBeInTheDocument();
 
     expect(screen.queryByText('Meta Coverage')).not.toBeInTheDocument();
     expect(screen.queryByText('Shield Reliability')).not.toBeInTheDocument();
@@ -231,7 +243,7 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText(/algorithm/i)).not.toBeInTheDocument();
   });
 
-  it('renders optimizer score breakdown categories in documented priority order', () => {
+  it('renders optimizer score categories in summary statistics in documented priority order', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
@@ -246,12 +258,10 @@ describe('AnalysisPanel', () => {
       />,
     );
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Optimizer Score Breakdown' }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
 
     const section = screen.getByRole('region', {
-      name: 'Optimizer Score Breakdown',
+      name: 'Summary Statistics',
     });
     const labels = within(section)
       .getAllByTestId('optimizer-score-category-label')
@@ -293,67 +303,6 @@ describe('AnalysisPanel', () => {
       within(section).getByText(/Lineup role fit from lead, switch, closer/i),
     ).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
-  });
-
-  it('distinguishes top-threat and full-meta coverage diagnostics', () => {
-    render(
-      <AnalysisPanel
-        generatedTeam={{
-          team: ['azumarill', 'skarmory', 'registeel'],
-          formatId: 'great-league',
-          recommendedLineups: [
-            {
-              ...recommendedLineups[0],
-              coverageMetrics: {
-                ...recommendedLineups[0].coverageMetrics,
-                topThreatCoverage: {
-                  coverageRate: 0.8,
-                  evaluatedThreatCount: 10,
-                  noAnswerThreatCount: 1,
-                  singleAnswerThreatCount: 2,
-                  dominatingMatchupCount: 4,
-                  overwhelmingLossCount: 1,
-                },
-                fullMetaCoverage: {
-                  coverageRate: 0.62,
-                  evaluatedThreatCount: 40,
-                  noAnswerThreatCount: 8,
-                  singleAnswerThreatCount: 11,
-                  dominatingMatchupCount: 9,
-                  overwhelmingLossCount: 6,
-                },
-              },
-            },
-          ],
-          scoreBreakdown: optimizerScoreBreakdown,
-        }}
-        isGenerating={false}
-        fitness={0.78}
-        analysis={analysisFixture}
-      />,
-    );
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Optimizer Score Breakdown' }),
-    );
-
-    const topThreatCard = screen
-      .getByText('Top-threat coverage')
-      .closest('article');
-    const fullMetaCard = screen
-      .getByText('Full-meta coverage')
-      .closest('article');
-
-    expect(topThreatCard).toHaveClass('border-indigo-200');
-    expect(fullMetaCard).toHaveClass('border-cyan-200');
-    expect(within(topThreatCard!).getByText('80%')).toBeInTheDocument();
-    expect(within(fullMetaCard!).getByText('62%')).toBeInTheDocument();
-    expect(
-      within(topThreatCard!).getByText('1 no-answer, 2 single-answer risks'),
-    ).toBeInTheDocument();
-    expect(
-      within(fullMetaCard!).getByText('8 no-answer, 11 single-answer risks'),
-    ).toBeInTheDocument();
   });
 
   it('renders concise recommended lineup details with readable weakness names', () => {
@@ -432,15 +381,15 @@ describe('AnalysisPanel', () => {
     });
     const accordionButtons = within(accordion).getAllByRole('button');
 
-    expect(accordionButtons).toHaveLength(4);
+    expect(accordionButtons).toHaveLength(3);
     expect(accordionButtons[0]).toHaveAccessibleName('Summary Statistics');
     expect(accordionButtons[1]).toHaveAccessibleName('Recommended Lineups');
     expect(accordionButtons[2]).toHaveAccessibleName(
-      'Optimizer Score Breakdown',
-    );
-    expect(accordionButtons[3]).toHaveAccessibleName(
       'Per-Pokemon Contribution',
     );
+    expect(
+      screen.queryByRole('button', { name: 'Optimizer Score Breakdown' }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps accordion keyboard focus on rendered sections when score breakdown is unavailable', () => {
@@ -457,9 +406,6 @@ describe('AnalysisPanel', () => {
       />,
     );
 
-    const summaryButton = screen.getByRole('button', {
-      name: 'Summary Statistics',
-    });
     const perPokemonButton = screen.getByRole('button', {
       name: 'Per-Pokemon Contribution',
     });
@@ -470,6 +416,13 @@ describe('AnalysisPanel', () => {
     expect(
       screen.queryByRole('button', { name: 'Optimizer Score Breakdown' }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Summary Statistics' }),
+    ).toBeInTheDocument();
+
+    const summaryButton = screen.getByRole('button', {
+      name: 'Summary Statistics',
+    });
 
     summaryButton.focus();
     fireEvent.keyDown(summaryButton, { key: 'ArrowDown' });
@@ -580,62 +533,69 @@ describe('AnalysisPanel', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('grades displayed percentages and fitness values using the shown rounded values', () => {
+  it('renders zero optimizer scores as provided values instead of treating them as missing', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
           team: ['azumarill', 'gastrodon', 'dunsparce'],
           formatId: 'great-league',
+          scoreBreakdown: {
+            ...optimizerScoreBreakdown,
+            components: {
+              ...optimizerScoreBreakdown.components,
+              synergy: 0,
+            },
+          },
         }}
         isGenerating={false}
-        fitness={0.749}
-        analysis={{
-          ...analysisFixture,
-          shieldScenarios: {
-            '0-0': {
-              coveredThreats: 72,
-              evaluatedThreats: 100,
-              coverageRate: 0.72,
-            },
-            '1-1': {
-              coveredThreats: 72,
-              evaluatedThreats: 100,
-              coverageRate: 0.72,
-            },
-            '2-2': {
-              coveredThreats: 648,
-              evaluatedThreats: 1000,
-              coverageRate: 0.648,
-            },
-          },
-          threats: {
-            evaluatedCount: 125,
-            entries: [
-              ...analysisFixture.threats.entries,
-              ...Array.from({ length: 84 }, (_, index) => ({
-                speciesId: `support-${index}`,
-                pokemon: `Support ${index}`,
-                rank: index + 4,
-                teamAnswers: 1,
-                severityTier: 'medium' as const,
-              })),
-              ...Array.from({ length: 38 }, (_, index) => ({
-                speciesId: `pressure-${index}`,
-                pokemon: `Pressure ${index}`,
-                rank: index + 88,
-                teamAnswers: 0,
-                severityTier: 'low' as const,
-              })),
-            ],
-          },
-        }}
+        fitness={0.78}
+        analysis={analysisFixture}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
 
-    expect(screen.getByText('0.75')).toHaveClass('text-emerald-700');
-    expect(screen.getByText('86/125 (69%)')).toHaveClass('text-amber-700');
+    const summarySection = screen.getByRole('region', {
+      name: 'Summary Statistics',
+    });
+
+    const synergyCard = within(summarySection)
+      .getByText('Synergy')
+      .closest('article');
+
+    expect(synergyCard).not.toBeNull();
+    expect(within(synergyCard!).getByText('0.00')).toBeInTheDocument();
+    expect(within(synergyCard!).getByText('weak')).toHaveClass('text-rose-700');
+  });
+
+  it('keeps summary statistics visible with a display-only fallback when score breakdown is unavailable', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
+
+    const summarySection = screen.getByRole('region', {
+      name: 'Summary Statistics',
+    });
+
+    expect(
+      within(summarySection).getByText(
+        'Optimizer scores unavailable for this run.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(summarySection).queryByTestId('optimizer-score-category-label'),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a waiting state when analysis data is unavailable', () => {

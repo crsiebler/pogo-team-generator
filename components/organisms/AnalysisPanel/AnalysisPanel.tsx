@@ -9,7 +9,6 @@ import type {
   OptimizerScoreComponent,
   PokemonContributionRiskTier,
   RecommendedLineup,
-  ShieldScenarioKey,
 } from '@/lib/types';
 
 interface GeneratedTeamResult {
@@ -26,24 +25,13 @@ interface AnalysisPanelProps {
   analysis: GenerationAnalysis | null;
 }
 
-interface SummaryMetric {
-  label: string;
-  value: string;
-  description: string;
-  status: 'good' | 'average' | 'weak';
-  range: string;
-}
-
 const ANALYSIS_ACCORDION_SECTIONS = [
   'summaryStatistics',
   'recommendedLineups',
-  'optimizerScoreBreakdown',
   'perPokemonContributions',
 ] as const;
 
 type AnalysisAccordionSectionId = (typeof ANALYSIS_ACCORDION_SECTIONS)[number];
-
-const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
 
 const OPTIMIZER_SCORE_COMPONENT_ORDER: OptimizerScoreComponent[] = [
   'synergy',
@@ -165,94 +153,8 @@ function getOptimizerScoreMetrics(
   });
 }
 
-function formatCoverageRate(value: number): string {
-  return `${Math.round(value * 100)}%`;
-}
-
 function formatScore(score: number): string {
   return score.toFixed(2);
-}
-
-function getOverallFitnessStatus(fitness: number): SummaryMetric['status'] {
-  const roundedFitness = roundToHundredths(fitness);
-  const thresholds = { good: 0.75, average: 0.55 };
-
-  if (roundedFitness >= thresholds.good) {
-    return 'good';
-  }
-
-  if (roundedFitness >= thresholds.average) {
-    return 'average';
-  }
-
-  return 'weak';
-}
-
-function getOverallFitnessRange(): string {
-  return 'Green >= 0.75, Yellow 0.55-0.74, Red < 0.55';
-}
-
-function getPercentStatus(percent: number): SummaryMetric['status'] {
-  if (percent >= 70) {
-    return 'good';
-  }
-
-  if (percent >= 50) {
-    return 'average';
-  }
-
-  return 'weak';
-}
-
-function getRiskStatus(risk: string): SummaryMetric['status'] {
-  if (risk === 'Low') {
-    return 'good';
-  }
-
-  if (risk === 'Moderate') {
-    return 'average';
-  }
-
-  return 'weak';
-}
-
-function formatPercent(value: number): string {
-  return `${roundPercent(value)}%`;
-}
-
-function roundPercent(value: number): number {
-  return Math.round(value);
-}
-
-function roundToHundredths(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
-function getCoreBreakerRiskLabel(
-  coreBreakerCount: number,
-  highSeverityCount: number,
-): string {
-  if (coreBreakerCount === 0) {
-    return 'Low';
-  }
-
-  if (highSeverityCount >= 2 || coreBreakerCount >= 5) {
-    return 'High';
-  }
-
-  return 'Moderate';
-}
-
-function getValueClasses(status: SummaryMetric['status']): string {
-  if (status === 'good') {
-    return 'text-emerald-700 dark:text-emerald-300';
-  }
-
-  if (status === 'average') {
-    return 'text-amber-700 dark:text-amber-300';
-  }
-
-  return 'text-rose-700 dark:text-rose-300';
 }
 
 function getBadgeClasses(riskTier: PokemonContributionRiskTier): string {
@@ -275,68 +177,6 @@ function formatRiskTier(riskTier: PokemonContributionRiskTier): string {
   return riskTier === 'high' ? 'High' : 'Low';
 }
 
-function buildSummaryMetrics(
-  fitness: number,
-  analysis: GenerationAnalysis,
-): SummaryMetric[] {
-  const evaluatedThreats = analysis.threats.evaluatedCount;
-  const coveredThreats = analysis.threats.entries.filter(
-    (threat) => threat.teamAnswers > 0,
-  ).length;
-  const threatHandlingPercent =
-    evaluatedThreats > 0 ? (coveredThreats / evaluatedThreats) * 100 : 0;
-  const shieldStabilityPercent =
-    SHIELD_SCENARIO_ORDER.reduce((sum, scenario) => {
-      return sum + analysis.shieldScenarios[scenario].coverageRate * 100;
-    }, 0) / SHIELD_SCENARIO_ORDER.length;
-  const highSeverityCoreBreakers = analysis.coreBreakers.entries.filter(
-    (entry) => entry.severityTier === 'high',
-  ).length;
-  const coreBreakerRisk = getCoreBreakerRiskLabel(
-    analysis.coreBreakers.entries.length,
-    highSeverityCoreBreakers,
-  );
-
-  const roundedThreatHandlingPercent = roundPercent(threatHandlingPercent);
-  const roundedShieldStabilityPercent = roundPercent(shieldStabilityPercent);
-  const roundedFitness = roundToHundredths(fitness);
-
-  return [
-    {
-      label: 'Overall Fitness',
-      value: roundedFitness.toFixed(2),
-      description:
-        'Composite lineup-aware score for the selected format using matchup coverage, role quality, and team stability.',
-      status: getOverallFitnessStatus(roundedFitness),
-      range: getOverallFitnessRange(),
-    },
-    {
-      label: 'Threat Handling',
-      value: `${coveredThreats}/${evaluatedThreats} (${formatPercent(roundedThreatHandlingPercent)})`,
-      description:
-        'How often the team has at least one practical answer into the evaluated GA threat pool.',
-      status: getPercentStatus(roundedThreatHandlingPercent),
-      range: 'Green >= 70%, Yellow 50-69%, Red < 50%',
-    },
-    {
-      label: 'Shield Stability',
-      value: formatPercent(roundedShieldStabilityPercent),
-      description:
-        'Average threat coverage across 0-0, 1-1, and 2-2 shield states for the selected format.',
-      status: getPercentStatus(roundedShieldStabilityPercent),
-      range: 'Green >= 70%, Yellow 50-69%, Red < 50%',
-    },
-    {
-      label: 'Core-Breaker Risk',
-      value: coreBreakerRisk,
-      description:
-        'How vulnerable the team is to threats that overwhelm most team members with limited counterplay.',
-      status: getRiskStatus(coreBreakerRisk),
-      range: 'Green = Low, Yellow = Moderate, Red = High',
-    },
-  ];
-}
-
 export function AnalysisPanel({
   generatedTeam,
   isGenerating,
@@ -348,7 +188,6 @@ export function AnalysisPanel({
   >({
     summaryStatistics: false,
     recommendedLineups: false,
-    optimizerScoreBreakdown: false,
     perPokemonContributions: false,
   });
   const accordionButtonRefs = useRef<
@@ -356,15 +195,10 @@ export function AnalysisPanel({
   >({
     summaryStatistics: null,
     recommendedLineups: null,
-    optimizerScoreBreakdown: null,
     perPokemonContributions: null,
   });
   const accordionIdPrefix = useId();
 
-  const summaryMetrics =
-    analysis !== null && fitness !== null
-      ? buildSummaryMetrics(fitness, analysis)
-      : [];
   const pokemonEntries = analysis?.pokemonContributions.entries ?? [];
   const recommendedLineups = generatedTeam?.recommendedLineups ?? [];
   const scoreBreakdown = generatedTeam?.scoreBreakdown;
@@ -385,27 +219,19 @@ export function AnalysisPanel({
   const roleOptimizerScoreMetric = optimizerScoreMetrics.find(
     (metric) => metric.component === 'role',
   );
-  const splitCoverageMetrics = recommendedLineups.find(
-    (lineup) =>
-      lineup.coverageMetrics.topThreatCoverage ||
-      lineup.coverageMetrics.fullMetaCoverage,
-  )?.coverageMetrics;
   const hasRecommendedLineups = recommendedLineups.length > 0;
   const hasAnalysisDetails = analysis !== null && fitness !== null;
   const visibleAccordionSections = ANALYSIS_ACCORDION_SECTIONS.filter(
     (sectionId) => {
-      if (
-        sectionId === 'summaryStatistics' ||
-        sectionId === 'perPokemonContributions'
-      ) {
+      if (sectionId === 'summaryStatistics') {
+        return generatedTeam !== null;
+      }
+
+      if (sectionId === 'perPokemonContributions') {
         return hasAnalysisDetails;
       }
 
-      if (sectionId === 'recommendedLineups') {
-        return hasRecommendedLineups;
-      }
-
-      return Boolean(scoreBreakdown);
+      return hasRecommendedLineups;
     },
   );
 
@@ -539,51 +365,36 @@ export function AnalysisPanel({
           <section className="space-y-3" aria-label="Team analysis sections">
             <section aria-label="Team analysis drill-down sections">
               {[
-                ...(hasAnalysisDetails
+                ...(generatedTeam
                   ? [
                       {
                         id: 'summaryStatistics' as const,
                         title: 'Summary Statistics',
                         content: (
                           <div className="space-y-3 px-3 pb-3">
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              {summaryMetrics.map((metric) => (
-                                <article
-                                  key={metric.label}
-                                  className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                                >
-                                  <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                                    {metric.label}
-                                  </p>
-                                  <p
-                                    className={clsx(
-                                      'mt-1 text-lg font-bold',
-                                      getValueClasses(metric.status),
-                                    )}
-                                  >
-                                    {metric.value}
-                                  </p>
-                                  <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                                    {metric.description}
-                                  </p>
-                                </article>
-                              ))}
-                            </div>
-                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                              <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                                Expected Ranges
-                              </p>
-                              <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                                {summaryMetrics.map((metric) => (
-                                  <p key={metric.label}>
-                                    <span className="font-semibold">
-                                      {metric.label}:
-                                    </span>{' '}
-                                    {metric.range}
-                                  </p>
-                                ))}
+                            {scoreBreakdown ? (
+                              <>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  {primaryOptimizerScoreMetrics.map(
+                                    renderOptimizerScoreMetric,
+                                  )}
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                  {ratioOptimizerScoreMetrics.map(
+                                    renderOptimizerScoreMetric,
+                                  )}
+                                </div>
+                                {roleOptimizerScoreMetric
+                                  ? renderOptimizerScoreMetric(
+                                      roleOptimizerScoreMetric,
+                                    )
+                                  : null}
+                              </>
+                            ) : (
+                              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+                                Optimizer scores unavailable for this run.
                               </div>
-                            </div>
+                            )}
                           </div>
                         ),
                       },
@@ -648,76 +459,6 @@ export function AnalysisPanel({
                                 </article>
                               ),
                             )}
-                          </div>
-                        ),
-                      },
-                    ]
-                  : []),
-                ...(scoreBreakdown
-                  ? [
-                      {
-                        id: 'optimizerScoreBreakdown' as const,
-                        title: 'Optimizer Score Breakdown',
-                        content: (
-                          <div className="space-y-3 px-3 pb-3">
-                            <p className="text-xs leading-5 text-gray-700 dark:text-gray-300">
-                              Normalized optimizer categories explain the
-                              generated score in priority order. Range labels
-                              are shown with colors so category strength is not
-                              communicated by color alone.
-                            </p>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              {primaryOptimizerScoreMetrics.map(
-                                renderOptimizerScoreMetric,
-                              )}
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              {ratioOptimizerScoreMetrics.map(
-                                renderOptimizerScoreMetric,
-                              )}
-                            </div>
-                            {roleOptimizerScoreMetric
-                              ? renderOptimizerScoreMetric(
-                                  roleOptimizerScoreMetric,
-                                )
-                              : null}
-                            {splitCoverageMetrics?.topThreatCoverage ||
-                            splitCoverageMetrics?.fullMetaCoverage ? (
-                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                {splitCoverageMetrics.topThreatCoverage ? (
-                                  <article className="rounded-lg border border-indigo-200 bg-indigo-50/80 p-3 dark:border-indigo-900/60 dark:bg-indigo-950/25">
-                                    <p className="text-xs font-semibold tracking-wide text-indigo-700 uppercase dark:text-indigo-300">
-                                      Top-threat coverage
-                                    </p>
-                                    <p className="mt-1 text-lg font-bold text-indigo-950 dark:text-indigo-100">
-                                      {formatCoverageRate(
-                                        splitCoverageMetrics.topThreatCoverage
-                                          .coverageRate,
-                                      )}
-                                    </p>
-                                    <p className="mt-1 text-xs leading-5 text-indigo-900 dark:text-indigo-100">
-                                      {`${splitCoverageMetrics.topThreatCoverage.noAnswerThreatCount} no-answer, ${splitCoverageMetrics.topThreatCoverage.singleAnswerThreatCount} single-answer risks`}
-                                    </p>
-                                  </article>
-                                ) : null}
-                                {splitCoverageMetrics.fullMetaCoverage ? (
-                                  <article className="rounded-lg border border-cyan-200 bg-cyan-50/80 p-3 dark:border-cyan-900/60 dark:bg-cyan-950/25">
-                                    <p className="text-xs font-semibold tracking-wide text-cyan-700 uppercase dark:text-cyan-300">
-                                      Full-meta coverage
-                                    </p>
-                                    <p className="mt-1 text-lg font-bold text-cyan-950 dark:text-cyan-100">
-                                      {formatCoverageRate(
-                                        splitCoverageMetrics.fullMetaCoverage
-                                          .coverageRate,
-                                      )}
-                                    </p>
-                                    <p className="mt-1 text-xs leading-5 text-cyan-900 dark:text-cyan-100">
-                                      {`${splitCoverageMetrics.fullMetaCoverage.noAnswerThreatCount} no-answer, ${splitCoverageMetrics.fullMetaCoverage.singleAnswerThreatCount} single-answer risks`}
-                                    </p>
-                                  </article>
-                                ) : null}
-                              </div>
-                            ) : null}
                           </div>
                         ),
                       },

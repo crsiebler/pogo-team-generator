@@ -30,9 +30,9 @@ Recommended lineup cards should not render resource path metrics (`Balanced`, `S
 
 Recommended lineup weakness display should use semantic `ul`/`li` lists with one weakness per item and a concise fallback when the weakness list is empty; do not return to comma-separated inline weakness strings.
 
-Optimizer score breakdown display should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render in `AnalysisPanel`; keep category explanations display-only and do not recompute weighted optimizer categories in client components.
+Optimizer score breakdown display should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render inside the `AnalysisPanel` Summary Statistics accordion; keep category explanations display-only and do not recompute weighted optimizer categories in client components.
 
-When Optimizer Score Breakdown cards need a side-by-side comparison after an odd number of preceding cards, render the pair in a dedicated `sm:grid-cols-2` group instead of relying on the parent grid's auto-placement.
+When Summary Statistics optimizer score cards need a side-by-side comparison after an odd number of preceding cards, render the pair in a dedicated `sm:grid-cols-2` group instead of relying on the parent grid's auto-placement.
 
 Per-Pokemon Contribution in `AnalysisPanel` should stay concise: render the Pokemon name, replacement risk, Threats Handled, Coverage Added, and High-Pressure Relief only unless a current story explicitly reintroduces explanatory copy.
 

@@ -13,7 +13,8 @@
 - `lib/analysis/pokemonContributionAnalysis.ts` returns concise per-Pokemon numeric contribution diagnostics only; do not reintroduce generated rationale text unless a current UI/API consumer explicitly needs display copy.
 - `TeamDisplay` should not render PlayPokemon `Roster Metrics`; keep `rosterMetrics` and `benchUtility` as internal optimizer/domain diagnostics unless a current story explicitly reintroduces a display consumer.
 - Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render display-only explanations in `AnalysisPanel`.
-- Optimizer Score Breakdown ratio cards should render in a dedicated two-card row when they need side-by-side comparison; do not rely on a single auto-flow grid when an odd number of cards precedes the pair.
+- Summary Statistics in `AnalysisPanel` is the optimizer score-card section; do not reintroduce client-computed Overall Fitness, Threat Handling, Shield Stability, Core-Breaker Risk, Expected Ranges, or a separate Optimizer Score Breakdown accordion without a current story.
+- Summary Statistics optimizer score cards should render ratio pairs in a dedicated two-card row when they need side-by-side comparison; do not rely on a single auto-flow grid when an odd number of cards precedes the pair.
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
@@ -276,4 +277,37 @@
   - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
 - Next iteration start:
   - US-008 - Replace Summary Statistics content with optimizer score cards
+---
+
+## 2026-06-08 16:07 MST - US-008
+- Replaced Summary Statistics content with API-provided optimizer score cards, removed the old client-computed summary metric cards/ranges, removed the separate Optimizer Score Breakdown accordion and stale normalized-category description, and kept Recommended Lineups immediately after Summary Statistics.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`, `prd.json`
+- Commit message: `feat: US-008 - Replace Summary Statistics content with optimizer score cards`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; Summary Statistics expanded to optimizer score cards, old summary metrics and separate Optimizer Score Breakdown section were absent, Recommended Lineups remained immediately after Summary Statistics; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing `favicon.ico` 404 observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `ui-designer`, `api-designer`
+  - Used: `frontend-developer`, `ui-designer`, `api-designer`; each returned concise implementation, visual hierarchy, or contract guidance through the Task mechanism, with local tool limitations noted in two outputs but still provided actionable guidance
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed medium missing Summary Statistics fallback when `scoreBreakdown` is unavailable, fixed medium/low progress and component guidance wording issues, and fixed low zero-score test scoping before rerunning affected checks and review
+- Decisions (why):
+  - Chose to move the existing optimizer score card rendering into Summary Statistics rather than duplicate it because the story requires replacement, not appending, and client components should stay display-only.
+  - Chose to remove the separate Optimizer Score Breakdown accordion because Summary Statistics now owns the optimizer score-card layout and keeping both sections would duplicate the same user-facing metrics.
+  - Chose a concise non-recomputed unavailable fallback when `scoreBreakdown` is missing so the Summary Statistics header remains stable without deriving optimizer values in the client.
+  - Kept score values sourced from `generatedTeam.scoreBreakdown` and only formatted them for display because the UI must not recompute optimizer values.
+  - Updated nearby `components/AGENTS.md` and consolidated `progress.txt` patterns because future AnalysisPanel work should know Summary Statistics is now the optimizer score-card section.
+- **Learnings for future iterations:**
+  - Tests that validate optimizer score-card layout should expand the Summary Statistics accordion, not an Optimizer Score Breakdown accordion.
+  - `AnalysisPanel` keeps Summary Statistics visible for generated teams and shows a display-only unavailable fallback when `scoreBreakdown` is missing; Per-Pokemon Contribution still depends on `analysis` and `fitness`.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Existing `favicon.ico` 404 appears in browser console/network and was not introduced by this story.
+  - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
+- Next iteration start:
+  - US-009 - Move Role after Bulk in optimizer score layout
 ---
