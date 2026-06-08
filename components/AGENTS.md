@@ -34,6 +34,8 @@ Optimizer score breakdown display should consume API-provided `scoreBreakdown` t
 
 When Summary Statistics optimizer score cards need a side-by-side comparison after an odd number of preceding cards, render the pair in a dedicated `sm:grid-cols-2` group instead of relying on the parent grid's auto-placement.
 
+Optimizer score card order in Summary Statistics should render Role immediately after Bulk as a standard card, followed by Offensive Ratio and Defensive Ratio in their dedicated comparison row.
+
 Per-Pokemon Contribution in `AnalysisPanel` should stay concise: render the Pokemon name, replacement risk, Threats Handled, Coverage Added, and High-Pressure Relief only unless a current story explicitly reintroduces explanatory copy.
 
 When `AnalysisPanel` accordion sections are conditional, derive keyboard focus order from the rendered section list so Arrow/Home/End navigation never targets a hidden section.

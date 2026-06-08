@@ -273,16 +273,27 @@ describe('AnalysisPanel', () => {
       'Safety',
       'Consistency',
       'Bulk',
+      'Role',
       'Offensive Ratio',
       'Defensive Ratio',
-      'Role',
     ]);
-    expect(labels.indexOf('Offensive Ratio')).toBeLessThan(
+    expect(labels.indexOf('Bulk') + 1).toBe(labels.indexOf('Role'));
+    expect(labels.indexOf('Role')).toBeLessThan(
+      labels.indexOf('Offensive Ratio'),
+    );
+    expect(labels.indexOf('Offensive Ratio') + 1).toBe(
       labels.indexOf('Defensive Ratio'),
     );
-    expect(labels.indexOf('Defensive Ratio')).toBeLessThan(
-      labels.indexOf('Role'),
-    );
+    expect(
+      within(screen.getByTestId('optimizer-score-primary-grid'))
+        .getAllByTestId('optimizer-score-category-label')
+        .map((label) => label.textContent),
+    ).toEqual(['Synergy', 'Coverage', 'Safety', 'Consistency', 'Bulk', 'Role']);
+    expect(
+      within(screen.getByTestId('optimizer-score-ratio-grid'))
+        .getAllByTestId('optimizer-score-category-label')
+        .map((label) => label.textContent),
+    ).toEqual(['Offensive Ratio', 'Defensive Ratio']);
     expect(within(section).getByText('0.91')).toHaveAccessibleDescription(
       'elite',
     );

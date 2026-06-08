@@ -39,9 +39,9 @@ const OPTIMIZER_SCORE_COMPONENT_ORDER: OptimizerScoreComponent[] = [
   'safety',
   'consistency',
   'bulk',
+  'role',
   'offensiveRatio',
   'defensiveRatio',
-  'role',
 ];
 
 const optimizerScoreComponentDetails: Record<
@@ -208,16 +208,12 @@ export function AnalysisPanel({
   const primaryOptimizerScoreMetrics = optimizerScoreMetrics.filter(
     (metric) =>
       metric.component !== 'offensiveRatio' &&
-      metric.component !== 'defensiveRatio' &&
-      metric.component !== 'role',
+      metric.component !== 'defensiveRatio',
   );
   const ratioOptimizerScoreMetrics = optimizerScoreMetrics.filter(
     (metric) =>
       metric.component === 'offensiveRatio' ||
       metric.component === 'defensiveRatio',
-  );
-  const roleOptimizerScoreMetric = optimizerScoreMetrics.find(
-    (metric) => metric.component === 'role',
   );
   const hasRecommendedLineups = recommendedLineups.length > 0;
   const hasAnalysisDetails = analysis !== null && fitness !== null;
@@ -374,21 +370,22 @@ export function AnalysisPanel({
                           <div className="space-y-3 px-3 pb-3">
                             {scoreBreakdown ? (
                               <>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div
+                                  data-testid="optimizer-score-primary-grid"
+                                  className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                                >
                                   {primaryOptimizerScoreMetrics.map(
                                     renderOptimizerScoreMetric,
                                   )}
                                 </div>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div
+                                  data-testid="optimizer-score-ratio-grid"
+                                  className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                                >
                                   {ratioOptimizerScoreMetrics.map(
                                     renderOptimizerScoreMetric,
                                   )}
                                 </div>
-                                {roleOptimizerScoreMetric
-                                  ? renderOptimizerScoreMetric(
-                                      roleOptimizerScoreMetric,
-                                    )
-                                  : null}
                               </>
                             ) : (
                               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
