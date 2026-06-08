@@ -80,8 +80,6 @@ const analysisFixture: GenerationAnalysis = {
         coverageAdded: 6,
         highSeverityRelief: 7,
         fragilityRiskTier: 'high',
-        rationale:
-          'Covers 19 ranked threats, adds 6 unique team answers, and stabilizes 7 high-pressure matchups. Replacement fragility is high.',
       },
       {
         speciesId: 'gastrodon',
@@ -90,8 +88,6 @@ const analysisFixture: GenerationAnalysis = {
         coverageAdded: 2,
         highSeverityRelief: 4,
         fragilityRiskTier: 'low',
-        rationale:
-          'Covers 14 ranked threats, adds 2 unique team answers, and stabilizes 4 high-pressure matchups. Replacement fragility is low.',
       },
     ],
   },
@@ -177,11 +173,11 @@ describe('AnalysisPanel', () => {
       screen.getByRole('button', { name: 'Summary Statistics' }),
     ).toHaveAttribute('aria-expanded', 'false');
     expect(
-      screen.getByRole('button', { name: 'Fitness Contribution Categories' }),
-    ).toHaveAttribute('aria-expanded', 'false');
-    expect(
       screen.getByRole('button', { name: 'Per-Pokemon Contribution' }),
     ).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByRole('button', { name: 'Fitness Contribution Categories' }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText('Expected Ranges')).not.toBeInTheDocument();
   });
 
@@ -200,9 +196,6 @@ describe('AnalysisPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
     fireEvent.click(
-      screen.getByRole('button', { name: 'Fitness Contribution Categories' }),
-    );
-    fireEvent.click(
       screen.getByRole('button', { name: 'Per-Pokemon Contribution' }),
     );
 
@@ -212,17 +205,24 @@ describe('AnalysisPanel', () => {
     expect(screen.getByText('Shield Stability')).toBeInTheDocument();
     expect(screen.getByText('Core-Breaker Risk')).toBeInTheDocument();
 
-    expect(screen.getByText('Meta Coverage')).toBeInTheDocument();
-    expect(screen.getByText('Shield Reliability')).toBeInTheDocument();
-    expect(screen.getByText('Core Stability')).toBeInTheDocument();
-    expect(screen.getByText('Expected contribution bands')).toBeInTheDocument();
+    expect(screen.queryByText('Meta Coverage')).not.toBeInTheDocument();
+    expect(screen.queryByText('Shield Reliability')).not.toBeInTheDocument();
+    expect(screen.queryByText('Core Stability')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Expected contribution bands'),
+    ).not.toBeInTheDocument();
 
     expect(screen.getByText('Azumarill')).toBeInTheDocument();
     expect(screen.getByText('Threats Handled: 19')).toBeInTheDocument();
     expect(screen.getByText('Coverage Added: 6')).toBeInTheDocument();
     expect(screen.getByText('High-Pressure Relief: 7')).toBeInTheDocument();
     expect(screen.getByText('Replacement Risk: High')).toBeInTheDocument();
-    expect(screen.getByText('Relative grading guide')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Relative grading guide'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Covers 19 ranked threats/),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/individual algorithm/i)).not.toBeInTheDocument();
     expect(
       screen.queryByText(/team synergy algorithm/i),
@@ -409,8 +409,8 @@ describe('AnalysisPanel', () => {
     const summaryButton = screen.getByRole('button', {
       name: 'Summary Statistics',
     });
-    const contributionButton = screen.getByRole('button', {
-      name: 'Fitness Contribution Categories',
+    const perPokemonButton = screen.getByRole('button', {
+      name: 'Per-Pokemon Contribution',
     });
 
     expect(
@@ -420,9 +420,9 @@ describe('AnalysisPanel', () => {
     summaryButton.focus();
     fireEvent.keyDown(summaryButton, { key: 'ArrowDown' });
 
-    expect(contributionButton).toHaveFocus();
+    expect(perPokemonButton).toHaveFocus();
 
-    fireEvent.keyDown(contributionButton, { key: 'ArrowUp' });
+    fireEvent.keyDown(perPokemonButton, { key: 'ArrowUp' });
 
     expect(summaryButton).toHaveFocus();
   });

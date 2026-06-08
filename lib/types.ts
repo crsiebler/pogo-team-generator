@@ -259,7 +259,6 @@ export interface PokemonContributionAnalysisEntry {
   coverageAdded: number;
   highSeverityRelief: number;
   fragilityRiskTier: PokemonContributionRiskTier;
-  rationale: string;
 }
 
 export interface PokemonContributionAnalysis {

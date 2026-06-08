@@ -28,6 +28,8 @@ Recommended lineup weakness display should use semantic `ul`/`li` lists with one
 
 Optimizer score breakdown display should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render in `AnalysisPanel`; keep category explanations display-only and do not recompute weighted optimizer categories in client components.
 
+Per-Pokemon Contribution in `AnalysisPanel` should stay concise: render the Pokemon name, replacement risk, Threats Handled, Coverage Added, and High-Pressure Relief only unless a current story explicitly reintroduces explanatory copy.
+
 When `AnalysisPanel` accordion sections are conditional, derive keyboard focus order from the rendered section list so Arrow/Home/End navigation never targets a hidden section.
 
 PlayPokemon roster diagnostics are internal optimizer diagnostics unless a current feature explicitly reintroduces a display consumer; do not pass `rosterMetrics` or `benchUtility` through `TeamManager`, `ResultsPanel`, or `TeamDisplay` for generated-team cards.

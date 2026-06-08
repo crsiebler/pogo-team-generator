@@ -54,12 +54,6 @@ export function buildPokemonContributionAnalysis(
       coverageAdded,
       highSeverityRelief,
       fragilityRiskTier,
-      rationale: buildContributionRationale({
-        threatsHandled,
-        coverageAdded,
-        highSeverityRelief,
-        fragilityRiskTier,
-      }),
     };
   });
 
@@ -81,23 +75,4 @@ export function getFragilityRiskTier(
   }
 
   return 'low';
-}
-
-interface ContributionRationaleInput {
-  threatsHandled: number;
-  coverageAdded: number;
-  highSeverityRelief: number;
-  fragilityRiskTier: PokemonContributionRiskTier;
-}
-
-/**
- * Build concise, user-facing rationale without exposing scoring formulas.
- */
-function buildContributionRationale({
-  threatsHandled,
-  coverageAdded,
-  highSeverityRelief,
-  fragilityRiskTier,
-}: ContributionRationaleInput): string {
-  return `Covers ${threatsHandled} ranked threats, adds ${coverageAdded} unique team answers, and stabilizes ${highSeverityRelief} high-pressure matchups. Replacement fragility is ${fragilityRiskTier}.`;
 }

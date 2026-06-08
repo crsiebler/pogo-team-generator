@@ -34,18 +34,9 @@ interface SummaryMetric {
   range: string;
 }
 
-interface CategoryMetric {
-  label: string;
-  value: string;
-  description: string;
-  range: string;
-  status: 'good' | 'average' | 'weak';
-}
-
 const ANALYSIS_ACCORDION_SECTIONS = [
   'summaryStatistics',
   'optimizerScoreBreakdown',
-  'fitnessContributionCategories',
   'perPokemonContributions',
 ] as const;
 
@@ -224,18 +215,6 @@ function getRiskStatus(risk: string): SummaryMetric['status'] {
   return 'weak';
 }
 
-function getContributionStatus(value: number): CategoryMetric['status'] {
-  if (value >= 10) {
-    return 'good';
-  }
-
-  if (value > -10) {
-    return 'average';
-  }
-
-  return 'weak';
-}
-
 function formatPercent(value: number): string {
   return `${roundPercent(value)}%`;
 }
@@ -246,10 +225,6 @@ function roundPercent(value: number): number {
 
 function roundToHundredths(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-function formatImpactValue(value: number): string {
-  return value > 0 ? `+${value}` : `${value}`;
 }
 
 function getCoreBreakerRiskLabel(
@@ -297,26 +272,6 @@ function formatRiskTier(riskTier: PokemonContributionRiskTier): string {
   }
 
   return riskTier === 'high' ? 'High' : 'Low';
-}
-
-function getRelativeMetricStatus(
-  value: number,
-  maxValue: number,
-): SummaryMetric['status'] {
-  if (maxValue <= 0) {
-    return 'average';
-  }
-
-  const ratio = value / maxValue;
-  if (ratio >= 0.67) {
-    return 'good';
-  }
-
-  if (ratio >= 0.34) {
-    return 'average';
-  }
-
-  return 'weak';
 }
 
 function buildSummaryMetrics(
@@ -381,52 +336,6 @@ function buildSummaryMetrics(
   ];
 }
 
-function buildContributionMetrics(
-  analysis: GenerationAnalysis,
-): CategoryMetric[] {
-  const evaluatedThreats = analysis.threats.evaluatedCount;
-  const coveredThreats = analysis.threats.entries.filter(
-    (threat) => threat.teamAnswers > 0,
-  ).length;
-  const threatHandlingPercent =
-    evaluatedThreats > 0 ? (coveredThreats / evaluatedThreats) * 100 : 0;
-  const shieldStabilityPercent =
-    SHIELD_SCENARIO_ORDER.reduce((sum, scenario) => {
-      return sum + analysis.shieldScenarios[scenario].coverageRate * 100;
-    }, 0) / SHIELD_SCENARIO_ORDER.length;
-  const coreBreakerExposurePercent =
-    evaluatedThreats > 0
-      ? (analysis.coreBreakers.entries.length / evaluatedThreats) * 100
-      : 0;
-  const categoryValues = [
-    {
-      label: 'Meta Coverage',
-      rawValue: Math.round(threatHandlingPercent - 50),
-      description:
-        'How consistently the team has at least one answer into the role-based threat field.',
-    },
-    {
-      label: 'Shield Reliability',
-      rawValue: Math.round(shieldStabilityPercent - 50),
-      description: 'How stable the team remains across common shield states.',
-    },
-    {
-      label: 'Core Stability',
-      rawValue: -Math.round(coreBreakerExposurePercent),
-      description:
-        'How well the team avoids collapse-prone matchups that pressure most slots at once.',
-    },
-  ];
-
-  return categoryValues.map((metric) => ({
-    label: metric.label,
-    value: formatImpactValue(metric.rawValue),
-    description: metric.description,
-    range: 'Green >= +10, Yellow -9 to +9, Red <= -10',
-    status: getContributionStatus(metric.rawValue),
-  }));
-}
-
 export function AnalysisPanel({
   generatedTeam,
   isGenerating,
@@ -438,7 +347,6 @@ export function AnalysisPanel({
   >({
     summaryStatistics: false,
     optimizerScoreBreakdown: false,
-    fitnessContributionCategories: false,
     perPokemonContributions: false,
   });
   const accordionButtonRefs = useRef<
@@ -446,7 +354,6 @@ export function AnalysisPanel({
   >({
     summaryStatistics: null,
     optimizerScoreBreakdown: null,
-    fitnessContributionCategories: null,
     perPokemonContributions: null,
   });
   const accordionIdPrefix = useId();
@@ -455,8 +362,6 @@ export function AnalysisPanel({
     analysis !== null && fitness !== null
       ? buildSummaryMetrics(fitness, analysis)
       : [];
-  const contributionMetrics =
-    analysis !== null ? buildContributionMetrics(analysis) : [];
   const pokemonEntries = analysis?.pokemonContributions.entries ?? [];
   const recommendedLineups = generatedTeam?.recommendedLineups ?? [];
   const scoreBreakdown = generatedTeam?.scoreBreakdown;
@@ -469,18 +374,6 @@ export function AnalysisPanel({
       lineup.coverageMetrics.fullMetaCoverage,
   )?.coverageMetrics;
   const hasRecommendedLineups = recommendedLineups.length > 0;
-  const maxThreatsHandled = Math.max(
-    ...pokemonEntries.map((entry) => entry.threatsHandled),
-    0,
-  );
-  const maxCoverageAdded = Math.max(
-    ...pokemonEntries.map((entry) => entry.coverageAdded),
-    0,
-  );
-  const maxHighSeverityRelief = Math.max(
-    ...pokemonEntries.map((entry) => entry.highSeverityRelief),
-    0,
-  );
   const visibleAccordionSections: AnalysisAccordionSectionId[] = scoreBreakdown
     ? [...ANALYSIS_ACCORDION_SECTIONS]
     : ANALYSIS_ACCORDION_SECTIONS.filter(
@@ -772,52 +665,6 @@ export function AnalysisPanel({
                   ]
                 : []),
               {
-                id: 'fitnessContributionCategories' as const,
-                title: 'Fitness Contribution Categories',
-                content: (
-                  <div className="space-y-3 px-3 pb-3">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      {contributionMetrics.map((metric) => (
-                        <article
-                          key={metric.label}
-                          className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                        >
-                          <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                            {metric.label}
-                          </p>
-                          <p
-                            className={clsx(
-                              'mt-1 text-lg font-bold',
-                              getValueClasses(metric.status),
-                            )}
-                          >
-                            {metric.value}
-                          </p>
-                          <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                            {metric.description}
-                          </p>
-                        </article>
-                      ))}
-                    </div>
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                      <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                        Expected contribution bands
-                      </p>
-                      <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                        {contributionMetrics.map((metric) => (
-                          <p key={metric.label}>
-                            <span className="font-semibold">
-                              {metric.label}:
-                            </span>{' '}
-                            {metric.range}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ),
-              },
-              {
                 id: 'perPokemonContributions' as const,
                 title: 'Per-Pokemon Contribution',
                 content: (
@@ -842,59 +689,17 @@ export function AnalysisPanel({
                         </div>
                         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
                           <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                            <span
-                              className={getValueClasses(
-                                getRelativeMetricStatus(
-                                  entry.threatsHandled,
-                                  maxThreatsHandled,
-                                ),
-                              )}
-                            >
-                              {`Threats Handled: ${entry.threatsHandled}`}
-                            </span>
+                            {`Threats Handled: ${entry.threatsHandled}`}
                           </p>
                           <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                            <span
-                              className={getValueClasses(
-                                getRelativeMetricStatus(
-                                  entry.coverageAdded,
-                                  maxCoverageAdded,
-                                ),
-                              )}
-                            >
-                              {`Coverage Added: ${entry.coverageAdded}`}
-                            </span>
+                            {`Coverage Added: ${entry.coverageAdded}`}
                           </p>
                           <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                            <span
-                              className={getValueClasses(
-                                getRelativeMetricStatus(
-                                  entry.highSeverityRelief,
-                                  maxHighSeverityRelief,
-                                ),
-                              )}
-                            >
-                              {`High-Pressure Relief: ${entry.highSeverityRelief}`}
-                            </span>
+                            {`High-Pressure Relief: ${entry.highSeverityRelief}`}
                           </p>
                         </div>
-                        <p className="mt-2 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                          {entry.rationale}
-                        </p>
                       </article>
                     ))}
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                      <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                        Relative grading guide
-                      </p>
-                      <p className="mt-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                        Green marks values near the strongest contributor on
-                        this team, yellow marks middle-of-team support, and red
-                        marks low relative contribution for the current lineup.
-                        Replacement risk uses Low / Moderate / High bands
-                        directly.
-                      </p>
-                    </div>
                   </div>
                 ),
               },

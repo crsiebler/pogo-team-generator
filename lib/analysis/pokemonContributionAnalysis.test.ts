@@ -60,21 +60,24 @@ describe('buildPokemonContributionAnalysis', () => {
     );
 
     expect(analysis.entries).toEqual([
-      expect.objectContaining({
+      {
+        pokemon: 'Lanturn',
         speciesId: 'lanturn',
         threatsHandled: 2,
         coverageAdded: 2,
         highSeverityRelief: 2,
         fragilityRiskTier: 'low',
-      }),
-      expect.objectContaining({
+      },
+      {
+        pokemon: 'Dewgong',
         speciesId: 'dewgong',
         threatsHandled: 1,
         coverageAdded: 0,
         highSeverityRelief: 0,
         fragilityRiskTier: 'low',
-      }),
+      },
     ]);
+    expect(analysis.entries[0]).not.toHaveProperty('rationale');
   });
 
   it('computes each threat matchup once per Pokemon', () => {

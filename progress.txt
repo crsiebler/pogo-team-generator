@@ -9,7 +9,7 @@
 - `lib/genetic/fitness/rosterScoring.ts` uses roster metrics internally for `scoreBreakdown` and fitness. Do not delete `buildRosterMetrics` or internal `PlayPokemonRosterScoreResult.metrics` unless scoring is intentionally refactored.
 - `Chromosome` results should not expose top-level `rosterMetrics` or `benchUtility`; keep roster metrics inside `scorePlayPokemonRoster(...)` internals unless a current API/UI consumer requires a new explicit adapter field.
 - `lib/genetic/fitness/lineupScoring.ts` uses resource path metrics for lineup/roster safety scoring. Remove shield path display fields only from API/UI output unless internals are proven unused.
-- `lib/analysis/pokemonContributionAnalysis.ts` currently generates contribution rationale text. Remove this only after confirming no remaining UI/API/test consumer needs the string.
+- `lib/analysis/pokemonContributionAnalysis.ts` returns concise per-Pokemon numeric contribution diagnostics only; do not reintroduce generated rationale text unless a current UI/API consumer explicitly needs display copy.
 - `TeamDisplay` should not render PlayPokemon `Roster Metrics`; keep `rosterMetrics` and `benchUtility` as internal optimizer/domain diagnostics unless a current story explicitly reintroduces a display consumer.
 - Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render display-only explanations in `AnalysisPanel`.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
@@ -148,4 +148,36 @@
   - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
 - Next iteration start:
   - US-004 - Remove unused Per-Pokemon Contribution explanatory sections
+---
+
+## 2026-06-08 14:51 MST - US-004
+- Removed the display-only Fitness Contribution Categories accordion section, removed the Per-Pokemon Contribution relative grading guide and rationale copy, and removed unused contribution rationale generation from the shared analysis payload while preserving numeric contribution diagnostics.
+- Files changed: `app/api/generate-team/route.test.ts`, `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `lib/AGENTS.md`, `lib/analysis/pokemonContributionAnalysis.ts`, `lib/analysis/pokemonContributionAnalysis.test.ts`, `lib/types.ts`, `progress.txt`
+- Commit message: `feat: US-004 - Remove unused Per-Pokemon Contribution explanatory sections`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx lib/analysis/pokemonContributionAnalysis.test.ts app/api/generate-team/route.test.ts` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; generated team rendered with Per-Pokemon Contribution numeric metrics, without Fitness Contribution Categories, Relative grading guide, or rationale copy; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing `favicon.ico` 404 observed)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `backend-developer`, `api-designer`
+  - Used: `frontend-developer`, `backend-developer`, `api-designer`; each returned concise implementation guidance through the Task mechanism and recommended removing `rationale` after confirming no remaining consumer
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed low QA gap by asserting retained API contribution fields; fixed low UI/code-review issue by removing unexplained relative color grading from per-Pokemon numeric metrics; second review pass returned no actionable findings
+- Decisions (why):
+  - Chose to remove `PokemonContributionAnalysisEntry.rationale` from the shared payload because the only active product consumer was the removed UI paragraph and repository patterns favor removing display-only diagnostics without active consumers.
+  - Kept per-Pokemon numeric metrics and replacement-risk badges because they remain the concise contribution information requested by the story.
+  - Removed the whole Fitness Contribution Categories accordion section rather than hiding its cards because its values were generated entirely in the client for a now-removed display-only section.
+  - Removed relative color styling from per-Pokemon numeric metrics because the explanatory grading guide was intentionally removed and the remaining values should be concise raw diagnostics.
+- **Learnings for future iterations:**
+  - Per-Pokemon Contribution now renders only Pokemon name, replacement risk, Threats Handled, Coverage Added, and High-Pressure Relief.
+  - Contribution analysis entries no longer include `rationale`; tests should assert payload fixtures omit it when changing analysis response shape.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Existing `favicon.ico` 404 appears in browser console/network and was not introduced by this story.
+  - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
+- Next iteration start:
+  - US-005 - Convert Recommended Lineups to analysis accordion section
 ---

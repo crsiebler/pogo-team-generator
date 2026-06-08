@@ -214,7 +214,6 @@ describe('POST /api/generate-team', () => {
           coverageAdded: 3,
           highSeverityRelief: 4,
           fragilityRiskTier: 'moderate',
-          rationale: 'Test rationale.',
         },
       ],
     });
@@ -376,6 +375,9 @@ describe('POST /api/generate-team', () => {
             speciesId: string;
             pokemon: string;
             threatsHandled: number;
+            coverageAdded: number;
+            highSeverityRelief: number;
+            fragilityRiskTier: string;
           }>;
         };
       };
@@ -454,10 +456,16 @@ describe('POST /api/generate-team', () => {
             speciesId: 'lanturn',
             pokemon: 'Lanturn',
             threatsHandled: 12,
+            coverageAdded: 3,
+            highSeverityRelief: 4,
+            fragilityRiskTier: 'moderate',
           },
         ],
       },
     });
+    expect(payload.analysis.pokemonContributions.entries[0]).not.toHaveProperty(
+      'rationale',
+    );
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
     expect(buildThreatAnalysis).toHaveBeenCalledWith(
