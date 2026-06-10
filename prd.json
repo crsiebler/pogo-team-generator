@@ -176,6 +176,40 @@
       "priority": 10,
       "passes": true,
       "notes": "@frontend-developer update Per-Pokemon Contribution markup/classes; @ui-designer verify row spacing, mobile behavior, and readability."
+    },
+    {
+      "id": "US-011",
+      "title": "Enumerate ordered PlayPokemon switch and closer assignments",
+      "description": "As a user, I want PlayPokemon recommended lineups to evaluate both switch and closer role orders so that viable rosters are not underrated when the two backline Pokemon fit different roles.",
+      "acceptanceCriteria": [
+        "Update lib/genetic/fitness/lineupEnumeration.ts so each lead evaluates every ordered switch and closer assignment from the remaining five Pokemon",
+        "A six-Pokemon PlayPokemon roster produces 120 unique ordered pick-3 lineups instead of only 60 unordered backline pairs",
+        "Preserve roster input order for lead iteration and keep validation for duplicate, empty, and delimiter-containing species ids",
+        "Update roster scoring and fitness tests that currently assume 60 PlayPokemon lineups",
+        "Update code comments or local guidance that describe PlayPokemon roster scoring as 60 lineups",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "@backend-developer update enumeration and dependent tests; @gbl-optimizer review role-ordering behavior and optimizer documentation alignment."
+    },
+    {
+      "id": "US-012",
+      "title": "Return recomputed full optimizer fitness",
+      "description": "As a user, I want Overall Fitness to match the final optimizer breakdown so that the displayed score, recommendations, and multi-team sorting describe the same final roster evaluation.",
+      "acceptanceCriteria": [
+        "Update lib/genetic/algorithm.ts so the final PlayPokemon chromosome fitness is set from rosterScore.fitness after full diagnostics are recomputed",
+        "Returned PlayPokemon fitness matches scoreBreakdown.score for the final roster evaluation",
+        "generateMultipleTeams sorts by the recomputed final fitness after diagnostics are attached",
+        "Review the GBL final recommendation path and update it only if its final recommendation score can differ from the hot-path fitness context",
+        "Add or update relevant Vitest coverage for final fitness and scoreBreakdown consistency",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "@backend-developer update final chromosome mapping and regression tests; @api-designer verify response contract exposes consistent fitness and scoreBreakdown values."
     }
   ]
 }
