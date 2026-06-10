@@ -19,6 +19,7 @@
 - Per-Pokemon Contribution headers should render Replacement Risk in a dedicated row below the Pokemon name; keep the metric boxes unchanged below the header.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - PlayPokemon bring-6 lineup enumeration evaluates 120 ordered lead/switch/closer assignments (`6 * 5 * 4`); do not canonicalize or sort switch/closer backline pairs because role order changes scoring.
+- Final generated `Chromosome.fitness` should match the attached final `scoreBreakdown.score`; PlayPokemon finalists use recomputed full roster fitness and GBL finalists use the final lineup recommendation score before multi-team sorting.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
 - Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
 
@@ -403,4 +404,34 @@
   - `prd.json` was already dirty relative to `HEAD` for later failing-story metadata; leave unrelated `US-012` PRD state unstaged for the next iteration.
 - Next iteration start:
   - US-012 - Return recomputed full optimizer fitness
+---
+
+## 2026-06-10 01:34 MST - US-012
+- Implemented final optimizer fitness synchronization so PlayPokemon generated teams return recomputed full roster fitness, GBL generated teams return the final lineup recommendation score, and multi-team sorting uses those final returned fitness values.
+- Files changed: `lib/AGENTS.md`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `progress.txt`
+- Commit message: `feat: US-012 - Return recomputed full optimizer fitness`
+- Checks:
+  - `npx vitest run lib/genetic/algorithm.test.ts` (fail before implementation for expected stale-fitness regressions, pass after implementation)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `backend-developer`, `api-designer`
+  - Used: `backend-developer`, `api-designer`; both returned concise guidance through the Task mechanism, with local tool limitations noted in their outputs but still provided actionable implementation and contract guidance
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`
+  - Findings: fixed low pending review placeholders and stale second-pass wording; deferred low scoped-commit-format suggestion because Ralph explicitly requires `feat: US-012 - Return recomputed full optimizer fitness`; second review pass returned no code or QA findings
+- Decisions (why):
+  - Chose to set PlayPokemon final `fitness` from `rosterScore.fitness` because that is the full diagnostics pass attached to the returned chromosome and its `scoreBreakdown.score`.
+  - Chose to set GBL final `fitness` from `recommendedLineup.scoreBreakdown?.score ?? recommendedLineup.score` because the final recommendation path can use a different scoring context than the hot-path GA evaluation and should describe the same final displayed score.
+  - Left `/api/generate-team` unchanged because it already passes through `result.fitness` and `result.scoreBreakdown` without recomputing scores.
+  - Added algorithm-level regression coverage rather than route-level coverage because the API contract is a pass-through and the inconsistency originated in `lib/genetic/algorithm.ts`.
+- **Learnings for future iterations:**
+  - `generateMultipleTeams(...)` sorts by returned `Chromosome.fitness`, so final single-team mapping must synchronize fitness before the sort can be trusted.
+  - GBL final recommendation scoring can differ from the hot-path GA score because the final recommendation path builds diagnostics after GA selection.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - None.
+- Next iteration start:
+  - All current stories expected complete after final PRD metadata update.
 ---

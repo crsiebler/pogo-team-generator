@@ -57,6 +57,8 @@ For GBL recommendation output in `lib/genetic/fitness/recommendations.ts`, pass 
 
 For GA evaluation in `lib/genetic/fitness/index.ts`, call `evaluatePopulation(population, mode, formatId)` without an algorithm selector. It creates a per-run `LineupAwareFitnessContext`, caches `scoreFastRosterLineup(...)` for hot PlayPokemon evaluation, and leaves full PlayPokemon diagnostics to the final output pass in `lib/genetic/algorithm.ts`.
 
+In `lib/genetic/algorithm.ts`, keep returned `Chromosome.fitness` synchronized with the final diagnostics attached to the chromosome. PlayPokemon finalists should use recomputed full `scorePlayPokemonRoster(...).fitness`; GBL finalists should use the final lineup recommendation score so `fitness` matches `scoreBreakdown.score` before `generateMultipleTeams(...)` sorts results.
+
 For optimizer weighted scoring, import the canonical score contract from `lib/genetic/fitness/scoreBreakdown.ts`; keep components normalized to 0..1 before aggregation and treat only validity or legality as hard constraints.
 
 For ordered lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, `scoreOrderedLineup(...)` returns `scoreBreakdown` and sets `score` from the normalized weighted optimizer contract; use those components for aggregation and explanations rather than adding ad hoc lineup score weights, compute lineup offensive/defensive ratio components through `typeEffectivenessRatios.ts`, weight both offensive defender pools and defensive expected attack-type pools with top-threat priority over full-meta, and keep top-threat ratio pools bounded to the top-threat limit.

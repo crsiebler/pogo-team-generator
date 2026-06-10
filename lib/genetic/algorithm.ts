@@ -231,6 +231,8 @@ export async function generateTeam(
 
     bestOverall = {
       ...bestOverall,
+      fitness:
+        recommendedLineup.scoreBreakdown?.score ?? recommendedLineup.score,
       scoreBreakdown: recommendedLineup.scoreBreakdown,
       recommendedLineups: [recommendedLineup],
     };
@@ -247,6 +249,7 @@ export async function generateTeam(
 
     bestOverall = {
       ...bestOverall,
+      fitness: rosterScore.fitness,
       scoreBreakdown: rosterScore.scoreBreakdown,
       recommendedLineups: recommendations.recommendedLineups,
     };

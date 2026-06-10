@@ -4,8 +4,8 @@ import { getRankedPokemonForFormat } from '@lib/data/pokemon';
 import { getTopRankedPokemonNames } from '@lib/data/rankings';
 import { ensureSimulationDataAvailable } from '@lib/data/simulations';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Chromosome, Pokemon } from '../types';
-import { generateTeam } from './algorithm';
+import type { Chromosome, OptimizerScoreBreakdown, Pokemon } from '../types';
+import { generateMultipleTeams, generateTeam } from './algorithm';
 import {
   calculateDiversity,
   cloneChromosome,
@@ -78,11 +78,40 @@ function createPokemon(speciesId: string, speciesName: string): Pokemon {
   };
 }
 
-function createChromosomeWithTeam(team: string[]): Chromosome {
+function createScoreBreakdown(score: number): OptimizerScoreBreakdown {
+  return {
+    components: {
+      synergy: score,
+      coverage: score,
+      safety: score,
+      consistency: score,
+      bulk: score,
+      defensiveRatio: score,
+      offensiveRatio: score,
+      role: score,
+    },
+    weights: {
+      synergy: 0.24,
+      coverage: 0.21,
+      safety: 0.17,
+      consistency: 0.13,
+      bulk: 0.1,
+      defensiveRatio: 0.07,
+      offensiveRatio: 0.05,
+      role: 0.03,
+    },
+    score,
+  };
+}
+
+function createChromosomeWithTeam(
+  team: string[],
+  fitness: number = 1,
+): Chromosome {
   return {
     team,
     anchors: [],
-    fitness: 1,
+    fitness,
   };
 }
 
@@ -109,6 +138,7 @@ describe('generateTeam format-aware candidate selection', () => {
     vi.mocked(buildGblLineupRecommendation).mockReturnValue({
       lineup: { lead: 'mewtwo', switch: 'dragonite', closer: 'mew' },
       score: 0.88,
+      scoreBreakdown: createScoreBreakdown(0.88),
       coverageMetrics: {
         coverageRate: 0.8,
         dominatingMatchupCount: 2,
@@ -124,6 +154,7 @@ describe('generateTeam format-aware candidate selection', () => {
         {
           lineup: { lead: 'mew', switch: 'mewtwo', closer: 'dragonite' },
           score: 0.9,
+          scoreBreakdown: createScoreBreakdown(0.9),
           coverageMetrics: {
             coverageRate: 0.8,
             dominatingMatchupCount: 2,
@@ -139,29 +170,7 @@ describe('generateTeam format-aware candidate selection', () => {
     vi.mocked(scorePlayPokemonRoster).mockReturnValue({
       roster: ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
       fitness: 0.9,
-      scoreBreakdown: {
-        components: {
-          synergy: 0.9,
-          coverage: 0.8,
-          safety: 0.85,
-          consistency: 0.75,
-          bulk: 0.7,
-          defensiveRatio: 0.65,
-          offensiveRatio: 0.7,
-          role: 0.6,
-        },
-        weights: {
-          synergy: 0.24,
-          coverage: 0.21,
-          safety: 0.17,
-          consistency: 0.13,
-          bulk: 0.1,
-          defensiveRatio: 0.07,
-          offensiveRatio: 0.05,
-          role: 0.03,
-        },
-        score: 0.9,
-      },
+      scoreBreakdown: createScoreBreakdown(0.9),
       evaluatedLineupCount: 120,
       metrics: {
         viableLineupCount: 12,
@@ -418,6 +427,171 @@ describe('generateTeam format-aware candidate selection', () => {
     ]);
     expect(result).not.toHaveProperty('rosterMetrics');
     expect(result).not.toHaveProperty('benchUtility');
+  });
+
+  it('returns final PlayPokemon fitness from recomputed full roster diagnostics', async () => {
+    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+      new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('mew', 'Mew'),
+      createPokemon('mewtwo', 'Mewtwo'),
+      createPokemon('dragonite', 'Dragonite'),
+      createPokemon('lugia', 'Lugia'),
+      createPokemon('ho_oh', 'Ho-Oh'),
+      createPokemon('rayquaza', 'Rayquaza'),
+    ]);
+    vi.mocked(initializePopulation).mockReturnValue([
+      createChromosomeWithTeam(
+        ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
+        0.42,
+      ),
+    ]);
+    vi.mocked(scorePlayPokemonRoster).mockReturnValue({
+      roster: ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
+      fitness: 0.91,
+      scoreBreakdown: createScoreBreakdown(0.91),
+      evaluatedLineupCount: 120,
+      metrics: {
+        viableLineupCount: 12,
+        topLineupQuality: 0.91,
+        topNLineupDepth: 0.8,
+        dominatingMatchupRate: 0.2,
+        overwhelmingLossRate: 0.05,
+        singleAnswerRisks: [],
+        viableLeadDiversity: 4,
+        benchUtilitySummary: [],
+      },
+      lineupScores: [],
+    });
+
+    const result = await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'battle-frontier-bayou-cup',
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(result.fitness).toBe(0.91);
+    expect(result.scoreBreakdown?.score).toBe(0.91);
+    expect(result.fitness).toBe(result.scoreBreakdown?.score);
+  });
+
+  it('returns final GBL fitness from the final lineup recommendation score', async () => {
+    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+      new Set(['Mew', 'Mewtwo', 'Dragonite']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('mew', 'Mew'),
+      createPokemon('mewtwo', 'Mewtwo'),
+      createPokemon('dragonite', 'Dragonite'),
+    ]);
+    vi.mocked(initializePopulation).mockReturnValue([
+      createChromosomeWithTeam(['mew', 'mewtwo', 'dragonite'], 0.51),
+    ]);
+    vi.mocked(buildGblLineupRecommendation).mockReturnValue({
+      lineup: { lead: 'mewtwo', switch: 'dragonite', closer: 'mew' },
+      score: 0.83,
+      scoreBreakdown: createScoreBreakdown(0.83),
+      coverageMetrics: {
+        coverageRate: 0.8,
+        dominatingMatchupCount: 2,
+        overwhelmingLossCount: 0,
+        singleAnswerThreatCount: 1,
+      },
+      coveredThreats: ['azumarill'],
+      weaknesses: ['bastiodon'],
+      diagnosticLabel: 'ABC',
+    });
+
+    const result = await generateTeam({
+      mode: 'GBL',
+      formatId: 'battle-frontier-bayou-cup',
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(result.fitness).toBe(0.83);
+    expect(result.scoreBreakdown?.score).toBe(0.83);
+    expect(result.recommendedLineups?.[0].score).toBe(0.83);
+    expect(result.fitness).toBe(result.scoreBreakdown?.score);
+  });
+
+  it('sorts multiple teams by recomputed final fitness', async () => {
+    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+      new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('mew', 'Mew'),
+      createPokemon('mewtwo', 'Mewtwo'),
+      createPokemon('dragonite', 'Dragonite'),
+      createPokemon('lugia', 'Lugia'),
+      createPokemon('ho_oh', 'Ho-Oh'),
+      createPokemon('rayquaza', 'Rayquaza'),
+    ]);
+    vi.mocked(initializePopulation)
+      .mockReturnValueOnce([
+        createChromosomeWithTeam(
+          ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
+          0.95,
+        ),
+      ])
+      .mockReturnValueOnce([
+        createChromosomeWithTeam(
+          ['mewtwo', 'mew', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
+          0.5,
+        ),
+      ]);
+    vi.mocked(scorePlayPokemonRoster)
+      .mockReturnValueOnce({
+        roster: ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
+        fitness: 0.61,
+        scoreBreakdown: createScoreBreakdown(0.61),
+        evaluatedLineupCount: 120,
+        metrics: {
+          viableLineupCount: 8,
+          topLineupQuality: 0.61,
+          topNLineupDepth: 0.6,
+          dominatingMatchupRate: 0.2,
+          overwhelmingLossRate: 0.05,
+          singleAnswerRisks: [],
+          viableLeadDiversity: 3,
+          benchUtilitySummary: [],
+        },
+        lineupScores: [],
+      })
+      .mockReturnValueOnce({
+        roster: ['mewtwo', 'mew', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
+        fitness: 0.82,
+        scoreBreakdown: createScoreBreakdown(0.82),
+        evaluatedLineupCount: 120,
+        metrics: {
+          viableLineupCount: 12,
+          topLineupQuality: 0.82,
+          topNLineupDepth: 0.8,
+          dominatingMatchupRate: 0.3,
+          overwhelmingLossRate: 0.02,
+          singleAnswerRisks: [],
+          viableLeadDiversity: 4,
+          benchUtilitySummary: [],
+        },
+        lineupScores: [],
+      });
+
+    const results = await generateMultipleTeams(
+      {
+        mode: 'PlayPokemon',
+        formatId: 'battle-frontier-bayou-cup',
+        populationSize: 1,
+        generations: 0,
+      },
+      2,
+    );
+
+    expect(results.map((result) => result.fitness)).toEqual([0.82, 0.61]);
+    expect(results.map((result) => result.scoreBreakdown?.score)).toEqual([
+      0.82, 0.61,
+    ]);
   });
 
   it('reuses one lineup-aware fitness context across the GA run', async () => {
