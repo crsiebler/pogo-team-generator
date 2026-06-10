@@ -25,6 +25,7 @@ import type {
 
 const DEFAULT_VIABLE_LINEUP_SCORE = 0.55;
 const DEFAULT_TOP_LINEUP_DEPTH = 5;
+const PLAY_POKEMON_ORDERED_LINEUP_COUNT = 120;
 const MAX_TOP_THREAT_POOL_SIZE = 30;
 const MAX_FULL_META_THREAT_POOL_SIZE = 100;
 const unavailableConsistencyRankingContexts =
@@ -70,7 +71,7 @@ export interface PlayPokemonRosterScoreResult {
   lineupScores?: LineupScoreResult[];
 }
 
-/** Scores a PlayPokemon bring-6 roster by aggregating all 60 ordered pick-3 lineups. */
+/** Scores a PlayPokemon bring-6 roster by aggregating all 120 ordered pick-3 lineups. */
 export function scorePlayPokemonRoster(
   roster: string[],
   context: PlayPokemonRosterScoringContext,
@@ -612,7 +613,11 @@ function createRosterScoreBreakdown(
     synergy: clamp01(
       metrics.topLineupQuality * 0.35 +
         metrics.topNLineupDepth * 0.25 +
-        normalizeCount(metrics.viableLineupCount, 60) * 0.15 +
+        normalizeCount(
+          metrics.viableLineupCount,
+          PLAY_POKEMON_ORDERED_LINEUP_COUNT,
+        ) *
+          0.15 +
         normalizeCount(metrics.viableLeadDiversity, 6) * 0.1 +
         averageBenchUtility * 0.15 -
         deadBenchPenalty * 0.2,

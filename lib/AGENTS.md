@@ -39,7 +39,7 @@ Keep a final Battle Frontier Master legality assertion in `lib/genetic/algorithm
 
 For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` before generation and pass `formatId` through simulation helpers so non-Great formats never silently reuse Great League matchups.
 
-For PlayPokemon lineup-aware fitness, enumerate bring-6 rosters through `lib/genetic/fitness/lineupEnumeration.ts`; preserve roster input order for lead iteration, sort backline pairs canonically so duplicate backline permutations are not scored, and reject species ids containing the lineup key delimiter (`|`).
+For PlayPokemon lineup-aware fitness, enumerate bring-6 rosters through `lib/genetic/fitness/lineupEnumeration.ts`; preserve roster input order for lead iteration, evaluate ordered switch and closer assignments for each remaining Pokemon pair, and reject species ids containing the lineup key delimiter (`|`).
 
 For lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, prefer `LineupScoringContext` injection in tests and `createDefaultLineupScoringContext(...)` for production wiring so ranking, move, Pokemon, and simulation lookups stay deterministic and cacheable by callers.
 
@@ -51,7 +51,7 @@ For PlayPokemon roster scoring in `lib/genetic/fitness/rosterScoring.ts`, inject
 
 For PlayPokemon roster diversity scoring, keep bring-6 type redundancy and coverage weighting in `lib/genetic/fitness/rosterScoring.ts`; use context-injected expected-meta Pokemon and move metadata for offensive and frequency-preserving defensive coverage, fall back to each Pokemon's own typing when its move metadata is missing or unresolved, penalize redundant primary typings through top-lineup appearances, and avoid blanket penalties for useful shared secondary typings.
 
-For PlayPokemon recommendation output in `lib/genetic/fitness/recommendations.ts`, pass bounded full-mode `LineupScoreResult[]` into `buildPlayPokemonRosterRecommendations(...)`; do not re-enumerate all 60 lineups in API/UI adapters, and keep removed bench-utility warning generation out of recommendation output unless a current display/API consumer is reintroduced.
+For PlayPokemon recommendation output in `lib/genetic/fitness/recommendations.ts`, pass bounded full-mode `LineupScoreResult[]` into `buildPlayPokemonRosterRecommendations(...)`; do not re-enumerate all 120 lineups in API/UI adapters, and keep removed bench-utility warning generation out of recommendation output unless a current display/API consumer is reintroduced.
 
 For GBL recommendation output in `lib/genetic/fitness/recommendations.ts`, pass exactly three unique species ids and use `buildGblLineupRecommendation(...)` to evaluate the six ordered lead/switch/closer permutations with canonical lineup scoring and return only the single best recommendation.
 

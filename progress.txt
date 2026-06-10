@@ -18,6 +18,7 @@
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
 - Per-Pokemon Contribution headers should render Replacement Risk in a dedicated row below the Pokemon name; keep the metric boxes unchanged below the header.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
+- PlayPokemon bring-6 lineup enumeration evaluates 120 ordered lead/switch/closer assignments (`6 * 5 * 4`); do not canonicalize or sort switch/closer backline pairs because role order changes scoring.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
 - Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
 
@@ -371,4 +372,35 @@
   - `.ralph-dev-server.log` remains untracked and unstaged from the existing local dev server.
 - Next iteration start:
   - All current stories expected complete after final PRD metadata update.
+---
+
+## 2026-06-10 01:23 MST - US-011
+- Implemented PlayPokemon lineup enumeration for every ordered lead, switch, and closer assignment, producing 120 unique six-roster lineups while preserving roster input order and validation for duplicate, empty, and delimiter-containing species ids.
+- Files changed: `lib/AGENTS.md`, `lib/genetic/algorithm.test.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/fitness/lineupEnumeration.ts`, `lib/genetic/fitness/lineupEnumeration.test.ts`, `lib/genetic/fitness/recommendations.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `progress.txt`
+- Commit message: `feat: US-011 - Enumerate ordered PlayPokemon switch and closer assignments`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupEnumeration.test.ts` (fail before implementation for expected 120-lineup behavior, pass after implementation)
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts lib/genetic/fitness/recommendations.test.ts` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `backend-developer`, `gbl-optimizer`
+  - Used: `backend-developer`; `gbl-optimizer` skill loaded and required optimizer docs read, with optimizer review guidance gathered through a general subagent because `gbl-optimizer` is a skill, not an available Task subagent type
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: none; both reviewers returned empty actionable findings lists with residual risk limited to not rerunning the already completed checks during review
+- Decisions (why):
+  - Chose ordered switch/closer permutation over canonical backline sorting because PvPoke Switch and Closer rankings represent different tactical jobs, and the story explicitly requires role-order-sensitive scoring.
+  - Kept lineup keys unchanged as `lead|switch|closer` because they already encode role order and remain unique once swapped switch/closer assignments are emitted.
+  - Updated the roster synergy viable-lineup normalization from 60 to 120 so doubled enumeration capacity does not saturate the viable-lineup component too early.
+  - Updated `lib/AGENTS.md` because previous local guidance still instructed future agents to canonicalize backline pairs and avoid all 60-lineup re-enumeration.
+- **Learnings for future iterations:**
+  - PlayPokemon lineup enumeration now yields 20 ordered switch/closer assignments per lead and 120 total lineups per valid six-Pokemon roster.
+  - Tests that assert roster scoring counts should expect 120 evaluated lineups for PlayPokemon and should include swapped switch/closer identities when changing enumeration.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - `prd.json` was already dirty relative to `HEAD` for later failing-story metadata; leave unrelated `US-012` PRD state unstaged for the next iteration.
+- Next iteration start:
+  - US-012 - Return recomputed full optimizer fitness
 ---

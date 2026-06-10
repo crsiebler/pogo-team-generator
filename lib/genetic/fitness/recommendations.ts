@@ -26,7 +26,7 @@ export interface GblLineupRecommendationOptions {
 
 /**
  * Builds bounded PlayPokemon lineup recommendations from pre-scored finalist
- * lineups without enumerating or returning all 60 possible pick-3 lineups.
+ * lineups without enumerating or returning all 120 possible pick-3 lineups.
  */
 export function buildPlayPokemonRosterRecommendations(
   lineupScores: LineupScoreResult[],

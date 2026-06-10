@@ -101,7 +101,7 @@ vi.mock('./rosterScoring', () => ({
     return {
       roster,
       fitness: config.mode === 'fast' ? 0.91 : 0.73,
-      evaluatedLineupCount: 60,
+      evaluatedLineupCount: 120,
       metrics: {
         viableLineupCount: 5,
         topLineupQuality: 0.9,

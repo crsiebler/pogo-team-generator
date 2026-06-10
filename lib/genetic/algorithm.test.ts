@@ -162,7 +162,7 @@ describe('generateTeam format-aware candidate selection', () => {
         },
         score: 0.9,
       },
-      evaluatedLineupCount: 60,
+      evaluatedLineupCount: 120,
       metrics: {
         viableLineupCount: 12,
         topLineupQuality: 0.9,

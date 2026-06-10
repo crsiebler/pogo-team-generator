@@ -11,7 +11,7 @@ import type { OrderedLineup, Pokemon } from '@/lib/types';
 const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
 
 describe('scorePlayPokemonRoster', () => {
-  test('evaluates exactly 60 enumerated lineups for a PlayPokemon roster', () => {
+  test('evaluates exactly 120 enumerated lineups for a PlayPokemon roster', () => {
     const scoreLineup = vi.fn((lineup: OrderedLineup) =>
       makeLineupResult(lineup, { score: 0.6 }),
     );
@@ -22,9 +22,9 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(scoreLineup).toHaveBeenCalledTimes(60);
-    expect(result.evaluatedLineupCount).toBe(60);
-    expect(result.metrics.viableLineupCount).toBe(60);
+    expect(scoreLineup).toHaveBeenCalledTimes(120);
+    expect(result.evaluatedLineupCount).toBe(120);
+    expect(result.metrics.viableLineupCount).toBe(120);
   });
 
   test('uses fast mode without returning all lineup diagnostics', () => {
@@ -51,7 +51,7 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(result.evaluatedLineupCount).toBe(60);
+    expect(result.evaluatedLineupCount).toBe(120);
     expect(result.lineupScores).toBeUndefined();
   });
 

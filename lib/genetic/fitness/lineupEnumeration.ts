@@ -21,21 +21,15 @@ export function enumeratePlayPokemonLineups(roster: string[]): OrderedLineup[] {
   validatePlayPokemonRoster(roster);
 
   return roster.flatMap((lead) => {
-    const backline = roster
-      .filter((speciesId) => speciesId !== lead)
-      .toSorted();
+    const backline = roster.filter((speciesId) => speciesId !== lead);
     const lineups: OrderedLineup[] = [];
 
-    for (
-      let switchIndex = 0;
-      switchIndex < backline.length - 1;
-      switchIndex++
-    ) {
-      for (
-        let closerIndex = switchIndex + 1;
-        closerIndex < backline.length;
-        closerIndex++
-      ) {
+    for (let switchIndex = 0; switchIndex < backline.length; switchIndex++) {
+      for (let closerIndex = 0; closerIndex < backline.length; closerIndex++) {
+        if (switchIndex === closerIndex) {
+          continue;
+        }
+
         lineups.push({
           lead,
           switch: backline[switchIndex],
