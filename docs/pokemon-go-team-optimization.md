@@ -45,6 +45,11 @@ Higher-priority categories should have larger weights, but lower-priority catego
 
 PvPoke rankings can seed candidate pools, role assumptions, move choices, and threat weighting. Treat them as a best-estimate resource from simulations, not as fixed truth. Prefer score-based and category-specific signals over raw rank alone.
 
+PvPoke behavior is reference-only. Runtime application, component, and optimizer
+code must not import, require, execute, bundle, or runtime-load PvPoke vendor
+JavaScript. Keep any local PvPoke engine execution isolated to sync or tooling
+workflows that generate repository-owned data.
+
 For ordered lineups, use one of these models depending on project requirements:
 
 - Lead ordered, back pair unordered: `6 * C(5, 2) = 60` lineups.
@@ -76,6 +81,7 @@ Recommended output should explain both roster-level and lineup-level tradeoffs:
 
 - Recommended show-6 roster.
 - Overall score and category breakdown.
+- Lower-is-better Threat Score diagnostics.
 - Top-threat coverage.
 - Full-meta coverage.
 - Defensive type profile.
@@ -87,3 +93,23 @@ Recommended output should explain both roster-level and lineup-level tradeoffs:
 - Major risks and alternative candidates.
 
 The explanation is important. A high aggregate score should not hide a major weakness such as ABA shared weakness into a common top-threat lead.
+
+## UI Output Contract
+
+Summary Statistics is a display-only diagnostics section. It should show the
+optimizer score categories `Synergy`, `Coverage`, `Safety`, `Consistency`,
+`Bulk`, `Role`, `Offensive Ratio`, and `Defensive Ratio` using only simple
+`A`, `B`, `C`, `D`, or `F` grades. Do not show plus or minus grade modifiers,
+numeric score values, or `elite`, `strong`, `neutral`, or `weak` quality pills in
+Summary Statistics.
+
+Threat Score may appear in Summary Statistics as a separate lower-is-better
+diagnostic sourced from optimizer output. It should explain that lower is better
+and may display ranked top-meta threats, overall team threats, and pool
+diagnostics without reusing Summary Statistics quality pills.
+
+Recommended Lineups should present ordered lead, switch, and closer assignments
+with useful matchup details such as weaknesses. Lineup cards may show exactly
+one textual quality pill from lineup metadata: `elite`, `strong`, `neutral`, or
+`weak`. Do not use lineup quality pills as Summary Statistics grades, and do not
+show numeric lineup scores unless a future UI contract explicitly requires it.

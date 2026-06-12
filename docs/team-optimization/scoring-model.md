@@ -31,6 +31,11 @@ roster_score =
   role_weight * role_score
 ```
 
+Threat Score is intentionally not listed as a weighted fitness component. It is
+a lower-is-better diagnostic that describes vulnerability to meta threats after
+the weighted roster or lineup score has been calculated, unless a project
+explicitly chooses to change optimizer selection behavior.
+
 Example starting weights:
 
 ```text
@@ -86,6 +91,18 @@ PvPoke ranking scores are already on a `0` to `100` scale where `100` is the bes
 When combining PvPoke categories, geometric mean is often more appropriate than arithmetic mean because category scores are percentages and well-roundedness matters. Geometric mean penalizes a Pokemon that is excellent in one category but poor in another more than an arithmetic mean would.
 
 When weighting matchups, use opponent importance where possible. PvPoke weights Battle Ratings by opponent average so good performance against powerful Pokemon matters more than good performance against weak Pokemon. Optimizers should follow the same principle for top-threat pools and meta-weighted coverage.
+
+## Soft Matchup Scoring
+
+Prefer soft matchup scores when a calculation should distinguish close,
+neutral, clearly favorable, and clearly unfavorable battle ratings. A close loss
+or close win should contribute an intermediate value instead of being treated as
+the same as a decisive loss or decisive win.
+
+Keep binary thresholds for categorical outputs such as covered-threat labels,
+weakness lists, overwhelming-loss counts, and no-answer counts. Use soft scores
+for optimizer weighting, diagnostics, and Threat Score severity where matchup
+quality should vary continuously.
 
 ## Move Score Inputs
 

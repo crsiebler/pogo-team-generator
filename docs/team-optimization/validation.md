@@ -7,6 +7,9 @@ Validate the optimizer with known battle concepts, known meta teams, and control
 - Dual-type effectiveness multiplication is correct.
 - Pokemon GO immunity-style interactions use `0.39x`.
 - Top-threat coverage is scored separately from full-meta coverage.
+- Weighted top-meta and full-meta Threat Score pools expose deterministic diagnostics.
+- Lower-is-better Threat Score ranking is deterministic for equivalent inputs.
+- Soft matchup scoring distinguishes close, neutral, clearly favorable, and clearly unfavorable ratings where scores need intermediate values.
 - Weighted scoring allows tradeoffs instead of acting like a tier list.
 - Synergy is weighted above coverage.
 - Coverage is weighted above safety.
@@ -37,6 +40,30 @@ checks such as valid species ids, 120 ordered lead/switch/closer lineups, finite
 normalized roster scores, and minimum viable-lineup sanity thresholds. Do not
 treat fixture teams as hardcoded optimizer truth labels, exact expected winners,
 or exact score snapshots.
+
+## Performance Safeguards
+
+Lineup-aware scoring should protect hot paths with deterministic per-run caches
+or equivalent precomputation. Cache keys should include enough context, such as
+format and version, to avoid stale season data or collisions between lineups.
+Validate cache behavior with counters or deterministic key assertions where
+possible; avoid relying only on tight timing comparisons.
+
+Representative generation and roster-scoring tests should enforce broad
+performance expectations, such as completing under one minute in supported local
+and deployment-compatible environments, without becoming flaky microbenchmarks.
+
+## UI Contract Review
+
+Documentation and UI tests should keep Summary Statistics display-only. Summary
+Statistics grades are limited to `A`, `B`, `C`, `D`, or `F` with no plus or
+minus modifiers. Summary Statistics must not use `elite`, `strong`, `neutral`,
+or `weak` quality pills.
+
+Threat Score belongs in Summary Statistics only as a lower-is-better diagnostic.
+Recommended Lineups may show one lineup quality pill per lineup card using
+`elite`, `strong`, `neutral`, or `weak`, but those labels describe lineup quality
+and are not optimizer category grades.
 
 ## Explainability Review
 

@@ -29,6 +29,24 @@ Use it to detect:
 
 Full-meta coverage matters, but it should not dominate top-threat coverage.
 
+## Weighted Threat Score Pools
+
+Threat Score should evaluate top-meta and full-meta pools separately before
+combining them into an aggregate lower-is-better diagnostic. Weight top-meta
+threats higher by default because common or strategically central threats should
+drive more roster risk than rare coverage holes.
+
+Pool weighting should be data-driven or configurable for season updates. When a
+pool cannot be evaluated for a candidate because matchup data is unavailable,
+normalize active weights over the pools that were evaluated instead of treating
+missing data as zero risk. Full-meta diagnostics should expose broad coverage
+gaps, but configured weights should prevent full-meta results from overpowering
+top-meta viability.
+
+Threat Score output should include enough structured data for both tests and UI
+display, including aggregate score, per-pool score, evaluated counts, active
+weights, ranked top-meta threats, and ranked overall team threats.
+
 ## Coverage Metrics
 
 Useful metrics include:

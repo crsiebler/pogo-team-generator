@@ -30,6 +30,12 @@ Use the same league, cup, move settings, and candidate filters across exports wh
 
 PvPoke rankings are a best-estimate resource, not immutable fact. Exact ranks can change as PvPoke improves its simulator and ranking algorithms. Treat ranking exports as strong signals for candidate quality, role fit, move quality, and threat weighting, but keep optimizer scoring explainable and robust to ranking changes.
 
+PvPoke vendor JavaScript is not a runtime dependency. Application, component,
+and optimizer code must not import, require, execute, bundle, or runtime-load
+PvPoke vendor JavaScript. If a project uses local PvPoke engine code to refresh
+ranking-derived data, keep that execution isolated to sync or tooling workflows
+and store normalized repository-owned data for runtime use.
+
 ## PvPoke Score Interpretation
 
 PvPoke top-level rankings include a score from `0` to `100`, where `100` is the best Pokemon in that league and category. The score is an overall performance number derived from simulating every possible matchup with each Pokemon's most used moveset, with some movesets manually adjusted.
@@ -120,6 +126,20 @@ Build two threat pools from the available data:
 - Full-meta pool for broad robustness.
 
 Top-threat coverage should be weighted higher. Full-meta coverage should catch unexpected holes and over-specialized teams.
+
+Threat pool weights should be configurable enough for season updates. Structured
+Threat Score diagnostics should preserve separate top-meta and full-meta pool
+results so tests and UI can explain whether risk comes from high-priority meta
+threats or broader full-meta coverage gaps.
+
+## Calibration Fixtures
+
+Great League Show-6 Pick-3 calibration fixtures should be checked-in typed data,
+not runtime shortcuts. Treat fixture rosters as calibration and regression
+inputs only. They can validate species ids, fixture metadata, ordered lineup
+enumerability, finite scores, and broad minimum viability, but they must not be
+used as hardcoded optimizer truth labels, exact winner expectations, or exact
+score snapshots.
 
 ## Normalized Internal Models
 

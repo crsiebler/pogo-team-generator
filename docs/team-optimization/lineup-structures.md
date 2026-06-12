@@ -82,3 +82,15 @@ Bad lineup synergy includes:
 - A frail switch that cannot stabilize bad alignment.
 - A closer that needs shields when the lead and switch are likely to spend them.
 - Three Pokemon that win isolated matchups but fail as an ordered battle plan.
+
+## Recommended Lineup Display
+
+Recommended lineup output should preserve ordered lead, switch, and closer role
+assignments. UI cards should stay concise: show the role assignments and useful
+matchup details such as weaknesses, not internal structure labels or numeric
+lineup scores unless a future contract explicitly reintroduces them.
+
+Lineup quality is separate from Summary Statistics. If lineup cards show a
+quality pill, each card should show exactly one textual value derived from lineup
+metadata: `elite`, `strong`, `neutral`, or `weak`. These pills describe lineup
+quality only and must not be reused as Summary Statistics grades.
