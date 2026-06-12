@@ -7,6 +7,7 @@ import type {
   GenerationAnalysis,
   OptimizerScoreBreakdown,
   OptimizerScoreComponent,
+  OptimizerThreatScoreEntry,
   PokemonContributionRiskTier,
   RecommendedLineup,
 } from '@/lib/types';
@@ -43,6 +44,8 @@ const OPTIMIZER_SCORE_COMPONENT_ORDER: OptimizerScoreComponent[] = [
   'offensiveRatio',
   'defensiveRatio',
 ];
+
+const MAX_VISIBLE_THREAT_SCORE_ENTRIES = 5;
 
 const optimizerScoreComponentDetails: Record<
   OptimizerScoreComponent,
@@ -137,6 +140,14 @@ function getOptimizerScoreMetrics(
 
 function formatScore(score: number): string {
   return score.toFixed(2);
+}
+
+function formatOptionalScore(score: number | null): string {
+  return score === null ? 'Not evaluated' : formatScore(score);
+}
+
+function formatThreatEntry(threat: OptimizerThreatScoreEntry): string {
+  return `${threat.pokemon} (Rank #${threat.rank}, Answers: ${threat.teamAnswers}, Risk: ${formatScore(threat.threatValue)})`;
 }
 
 function getBadgeClasses(riskTier: PokemonContributionRiskTier): string {
@@ -285,6 +296,81 @@ export function AnalysisPanel({
     );
   };
 
+  const renderThreatScoreList = (
+    label: string,
+    threats: OptimizerThreatScoreEntry[],
+    emptyMessage: string,
+  ) => {
+    const visibleThreats = threats.slice(0, MAX_VISIBLE_THREAT_SCORE_ENTRIES);
+
+    return (
+      <div>
+        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+          {label}
+        </p>
+        {visibleThreats.length > 0 ? (
+          <>
+            <ul aria-label={label} className="mt-1 list-disc space-y-1 pl-5">
+              {visibleThreats.map((threat) => (
+                <li key={threat.speciesId}>{formatThreatEntry(threat)}</li>
+              ))}
+            </ul>
+            {threats.length > visibleThreats.length ? (
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                {`Showing top ${visibleThreats.length} of ${threats.length}`}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="mt-1">{emptyMessage}</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderThreatScoreCard = (
+    threatScore: OptimizerScoreBreakdown['threatScore'],
+  ) => {
+    if (!threatScore) {
+      return null;
+    }
+
+    return (
+      <article className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-gray-800 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-gray-200">
+        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+          Threat Score
+        </p>
+        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
+          Lower is better: this highlights meta threats the team may struggle to
+          answer.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+            {`Overall: ${formatScore(threatScore.score)}`}
+          </p>
+          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+            {`Top Meta: ${formatOptionalScore(threatScore.pools.topMeta.score)} (${threatScore.pools.topMeta.evaluatedCount} evaluated)`}
+          </p>
+          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+            {`Full Meta: ${formatOptionalScore(threatScore.pools.fullMeta.score)} (${threatScore.pools.fullMeta.evaluatedCount} evaluated)`}
+          </p>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {renderThreatScoreList(
+            'Top Meta Threats',
+            threatScore.topMetaThreats,
+            'No top meta threats identified',
+          )}
+          {renderThreatScoreList(
+            'Overall Team Threats',
+            threatScore.overallTeamThreats,
+            'No overall team threats identified',
+          )}
+        </div>
+      </article>
+    );
+  };
+
   return (
     <div
       className={clsx(
@@ -352,6 +438,9 @@ export function AnalysisPanel({
                                     renderOptimizerScoreMetric,
                                   )}
                                 </div>
+                                {renderThreatScoreCard(
+                                  scoreBreakdown.threatScore,
+                                )}
                               </>
                             ) : (
                               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">

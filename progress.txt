@@ -16,6 +16,7 @@
 - Summary Statistics in `AnalysisPanel` is the optimizer score-card section; do not reintroduce client-computed Overall Fitness, Threat Handling, Shield Stability, Core-Breaker Risk, Expected Ranges, or a separate Optimizer Score Breakdown accordion without a current story.
 - Summary Statistics optimizer score cards should render Role immediately after Bulk as a standard card, followed by Offensive Ratio and Defensive Ratio in a dedicated two-card comparison row; do not rely on a single auto-flow grid for the ratio pair.
 - Summary Statistics optimizer score cards display only simple `A`, `B`, `C`, `D`, or `F` letter grades; do not render numeric score values, plus/minus modifiers, or `elite`/`strong`/`neutral`/`weak` quality pills there unless a current story changes the contract.
+- Summary Statistics may include a separate `Threat Score` diagnostic card sourced from API-provided `scoreBreakdown.threatScore`; keep it lower-is-better, display-only, pill-free, and cap visible Top Meta/Overall Team Threat lists with a count summary.
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
 - Per-Pokemon Contribution headers should render Replacement Risk in a dedicated row below the Pokemon name; keep the metric boxes unchanged below the header.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
@@ -694,4 +695,36 @@
   - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-019 does not require modifying the task PRD.
 - Next iteration start:
   - US-020 - Add Threat Score Card To Summary Statistics
+---
+
+## 2026-06-11 19:37 MST - US-020
+- Implemented a display-only lower-is-better Threat Score card inside the Summary Statistics accordion using API-provided `scoreBreakdown.threatScore`, including aggregate/pool scores, capped Top Meta Threats, capped Overall Team Threats, and no Summary Statistics quality pills.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`
+- Commit message: `feat: US-020 - Add Threat Score Card To Summary Statistics`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (fail before implementation for missing Threat Score card, pass after implementation)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; Summary Statistics expanded with Threat Score, lower-is-better explanation, aggregate/pool diagnostics, capped Top Meta and Overall Team Threat lists, and no quality pills; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing 404 resource error observed)
+- Implementation agents:
+  - Recommended: `feature-implementer`, `dev-browser`
+  - Used: `feature-implementer` skill, `dev-browser` skill, and one `general` Task subagent for unavailable recommended-agent implementation guidance; skipped direct Task invocation of `feature-implementer` because the Task tool reported it as unavailable, and used `dev-browser` directly because it is a skill workflow
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed low pending progress review placeholders; deferred low scoped-commit-format suggestion because Ralph explicitly requires `feat: US-020 - Add Threat Score Card To Summary Statistics`; second review pass returned no actionable findings
+- Decisions (why):
+  - Chose to render Threat Score from `scoreBreakdown.threatScore` rather than deriving diagnostics in React because AnalysisPanel must stay display-only and optimizer diagnostics already flow through the API contract.
+  - Chose a separate Threat Score card rather than adding it to the optimizer category order because Threat Score is a lower-is-better diagnostic and not a weighted optimizer score component.
+  - Chose to cap visible threat lists at five entries with a count summary because live full-meta diagnostics can include large pools and should not overwhelm the Summary Statistics accordion.
+  - Updated nearby `components/AGENTS.md` and consolidated `progress.txt` patterns because future Summary Statistics work should preserve the lower-is-better, pill-free, capped-list Threat Score display contract.
+  - Kept the Ralph-required unscoped commit message because the user instruction for this autonomous iteration is more specific than the repository's general scoped commit convention.
+- **Learnings for future iterations:**
+  - `AnalysisPanel` can use `scoreBreakdown.threatScore.pools.topMeta` and `.fullMeta` for pool diagnostics while keeping the existing eight `optimizer-score-category-label` entries limited to weighted score components.
+  - Browser verification can expose live-data density issues not visible in small fixtures; cap or summarize large diagnostic lists in accordion content.
+- Known issues / follow-ups:
+  - Existing 404 resource error appears in browser console/network and was not introduced by this story.
+  - `.ralph-dev-server.log` and `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` remain untracked and unstaged from prior work.
+- Next iteration start:
+  - US-021 - Refresh Recommended Lineups Blue Styling
 ---

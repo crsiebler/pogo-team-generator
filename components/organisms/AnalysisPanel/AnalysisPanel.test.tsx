@@ -155,6 +155,126 @@ describe('AnalysisPanel', () => {
     score: 0.74,
   };
 
+  const optimizerScoreBreakdownWithThreatScore: OptimizerScoreBreakdown = {
+    ...optimizerScoreBreakdown,
+    threatScore: {
+      score: 0.34,
+      evaluatedCount: 18,
+      topMetaThreats: [
+        {
+          speciesId: 'clodsire',
+          pokemon: 'Clodsire',
+          rank: 3,
+          teamAnswers: 1,
+          threatValue: 0.72,
+          severityTier: 'high',
+        },
+        {
+          speciesId: 'toxapex',
+          pokemon: 'Toxapex',
+          rank: 7,
+          teamAnswers: 2,
+          threatValue: 0.43,
+          severityTier: 'medium',
+        },
+        {
+          speciesId: 'drapion',
+          pokemon: 'Drapion',
+          rank: 9,
+          teamAnswers: 2,
+          threatValue: 0.39,
+          severityTier: 'medium',
+        },
+        {
+          speciesId: 'lapras',
+          pokemon: 'Lapras',
+          rank: 11,
+          teamAnswers: 2,
+          threatValue: 0.32,
+          severityTier: 'medium',
+        },
+        {
+          speciesId: 'charjabug',
+          pokemon: 'Charjabug',
+          rank: 15,
+          teamAnswers: 3,
+          threatValue: 0.25,
+          severityTier: 'low',
+        },
+        {
+          speciesId: 'jumpluff',
+          pokemon: 'Jumpluff',
+          rank: 21,
+          teamAnswers: 3,
+          threatValue: 0.2,
+          severityTier: 'low',
+        },
+      ],
+      overallTeamThreats: [
+        {
+          speciesId: 'talonflame',
+          pokemon: 'Talonflame',
+          rank: 12,
+          teamAnswers: 0,
+          threatValue: 0.86,
+          severityTier: 'critical',
+        },
+        {
+          speciesId: 'lanturn',
+          pokemon: 'Lanturn',
+          rank: 19,
+          teamAnswers: 1,
+          threatValue: 0.61,
+          severityTier: 'high',
+        },
+        {
+          speciesId: 'forretress',
+          pokemon: 'Forretress',
+          rank: 25,
+          teamAnswers: 1,
+          threatValue: 0.58,
+          severityTier: 'high',
+        },
+        {
+          speciesId: 'malamar',
+          pokemon: 'Malamar',
+          rank: 31,
+          teamAnswers: 2,
+          threatValue: 0.44,
+          severityTier: 'medium',
+        },
+        {
+          speciesId: 'sealeo',
+          pokemon: 'Sealeo',
+          rank: 37,
+          teamAnswers: 2,
+          threatValue: 0.35,
+          severityTier: 'medium',
+        },
+        {
+          speciesId: 'dunsparce',
+          pokemon: 'Dunsparce',
+          rank: 48,
+          teamAnswers: 3,
+          threatValue: 0.28,
+          severityTier: 'low',
+        },
+      ],
+      pools: {
+        topMeta: {
+          score: 0.28,
+          evaluatedCount: 8,
+          weight: 0.8,
+        },
+        fullMeta: {
+          score: 0.41,
+          evaluatedCount: 42,
+          weight: 0.2,
+        },
+      },
+    },
+  };
+
   it('renders accordion sections collapsed by default', () => {
     render(
       <AnalysisPanel
@@ -373,6 +493,86 @@ describe('AnalysisPanel', () => {
       within(section).getByText(/Lineup role fit from lead, switch, closer/i),
     ).toBeInTheDocument();
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  });
+
+  it('renders threat score diagnostics inside summary statistics without quality pills', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          scoreBreakdown: optimizerScoreBreakdownWithThreatScore,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
+
+    const section = screen.getByRole('region', {
+      name: 'Summary Statistics',
+    });
+
+    expect(within(section).getByText('Threat Score')).toBeInTheDocument();
+    expect(within(section).getByText(/Lower is better/i)).toBeInTheDocument();
+    expect(within(section).getByText('Overall: 0.34')).toBeInTheDocument();
+    expect(
+      within(section).getByText('Top Meta: 0.28 (8 evaluated)'),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByText('Full Meta: 0.41 (42 evaluated)'),
+    ).toBeInTheDocument();
+    expect(within(section).getByText('Top Meta Threats')).toBeInTheDocument();
+    expect(
+      within(section).getByRole('list', { name: 'Top Meta Threats' }),
+    ).toBeInTheDocument();
+    expect(within(section).getByText(/Clodsire/)).toBeInTheDocument();
+    expect(within(section).getByText(/Toxapex/)).toBeInTheDocument();
+    expect(within(section).getByText(/Charjabug/)).toBeInTheDocument();
+    expect(within(section).queryByText(/Jumpluff/)).not.toBeInTheDocument();
+    expect(
+      within(section).getByText('Overall Team Threats'),
+    ).toBeInTheDocument();
+    expect(
+      within(section).getByRole('list', { name: 'Overall Team Threats' }),
+    ).toBeInTheDocument();
+    expect(within(section).getByText(/Talonflame/)).toBeInTheDocument();
+    expect(within(section).getByText(/Lanturn/)).toBeInTheDocument();
+    expect(within(section).getByText(/Sealeo/)).toBeInTheDocument();
+    expect(within(section).queryByText(/Dunsparce/)).not.toBeInTheDocument();
+    expect(within(section).getAllByText('Showing top 5 of 6')).toHaveLength(2);
+    expect(within(section).queryByText('elite')).not.toBeInTheDocument();
+    expect(within(section).queryByText('strong')).not.toBeInTheDocument();
+    expect(within(section).queryByText('neutral')).not.toBeInTheDocument();
+    expect(within(section).queryByText('weak')).not.toBeInTheDocument();
+    expect(
+      within(section).getAllByTestId('optimizer-score-category-label'),
+    ).toHaveLength(8);
+  });
+
+  it('omits the threat score card when threat diagnostics are unavailable', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          scoreBreakdown: optimizerScoreBreakdown,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Summary Statistics' }));
+
+    const section = screen.getByRole('region', {
+      name: 'Summary Statistics',
+    });
+
+    expect(within(section).queryByText('Threat Score')).not.toBeInTheDocument();
   });
 
   it('renders concise recommended lineup details with readable weakness names', () => {
