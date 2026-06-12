@@ -2,6 +2,7 @@ import type {
   OptimizerScoreBreakdown,
   OptimizerScoreComponent,
   OptimizerScoreComponents,
+  OptimizerThreatScore,
   OptimizerScoreWeights,
 } from '@/lib/types';
 
@@ -9,6 +10,7 @@ export type {
   OptimizerScoreBreakdown,
   OptimizerScoreComponent,
   OptimizerScoreComponents,
+  OptimizerThreatScore,
   OptimizerScoreWeights,
 } from '@/lib/types';
 
@@ -35,6 +37,7 @@ export const OPTIMIZER_HARD_CONSTRAINT_CATEGORIES: readonly OptimizerHardConstra
 export function createNormalizedScoreBreakdown(
   components: OptimizerScoreComponents,
   weights: OptimizerScoreWeights = OPTIMIZER_SCORE_COMPONENT_WEIGHTS,
+  diagnostics: { threatScore?: OptimizerThreatScore } = {},
 ): OptimizerScoreBreakdown {
   const normalizedComponents = normalizeScoreComponents(components);
 
@@ -42,6 +45,9 @@ export function createNormalizedScoreBreakdown(
     components: normalizedComponents,
     weights,
     score: aggregateWeightedScore(normalizedComponents, weights),
+    ...(diagnostics.threatScore
+      ? { threatScore: diagnostics.threatScore }
+      : {}),
   };
 }
 

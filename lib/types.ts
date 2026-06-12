@@ -97,6 +97,30 @@ export interface OptimizerScoreBreakdown {
   components: OptimizerScoreComponents;
   weights: OptimizerScoreWeights;
   score: number;
+  threatScore?: OptimizerThreatScore;
+}
+
+/** Ranked optimizer threat score entry, where higher threatValue is worse. */
+export interface OptimizerThreatScoreEntry {
+  speciesId: string;
+  pokemon: string;
+  rank: number;
+  teamAnswers: number;
+  /** Higher-is-worse normalized risk contribution for ranked display. */
+  threatValue: number;
+  severityTier: ThreatSeverityTier;
+}
+
+/** Lower-is-better optimizer threat score diagnostics for a team or lineup. */
+export interface OptimizerThreatScore {
+  /** Normalized 0..1 aggregate score where lower means fewer severe threats. */
+  score: number;
+  /** Count of unique top/full-meta threats with at least one matchup row. */
+  evaluatedCount: number;
+  /** Worst top-meta threats first; threats without matchup rows are excluded. */
+  topMetaThreats: OptimizerThreatScoreEntry[];
+  /** Worst unique top/full-meta threats first; missing rows are excluded. */
+  overallTeamThreats: OptimizerThreatScoreEntry[];
 }
 
 /** Ordered pick-3 lineup keyed by battle role. */

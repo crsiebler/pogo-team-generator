@@ -23,6 +23,7 @@
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
 - Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling and use `lib/architecture/pvpokeRuntimeBoundary.test.ts` for boundary regressions.
+- Optimizer Threat Score diagnostics live on `OptimizerScoreBreakdown.threatScore` and are lower-is-better display/diagnostic data; do not add Threat Score to the weighted fitness components unless a current story explicitly changes optimizer selection behavior, and keep it disabled in fast/GA hot paths.
 
 ## Iteration Log
 - Next iteration start: US-001 - Resolve lineup role species names in generate-team API
@@ -494,4 +495,38 @@
   - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-013 does not require modifying the task PRD.
 - Next iteration start:
   - US-014 - Add Lower-Is-Better Threat Score
+---
+
+## 2026-06-11 17:37 MST - US-014
+- Implemented a lower-is-better optimizer Threat Score diagnostic, including ranked top-meta and overall team threat entries with deterministic ordering, and attached it to lineup and roster `scoreBreakdown` output for API/UI pass-through.
+- Files changed: `app/api/generate-team/route.test.ts`, `lib/AGENTS.md`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/scoreBreakdown.ts`, `lib/genetic/fitness/threatScore.ts`, `lib/genetic/fitness/threatScore.test.ts`, `lib/types.ts`, `progress.txt`
+- Commit message: `feat: US-014 - Add Lower-Is-Better Threat Score`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/threatScore.test.ts` (fail before implementation for missing `./threatScore`, pass after implementation)
+  - `npx vitest run lib/genetic/fitness/threatScore.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass)
+  - `npx vitest run lib/genetic/fitness/threatScore.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts app/api/generate-team/route.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass after first specialist review fix)
+  - `npx vitest run lib/genetic/fitness/threatScore.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/index.test.ts app/api/generate-team/route.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass after second specialist review fix)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail for import order, pass after import cleanup)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill, `test-driven-development` skill, and two `general` Task subagents for unavailable recommended-agent implementation/testing guidance; skipped direct Task invocation of `gbl-optimizer` and `test-driven-development` because they are skills, not available Task subagent types
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`
+  - Findings: fixed medium diagnostic-only Threat Score computation in the fast PlayPokemon lineup path, fixed medium diagnostic-only Threat Score computation in GBL and PlayPokemon roster GA hot paths by adding diagnostic flags, fixed low API contract coverage gap by asserting `/api/generate-team` passes through `scoreBreakdown.threatScore`, fixed low field-level contract comments for `OptimizerThreatScore`, fixed low stale review-status wording, and deferred low scoped-commit-format suggestion because Ralph explicitly requires `feat: US-014 - Add Lower-Is-Better Threat Score`; third review pass returned no code or QA findings
+- Decisions (why):
+  - Chose to attach Threat Score as diagnostics on `OptimizerScoreBreakdown` rather than add it as a weighted component because US-014 asks for output diagnostics and does not request changing optimizer selection or fitness weighting.
+  - Chose a pure injected `calculateOptimizerThreatScore(...)` helper so tests can supply deterministic threat pools and matchup ratings without runtime PvPoke imports or file reads.
+  - Ranked individual threat entries worst-first by `threatValue`, then fewer team answers, lower rank, and species id so UI lists are stable for equivalent inputs.
+  - Used top-threat and full-meta pools from existing lineup scoring contexts so Threat Score follows current pool boundaries and can be refined by later weighted-pool stories without client recomputation.
+  - Omitted Threat Score from `scoreFastRosterLineup(...)`, `scorePlayPokemonRoster(...)` fast mode, and cached GBL lineup-aware fitness scoring because GA paths use score breakdowns for fitness only and should not pay for display-only diagnostics.
+- **Learnings for future iterations:**
+  - `lib/genetic/fitness/threatScore.ts` owns lower-is-better Threat Score calculation; `scoreBreakdown.threatScore.score` is aggregate lower-is-better while each entry's `threatValue` is higher-is-worse for ranked display.
+  - Threat Score currently describes optimizer diagnostics and is intentionally not part of `OptimizerScoreComponent` or `OPTIMIZER_SCORE_COMPONENT_WEIGHTS`; use `LineupScoringOptions.includeThreatScore` or full roster diagnostics when final output needs it.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-014 does not require modifying the task PRD.
+- Next iteration start:
+  - US-015 - Implement Weighted Top-Meta And Full-Meta Threat Pools
 ---

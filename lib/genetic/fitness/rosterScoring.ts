@@ -15,6 +15,7 @@ import {
 } from './typeEffectivenessRatios';
 import { normalizeToChoosableSpeciesId } from '@/lib/data/pokemon';
 import { MissingRankingDataError } from '@/lib/data/rankings';
+import { calculateOptimizerThreatScore } from '@/lib/genetic/fitness/threatScore';
 import type {
   BenchUtility,
   LineupAwareFitnessConfig,
@@ -89,6 +90,7 @@ export function scorePlayPokemonRoster(
     context,
     metrics,
     scoredLineups,
+    config.includeDiagnostics,
   );
   const diagnosticLimit =
     config.mode === 'full' ? Math.max(0, config.recommendationLimit) : 0;
@@ -575,6 +577,7 @@ function createRosterScoreBreakdown(
   context: PlayPokemonRosterScoringContext,
   metrics: PlayPokemonRosterMetrics,
   scoredLineups: LineupScoreResult[],
+  includeThreatScore: boolean,
 ): OptimizerScoreBreakdown {
   const deadBenchPenalty =
     metrics.benchUtilitySummary.filter(
@@ -637,7 +640,48 @@ function createRosterScoreBreakdown(
     role: calculateRosterRoleComponent(roster, context),
   };
 
-  return createNormalizedScoreBreakdown(components);
+  return createNormalizedScoreBreakdown(
+    components,
+    undefined,
+    includeThreatScore
+      ? {
+          threatScore: calculateOptimizerThreatScore(
+            roster,
+            createThreatScoreContext(
+              context,
+              sanitizeThreatPool(
+                context.topThreats ?? context.threats,
+                MAX_TOP_THREAT_POOL_SIZE,
+              ),
+              sanitizeThreatPool(
+                context.fullMetaThreats ?? context.threats,
+                MAX_FULL_META_THREAT_POOL_SIZE,
+              ),
+            ),
+          ),
+        }
+      : {},
+  );
+}
+
+function createThreatScoreContext(
+  context: PlayPokemonRosterScoringContext,
+  topThreats: string[],
+  fullMetaThreats: string[],
+): Parameters<typeof calculateOptimizerThreatScore>[1] {
+  const ranks = new Map<string, number>();
+  uniquePreservingOrder([...topThreats, ...fullMetaThreats]).forEach(
+    (speciesId, index) => ranks.set(speciesId, index + 1),
+  );
+
+  return {
+    topThreats,
+    fullMetaThreats,
+    getThreatName: (speciesId) =>
+      context.getPokemon(speciesId)?.speciesName ?? speciesId,
+    getThreatRank: (speciesId) => ranks.get(speciesId) ?? ranks.size + 1,
+    getMatchupRating: context.getMatchupRating,
+  };
 }
 
 function calculateSafetyComponent(

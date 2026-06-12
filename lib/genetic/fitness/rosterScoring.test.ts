@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { LineupScoreResult } from './lineupScoring';
 import {
+  scoreFastRosterLineup,
   scorePlayPokemonRoster,
   type PlayPokemonRosterScoringContext,
 } from './rosterScoring';
@@ -55,6 +56,19 @@ describe('scorePlayPokemonRoster', () => {
     expect(result.lineupScores).toBeUndefined();
   });
 
+  test('fast lineup scoring omits display-only threat score diagnostics', () => {
+    const result = scoreFastRosterLineup(
+      { lead: 'alpha', switch: 'bravo', closer: 'charlie' },
+      createContext({
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['top-hole', 'rare-hole'],
+        getMatchupRating: () => 450,
+      }),
+    );
+
+    expect(result.scoreBreakdown.threatScore).toBeUndefined();
+  });
+
   test('fast mode uses shield resource paths for safety when available', () => {
     const resilientResult = scorePlayPokemonRoster(
       roster,
@@ -76,6 +90,18 @@ describe('scorePlayPokemonRoster', () => {
     expect(resilientResult.scoreBreakdown.components.safety).toBeGreaterThan(
       brittleResult.scoreBreakdown.components.safety,
     );
+  });
+
+  test('fast mode omits display-only roster threat score diagnostics', () => {
+    const result = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        getMatchupRating: () => 450,
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(result.scoreBreakdown.threatScore).toBeUndefined();
   });
 
   test('fast mode treats missing shield rows neutrally', () => {
@@ -110,6 +136,49 @@ describe('scorePlayPokemonRoster', () => {
     );
 
     expect(result.lineupScores).toHaveLength(5);
+  });
+
+  test('exposes lower-is-better roster threat score diagnostics', () => {
+    const result = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        topThreats: ['top-hole', 'single-answer'],
+        fullMetaThreats: ['top-hole', 'single-answer', 'rare-hole'],
+        scoreLineup: (lineup) => makeLineupResult(lineup, { score: 0.6 }),
+        getMatchupRating: (speciesId, threat) => {
+          if (threat === 'top-hole') {
+            return 450;
+          }
+
+          if (threat === 'single-answer') {
+            return speciesId === 'alpha' ? 560 : 450;
+          }
+
+          if (threat === 'rare-hole') {
+            return 450;
+          }
+
+          return null;
+        },
+      }),
+      { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
+    );
+
+    expect(result.scoreBreakdown.threatScore).toEqual(
+      expect.objectContaining({
+        score: expect.any(Number),
+        evaluatedCount: 3,
+      }),
+    );
+    expect(result.scoreBreakdown.threatScore?.topMetaThreats).toEqual([
+      expect.objectContaining({ speciesId: 'top-hole', teamAnswers: 0 }),
+      expect.objectContaining({ speciesId: 'single-answer', teamAnswers: 1 }),
+    ]);
+    expect(result.scoreBreakdown.threatScore?.overallTeamThreats).toEqual([
+      expect.objectContaining({ speciesId: 'top-hole', teamAnswers: 0 }),
+      expect.objectContaining({ speciesId: 'rare-hole', teamAnswers: 0 }),
+      expect.objectContaining({ speciesId: 'single-answer', teamAnswers: 1 }),
+    ]);
   });
 
   test('rewards roster depth over one excellent lineup with a dead bench', () => {

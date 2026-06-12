@@ -22,6 +22,7 @@ import {
   type OptimizerScoreBreakdown,
   type OptimizerScoreComponents,
 } from '@/lib/genetic/fitness/scoreBreakdown';
+import { calculateOptimizerThreatScore } from '@/lib/genetic/fitness/threatScore';
 import {
   calculateDefensiveTypeRatio,
   calculateOffensiveTypeRatio,
@@ -147,6 +148,11 @@ export interface LineupScoreResult {
   scoreBreakdown: OptimizerScoreBreakdown;
 }
 
+/** Optional diagnostic controls for full versus hot-path lineup scoring. */
+export interface LineupScoringOptions {
+  includeThreatScore?: boolean;
+}
+
 /** Builds the production data context for lineup scoring. */
 export function createDefaultLineupScoringContext(
   formatId?: BattleFormatId,
@@ -209,6 +215,7 @@ export function createDefaultLineupScoringContext(
 export function scoreOrderedLineup(
   lineup: OrderedLineup,
   context: LineupScoringContext,
+  options: LineupScoringOptions = {},
 ): LineupScoreResult {
   const speciesIds = [lineup.lead, lineup.switch, lineup.closer];
   const pokemon = speciesIds
@@ -249,11 +256,22 @@ export function scoreOrderedLineup(
   };
 
   const diagnosticLabel = calculateLineupPatternLabel(lineup, context);
+  const topThreats = sanitizeThreatPool(
+    context.topThreats ?? context.threats,
+    MAX_TOP_THREAT_POOL_SIZE,
+  );
+  const fullMetaThreats = sanitizeThreatPool(
+    context.fullMetaThreats ?? context.threats,
+    MAX_FULL_META_THREAT_POOL_SIZE,
+  );
   const scoreBreakdown = createLineupScoreBreakdown(
     lineup,
     pokemon,
     componentScores,
     context,
+    topThreats,
+    fullMetaThreats,
+    options.includeThreatScore ?? true,
   );
 
   return {
@@ -275,6 +293,9 @@ function createLineupScoreBreakdown(
   pokemon: Pokemon[],
   componentScores: LineupComponentScores,
   context: LineupScoringContext,
+  topThreats: string[],
+  fullMetaThreats: string[],
+  includeThreatScore: boolean,
 ): OptimizerScoreBreakdown {
   const structureSafetyAdjustment = calculateStructureSafetyAdjustment(
     lineup,
@@ -310,7 +331,38 @@ function createLineupScoreBreakdown(
     role: componentScores.roleStrength,
   };
 
-  return createNormalizedScoreBreakdown(components);
+  return createNormalizedScoreBreakdown(
+    components,
+    undefined,
+    includeThreatScore
+      ? {
+          threatScore: calculateOptimizerThreatScore(
+            [lineup.lead, lineup.switch, lineup.closer],
+            createThreatScoreContext(context, topThreats, fullMetaThreats),
+          ),
+        }
+      : {},
+  );
+}
+
+function createThreatScoreContext(
+  context: LineupScoringContext,
+  topThreats: string[],
+  fullMetaThreats: string[],
+): Parameters<typeof calculateOptimizerThreatScore>[1] {
+  const ranks = new Map<string, number>();
+  uniquePreservingOrder([...topThreats, ...fullMetaThreats]).forEach(
+    (speciesId, index) => ranks.set(speciesId, index + 1),
+  );
+
+  return {
+    topThreats,
+    fullMetaThreats,
+    getThreatName: (speciesId) =>
+      context.getPokemon(speciesId)?.speciesName ?? speciesId,
+    getThreatRank: (speciesId) => ranks.get(speciesId) ?? ranks.size + 1,
+    getMatchupRating: context.getMatchupRating,
+  };
 }
 
 function calculateStructureSafetyAdjustment(

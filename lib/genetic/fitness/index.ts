@@ -27,6 +27,7 @@ export {
   type LineupComponentScores,
   type LineupScoreResult,
   type LineupScoringContext,
+  type LineupScoringOptions,
 } from './lineupScoring';
 
 export {
@@ -54,6 +55,11 @@ export {
   type OptimizerScoreComponents,
   type OptimizerScoreWeights,
 } from './scoreBreakdown';
+
+export {
+  calculateOptimizerThreatScore,
+  type OptimizerThreatScoreContext,
+} from './threatScore';
 
 export {
   calculateDefensiveTypeRatio,
@@ -91,7 +97,9 @@ export function createLineupAwareFitnessContext(
         return cached;
       }
 
-      const score = scoreOrderedLineup(lineup, scoringContext);
+      const score = scoreOrderedLineup(lineup, scoringContext, {
+        includeThreatScore: false,
+      });
       lineupScoreCache.set(cacheKey, score);
       return score;
     },

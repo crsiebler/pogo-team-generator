@@ -324,6 +324,30 @@ describe('POST /api/generate-team', () => {
               role: 0.03,
             },
             score: 0.81,
+            threatScore: {
+              score: 0.32,
+              evaluatedCount: 2,
+              topMetaThreats: [
+                {
+                  speciesId: 'venusaur',
+                  pokemon: 'Venusaur',
+                  rank: 1,
+                  teamAnswers: 0,
+                  threatValue: 1,
+                  severityTier: 'critical',
+                },
+              ],
+              overallTeamThreats: [
+                {
+                  speciesId: 'venusaur',
+                  pokemon: 'Venusaur',
+                  rank: 1,
+                  teamAnswers: 0,
+                  threatValue: 1,
+                  severityTier: 'critical',
+                },
+              ],
+            },
           },
           coverageMetrics: {
             coverageRate: 0.86,
@@ -358,6 +382,30 @@ describe('POST /api/generate-team', () => {
           role: 0.03,
         },
         score: 0.74,
+        threatScore: {
+          score: 0.28,
+          evaluatedCount: 2,
+          topMetaThreats: [
+            {
+              speciesId: 'venusaur',
+              pokemon: 'Venusaur',
+              rank: 1,
+              teamAnswers: 0,
+              threatValue: 1,
+              severityTier: 'critical',
+            },
+          ],
+          overallTeamThreats: [
+            {
+              speciesId: 'venusaur',
+              pokemon: 'Venusaur',
+              rank: 1,
+              teamAnswers: 0,
+              threatValue: 1,
+              severityTier: 'critical',
+            },
+          ],
+        },
       },
     });
 
@@ -398,6 +446,7 @@ describe('POST /api/generate-team', () => {
           role: number;
         };
         score: number;
+        threatScore?: unknown;
       };
       recommendedLineups: unknown[];
       analysis: {
@@ -485,6 +534,30 @@ describe('POST /api/generate-team', () => {
             role: 0.03,
           },
           score: 0.81,
+          threatScore: {
+            score: 0.32,
+            evaluatedCount: 2,
+            topMetaThreats: [
+              {
+                speciesId: 'venusaur',
+                pokemon: 'Venusaur',
+                rank: 1,
+                teamAnswers: 0,
+                threatValue: 1,
+                severityTier: 'critical',
+              },
+            ],
+            overallTeamThreats: [
+              {
+                speciesId: 'venusaur',
+                pokemon: 'Venusaur',
+                rank: 1,
+                teamAnswers: 0,
+                threatValue: 1,
+                severityTier: 'critical',
+              },
+            ],
+          },
         },
         coverageMetrics: {
           coverageRate: 0.86,
@@ -514,6 +587,30 @@ describe('POST /api/generate-team', () => {
       role: 0.03,
     });
     expect(payload.scoreBreakdown.score).toBe(0.74);
+    expect(payload.scoreBreakdown.threatScore).toEqual({
+      score: 0.28,
+      evaluatedCount: 2,
+      topMetaThreats: [
+        {
+          speciesId: 'venusaur',
+          pokemon: 'Venusaur',
+          rank: 1,
+          teamAnswers: 0,
+          threatValue: 1,
+          severityTier: 'critical',
+        },
+      ],
+      overallTeamThreats: [
+        {
+          speciesId: 'venusaur',
+          pokemon: 'Venusaur',
+          rank: 1,
+          teamAnswers: 0,
+          threatValue: 1,
+          severityTier: 'critical',
+        },
+      ],
+    });
     expect(payload).not.toHaveProperty('algorithm');
     expect(payload.analysis).not.toHaveProperty('algorithm');
     expect(payload.analysis).toMatchObject({

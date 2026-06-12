@@ -173,6 +173,65 @@ describe('scoreOrderedLineup', () => {
     });
   });
 
+  test('exposes lower-is-better threat score diagnostics', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['top-hole', 'single-answer', 'rare-hole'],
+        topThreats: ['top-hole', 'single-answer'],
+        fullMetaThreats: ['top-hole', 'single-answer', 'rare-hole'],
+        matchupRatings: {
+          bulky: {
+            'top-hole': 450,
+            'single-answer': 560,
+            'rare-hole': 450,
+          },
+          balanced: {
+            'top-hole': 440,
+            'single-answer': 450,
+            'rare-hole': 450,
+          },
+          closer: {
+            'top-hole': 430,
+            'single-answer': 450,
+            'rare-hole': 450,
+          },
+        },
+      }),
+    );
+
+    expect(result.scoreBreakdown.threatScore).toEqual(
+      expect.objectContaining({
+        score: expect.any(Number),
+        evaluatedCount: 3,
+      }),
+    );
+    expect(result.scoreBreakdown.threatScore?.topMetaThreats).toEqual([
+      expect.objectContaining({ speciesId: 'top-hole', teamAnswers: 0 }),
+      expect.objectContaining({ speciesId: 'single-answer', teamAnswers: 1 }),
+    ]);
+    expect(result.scoreBreakdown.threatScore?.overallTeamThreats).toEqual([
+      expect.objectContaining({ speciesId: 'top-hole', teamAnswers: 0 }),
+      expect.objectContaining({ speciesId: 'rare-hole', teamAnswers: 0 }),
+      expect.objectContaining({ speciesId: 'single-answer', teamAnswers: 1 }),
+    ]);
+  });
+
+  test('can omit display-only threat score diagnostics for hot-path scoring', () => {
+    const result = scoreOrderedLineup(
+      { lead: 'bulky', switch: 'balanced', closer: 'closer' },
+      createContext({ matchupRatings: uniformMatchups(520) }),
+      { includeThreatScore: false },
+    );
+
+    expect(result.scoreBreakdown.threatScore).toBeUndefined();
+  });
+
   test('weights top-threat coverage higher than rare full-meta coverage', () => {
     const lineup: OrderedLineup = {
       lead: 'bulky',
