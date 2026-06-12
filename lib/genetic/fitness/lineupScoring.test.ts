@@ -135,6 +135,50 @@ describe('scoreOrderedLineup', () => {
     expect(result.componentScores.coreBreakerReliability).toBeCloseTo(2 / 3);
   });
 
+  test('uses soft matchup quality for coverage scoring while retaining binary diagnostics', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const decisiveAnswer = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        matchupRatings: {
+          bulky: { 'threat-a': 520 },
+          balanced: { 'threat-a': 300 },
+          closer: { 'threat-a': 700 },
+        },
+      }),
+    );
+    const closeAnswer = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        matchupRatings: {
+          bulky: { 'threat-a': 520 },
+          balanced: { 'threat-a': 480 },
+          closer: { 'threat-a': 520 },
+        },
+      }),
+    );
+
+    expect(decisiveAnswer.coverageMetrics.coverageRate).toBe(
+      closeAnswer.coverageMetrics.coverageRate,
+    );
+    expect(decisiveAnswer.componentScores.matchupCoverage).toBeGreaterThan(
+      closeAnswer.componentScores.matchupCoverage,
+    );
+    expect(decisiveAnswer.scoreBreakdown.components.coverage).toBeGreaterThan(
+      closeAnswer.scoreBreakdown.components.coverage,
+    );
+  });
+
   test('exposes separate top-threat and full-meta coverage diagnostics', () => {
     const lineup: OrderedLineup = {
       lead: 'bulky',
@@ -248,9 +292,15 @@ describe('scoreOrderedLineup', () => {
       }),
     );
 
-    expect(result.scoreBreakdown.threatScore?.score).toBeCloseTo(0.8);
+    expect(result.scoreBreakdown.threatScore?.score).toBeCloseTo(
+      0.5333333333333334,
+    );
     expect(result.scoreBreakdown.threatScore?.pools).toEqual({
-      topMeta: { score: 1, evaluatedCount: 1, weight: 0.8 },
+      topMeta: {
+        score: expect.closeTo(0.6666666666666667),
+        evaluatedCount: 1,
+        weight: 0.8,
+      },
       fullMeta: { score: 0, evaluatedCount: 1, weight: 0.2 },
     });
   });
@@ -949,15 +999,15 @@ describe('scoreOrderedLineup', () => {
 
     expect(result.resourcePathMetrics?.balanced).toEqual({
       available: true,
-      score: expect.closeTo(0.4),
+      score: expect.closeTo(0.3333333333333333),
     });
     expect(result.resourcePathMetrics?.shieldSpend).toEqual({
       available: true,
-      score: expect.closeTo(0.6333333333333333),
+      score: expect.closeTo(0.6666666666666666),
     });
     expect(result.resourcePathMetrics?.shieldSave).toEqual({
       available: true,
-      score: expect.closeTo(0.26666666666666666),
+      score: expect.closeTo(0),
     });
   });
 
@@ -981,7 +1031,7 @@ describe('scoreOrderedLineup', () => {
 
     expect(result.resourcePathMetrics?.balanced).toEqual({
       available: true,
-      score: expect.closeTo(0.6),
+      score: expect.closeTo(0.6666666666666666),
     });
     expect(result.resourcePathMetrics?.shieldSpend).toEqual({
       available: false,

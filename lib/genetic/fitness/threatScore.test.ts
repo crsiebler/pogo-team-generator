@@ -35,6 +35,41 @@ describe('calculateOptimizerThreatScore', () => {
     expect(exposedResult.score).toBeLessThanOrEqual(1);
   });
 
+  test('uses soft answer quality when binary answer counts are equivalent', () => {
+    const strongSingleAnswer = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        ratings: {
+          alpha: { 'threat-a': 700 },
+          bravo: { 'threat-a': 480 },
+          charlie: { 'threat-a': 470 },
+        },
+      }),
+    );
+    const closeSingleAnswer = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        ratings: {
+          alpha: { 'threat-a': 520 },
+          bravo: { 'threat-a': 480 },
+          charlie: { 'threat-a': 470 },
+        },
+      }),
+    );
+
+    expect(strongSingleAnswer.topMetaThreats[0]?.teamAnswers).toBe(
+      closeSingleAnswer.topMetaThreats[0]?.teamAnswers,
+    );
+    expect(strongSingleAnswer.topMetaThreats[0]?.threatValue).toBeLessThan(
+      closeSingleAnswer.topMetaThreats[0]?.threatValue ?? 0,
+    );
+    expect(strongSingleAnswer.score).toBeLessThan(closeSingleAnswer.score);
+  });
+
   test('ranks worst top-meta and overall threats first', () => {
     const result = calculateOptimizerThreatScore(
       ['alpha', 'bravo', 'charlie'],
@@ -136,9 +171,9 @@ describe('calculateOptimizerThreatScore', () => {
       { poolWeights: { topMeta: 0.9, fullMeta: 0.1 } },
     );
 
-    expect(result.score).toBeCloseTo(0.9);
+    expect(result.score).toBeCloseTo(0.6000000000000001);
     expect(result.pools.topMeta).toEqual({
-      score: 1,
+      score: expect.closeTo(0.6666666666666667),
       evaluatedCount: 1,
       weight: 0.9,
     });
@@ -177,8 +212,8 @@ describe('calculateOptimizerThreatScore', () => {
       { poolWeights: { topMeta: 0.75, fullMeta: 0.25 } },
     );
 
-    expect(coveredTopExposedFull.score).toBeCloseTo(0.25);
-    expect(exposedTopCoveredFull.score).toBeCloseTo(0.75);
+    expect(coveredTopExposedFull.score).toBeCloseTo(0.16666666666666669);
+    expect(exposedTopCoveredFull.score).toBeCloseTo(0.5);
     expect(exposedTopCoveredFull.score).toBeGreaterThan(
       coveredTopExposedFull.score,
     );
@@ -199,9 +234,9 @@ describe('calculateOptimizerThreatScore', () => {
       { poolWeights: { topMeta: 3, fullMeta: 1 } },
     );
 
-    expect(result.score).toBe(1);
+    expect(result.score).toBeCloseTo(0.6666666666666667);
     expect(result.pools.topMeta).toEqual({
-      score: 1,
+      score: expect.closeTo(0.6666666666666667),
       evaluatedCount: 1,
       weight: 1,
     });
@@ -227,10 +262,14 @@ describe('calculateOptimizerThreatScore', () => {
       { poolWeights: { topMeta: 3, fullMeta: 1 } },
     );
 
-    expect(result.score).toBe(1);
+    expect(result.score).toBeCloseTo(0.6666666666666667);
     expect(result.pools).toEqual({
       topMeta: { score: null, evaluatedCount: 0, weight: 0 },
-      fullMeta: { score: 1, evaluatedCount: 1, weight: 1 },
+      fullMeta: {
+        score: expect.closeTo(0.6666666666666667),
+        evaluatedCount: 1,
+        weight: 1,
+      },
     });
   });
 
@@ -249,10 +288,18 @@ describe('calculateOptimizerThreatScore', () => {
       { poolWeights: { topMeta: 1, fullMeta: 0 } },
     );
 
-    expect(result.score).toBe(1);
+    expect(result.score).toBeCloseTo(0.6666666666666667);
     expect(result.pools).toEqual({
-      topMeta: { score: 1, evaluatedCount: 1, weight: 1 },
-      fullMeta: { score: 1, evaluatedCount: 1, weight: 0 },
+      topMeta: {
+        score: expect.closeTo(0.6666666666666667),
+        evaluatedCount: 1,
+        weight: 1,
+      },
+      fullMeta: {
+        score: expect.closeTo(0.6666666666666667),
+        evaluatedCount: 1,
+        weight: 0,
+      },
     });
   });
 
@@ -271,9 +318,13 @@ describe('calculateOptimizerThreatScore', () => {
       { poolWeights: { topMeta: 0.2, fullMeta: 0.8 } },
     );
 
-    expect(result.score).toBeCloseTo(0.7);
+    expect(result.score).toBeCloseTo(0.4666666666666667);
     expect(result.pools).toEqual({
-      topMeta: { score: 1, evaluatedCount: 1, weight: 0.7 },
+      topMeta: {
+        score: expect.closeTo(0.6666666666666667),
+        evaluatedCount: 1,
+        weight: 0.7,
+      },
       fullMeta: { score: 0, evaluatedCount: 1, weight: 0.3 },
     });
   });

@@ -69,6 +69,53 @@ describe('scorePlayPokemonRoster', () => {
     expect(result.scoreBreakdown.threatScore).toBeUndefined();
   });
 
+  test('fast lineup scoring uses soft matchup quality while retaining binary diagnostics', () => {
+    const decisiveAnswer = scoreFastRosterLineup(
+      { lead: 'alpha', switch: 'bravo', closer: 'charlie' },
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        getMatchupRating: (speciesId, threat) => {
+          if (threat !== 'threat-a') {
+            return null;
+          }
+
+          return speciesId === 'alpha'
+            ? 520
+            : speciesId === 'charlie'
+              ? 700
+              : 300;
+        },
+      }),
+    );
+    const closeAnswer = scoreFastRosterLineup(
+      { lead: 'alpha', switch: 'bravo', closer: 'charlie' },
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        getMatchupRating: (speciesId, threat) => {
+          if (threat !== 'threat-a') {
+            return null;
+          }
+
+          return speciesId === 'bravo' ? 480 : 520;
+        },
+      }),
+    );
+
+    expect(decisiveAnswer.coverageMetrics.coverageRate).toBe(
+      closeAnswer.coverageMetrics.coverageRate,
+    );
+    expect(decisiveAnswer.componentScores.matchupCoverage).toBeGreaterThan(
+      closeAnswer.componentScores.matchupCoverage,
+    );
+    expect(decisiveAnswer.scoreBreakdown.components.coverage).toBeGreaterThan(
+      closeAnswer.scoreBreakdown.components.coverage,
+    );
+  });
+
   test('fast mode uses shield resource paths for safety when available', () => {
     const resilientResult = scorePlayPokemonRoster(
       roster,
@@ -195,9 +242,15 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
     );
 
-    expect(result.scoreBreakdown.threatScore?.score).toBeCloseTo(0.85);
+    expect(result.scoreBreakdown.threatScore?.score).toBeCloseTo(
+      0.2833333333333334,
+    );
     expect(result.scoreBreakdown.threatScore?.pools).toEqual({
-      topMeta: { score: 1, evaluatedCount: 1, weight: 0.85 },
+      topMeta: {
+        score: expect.closeTo(0.33333333333333337),
+        evaluatedCount: 1,
+        weight: 0.85,
+      },
       fullMeta: { score: 0, evaluatedCount: 1, weight: 0.15 },
     });
   });

@@ -17,6 +17,7 @@ import {
   getShieldScenarioMatchupResult,
   getTopThreatsByRole,
 } from '@/lib/data/simulations';
+import { scoreMatchupRating } from '@/lib/genetic/fitness/matchupScoring';
 import {
   createNormalizedScoreBreakdown,
   type OptimizerScoreBreakdown,
@@ -227,9 +228,7 @@ export function scoreOrderedLineup(
     .filter((entry): entry is Pokemon => entry !== undefined);
 
   const coverage = calculateCoverage(lineup, context);
-  const weightedCoverage = calculateWeightedPoolCoverage(
-    coverage.coverageMetrics,
-  );
+  const weightedCoverage = coverage.weightedPoolCoverage;
   // Legacy signals intentionally left outside this lineup-level helper:
   // shadow preference, GBL surprise factor, and anchor synergy remain GA concerns
   // until the canonical fitness integration story replaces algorithm routing.
@@ -674,6 +673,12 @@ interface LineupCoverageResult extends Pick<
   'coverageMetrics' | 'coveredThreats' | 'weaknesses' | 'singleAnswerRisks'
 > {
   evaluatedThreatCount: number;
+  weightedPoolCoverage: number;
+}
+
+interface ThreatPoolCoverageResult {
+  metrics: NonNullable<LineupCoverageMetrics['topThreatCoverage']>;
+  softCoverageRate: number;
 }
 
 function calculateCoverage(
@@ -705,12 +710,12 @@ function calculateCoverage(
   let evaluatedThreatCount = 0;
   let overwhelmingLossCount = 0;
 
-  const topThreatCoverage = calculateThreatPoolCoverage(
+  const topThreatCoverageResult = calculateThreatPoolCoverage(
     speciesIds,
     topThreats,
     context,
   );
-  const fullMetaCoverage = calculateThreatPoolCoverage(
+  const fullMetaCoverageResult = calculateThreatPoolCoverage(
     speciesIds,
     fullMetaThreats,
     context,
@@ -740,22 +745,29 @@ function calculateCoverage(
     }
   }
 
+  const coverageMetrics: LineupCoverageMetrics = {
+    coverageRate:
+      evaluatedThreatCount > 0
+        ? coveredThreats.length / evaluatedThreatCount
+        : 0,
+    dominatingMatchupCount,
+    overwhelmingLossCount,
+    singleAnswerThreatCount: singleAnswerRisks.length,
+    topThreatCoverage: topThreatCoverageResult.metrics,
+    fullMetaCoverage: fullMetaCoverageResult.metrics,
+  };
+
   return {
-    coverageMetrics: {
-      coverageRate:
-        evaluatedThreatCount > 0
-          ? coveredThreats.length / evaluatedThreatCount
-          : 0,
-      dominatingMatchupCount,
-      overwhelmingLossCount,
-      singleAnswerThreatCount: singleAnswerRisks.length,
-      topThreatCoverage,
-      fullMetaCoverage,
-    },
+    coverageMetrics,
     coveredThreats,
     weaknesses,
     singleAnswerRisks,
     evaluatedThreatCount,
+    weightedPoolCoverage: calculateWeightedPoolCoverage(
+      coverageMetrics,
+      topThreatCoverageResult,
+      fullMetaCoverageResult,
+    ),
   };
 }
 
@@ -763,13 +775,14 @@ function calculateThreatPoolCoverage(
   speciesIds: string[],
   threats: string[],
   context: LineupScoringContext,
-): NonNullable<LineupCoverageMetrics['topThreatCoverage']> {
+): ThreatPoolCoverageResult {
   let coveredThreatCount = 0;
   let evaluatedThreatCount = 0;
   let dominatingMatchupCount = 0;
   let noAnswerThreatCount = 0;
   let overwhelmingLossCount = 0;
   let singleAnswerThreatCount = 0;
+  let softCoverageTotal = 0;
 
   for (const threat of threats) {
     const ratings = getThreatRatings(speciesIds, threat, context);
@@ -778,6 +791,9 @@ function calculateThreatPoolCoverage(
     }
 
     evaluatedThreatCount++;
+    softCoverageTotal += Math.max(
+      ...ratings.map((rating) => scoreMatchupRating(rating)),
+    );
     dominatingMatchupCount += ratings.filter((rating) => rating > 600).length;
     overwhelmingLossCount += ratings.filter((rating) => rating < 400).length;
 
@@ -794,13 +810,19 @@ function calculateThreatPoolCoverage(
   }
 
   return {
-    coverageRate:
-      evaluatedThreatCount > 0 ? coveredThreatCount / evaluatedThreatCount : 0,
-    evaluatedThreatCount,
-    noAnswerThreatCount,
-    singleAnswerThreatCount,
-    dominatingMatchupCount,
-    overwhelmingLossCount,
+    metrics: {
+      coverageRate:
+        evaluatedThreatCount > 0
+          ? coveredThreatCount / evaluatedThreatCount
+          : 0,
+      evaluatedThreatCount,
+      noAnswerThreatCount,
+      singleAnswerThreatCount,
+      dominatingMatchupCount,
+      overwhelmingLossCount,
+    },
+    softCoverageRate:
+      evaluatedThreatCount > 0 ? softCoverageTotal / evaluatedThreatCount : 0,
   };
 }
 
@@ -816,15 +838,15 @@ function getThreatRatings(
 
 function calculateWeightedPoolCoverage(
   coverageMetrics: LineupCoverageMetrics,
+  topThreatCoverage: ThreatPoolCoverageResult,
+  fullMetaCoverage: ThreatPoolCoverageResult,
 ): number {
   const weightedPools = [
-    { metrics: coverageMetrics.topThreatCoverage, weight: 0.7 },
-    { metrics: coverageMetrics.fullMetaCoverage, weight: 0.3 },
+    { coverage: topThreatCoverage, weight: 0.7 },
+    { coverage: fullMetaCoverage, weight: 0.3 },
   ].filter(
-    (
-      pool,
-    ): pool is { metrics: NonNullable<typeof pool.metrics>; weight: number } =>
-      pool.metrics !== undefined && pool.metrics.evaluatedThreatCount > 0,
+    (pool): pool is { coverage: ThreatPoolCoverageResult; weight: number } =>
+      pool.coverage.metrics.evaluatedThreatCount > 0,
   );
 
   if (weightedPools.length === 0) {
@@ -835,7 +857,7 @@ function calculateWeightedPoolCoverage(
 
   return (
     weightedPools.reduce(
-      (sum, pool) => sum + pool.metrics.coverageRate * pool.weight,
+      (sum, pool) => sum + pool.coverage.softCoverageRate * pool.weight,
       0,
     ) / totalWeight
   );
@@ -851,7 +873,7 @@ function calculateRoleMatchupScore(
     .filter((rating): rating is number => rating !== null);
 
   return ratings.length > 0
-    ? average(ratings.map((rating) => rating / 1000))
+    ? average(ratings.map((rating) => scoreMatchupRating(rating)))
     : 0.5;
 }
 
@@ -1132,7 +1154,7 @@ function calculateResourcePathMetric(
 
   return {
     available: true,
-    score: average(ratings.map((rating) => rating / 1000)),
+    score: average(ratings.map((rating) => scoreMatchupRating(rating))),
   };
 }
 

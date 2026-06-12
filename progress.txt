@@ -25,6 +25,7 @@
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling and use `lib/architecture/pvpokeRuntimeBoundary.test.ts` for boundary regressions.
 - Optimizer Threat Score diagnostics live on `OptimizerScoreBreakdown.threatScore` and are lower-is-better display/diagnostic data; do not add Threat Score to the weighted fitness components unless a current story explicitly changes optimizer selection behavior, and keep it disabled in fast/GA hot paths.
 - Threat Score aggregation uses normalized active `pools.topMeta` and `pools.fullMeta` diagnostics; keep top-meta weighted higher by default, pass season-specific overrides through `LineupScoringContext.threatScorePoolWeights`, fall back to defaults for full-meta-dominant overrides, normalize configured weights over evaluated pools only, and let full-meta contribute without overpowering top-meta.
+- Soft matchup scoring is centralized in `lib/genetic/fitness/matchupScoring.ts`; use `scoreMatchupRating(...)` for optimizer scoring/diagnostic quality where close ratings should be intermediate, while preserving binary threshold counts for categorical labels such as covered threats, weaknesses, dominating matchups, and overwhelming losses.
 
 ## Iteration Log
 - Next iteration start: US-001 - Resolve lineup role species names in generate-team API
@@ -564,4 +565,38 @@
   - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-015 does not require modifying the task PRD.
 - Next iteration start:
   - US-016 - Add Soft Matchup Scoring
+---
+
+## 2026-06-11 18:35 MST - US-016
+- Implemented soft matchup scoring with a shared battle-rating helper, applied it to lineup matchup coverage, role matchup quality, resource path metrics, and Threat Score risk calculation while preserving binary categorical diagnostics and counts.
+- Files changed: `lib/AGENTS.md`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/matchupScoring.ts`, `lib/genetic/fitness/matchupScoring.test.ts`, `lib/genetic/fitness/optimizerValidationFixtures.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/threatScore.ts`, `lib/genetic/fitness/threatScore.test.ts`, `progress.txt`
+- Commit message: `feat: US-016 - Add Soft Matchup Scoring`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/matchupScoring.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/threatScore.test.ts` (fail before implementation for missing helper and binary Threat Score behavior; pass after implementation)
+  - `npx vitest run lib/genetic/fitness/optimizerValidationFixtures.test.ts lib/genetic/fitness/matchupScoring.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/threatScore.test.ts` (fail before fixture calibration; pass after fixture update)
+  - `npx vitest run lib/genetic/fitness/matchupScoring.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/threatScore.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/optimizerValidationFixtures.test.ts` (pass)
+  - `npx vitest run lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/matchupScoring.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/threatScore.test.ts lib/genetic/fitness/optimizerValidationFixtures.test.ts` (pass after specialist review fix)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail for import order before cleanup; pass after cleanup)
+  - `npm test` (fail before roster diagnostic expectation update; pass after update)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill, `test-driven-development` skill, and two `general` Task subagents for unavailable recommended-agent implementation/testing guidance; skipped direct Task invocation of `gbl-optimizer` and `test-driven-development` because they are skills, not available Task subagent types
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed high fast-roster soft-scoring gap by applying `scoreMatchupRating(...)` to fast PlayPokemon pool coverage and resource path scoring, and adding a fast lineup regression test before rerunning focused tests, typecheck, lint, full tests, and staged review; second review pass returned no actionable findings
+- Decisions (why):
+  - Chose a shared `scoreMatchupRating(...)` helper in `lib/genetic/fitness` so optimizer scoring paths use one deterministic soft rating model without adding runtime data dependencies.
+  - Chose a linear 400-to-600 mapping with clamps because it makes 500 neutral, close wins/losses intermediate, and clearly favorable/unfavorable matchups distinguishable without changing simulation data shape.
+  - Preserved binary `coverageRate`, `coveredThreats`, `weaknesses`, `teamAnswers`, dominating counts, and overwhelming-loss counts because these are categorical diagnostics and UI/API-facing counts, while weighted optimizer scoring now uses soft matchup quality.
+  - Applied soft scoring to the fast PlayPokemon roster path after specialist review because GA/hot-path component semantics should remain aligned with full `scoreOrderedLineup(...)` scoring.
+  - Updated validation fixtures rather than weakening assertions because soft scoring intentionally gives close `450` losses partial value and decisive coverage fixtures should use clearly favorable ratings.
+- **Learnings for future iterations:**
+  - Use `scoreMatchupRating(...)` when a diagnostic or score should distinguish 520 from 700 or 480 from 300; keep explicit 500/600/400 threshold checks when the output is a categorical count or label.
+  - Existing Threat Score pool tests using `450` now represent close unfavorable risk, not a full no-answer hole; use ratings at or below 400 when a fixture needs a clearly unfavorable matchup.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-016 does not require modifying the task PRD.
+- Next iteration start:
+  - US-017 - Add Optimizer Caching And Precomputation Performance Safeguards
 ---

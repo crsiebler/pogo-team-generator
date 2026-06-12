@@ -4,6 +4,7 @@ import {
   type LineupScoreResult,
   type LineupScoringContext,
 } from './lineupScoring';
+import { scoreMatchupRating } from './matchupScoring';
 import {
   createNormalizedScoreBreakdown,
   type OptimizerScoreBreakdown,
@@ -56,6 +57,15 @@ const ALL_TYPES = [
   'steel',
   'fairy',
 ];
+
+type ThreatPoolCoverageMetrics = NonNullable<
+  LineupScoreResult['coverageMetrics']['topThreatCoverage']
+>;
+
+interface ThreatPoolCoverageResult {
+  metrics: ThreatPoolCoverageMetrics;
+  softCoverageRate: number;
+}
 
 /** Injectable roster scoring context for production caches and deterministic tests. */
 export interface PlayPokemonRosterScoringContext extends LineupScoringContext {
@@ -150,12 +160,12 @@ export function scoreFastRosterLineup(
   let overwhelmingLossCount = 0;
   let evaluatedThreatCount = 0;
 
-  const topThreatCoverage = calculateThreatPoolCoverage(
+  const topThreatCoverageResult = calculateThreatPoolCoverage(
     speciesIds,
     topThreats,
     context,
   );
-  const fullMetaCoverage = calculateThreatPoolCoverage(
+  const fullMetaCoverageResult = calculateThreatPoolCoverage(
     speciesIds,
     fullMetaThreats,
     context,
@@ -189,8 +199,8 @@ export function scoreFastRosterLineup(
   const coverageRate =
     evaluatedThreatCount > 0 ? coveredThreats.length / evaluatedThreatCount : 0;
   const weightedCoverage = calculateWeightedPoolCoverage(
-    topThreatCoverage,
-    fullMetaCoverage,
+    topThreatCoverageResult,
+    fullMetaCoverageResult,
     coverageRate,
   );
   const rankingQuality = average(
@@ -254,8 +264,8 @@ export function scoreFastRosterLineup(
       dominatingMatchupCount,
       overwhelmingLossCount,
       singleAnswerThreatCount: singleAnswerRisks.length,
-      topThreatCoverage,
-      fullMetaCoverage,
+      topThreatCoverage: topThreatCoverageResult.metrics,
+      fullMetaCoverage: fullMetaCoverageResult.metrics,
     },
     coveredThreats,
     weaknesses,
@@ -388,7 +398,7 @@ function calculateFastResourcePathMetric(
   return availableRatingCount > 0
     ? {
         available: true,
-        score: average(ratings.map((rating) => rating / 1000)),
+        score: average(ratings.map((rating) => scoreMatchupRating(rating))),
       }
     : { available: false };
 }
@@ -397,13 +407,14 @@ function calculateThreatPoolCoverage(
   speciesIds: string[],
   threats: string[],
   context: PlayPokemonRosterScoringContext,
-): NonNullable<LineupScoreResult['coverageMetrics']['topThreatCoverage']> {
+): ThreatPoolCoverageResult {
   let coveredThreatCount = 0;
   let evaluatedThreatCount = 0;
   let dominatingMatchupCount = 0;
   let noAnswerThreatCount = 0;
   let overwhelmingLossCount = 0;
   let singleAnswerThreatCount = 0;
+  let softCoverageTotal = 0;
 
   for (const threat of threats) {
     const ratings = speciesIds
@@ -414,6 +425,9 @@ function calculateThreatPoolCoverage(
     }
 
     evaluatedThreatCount++;
+    softCoverageTotal += Math.max(
+      ...ratings.map((rating) => scoreMatchupRating(rating)),
+    );
     dominatingMatchupCount += ratings.filter((rating) => rating > 600).length;
     overwhelmingLossCount += ratings.filter((rating) => rating < 400).length;
 
@@ -430,29 +444,31 @@ function calculateThreatPoolCoverage(
   }
 
   return {
-    coverageRate:
-      evaluatedThreatCount > 0 ? coveredThreatCount / evaluatedThreatCount : 0,
-    evaluatedThreatCount,
-    noAnswerThreatCount,
-    singleAnswerThreatCount,
-    dominatingMatchupCount,
-    overwhelmingLossCount,
+    metrics: {
+      coverageRate:
+        evaluatedThreatCount > 0
+          ? coveredThreatCount / evaluatedThreatCount
+          : 0,
+      evaluatedThreatCount,
+      noAnswerThreatCount,
+      singleAnswerThreatCount,
+      dominatingMatchupCount,
+      overwhelmingLossCount,
+    },
+    softCoverageRate:
+      evaluatedThreatCount > 0 ? softCoverageTotal / evaluatedThreatCount : 0,
   };
 }
 
 function calculateWeightedPoolCoverage(
-  topThreatCoverage: NonNullable<
-    LineupScoreResult['coverageMetrics']['topThreatCoverage']
-  >,
-  fullMetaCoverage: NonNullable<
-    LineupScoreResult['coverageMetrics']['fullMetaCoverage']
-  >,
+  topThreatCoverage: ThreatPoolCoverageResult,
+  fullMetaCoverage: ThreatPoolCoverageResult,
   fallbackCoverageRate: number,
 ): number {
   const weightedPools = [
-    { metrics: topThreatCoverage, weight: 0.7 },
-    { metrics: fullMetaCoverage, weight: 0.3 },
-  ].filter((pool) => pool.metrics.evaluatedThreatCount > 0);
+    { coverage: topThreatCoverage, weight: 0.7 },
+    { coverage: fullMetaCoverage, weight: 0.3 },
+  ].filter((pool) => pool.coverage.metrics.evaluatedThreatCount > 0);
 
   if (weightedPools.length === 0) {
     return fallbackCoverageRate;
@@ -462,7 +478,7 @@ function calculateWeightedPoolCoverage(
 
   return (
     weightedPools.reduce(
-      (sum, pool) => sum + pool.metrics.coverageRate * pool.weight,
+      (sum, pool) => sum + pool.coverage.softCoverageRate * pool.weight,
       0,
     ) / totalWeight
   );

@@ -34,8 +34,8 @@ describe('optimizer validation fixtures', () => {
         topThreats: ['electric-top'],
         fullMetaThreats: ['electric-top', 'grass-rare'],
         matchupRatings: {
-          'water-lead': { 'electric-top': 560, 'grass-rare': 560 },
-          'water-switch': { 'electric-top': 470, 'grass-rare': 560 },
+          'water-lead': { 'electric-top': 620, 'grass-rare': 620 },
+          'water-switch': { 'electric-top': 470, 'grass-rare': 620 },
           'water-closer': { 'electric-top': 470, 'grass-rare': 470 },
         },
       }),

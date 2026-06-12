@@ -1,3 +1,4 @@
+import { scoreMatchupRating } from '@/lib/genetic/fitness/matchupScoring';
 import type {
   OptimizerThreatScore,
   OptimizerThreatScoreEntry,
@@ -154,8 +155,12 @@ function calculateThreatEntries(
     const teamAnswers = ratings.filter(
       (rating) => rating > MATCHUP_WIN_THRESHOLD,
     ).length;
+    const answerQuality = ratings.reduce(
+      (total, rating) => total + scoreMatchupRating(rating),
+      0,
+    );
     const rank = Math.max(1, context.getThreatRank(threatSpeciesId));
-    const threatValue = calculateThreatValue(teamAnswers, rank);
+    const threatValue = calculateThreatValue(answerQuality, rank);
 
     return [
       {
@@ -170,15 +175,9 @@ function calculateThreatEntries(
   });
 }
 
-function calculateThreatValue(teamAnswers: number, rank: number): number {
+function calculateThreatValue(answerQuality: number, rank: number): number {
   const answerRisk =
-    teamAnswers === 0
-      ? 1
-      : teamAnswers === 1
-        ? 0.6
-        : teamAnswers === 2
-          ? 0.25
-          : 0;
+    answerQuality >= 2.25 ? 0 : clamp01(1 - answerQuality / 2.25);
   const rankWeight = rank <= 10 ? 1 : rank <= 30 ? 0.75 : 0.5;
 
   return clamp01(answerRisk * rankWeight);
