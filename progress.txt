@@ -819,3 +819,30 @@
 - Next iteration start:
   - US-024 - Update Root Contributor Guidance
 ---
+
+## 2026-06-11 20:13 MST - US-024
+- Updated root contributor guidance so optimizer and diagnostics work follows the refreshed contract for `gbl-optimizer`, PvPoke runtime boundaries, Summary Statistics, Threat Score, Recommended Lineups, and Great League Show-6 Pick-3 calibration fixtures.
+- Files changed: `AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-024 - Update Root Contributor Guidance`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `prompt-engineer`, `gbl-optimizer`
+  - Used: `prompt-engineer` Task guidance and `gbl-optimizer` skill; skipped direct `gbl-optimizer` Task invocation because it is available as a skill, not a Task subagent type in this environment
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`
+  - Findings: none from code-reviewer or QA; deferred low scoped-commit-format suggestion because Ralph explicitly requires `feat: US-024 - Update Root Contributor Guidance`; confirmation pass returned no actionable findings
+- Decisions (why):
+  - Chose to update only root `AGENTS.md` section 2.7 because it already owns reusable optimizer contributor guidance and the story does not require changing detailed docs.
+  - Kept detailed scoring and UI behavior in referenced docs and skill guidance while adding concise root-level guardrails so contributors know which source to consult.
+  - Kept the Ralph-required unscoped commit message because the user instruction for this autonomous iteration is more specific than the repository's general scoped commit convention.
+- **Learnings for future iterations:**
+  - Root `AGENTS.md` section 2.7 is the central place for repository-wide optimizer guidance and should point to detailed docs rather than duplicating all optimizer implementation details.
+  - Optimizer docs/skill read for this iteration: `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - `.ralph-dev-server.log` and `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` remain untracked and unstaged from prior work.
+- Next iteration start:
+  - US-025 - Update Optimizer And UI Documentation
+---
