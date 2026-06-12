@@ -90,44 +90,28 @@ const optimizerScoreComponentDetails: Record<
   },
 };
 
-type ResourcePathQuality = 'weak' | 'neutral' | 'strong' | 'elite';
+type OptimizerScoreGrade = 'A' | 'B' | 'C' | 'D' | 'F';
 
-function getNormalizedScoreQuality(score: number): ResourcePathQuality {
-  return getResourcePathQuality(score);
-}
-
-function getResourcePathQuality(score: number): ResourcePathQuality {
+function getOptimizerScoreGrade(score: number): OptimizerScoreGrade {
   const displayedScore = Number(formatScore(score));
 
   if (displayedScore >= 0.9) {
-    return 'elite';
+    return 'A';
   }
 
   if (displayedScore >= 0.75) {
-    return 'strong';
+    return 'B';
   }
 
   if (displayedScore >= 0.55) {
-    return 'neutral';
+    return 'C';
   }
 
-  return 'weak';
-}
-
-function getResourcePathQualityClasses(quality: ResourcePathQuality): string {
-  if (quality === 'elite') {
-    return 'bg-sky-100 text-sky-800 ring-sky-200 dark:bg-sky-950/70 dark:text-sky-200 dark:ring-sky-800';
+  if (displayedScore >= 0.4) {
+    return 'D';
   }
 
-  if (quality === 'strong') {
-    return 'bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-200 dark:ring-emerald-800';
-  }
-
-  if (quality === 'neutral') {
-    return 'bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-950/70 dark:text-amber-200 dark:ring-amber-800';
-  }
-
-  return 'bg-rose-100 text-rose-700 ring-rose-200 dark:bg-rose-950/70 dark:text-rose-200 dark:ring-rose-800';
+  return 'F';
 }
 
 function getOptimizerScoreMetrics(
@@ -136,7 +120,6 @@ function getOptimizerScoreMetrics(
   component: OptimizerScoreComponent;
   label: string;
   value: string;
-  quality: ResourcePathQuality;
   description: string;
 }> {
   return OPTIMIZER_SCORE_COMPONENT_ORDER.map((component) => {
@@ -146,8 +129,7 @@ function getOptimizerScoreMetrics(
     return {
       component,
       label: details.label,
-      value: formatScore(score),
-      quality: getNormalizedScoreQuality(score),
+      value: getOptimizerScoreGrade(score),
       description: details.description,
     };
   });
@@ -282,34 +264,18 @@ export function AnalysisPanel({
   const renderOptimizerScoreMetric = (
     metric: (typeof optimizerScoreMetrics)[number],
   ) => {
-    const qualityDescriptionId = `${accordionIdPrefix}-${metric.component}-optimizer-quality`;
-
     return (
       <article
         key={metric.component}
         className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
       >
-        <div className="flex items-start justify-between gap-2">
-          <p
-            data-testid="optimizer-score-category-label"
-            className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300"
-          >
-            {metric.label}
-          </p>
-          <span
-            id={qualityDescriptionId}
-            className={clsx(
-              'rounded-full px-2 py-0.5 text-xs font-semibold ring-1',
-              getResourcePathQualityClasses(metric.quality),
-            )}
-          >
-            {metric.quality}
-          </span>
-        </div>
         <p
-          aria-describedby={qualityDescriptionId}
-          className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-50"
+          data-testid="optimizer-score-category-label"
+          className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300"
         >
+          {metric.label}
+        </p>
+        <p className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-50">
           {metric.value}
         </p>
         <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">

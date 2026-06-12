@@ -15,6 +15,7 @@
 - Optimizer score breakdown UI should consume API-provided `scoreBreakdown` through `TeamManager.generatedTeam` and render display-only explanations in `AnalysisPanel`.
 - Summary Statistics in `AnalysisPanel` is the optimizer score-card section; do not reintroduce client-computed Overall Fitness, Threat Handling, Shield Stability, Core-Breaker Risk, Expected Ranges, or a separate Optimizer Score Breakdown accordion without a current story.
 - Summary Statistics optimizer score cards should render Role immediately after Bulk as a standard card, followed by Offensive Ratio and Defensive Ratio in a dedicated two-card comparison row; do not rely on a single auto-flow grid for the ratio pair.
+- Summary Statistics optimizer score cards display only simple `A`, `B`, `C`, `D`, or `F` letter grades; do not render numeric score values, plus/minus modifiers, or `elite`/`strong`/`neutral`/`weak` quality pills there unless a current story changes the contract.
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
 - Per-Pokemon Contribution headers should render Replacement Risk in a dedicated row below the Pokemon name; keep the metric boxes unchanged below the header.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
@@ -663,4 +664,34 @@
   - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-018 does not require modifying the task PRD.
 - Next iteration start:
   - US-019 - Refresh Summary Statistics Letter Grades
+---
+
+## 2026-06-11 19:24 MST - US-019
+- Refreshed Summary Statistics optimizer score cards to display simple `A`, `B`, `C`, `D`, or `F` letter grades only, removed the `elite`/`strong`/`neutral`/`weak` quality pill display from those cards, and preserved the existing accordion and metric order.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`, `prd.json`
+- Commit message: `feat: US-019 - Refresh Summary Statistics Letter Grades`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (fail before implementation for expected letter grades and absent quality pills, pass after implementation)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; Summary Statistics expanded with Synergy, Coverage, Safety, Consistency, Bulk, Role, Offensive Ratio, and Defensive Ratio showing A-F grades only; `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing resource 404 and form-field id/name warnings observed)
+- Implementation agents:
+  - Recommended: `feature-implementer`, `dev-browser`
+  - Used: `feature-implementer` skill and `dev-browser` skill; skipped direct Task invocation of `feature-implementer` because it is not an available Task subagent type in this environment
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `ui-designer`, `ux-researcher`
+  - Findings: none; all reviewers returned empty actionable findings lists, with residual risk limited to relying on already completed checks and browser verification during review
+- Decisions (why):
+  - Chose to map existing API-provided normalized optimizer scores to display-only letter grades in `AnalysisPanel` because the UI must not recompute optimizer scoring or change API payload shape for this display refresh.
+  - Chose thresholds aligned with the previous display-quality bands, adding `D` for scores from `0.40` to below `0.55` and `F` below `0.40`, so the display remains category-appropriate without plus/minus modifiers.
+  - Removed quality pill markup entirely from Summary Statistics because the story explicitly forbids `elite`, `strong`, `neutral`, or `weak` pills in that section.
+- **Learnings for future iterations:**
+  - Summary Statistics grade tests should expand the Summary Statistics accordion and assert the eight optimizer category labels plus simple letter-grade values, not numeric score text or quality-pill accessible descriptions.
+  - The `dev-browser` skill is a skill-only workflow here; use it directly for browser verification and record that direct Task invocation is unavailable if recommended as `@dev-browser`.
+- Known issues / follow-ups:
+  - Existing resource 404 and form-field id/name warnings appear in browser console and were not introduced by this story.
+  - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-019 does not require modifying the task PRD.
+- Next iteration start:
+  - US-020 - Add Threat Score Card To Summary Statistics
 ---

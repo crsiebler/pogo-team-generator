@@ -207,7 +207,7 @@ describe('AnalysisPanel', () => {
 
     expect(within(summarySection).getByText('Synergy')).toBeInTheDocument();
     expect(within(summarySection).getByText('Coverage')).toBeInTheDocument();
-    expect(within(summarySection).getByText('0.91')).toBeInTheDocument();
+    expect(within(summarySection).getByText('A')).toBeInTheDocument();
     expect(screen.queryByText('Overall Fitness')).not.toBeInTheDocument();
     expect(screen.queryByText('Expected Ranges')).not.toBeInTheDocument();
     expect(screen.queryByText('Threat Handling')).not.toBeInTheDocument();
@@ -358,22 +358,17 @@ describe('AnalysisPanel', () => {
         .getAllByTestId('optimizer-score-category-label')
         .map((label) => label.textContent),
     ).toEqual(['Offensive Ratio', 'Defensive Ratio']);
-    expect(within(section).getByText('0.91')).toHaveAccessibleDescription(
-      'elite',
-    );
-    expect(within(section).getByText('0.57')).toHaveAccessibleDescription(
-      'neutral',
-    );
-    expect(within(section).getByText('0.44')).toHaveAccessibleDescription(
-      'weak',
-    );
-    expect(within(section).getByText('elite')).toHaveClass('text-sky-800');
-    expect(within(section).getAllByText('neutral')[0]).toHaveClass(
-      'text-amber-800',
-    );
-    expect(within(section).getAllByText('weak')[0]).toHaveClass(
-      'text-rose-700',
-    );
+    expect(within(section).getByText('A')).toBeInTheDocument();
+    expect(within(section).getByText('B')).toBeInTheDocument();
+    expect(within(section).getAllByText('C')).toHaveLength(4);
+    expect(within(section).getByText('D')).toBeInTheDocument();
+    expect(within(section).getByText('F')).toBeInTheDocument();
+    expect(within(section).queryByText('A+')).not.toBeInTheDocument();
+    expect(within(section).queryByText('B-')).not.toBeInTheDocument();
+    expect(within(section).queryByText('elite')).not.toBeInTheDocument();
+    expect(within(section).queryByText('strong')).not.toBeInTheDocument();
+    expect(within(section).queryByText('neutral')).not.toBeInTheDocument();
+    expect(within(section).queryByText('weak')).not.toBeInTheDocument();
     expect(
       within(section).getByText(/Lineup role fit from lead, switch, closer/i),
     ).toBeInTheDocument();
@@ -639,8 +634,9 @@ describe('AnalysisPanel', () => {
       .closest('article');
 
     expect(synergyCard).not.toBeNull();
-    expect(within(synergyCard!).getByText('0.00')).toBeInTheDocument();
-    expect(within(synergyCard!).getByText('weak')).toHaveClass('text-rose-700');
+    expect(within(synergyCard!).getByText('F')).toBeInTheDocument();
+    expect(within(synergyCard!).queryByText('0.00')).not.toBeInTheDocument();
+    expect(within(synergyCard!).queryByText('weak')).not.toBeInTheDocument();
   });
 
   it('keeps summary statistics visible with a display-only fallback when score breakdown is unavailable', () => {
