@@ -347,6 +347,10 @@ describe('POST /api/generate-team', () => {
                   severityTier: 'critical',
                 },
               ],
+              pools: {
+                topMeta: { score: 0.4, evaluatedCount: 1, weight: 0.7 },
+                fullMeta: { score: 0.13, evaluatedCount: 1, weight: 0.3 },
+              },
             },
           },
           coverageMetrics: {
@@ -405,6 +409,10 @@ describe('POST /api/generate-team', () => {
               severityTier: 'critical',
             },
           ],
+          pools: {
+            topMeta: { score: 0.34, evaluatedCount: 1, weight: 1 },
+            fullMeta: { score: null, evaluatedCount: 0, weight: 0 },
+          },
         },
       },
     });
@@ -557,6 +565,10 @@ describe('POST /api/generate-team', () => {
                 severityTier: 'critical',
               },
             ],
+            pools: {
+              topMeta: { score: 0.4, evaluatedCount: 1, weight: 0.7 },
+              fullMeta: { score: 0.13, evaluatedCount: 1, weight: 0.3 },
+            },
           },
         },
         coverageMetrics: {
@@ -610,6 +622,10 @@ describe('POST /api/generate-team', () => {
           severityTier: 'critical',
         },
       ],
+      pools: {
+        topMeta: { score: 0.34, evaluatedCount: 1, weight: 1 },
+        fullMeta: { score: null, evaluatedCount: 0, weight: 0 },
+      },
     });
     expect(payload).not.toHaveProperty('algorithm');
     expect(payload.analysis).not.toHaveProperty('algorithm');

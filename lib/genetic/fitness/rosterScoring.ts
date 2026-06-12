@@ -658,6 +658,7 @@ function createRosterScoreBreakdown(
                 MAX_FULL_META_THREAT_POOL_SIZE,
               ),
             ),
+            { poolWeights: context.threatScorePoolWeights },
           ),
         }
       : {},

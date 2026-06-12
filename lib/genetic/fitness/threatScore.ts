@@ -1,6 +1,7 @@
 import type {
   OptimizerThreatScore,
   OptimizerThreatScoreEntry,
+  OptimizerThreatScorePool,
   ThreatSeverityTier,
 } from '@/lib/types';
 
@@ -20,12 +21,28 @@ export interface OptimizerThreatScoreContext {
   ) => number | null;
 }
 
+/** Configurable non-negative weighting for aggregate threat score pools. */
+export interface OptimizerThreatScorePoolWeights {
+  topMeta: number;
+  fullMeta: number;
+}
+
+/**
+ * Optional controls for lower-is-better threat diagnostics.
+ * Weights are normalized over evaluated pools only. Invalid negative,
+ * non-finite, or full-meta-dominant values fall back to defaults.
+ */
+export interface OptimizerThreatScoreOptions {
+  poolWeights?: Partial<OptimizerThreatScorePoolWeights>;
+}
+
 /**
  * Calculates lower-is-better threat diagnostics for one team or lineup.
  */
 export function calculateOptimizerThreatScore(
   speciesIds: string[],
   context: OptimizerThreatScoreContext,
+  options: OptimizerThreatScoreOptions = {},
 ): OptimizerThreatScore {
   const topMetaThreats = calculateThreatEntries(
     speciesIds,
@@ -44,28 +61,81 @@ export function calculateOptimizerThreatScore(
     context,
   );
   const fullMetaScore = calculatePoolThreatScore(fullMetaThreats);
-  const weightedPools = [
-    { score: topMetaScore, weight: TOP_META_POOL_WEIGHT },
-    { score: fullMetaScore, weight: FULL_META_POOL_WEIGHT },
-  ].filter(
-    (entry): entry is { score: number; weight: number } =>
-      entry.score !== undefined,
+  const weights = normalizeThreatPoolWeights(
+    resolvePoolWeights(options.poolWeights),
+    { topMeta: topMetaScore, fullMeta: fullMetaScore },
   );
 
   return {
-    score:
-      weightedPools.length > 0
-        ? clamp01(
-            weightedPools.reduce(
-              (sum, entry) => sum + entry.score * entry.weight,
-              0,
-            ) / weightedPools.reduce((sum, entry) => sum + entry.weight, 0),
-          )
-        : 0,
+    score: clamp01(
+      (topMetaScore ?? 0) * weights.topMeta +
+        (fullMetaScore ?? 0) * weights.fullMeta,
+    ),
     evaluatedCount: overallTeamThreats.length,
     topMetaThreats: sortThreatEntries(topMetaThreats),
     overallTeamThreats: sortThreatEntries(overallTeamThreats),
+    pools: {
+      topMeta: createThreatScorePool(
+        topMetaScore,
+        topMetaThreats,
+        weights.topMeta,
+      ),
+      fullMeta: createThreatScorePool(
+        fullMetaScore,
+        fullMetaThreats,
+        weights.fullMeta,
+      ),
+    },
   };
+}
+
+function createThreatScorePool(
+  score: number | undefined,
+  entries: OptimizerThreatScoreEntry[],
+  weight: number,
+): OptimizerThreatScorePool {
+  return {
+    score: score ?? null,
+    evaluatedCount: entries.length,
+    weight,
+  };
+}
+
+function resolvePoolWeights(
+  weights: Partial<OptimizerThreatScorePoolWeights> | undefined,
+): OptimizerThreatScorePoolWeights {
+  const resolvedWeights = {
+    topMeta: sanitizePoolWeight(weights?.topMeta, TOP_META_POOL_WEIGHT),
+    fullMeta: sanitizePoolWeight(weights?.fullMeta, FULL_META_POOL_WEIGHT),
+  };
+
+  return resolvedWeights.fullMeta <= resolvedWeights.topMeta
+    ? resolvedWeights
+    : { topMeta: TOP_META_POOL_WEIGHT, fullMeta: FULL_META_POOL_WEIGHT };
+}
+
+function normalizeThreatPoolWeights(
+  weights: OptimizerThreatScorePoolWeights,
+  scores: Record<keyof OptimizerThreatScorePoolWeights, number | undefined>,
+): OptimizerThreatScorePoolWeights {
+  const topMeta = scores.topMeta === undefined ? 0 : weights.topMeta;
+  const fullMeta = scores.fullMeta === undefined ? 0 : weights.fullMeta;
+  const totalWeight = topMeta + fullMeta;
+
+  return totalWeight > 0
+    ? { topMeta: topMeta / totalWeight, fullMeta: fullMeta / totalWeight }
+    : { topMeta: 0, fullMeta: 0 };
+}
+
+function sanitizePoolWeight(
+  value: number | undefined,
+  fallback: number,
+): number {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 function calculateThreatEntries(

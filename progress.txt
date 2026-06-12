@@ -24,6 +24,7 @@
 - Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling and use `lib/architecture/pvpokeRuntimeBoundary.test.ts` for boundary regressions.
 - Optimizer Threat Score diagnostics live on `OptimizerScoreBreakdown.threatScore` and are lower-is-better display/diagnostic data; do not add Threat Score to the weighted fitness components unless a current story explicitly changes optimizer selection behavior, and keep it disabled in fast/GA hot paths.
+- Threat Score aggregation uses normalized active `pools.topMeta` and `pools.fullMeta` diagnostics; keep top-meta weighted higher by default, pass season-specific overrides through `LineupScoringContext.threatScorePoolWeights`, fall back to defaults for full-meta-dominant overrides, normalize configured weights over evaluated pools only, and let full-meta contribute without overpowering top-meta.
 
 ## Iteration Log
 - Next iteration start: US-001 - Resolve lineup role species names in generate-team API
@@ -529,4 +530,38 @@
   - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-014 does not require modifying the task PRD.
 - Next iteration start:
   - US-015 - Implement Weighted Top-Meta And Full-Meta Threat Pools
+---
+
+## 2026-06-11 18:13 MST - US-015
+- Implemented configurable weighted top-meta and full-meta Threat Score pools with normalized active weights and structured per-pool diagnostics for UI/API/test consumers.
+- Files changed: `app/api/generate-team/route.test.ts`, `lib/AGENTS.md`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/threatScore.ts`, `lib/genetic/fitness/threatScore.test.ts`, `lib/types.ts`, `progress.txt`
+- Commit message: `feat: US-015 - Implement Weighted Top-Meta And Full-Meta Threat Pools`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/threatScore.test.ts` (fail before implementation for hard-coded weights and missing pool diagnostics, pass after implementation)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts` (fail after first specialist review for missing production-context pool-weight plumbing, pass after fix)
+  - `npx vitest run lib/genetic/fitness/threatScore.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts app/api/generate-team/route.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass after implementation and after specialist review fixes)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill, `test-driven-development` skill, and two `general` Task subagents for unavailable recommended-agent implementation/testing guidance; skipped direct Task invocation of `gbl-optimizer` and `test-driven-development` because they are skills, not available Task subagent types
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`
+  - Findings: fixed medium missing production-context configurability by threading `threatScorePoolWeights` through `LineupScoringContext` into lineup and roster diagnostics; fixed medium stable API-shape and full-meta-overpowering findings by returning `null` for unevaluated pool scores and falling back to defaults for full-meta-dominant configured weights; fixed medium roster pass-through coverage and API fixture consistency findings by adding roster-level non-default weight coverage and normalizing fixture active weights; fixed low zero-weight and sparse-pool contract coverage by allowing non-negative weights, documenting unevaluated pool scores, and testing full-meta-only evaluated normalization
+- Decisions (why):
+  - Chose additive `OptimizerThreatScore.pools` diagnostics over changing existing threat arrays because current UI/API consumers can keep using `topMetaThreats` and `overallTeamThreats` while tests and future UI can inspect pool-level scores and active weights.
+  - Chose configurable `poolWeights` on `calculateOptimizerThreatScore(...)` rather than hardcoding another season-specific split so season updates can tune top-meta and full-meta weighting through injected scoring options.
+  - Chose `LineupScoringContext.threatScorePoolWeights` as the production configuration seam because lineup and roster final diagnostics already flow through injected scoring contexts and this avoids direct data reads inside Threat Score calculation.
+  - Allowed zero-valued configured weights because a season config may intentionally disable a pool while keeping the pool's structured diagnostics available.
+  - Normalized weights only across evaluated pools so missing matchup data does not make an unevaluated pool lower or raise the final lower-is-better score.
+  - Kept Threat Score diagnostic-only and did not add it to optimizer weighted fitness components because US-015 asks for threat diagnostics and current patterns keep Threat Score out of GA selection behavior.
+- **Learnings for future iterations:**
+  - `OptimizerThreatScore.pools.topMeta` and `.fullMeta` expose lower-is-better per-pool scores, evaluated counts, and normalized active weights; use these fields for pool-aware UI/tests instead of inferring from aggregate score alone.
+  - `LineupScoringContext.threatScorePoolWeights` is the production seam for non-default top-meta/full-meta Threat Score weighting.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-015 does not require modifying the task PRD.
+- Next iteration start:
+  - US-016 - Add Soft Matchup Scoring
 ---

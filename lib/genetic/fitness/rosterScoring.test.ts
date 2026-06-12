@@ -181,6 +181,27 @@ describe('scorePlayPokemonRoster', () => {
     ]);
   });
 
+  test('passes configured threat score pool weights into roster diagnostics', () => {
+    const result = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['rare-covered'],
+        threatScorePoolWeights: { topMeta: 0.85, fullMeta: 0.15 },
+        scoreLineup: (lineup) => makeLineupResult(lineup, { score: 0.6 }),
+        getMatchupRating: (_speciesId, threat) =>
+          threat === 'top-hole' ? 450 : 560,
+      }),
+      { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
+    );
+
+    expect(result.scoreBreakdown.threatScore?.score).toBeCloseTo(0.85);
+    expect(result.scoreBreakdown.threatScore?.pools).toEqual({
+      topMeta: { score: 1, evaluatedCount: 1, weight: 0.85 },
+      fullMeta: { score: 0, evaluatedCount: 1, weight: 0.15 },
+    });
+  });
+
   test('rewards roster depth over one excellent lineup with a dead bench', () => {
     const shallowResult = scorePlayPokemonRoster(
       roster,

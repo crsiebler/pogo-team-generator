@@ -67,6 +67,8 @@ For ordered lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, `scoreOrde
 
 Optimizer Threat Score diagnostics are exposed through `OptimizerScoreBreakdown.threatScore` and calculated in `lib/genetic/fitness/threatScore.ts`. Treat `threatScore.score` as lower-is-better diagnostic output and per-threat `threatValue` as higher-is-worse display ranking; do not add Threat Score to `OptimizerScoreComponent` or weighted fitness unless a current story explicitly changes selection behavior. Keep display-only Threat Score disabled in fast/GA scoring paths and enabled only for final/full diagnostics.
 
+Threat Score aggregate weighting is split between `pools.topMeta` and `pools.fullMeta`; keep top-meta weighted higher by default, pass season-specific overrides through `LineupScoringContext.threatScorePoolWeights`, fall back to defaults for full-meta-dominant overrides, normalize configured weights across evaluated pools only, and use the pool diagnostics for UI/test consumers that need top-meta versus full-meta detail.
+
 For PlayPokemon roster scoring, `scorePlayPokemonRoster(...)` returns a normalized `scoreBreakdown` alongside `fitness`; keep safety, consistency, bulk, defensive ratio, offensive ratio, role, coverage, and synergy components normalized before aggregation, and keep `scoreFastRosterLineup(...)` component semantics aligned with full lineup scoring even when using lightweight hot-path diagnostics, including sanitized and bounded split threat pools.
 
 For role scoring in `lib/genetic/fitness`, treat Leads, Switches, and Closers rankings as primary role-fit signals; use Chargers, Attackers, and Consistency only as supporting inputs, and keep role fit subordinate to the canonical weighted score contract.

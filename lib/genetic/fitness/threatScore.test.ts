@@ -120,6 +120,163 @@ describe('calculateOptimizerThreatScore', () => {
     expect(result.topMetaThreats).toHaveLength(1);
     expect(result.topMetaThreats[0]?.speciesId).toBe('evaluated');
   });
+
+  test('uses configurable pool weights for top-meta and full-meta scoring', () => {
+    const result = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['full-covered'],
+        ratings: {
+          alpha: { 'top-hole': 450, 'full-covered': 560 },
+          bravo: { 'top-hole': 450, 'full-covered': 560 },
+          charlie: { 'top-hole': 450, 'full-covered': 560 },
+        },
+      }),
+      { poolWeights: { topMeta: 0.9, fullMeta: 0.1 } },
+    );
+
+    expect(result.score).toBeCloseTo(0.9);
+    expect(result.pools.topMeta).toEqual({
+      score: 1,
+      evaluatedCount: 1,
+      weight: 0.9,
+    });
+    expect(result.pools.fullMeta).toEqual({
+      score: 0,
+      evaluatedCount: 1,
+      weight: 0.1,
+    });
+  });
+
+  test('keeps full-meta risk contributing without overpowering top-meta risk', () => {
+    const coveredTopExposedFull = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['top-covered'],
+        fullMetaThreats: ['full-hole'],
+        ratings: {
+          alpha: { 'top-covered': 560, 'full-hole': 450 },
+          bravo: { 'top-covered': 560, 'full-hole': 450 },
+          charlie: { 'top-covered': 560, 'full-hole': 450 },
+        },
+      }),
+      { poolWeights: { topMeta: 0.75, fullMeta: 0.25 } },
+    );
+    const exposedTopCoveredFull = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['full-covered'],
+        ratings: {
+          alpha: { 'top-hole': 450, 'full-covered': 560 },
+          bravo: { 'top-hole': 450, 'full-covered': 560 },
+          charlie: { 'top-hole': 450, 'full-covered': 560 },
+        },
+      }),
+      { poolWeights: { topMeta: 0.75, fullMeta: 0.25 } },
+    );
+
+    expect(coveredTopExposedFull.score).toBeCloseTo(0.25);
+    expect(exposedTopCoveredFull.score).toBeCloseTo(0.75);
+    expect(exposedTopCoveredFull.score).toBeGreaterThan(
+      coveredTopExposedFull.score,
+    );
+  });
+
+  test('normalizes configured pool weights and only uses evaluated pools', () => {
+    const result = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['missing-full'],
+        ratings: {
+          alpha: { 'top-hole': 450 },
+          bravo: { 'top-hole': 450 },
+          charlie: { 'top-hole': 450 },
+        },
+      }),
+      { poolWeights: { topMeta: 3, fullMeta: 1 } },
+    );
+
+    expect(result.score).toBe(1);
+    expect(result.pools.topMeta).toEqual({
+      score: 1,
+      evaluatedCount: 1,
+      weight: 1,
+    });
+    expect(result.pools.fullMeta).toEqual({
+      score: null,
+      evaluatedCount: 0,
+      weight: 0,
+    });
+  });
+
+  test('normalizes to full-meta weight when only full-meta is evaluated', () => {
+    const result = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['missing-top'],
+        fullMetaThreats: ['full-hole'],
+        ratings: {
+          alpha: { 'full-hole': 450 },
+          bravo: { 'full-hole': 450 },
+          charlie: { 'full-hole': 450 },
+        },
+      }),
+      { poolWeights: { topMeta: 3, fullMeta: 1 } },
+    );
+
+    expect(result.score).toBe(1);
+    expect(result.pools).toEqual({
+      topMeta: { score: null, evaluatedCount: 0, weight: 0 },
+      fullMeta: { score: 1, evaluatedCount: 1, weight: 1 },
+    });
+  });
+
+  test('allows zero-valued configured weights to disable a pool', () => {
+    const result = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['full-hole'],
+        ratings: {
+          alpha: { 'top-hole': 450, 'full-hole': 450 },
+          bravo: { 'top-hole': 450, 'full-hole': 450 },
+          charlie: { 'top-hole': 450, 'full-hole': 450 },
+        },
+      }),
+      { poolWeights: { topMeta: 1, fullMeta: 0 } },
+    );
+
+    expect(result.score).toBe(1);
+    expect(result.pools).toEqual({
+      topMeta: { score: 1, evaluatedCount: 1, weight: 1 },
+      fullMeta: { score: 1, evaluatedCount: 1, weight: 0 },
+    });
+  });
+
+  test('falls back to default weights when full-meta would overpower top-meta', () => {
+    const result = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['full-covered'],
+        ratings: {
+          alpha: { 'top-hole': 450, 'full-covered': 560 },
+          bravo: { 'top-hole': 450, 'full-covered': 560 },
+          charlie: { 'top-hole': 450, 'full-covered': 560 },
+        },
+      }),
+      { poolWeights: { topMeta: 0.2, fullMeta: 0.8 } },
+    );
+
+    expect(result.score).toBeCloseTo(0.7);
+    expect(result.pools).toEqual({
+      topMeta: { score: 1, evaluatedCount: 1, weight: 0.7 },
+      fullMeta: { score: 0, evaluatedCount: 1, weight: 0.3 },
+    });
+  });
 });
 
 function createContext(overrides: {

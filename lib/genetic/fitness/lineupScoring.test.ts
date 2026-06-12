@@ -232,6 +232,29 @@ describe('scoreOrderedLineup', () => {
     expect(result.scoreBreakdown.threatScore).toBeUndefined();
   });
 
+  test('passes configured threat score pool weights into diagnostics', () => {
+    const result = scoreOrderedLineup(
+      { lead: 'bulky', switch: 'balanced', closer: 'closer' },
+      createContext({
+        threats: ['top-hole', 'rare-covered'],
+        topThreats: ['top-hole'],
+        fullMetaThreats: ['rare-covered'],
+        threatScorePoolWeights: { topMeta: 0.8, fullMeta: 0.2 },
+        matchupRatings: {
+          bulky: { 'top-hole': 450, 'rare-covered': 560 },
+          balanced: { 'top-hole': 450, 'rare-covered': 560 },
+          closer: { 'top-hole': 450, 'rare-covered': 560 },
+        },
+      }),
+    );
+
+    expect(result.scoreBreakdown.threatScore?.score).toBeCloseTo(0.8);
+    expect(result.scoreBreakdown.threatScore?.pools).toEqual({
+      topMeta: { score: 1, evaluatedCount: 1, weight: 0.8 },
+      fullMeta: { score: 0, evaluatedCount: 1, weight: 0.2 },
+    });
+  });
+
   test('weights top-threat coverage higher than rare full-meta coverage', () => {
     const lineup: OrderedLineup = {
       lead: 'bulky',

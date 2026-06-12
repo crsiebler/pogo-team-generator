@@ -111,6 +111,22 @@ export interface OptimizerThreatScoreEntry {
   severityTier: ThreatSeverityTier;
 }
 
+/** Lower-is-better aggregate diagnostics for one threat pool. */
+export interface OptimizerThreatScorePool {
+  /** Normalized 0..1 pool score, or null when no threats were evaluated. */
+  score: number | null;
+  /** Count of threats in this pool with at least one matchup row. */
+  evaluatedCount: number;
+  /** Normalized active aggregate weight used for the final threat score. */
+  weight: number;
+}
+
+/** Split top-meta and full-meta threat pool diagnostics. */
+export interface OptimizerThreatScorePools {
+  topMeta: OptimizerThreatScorePool;
+  fullMeta: OptimizerThreatScorePool;
+}
+
 /** Lower-is-better optimizer threat score diagnostics for a team or lineup. */
 export interface OptimizerThreatScore {
   /** Normalized 0..1 aggregate score where lower means fewer severe threats. */
@@ -121,6 +137,8 @@ export interface OptimizerThreatScore {
   topMetaThreats: OptimizerThreatScoreEntry[];
   /** Worst unique top/full-meta threats first; missing rows are excluded. */
   overallTeamThreats: OptimizerThreatScoreEntry[];
+  /** Per-pool lower-is-better diagnostics and active aggregate weights. */
+  pools: OptimizerThreatScorePools;
 }
 
 /** Ordered pick-3 lineup keyed by battle role. */

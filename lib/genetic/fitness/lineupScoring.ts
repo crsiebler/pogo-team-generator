@@ -22,7 +22,10 @@ import {
   type OptimizerScoreBreakdown,
   type OptimizerScoreComponents,
 } from '@/lib/genetic/fitness/scoreBreakdown';
-import { calculateOptimizerThreatScore } from '@/lib/genetic/fitness/threatScore';
+import {
+  calculateOptimizerThreatScore,
+  type OptimizerThreatScorePoolWeights,
+} from '@/lib/genetic/fitness/threatScore';
 import {
   calculateDefensiveTypeRatio,
   calculateOffensiveTypeRatio,
@@ -117,6 +120,7 @@ export interface LineupScoringContext {
   getMove?: (moveId: string) => LineupMoveData | undefined;
   getRecommendedMoveset?: (speciesId: string) => LineupMoveset | undefined;
   getPressureScore?: (fastMoveId: string, chargedMoveId: string) => number;
+  threatScorePoolWeights?: Partial<OptimizerThreatScorePoolWeights>;
 }
 
 /** Component score breakdown for fast ranking and later diagnostics. */
@@ -339,6 +343,7 @@ function createLineupScoreBreakdown(
           threatScore: calculateOptimizerThreatScore(
             [lineup.lead, lineup.switch, lineup.closer],
             createThreatScoreContext(context, topThreats, fullMetaThreats),
+            { poolWeights: context.threatScorePoolWeights },
           ),
         }
       : {},
