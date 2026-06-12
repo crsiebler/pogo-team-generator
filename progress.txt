@@ -791,3 +791,31 @@
 - Next iteration start:
   - US-023 - Update GBL Optimizer Skill Prompt Guidance
 ---
+
+## 2026-06-11 20:06 MST - US-023
+- Updated the `gbl-optimizer` skill prompt guidance with explicit PvPoke reference-only runtime boundaries, diagnostic Threat Score and weighted threat pool expectations, soft matchup scoring guidance, performance safeguards, calibration fixture usage, and high-level Summary Statistics and Recommended Lineups UI contracts.
+- Files changed: `.opencode/skills/gbl-optimizer/SKILL.md`, `progress.txt`
+- Commit message: `feat: US-023 - Update GBL Optimizer Skill Prompt Guidance`
+- Checks:
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `prompt-engineer`
+  - Used: `gbl-optimizer` skill and `prompt-engineer` Task subagent; prompt-engineer returned concise guidance despite reporting local tool limitations in its output
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed low pending review placeholders; deferred low scoped-commit-format suggestion because Ralph explicitly requires `feat: US-023 - Update GBL Optimizer Skill Prompt Guidance`; second review pass returned no actionable findings
+- Decisions (why):
+  - Chose to update only the skill prompt because US-023 is a guidance story and the referenced optimizer/runtime/UI behavior already exists in code and progress patterns.
+  - Kept PvPoke boundary wording strict and explicit because future agents must not interpret reference-only guidance as permission to import, execute, bundle, or runtime-load vendor JavaScript.
+  - Added high-level UI expectations without component-specific instructions because the skill is optimizer-focused and should not duplicate `AnalysisPanel` implementation details.
+  - Kept the Ralph-required unscoped commit message because the user instruction for this autonomous iteration is more specific than the repository's general scoped commit convention.
+- **Learnings for future iterations:**
+  - The `gbl-optimizer` skill is the durable prompt surface for optimizer agents; keep it aligned with runtime boundary, scoring diagnostics, calibration fixtures, and analysis UI output contracts as those evolve.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - `.ralph-dev-server.log` and `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` remain untracked and unstaged from prior work.
+- Next iteration start:
+  - US-024 - Update Root Contributor Guidance
+---

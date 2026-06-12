@@ -27,6 +27,12 @@ Use `data/type-effectiveness.json` as the source of truth for Pokemon GO type ch
 
 The optimizer should be weighted, not a strict tier list or lexicographic comparator except for validity and legality constraints.
 
+PvPoke behavior is reference-only. Runtime application, component, and optimizer
+code must not import, require, execute, bundle, or runtime-load PvPoke vendor
+JavaScript. Local PvPoke engine execution is allowed only in isolated sync or
+tooling workflows. Preserve the runtime boundary guarded by
+`lib/architecture/pvpokeRuntimeBoundary.test.ts`.
+
 Weight strategy in this order:
 
 1. Synergy
@@ -39,6 +45,24 @@ Weight strategy in this order:
 8. Role
 
 Score ordered pick-3 lineups as playable battle plans. Then aggregate lineup quality into show-6 roster quality.
+
+Keep Threat Score diagnostic and lower-is-better on
+`OptimizerScoreBreakdown.threatScore`; do not add it to weighted fitness
+components unless a current story explicitly changes optimizer selection
+behavior. Aggregate active `pools.topMeta` and `pools.fullMeta` diagnostics with
+top-meta weighted higher by default through
+`LineupScoringContext.threatScorePoolWeights`.
+
+Use `scoreMatchupRating(...)` from
+`lib/genetic/fitness/matchupScoring.ts` when a score should distinguish close,
+neutral, clearly favorable, and clearly unfavorable matchups. Preserve binary
+threshold checks for categorical labels, counts, and display classifications.
+
+Protect optimizer hot paths. Keep diagnostic-only work out of fast/GA scoring
+paths unless final output requires it. Use per-run lineup-aware fitness caches in
+`lib/genetic/fitness/index.ts`, keep cache keys versioned and format-scoped, and
+validate cache behavior with `cacheStats` counters rather than timing-only
+assertions.
 
 ## Domain Checks
 
@@ -54,6 +78,9 @@ When changing scoring, check for:
 - Consistency via bait dependence, move DPE, shield stability, and PvPoke consistency data when available.
 - Bulk using stat product or `defense * hp / attack` when direct stat product is unavailable.
 - Role fit using PvPoke Leads, Switches, Closers, Chargers, Attackers, and Consistency exports when available.
+- Lower-is-better Threat Score diagnostics from weighted top-meta and full-meta threat pools.
+- Soft matchup quality for scoring, while preserving categorical coverage and weakness labels.
+- Performance effects of any diagnostic added to lineup-aware hot paths.
 
 ## Architecture Boundaries
 
@@ -62,6 +89,17 @@ When changing scoring, check for:
 - Keep API routes and UI components as thin adapters that pass through optimizer diagnostics instead of recomputing scores.
 - Keep data loading and file parsing behind existing `lib/data` loaders and `lib/sync` adapter utilities.
 - Inject scoring dependencies through contexts instead of reading files directly from scoring functions.
+- Keep Great League Show-6 Pick-3 calibration fixtures in
+  `data/calibration/great-league-show6-pick3.json` and load them through
+  `lib/data/calibrationFixtures.ts`.
+- Treat calibration fixtures as broad regression inputs only; do not hardcode
+  exact optimizer winners, exact scores, or runtime scoring shortcuts from them.
+- Keep Summary Statistics display-only: A-F grades only, no plus/minus modifiers,
+  no `elite`/`strong`/`neutral`/`weak` quality pills, and lower-is-better Threat
+  Score when present.
+- Keep Recommended Lineup cards display-only with blue diagnostic styling and
+  exactly one textual quality pill derived from API-provided lineup score
+  metadata; do not show numeric lineup scores there.
 
 ## Testing Expectations
 
@@ -73,6 +111,10 @@ Cover:
 - ABC, ABB, and ABA behavior.
 - Shared weakness penalties and shared strength rewards.
 - Top-threat vs full-meta coverage weighting.
+- Lower-is-better Threat Score ordering and pool diagnostics.
+- Soft matchup scoring with close-matchup fixtures.
+- Cache key determinism, format scoping, and cache-stat behavior for performance safeguards.
+- Calibration fixture validation and broad scoring invariants.
 - Type effectiveness dual-type multiplication.
 - Deterministic optimizer output for fixed seeds.
 - Regression cases where paper coverage differs from playable pick-3 synergy.
