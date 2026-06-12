@@ -3,7 +3,7 @@
 - Recommended lineup diagnostics should flow from `/api/generate-team` into `TeamManager.generatedTeam`, then render in `AnalysisPanel`; do not render recommendation details inside generated-team cards.
 - Conditional `AnalysisPanel` accordion sections must derive keyboard focus order from rendered sections so Arrow/Home/End navigation does not focus hidden section refs.
 - Accordion headers must use native buttons with `aria-expanded`, `aria-controls`, visible focus styles, and region panels labeled by the corresponding trigger.
-- Recommended lineup cards should stay concise: show `Lead`, `Switch`, and `Closer` role terms, avoid repeating those labels inside values, omit lineup score and covered-threat lists, and keep weaknesses as semantic `ul`/`li` lists with one readable weakness label per item.
+- Recommended lineup cards should stay concise: show `Lead`, `Switch`, and `Closer` role terms, avoid repeating those labels inside values, omit numeric lineup score and covered-threat lists, and keep weaknesses as semantic `ul`/`li` lists with one readable weakness label per item.
 - Recommended lineup cards should not render `diagnosticLabel`/`Structure`; keep structure labels as internal optimizer/API diagnostics unless a current story explicitly reintroduces a display consumer.
 - `/api/generate-team` should resolve display-facing threat and lineup ids to readable species names before returning them so client components stay display-only.
 - Keep core optimizer/domain models species-id based. Resolve species names at API/UI adapter boundaries rather than by importing Pokemon data into client analysis components.
@@ -19,6 +19,7 @@
 - Summary Statistics may include a separate `Threat Score` diagnostic card sourced from API-provided `scoreBreakdown.threatScore`; keep it lower-is-better, display-only, pill-free, and cap visible Top Meta/Overall Team Threat lists with a count summary.
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
 - Recommended Lineups accordion cards use blue diagnostic styling consistent with Summary Statistics and the surrounding analysis accordion; do not reintroduce emerald/green card styling unless a current story explicitly changes it.
+- Recommended Lineup cards render exactly one textual quality pill (`elite`, `strong`, `neutral`, or `weak`) from API-provided lineup `score` metadata; keep numeric score values hidden and do not reuse these pills in Summary Statistics.
 - Per-Pokemon Contribution headers should render Replacement Risk in a dedicated row below the Pokemon name; keep the metric boxes unchanged below the header.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - PlayPokemon bring-6 lineup enumeration evaluates 120 ordered lead/switch/closer assignments (`6 * 5 * 4`); do not canonicalize or sort switch/closer backline pairs because role order changes scoring.
@@ -757,4 +758,36 @@
   - `.ralph-dev-server.log` and `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` remain untracked and unstaged from prior work.
 - Next iteration start:
   - US-022 - Add Lineup Quality Pills To Lineup Cards
+---
+
+## 2026-06-11 19:55 MST - US-022
+- Added one display-only lineup quality pill to each Recommended Lineups card, derived from the existing `RecommendedLineup.score` metadata while keeping numeric lineup scores hidden and Summary Statistics pill-free.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`
+- Commit message: `feat: US-022 - Add Lineup Quality Pills To Lineup Cards`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (fail before implementation for missing lineup quality pills, pass after implementation)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at desktop and mobile-width viewport (pass; Recommended Lineups expanded with one `STRONG` quality pill per live lineup card, Summary Statistics retained A-F grades and Threat Score without quality pills, `/api/pokemon-list`, `/api/generate-team`, and `/api/team-details` returned 200; existing resource 404 observed)
+- Implementation agents:
+  - Recommended: `feature-implementer`, `dev-browser`
+  - Used: `feature-implementer` skill, `dev-browser` skill, and one `general` Task subagent for unavailable direct `feature-implementer` Task guidance; used `dev-browser` directly because it is a skill workflow
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`, `ui-designer`, `ux-researcher`
+  - Findings: fixed low pending review placeholders, low missing color-class coverage, and low stale numeric-score guidance wording; deferred low scoped-commit-format suggestion because Ralph explicitly requires `feat: US-022 - Add Lineup Quality Pills To Lineup Cards`; third review pass returned no actionable findings
+- Decisions (why):
+  - Chose client-side display classification from existing `RecommendedLineup.score` metadata because lineup score is already API-provided recommendation quality metadata and the UI should not recompute optimizer scoring.
+  - Chose normalized thresholds of `>= 0.85` elite, `>= 0.70` strong, `>= 0.50` neutral, otherwise weak so quality pills are stable, simple, and independent from Summary Statistics A-F grade mapping.
+  - Chose visible text plus `aria-label` on the pill so quality is not communicated by color alone.
+  - Updated nearby `components/AGENTS.md` and consolidated `progress.txt` patterns because future Recommended Lineups work should preserve the one-pill, score-derived, numeric-score-hidden contract.
+  - Kept the Ralph-required unscoped commit message because the user instruction for this autonomous iteration is more specific than the repository's general scoped commit convention.
+- **Learnings for future iterations:**
+  - Recommended lineup quality pills belong in the card header beside the lineup heading and should be scoped to Recommended Lineups only.
+  - `RecommendedLineup.score` remains hidden as a numeric card value but can be mapped to concise qualitative display metadata.
+- Known issues / follow-ups:
+  - Existing 404 resource error appears in browser console/network and was not introduced by this story.
+  - `.ralph-dev-server.log` and `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` remain untracked and unstaged from prior work.
+- Next iteration start:
+  - US-023 - Update GBL Optimizer Skill Prompt Guidance
 ---

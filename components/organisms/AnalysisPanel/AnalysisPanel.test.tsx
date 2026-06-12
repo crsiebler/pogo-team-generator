@@ -603,6 +603,8 @@ describe('AnalysisPanel', () => {
       screen.getByRole('region', { name: 'Recommended Lineups' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Lineup 1')).toBeInTheDocument();
+    expect(screen.getByText('elite')).toBeInTheDocument();
+    expect(screen.getByText('strong')).toBeInTheDocument();
     expect(screen.getAllByText('Lead')).toHaveLength(2);
     expect(screen.getAllByText('azumarill')).toHaveLength(2);
     expect(screen.getAllByText('Switch')).toHaveLength(2);
@@ -612,6 +614,7 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByText('Lead: azumarill')).not.toBeInTheDocument();
     expect(screen.queryByText('Safe Swap: skarmory')).not.toBeInTheDocument();
     expect(screen.queryByText('Score: 0.87')).not.toBeInTheDocument();
+    expect(screen.queryByText('0.87')).not.toBeInTheDocument();
     expect(screen.queryByText(/Covered threats/i)).not.toBeInTheDocument();
     expect(screen.getAllByText('Weaknesses')).toHaveLength(2);
     expect(
@@ -629,6 +632,88 @@ describe('AnalysisPanel', () => {
     expect(
       screen.queryByText('Save shields for backline'),
     ).not.toBeInTheDocument();
+  });
+
+  it('renders exactly one lineup-quality pill per recommended lineup card from lineup score', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups: [
+            { ...recommendedLineups[0], score: 0.85 },
+            { ...recommendedLineups[1], score: 0.7 },
+            {
+              ...recommendedLineups[0],
+              lineup: {
+                lead: 'registeel',
+                switch: 'azumarill',
+                closer: 'skarmory',
+              },
+              score: 0.5,
+            },
+            {
+              ...recommendedLineups[1],
+              lineup: {
+                lead: 'lanturn',
+                switch: 'venusaur',
+                closer: 'talonflame',
+              },
+              score: 0.49,
+            },
+          ],
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Recommended Lineups' }),
+    );
+
+    const lineupCards = screen
+      .getAllByText(/Lineup \d/)
+      .map((lineupHeading) => lineupHeading.closest('article'));
+
+    expect(lineupCards).toHaveLength(4);
+    expect(lineupCards.every((lineupCard) => lineupCard !== null)).toBe(true);
+
+    const qualityAssertions = [
+      {
+        label: 'elite',
+        classes: ['border-violet-200', 'bg-violet-100', 'text-violet-800'],
+      },
+      {
+        label: 'strong',
+        classes: ['border-emerald-200', 'bg-emerald-100', 'text-emerald-800'],
+      },
+      {
+        label: 'neutral',
+        classes: ['border-sky-200', 'bg-sky-100', 'text-sky-800'],
+      },
+      {
+        label: 'weak',
+        classes: ['border-amber-200', 'bg-amber-100', 'text-amber-800'],
+      },
+    ];
+    for (const [index, lineupCard] of lineupCards.entries()) {
+      const qualityPills = within(lineupCard!).getAllByTestId(
+        'lineup-quality-pill',
+      );
+      const qualityAssertion = qualityAssertions[index];
+
+      expect(qualityPills).toHaveLength(1);
+      expect(qualityPills[0]).toHaveTextContent(qualityAssertion.label);
+      expect(qualityPills[0]).toHaveAccessibleName(
+        `Lineup quality: ${qualityAssertion.label}`,
+      );
+      expect(qualityPills[0]).toHaveClass(...qualityAssertion.classes);
+    }
+
+    expect(screen.queryByText('Score: 0.85')).not.toBeInTheDocument();
+    expect(screen.queryByText('0.85')).not.toBeInTheDocument();
   });
 
   it('uses blue diagnostic styling for recommended lineup cards', () => {
