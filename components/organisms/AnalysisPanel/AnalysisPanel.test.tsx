@@ -631,6 +631,34 @@ describe('AnalysisPanel', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('uses blue diagnostic styling for recommended lineup cards', () => {
+    render(
+      <AnalysisPanel
+        generatedTeam={{
+          team: ['azumarill', 'skarmory', 'registeel'],
+          formatId: 'great-league',
+          recommendedLineups,
+        }}
+        isGenerating={false}
+        fitness={0.78}
+        analysis={analysisFixture}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Recommended Lineups' }),
+    );
+
+    const lineupCard = screen.getByText('Lineup 1').closest('article');
+
+    expect(lineupCard).not.toBeNull();
+    expect(lineupCard).toHaveClass('border-blue-200', 'bg-blue-50/70');
+    expect(lineupCard).not.toHaveClass(
+      'border-emerald-100',
+      'bg-emerald-50/80',
+    );
+  });
+
   it('places recommended lineups directly after summary statistics in full accordion order', () => {
     render(
       <AnalysisPanel

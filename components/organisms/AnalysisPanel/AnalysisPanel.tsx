@@ -463,10 +463,10 @@ export function AnalysisPanel({
                               (recommendedLineup, index) => (
                                 <article
                                   key={`${recommendedLineup.lineup.lead}-${recommendedLineup.lineup.switch}-${recommendedLineup.lineup.closer}-${index}`}
-                                  className="rounded-lg border border-emerald-100 bg-emerald-50/80 p-3 text-xs text-emerald-950 shadow-sm sm:text-sm dark:border-emerald-900 dark:bg-emerald-950/20 dark:text-emerald-50"
+                                  className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-xs text-gray-800 shadow-sm sm:text-sm dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-gray-200"
                                 >
                                   {recommendedLineups.length > 1 ? (
-                                    <h4 className="font-semibold text-emerald-900 dark:text-emerald-100">
+                                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">
                                       Lineup {index + 1}
                                     </h4>
                                   ) : null}
@@ -484,9 +484,9 @@ export function AnalysisPanel({
                                       <dd>{recommendedLineup.lineup.closer}</dd>
                                     </div>
                                   </dl>
-                                  <div className="mt-3 text-emerald-900 dark:text-emerald-100">
+                                  <div className="mt-3 text-gray-800 dark:text-gray-200">
                                     <div>
-                                      <p className="font-semibold">
+                                      <p className="font-semibold text-blue-900 dark:text-blue-100">
                                         Weaknesses
                                       </p>
                                       {recommendedLineup.weaknesses.length >

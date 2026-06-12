@@ -22,6 +22,8 @@ Lineup-aware result UI should pass `recommendedLineups` from the generate-team r
 
 Recommended Lineups should render as an `AnalysisPanel` accordion section immediately after Summary Statistics. Keep it in the shared rendered-section list so accordion keyboard navigation follows the visible section order.
 
+Recommended Lineups accordion cards should use the same blue diagnostic styling family as the surrounding analysis accordions and Summary Statistics cards; do not reintroduce emerald/green card styling unless a current story explicitly changes the visual contract.
+
 Recommended lineup cards should stay concise: show role terms as `Lead`, `Switch`, and `Closer`, avoid duplicating those labels in values, omit covered-threat lists, and render API-provided readable weakness labels without importing canonical Pokemon data into client components.
 
 Recommended lineup cards should not render `diagnosticLabel`/`Structure`; keep lineup structure labels as internal optimizer/API diagnostics unless a current story explicitly reintroduces a display consumer.

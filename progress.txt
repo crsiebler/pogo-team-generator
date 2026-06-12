@@ -18,6 +18,7 @@
 - Summary Statistics optimizer score cards display only simple `A`, `B`, `C`, `D`, or `F` letter grades; do not render numeric score values, plus/minus modifiers, or `elite`/`strong`/`neutral`/`weak` quality pills there unless a current story changes the contract.
 - Summary Statistics may include a separate `Threat Score` diagnostic card sourced from API-provided `scoreBreakdown.threatScore`; keep it lower-is-better, display-only, pill-free, and cap visible Top Meta/Overall Team Threat lists with a count summary.
 - Recommended Lineups belongs in the `AnalysisPanel` accordion immediately after Summary Statistics; keep it in the rendered-section list so keyboard navigation follows actual visible section order.
+- Recommended Lineups accordion cards use blue diagnostic styling consistent with Summary Statistics and the surrounding analysis accordion; do not reintroduce emerald/green card styling unless a current story explicitly changes it.
 - Per-Pokemon Contribution headers should render Replacement Risk in a dedicated row below the Pokemon name; keep the metric boxes unchanged below the header.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - PlayPokemon bring-6 lineup enumeration evaluates 120 ordered lead/switch/closer assignments (`6 * 5 * 4`); do not canonicalize or sort switch/closer backline pairs because role order changes scoring.
@@ -727,4 +728,33 @@
   - `.ralph-dev-server.log` and `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` remain untracked and unstaged from prior work.
 - Next iteration start:
   - US-021 - Refresh Recommended Lineups Blue Styling
+---
+
+## 2026-06-11 19:47 MST - US-021
+- Refreshed Recommended Lineups accordion cards from emerald/green styling to the existing blue diagnostic styling family while preserving lineup order, role terms, and weakness list content.
+- Files changed: `components/AGENTS.md`, `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `progress.txt`
+- Commit message: `feat: US-021 - Refresh Recommended Lineups Blue Styling`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (fail before implementation for expected blue card styling, pass after implementation)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+  - Browser verification with `dev-browser` at `http://localhost:3000` (pass; Recommended Lineups expanded with Lead, Switch, Closer, and Weaknesses visible, blue card classes present, no emerald card classes, API requests returned 200; existing 404 resource error observed)
+- Implementation agents:
+  - Recommended: `feature-implementer`, `dev-browser`
+  - Used: `feature-implementer` skill, `dev-browser` skill, and one `general` Task subagent for unavailable direct `feature-implementer` Task guidance; used `dev-browser` directly because it is a skill workflow
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `ui-designer`, `ux-researcher`
+  - Findings: none; all reviewers returned empty actionable findings lists, with residual risk limited to relying on completed checks/browser verification and no separate visual-regression tooling
+- Decisions (why):
+  - Chose a styling-only change in `AnalysisPanel` because US-021 changes visual treatment without requesting contract, ordering, or lineup content changes.
+  - Reused the existing blue diagnostic card palette from Summary Statistics and Per-Pokemon Contribution so Recommended Lineups matches the surrounding accordion sections.
+  - Added focused class-token coverage rather than a full class-string assertion because Tailwind ordering can change while the visual color contract should remain stable.
+- **Learnings for future iterations:**
+  - Recommended Lineups card styling should stay in the blue analysis palette alongside Summary Statistics unless a future story explicitly changes the section theme.
+- Known issues / follow-ups:
+  - Existing 404 resource error appears in browser console/network and was not introduced by this story.
+  - `.ralph-dev-server.log` and `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` remain untracked and unstaged from prior work.
+- Next iteration start:
+  - US-022 - Add Lineup Quality Pills To Lineup Cards
 ---
