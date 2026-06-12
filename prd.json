@@ -210,6 +210,225 @@
       "priority": 12,
       "passes": true,
       "notes": "@backend-developer update final chromosome mapping and regression tests; @api-designer verify response contract exposes consistent fitness and scoreBreakdown values."
+    },
+    {
+      "id": "US-013",
+      "title": "Enforce PvPoke Reference-Only Optimizer Boundary",
+      "description": "As a developer, I want PvPoke-inspired concepts implemented only in repository-owned TypeScript so that the app gains better diagnostics without runtime PvPoke vendor dependencies.",
+      "acceptanceCriteria": [
+        "PvPoke Team Builder behavior is used only as a conceptual reference.",
+        "No PvPoke vendor JavaScript is imported, executed, bundled, runtime-loaded, or required by app code.",
+        "Optimizer logic is implemented in pure TypeScript within existing architecture boundaries.",
+        "Existing lineup-aware outputs remain available: recommended lineups, synergy, defensive ratio, offensive ratio, role, and per-Pokemon contributions.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "@gbl-optimizer and @test-driven-development enforce runtime boundary and coverage."
+    },
+    {
+      "id": "US-014",
+      "title": "Add Lower-Is-Better Threat Score",
+      "description": "As a competitive player, I want a lower-is-better Threat Score so that I can quickly understand how vulnerable a team is to the meta.",
+      "acceptanceCriteria": [
+        "Threat Score is computed where lower values indicate fewer or less severe threats.",
+        "Threat Score output includes ranked top meta threats and overall team threats.",
+        "Threat Score data is exposed through the optimizer output contract for UI use.",
+        "Threat ordering is deterministic for equivalent inputs.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "@gbl-optimizer implement threat score model; @test-driven-development cover lower-is-better ordering."
+    },
+    {
+      "id": "US-015",
+      "title": "Implement Weighted Top-Meta And Full-Meta Threat Pools",
+      "description": "As a competitive player, I want threat analysis to weight top-meta Pokemon more heavily while still accounting for broader full-meta coverage gaps.",
+      "acceptanceCriteria": [
+        "The optimizer evaluates a weighted top-meta threat pool.",
+        "The optimizer evaluates a broader full-meta threat pool.",
+        "Top-meta weighting is data-driven or configurable enough for season updates.",
+        "Full-meta threats contribute to diagnostics without overpowering top-meta threats.",
+        "Threat outputs include enough structured data for tests and UI display.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "@gbl-optimizer design weighted pools; @test-driven-development cover top-meta versus full-meta behavior."
+    },
+    {
+      "id": "US-016",
+      "title": "Add Soft Matchup Scoring",
+      "description": "As a user, I want matchup quality to support intermediate scores so that diagnostics are less brittle than hard win/loss thresholds.",
+      "acceptanceCriteria": [
+        "Matchups can produce soft scores instead of only binary win/loss values.",
+        "Close matchups produce intermediate scores.",
+        "Clearly favorable, neutral, close, and clearly unfavorable matchups remain distinguishable.",
+        "Relevant optimizer diagnostics consume soft matchup scores.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "@gbl-optimizer port matchup-scoring concepts; @test-driven-development add focused rating fixtures."
+    },
+    {
+      "id": "US-017",
+      "title": "Add Optimizer Caching And Precomputation Performance Safeguards",
+      "description": "As a user, I want team generation to complete in under one minute so that the app remains usable in standalone Next.js and Vercel-compatible environments.",
+      "acceptanceCriteria": [
+        "Expensive repeated matchup, threat, or scoring computations are cached or precomputed.",
+        "Cache keys are deterministic and safe for repeated generation requests.",
+        "Cache behavior does not introduce stale incorrect season data.",
+        "Representative generation completes in under one minute.",
+        "Performance validation exists for the expected generation path.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "@gbl-optimizer and @test-runner add cache/precompute safeguards and performance validation."
+    },
+    {
+      "id": "US-018",
+      "title": "Add Great League Show-6 Pick-3 Calibration Fixtures",
+      "description": "As a developer, I want season-specific Great League Show-6 Pick-3 fixtures so that optimizer changes can be calibrated against realistic teams without treating fixtures as hardcoded truth.",
+      "acceptanceCriteria": [
+        "Great League Show-6 Pick-3 tournament teams are added as season-specific calibration fixtures.",
+        "Fixture naming includes season or context metadata where practical.",
+        "Fixtures are validated through existing typed loader or validation patterns.",
+        "Tests or validation can detect major scoring regressions without requiring exact hardcoded optimizer outcomes.",
+        "Fixture documentation states that examples are calibration data only.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "@gbl-optimizer add calibration fixtures; @test-driven-development validate fixture handling."
+    },
+    {
+      "id": "US-019",
+      "title": "Refresh Summary Statistics Letter Grades",
+      "description": "As a user, I want Summary Statistics to show simple category-appropriate letter grades so that I can compare diagnostics without visual clutter.",
+      "acceptanceCriteria": [
+        "Summary Statistics remains an accordion.",
+        "Summary Statistics displays Synergy, Coverage, Safety, Consistency, Bulk, Role, Offensive Ratio, and Defensive Ratio.",
+        "Each Summary Statistics metric displays only A, B, C, D, or F.",
+        "No plus or minus grade modifiers are shown.",
+        "No elite, strong, neutral, or weak quality pills are shown in Summary Statistics.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "@feature-implementer update AnalysisPanel grade rendering; @dev-browser verify UI behavior."
+    },
+    {
+      "id": "US-020",
+      "title": "Add Threat Score Card To Summary Statistics",
+      "description": "As a user, I want threat diagnostics shown beside summary grades so that I can understand vulnerabilities from the same accordion.",
+      "acceptanceCriteria": [
+        "Summary Statistics includes a Threat Score card.",
+        "Threat Score card explains that lower is better.",
+        "Threat Score card displays top meta threats.",
+        "Threat Score card displays overall team threats.",
+        "Threat Score card does not introduce Summary Statistics quality pills.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "@feature-implementer add Threat Score card; @dev-browser verify accessibility and layout."
+    },
+    {
+      "id": "US-021",
+      "title": "Refresh Recommended Lineups Blue Styling",
+      "description": "As a user, I want Recommended Lineups to use blue accordion styling so that the section visually matches the rest of the diagnostics UI.",
+      "acceptanceCriteria": [
+        "Recommended Lineups switches from greenish background styling to blueish accordion styling.",
+        "Styling is consistent with existing blue accordion patterns elsewhere in the UI.",
+        "Existing lineup content remains visible and readable.",
+        "Existing lineup ordering behavior is preserved unless intentionally changed by optimizer scoring.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "@feature-implementer update Recommended Lineups styling; @dev-browser verify light/dark rendering."
+    },
+    {
+      "id": "US-022",
+      "title": "Add Lineup Quality Pills To Lineup Cards",
+      "description": "As a user, I want lineup cards to show quality pills so that I can quickly compare recommended lineups.",
+      "acceptanceCriteria": [
+        "Lineup cards display exactly one of: elite, strong, neutral, or weak.",
+        "Pills are based on lineup quality, not Summary Statistics grades.",
+        "Pill labels and colors are consistent across lineup cards.",
+        "Pills are not shown in Summary Statistics.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "@feature-implementer add lineup quality pills; @dev-browser verify placement and accessibility."
+    },
+    {
+      "id": "US-023",
+      "title": "Update GBL Optimizer Skill Prompt Guidance",
+      "description": "As a contributor, I want .opencode/skills/gbl-optimizer/SKILL.md updated so optimizer agents follow the new PvPoke-inspired boundary, scoring, fixture, and UI expectations.",
+      "acceptanceCriteria": [
+        "The skill documents the PvPoke reference-only boundary.",
+        "The skill states that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
+        "The skill covers Threat Score, weighted threat pools, soft matchup scoring, performance safeguards, and calibration fixtures.",
+        "The skill references Summary Statistics and Recommended Lineups UI expectations at a high level.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": "@gbl-optimizer and @prompt-engineer update skill guidance."
+    },
+    {
+      "id": "US-024",
+      "title": "Update Root Contributor Guidance",
+      "description": "As a contributor, I want root AGENTS.md updated so future optimizer and UI work follows the refreshed diagnostics contract.",
+      "acceptanceCriteria": [
+        "Root AGENTS.md references the refreshed optimizer diagnostics expectations.",
+        "Root AGENTS.md reminds contributors to use gbl-optimizer for optimizer scoring, threat analysis, fixtures, and related UI diagnostics.",
+        "Root AGENTS.md states that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
+        "Root AGENTS.md references relevant docs for Summary Statistics, Threat Score, Recommended Lineups, and calibration fixtures.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "@prompt-engineer update contributor guidance; @gbl-optimizer review optimizer consistency."
+    },
+    {
+      "id": "US-025",
+      "title": "Update Optimizer And UI Documentation",
+      "description": "As a contributor, I want docs updated so optimizer behavior, UI output contracts, and calibration assumptions remain consistent.",
+      "acceptanceCriteria": [
+        "Optimizer docs under docs describe Threat Score, weighted threat pools, soft matchup scoring, caching or precomputation, and performance expectations.",
+        "Docs include a UI output contract for Summary Statistics, Threat Score, Recommended Lineups, and lineup quality pills.",
+        "Docs state that Summary Statistics uses A, B, C, D, or F only with no plus or minus grades.",
+        "Docs state that Summary Statistics must not use elite, strong, neutral, or weak quality pills.",
+        "Docs state that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
+        "Docs describe Great League Show-6 Pick-3 fixtures as calibration data only.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "@gbl-optimizer and @prompt-engineer update optimizer and UI docs."
     }
   ]
 }

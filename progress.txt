@@ -22,6 +22,7 @@
 - Final generated `Chromosome.fitness` should match the attached final `scoreBreakdown.score`; PlayPokemon finalists use recomputed full roster fitness and GBL finalists use the final lineup recommendation score before multi-team sorting.
 - Specialist delegation guidance: use `@api-designer` for `/api/generate-team` response contract changes, `@backend-developer` for domain deletion-boundary reviews, `@frontend-developer` for React/component/test implementation, and `@ui-designer` for accordion/card hierarchy and visual QA.
 - Runtime ranking data includes `chargers`, `attackers`, and `consistency` CSVs for supported formats; ranking tests should assert these role-support categories load instead of treating them as optional missing files.
+- Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling and use `lib/architecture/pvpokeRuntimeBoundary.test.ts` for boundary regressions.
 
 ## Iteration Log
 - Next iteration start: US-001 - Resolve lineup role species names in generate-team API
@@ -434,4 +435,63 @@
   - None.
 - Next iteration start:
   - All current stories expected complete after final PRD metadata update.
+---
+
+## 2026-06-11 15:44 MST - US-013
+- Implemented a PvPoke runtime-boundary architecture guard that scans app, component, and runtime lib source for imports, requires, or file loads of PvPoke vendor JavaScript while allowing local sync tooling and PvPoke-derived data vocabulary.
+- Preserved lineup-aware output coverage by extending `/api/generate-team` response-shape assertions for recommended lineups, score breakdown components, and per-Pokemon contribution analysis.
+- Files changed: `app/api/generate-team/route.test.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `progress.txt`, `prd.json`
+- Commit message: `feat: US-013 - Enforce PvPoke Reference-Only Optimizer Boundary`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` (fail before implementation for missing boundary checker, pass after implementation)
+  - `npx vitest run app/api/generate-team/route.test.ts` (fail before fixture update for missing preserved `scoreBreakdown`, pass after fixture update)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts app/api/generate-team/route.test.ts` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail for import grouping before cleanup, pass after cleanup)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill, `test-driven-development` skill, and two `general` Task subagents for unavailable recommended-agent implementation/testing guidance; skipped direct Task invocation of `gbl-optimizer` and `test-driven-development` because they are skills, not available Task subagent types
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `security-engineer`
+  - Findings: fixed high/medium boundary bypass findings by detecting extensionless imports, side-effect imports, re-exports, constructed file loads, constructed dynamic `import(...)`/`require(...)` module loads, split-token inline constructed vendor paths, split-fragment constructed vendor paths, semicolonless tainted assignments, escaped/backslash vendor paths, unicode code-point escapes, bare `pvpoke` package imports/requires, derived and split variable-indirected vendor loads including `$` identifiers, runtime imports from excluded sync/script subtrees, dot-segment alias/absolute imports into excluded subtrees, relative and dynamic excluded-subtree imports, `@lib/*` alias imports into excluded subtrees, aliased direct vendor loader calls, optional/call/apply loader calls, bracket-created loader aliases, aliased/imported filesystem loader calls, aliased/imported `createRequire` factories, aliased tainted-variable loader calls, inline chained `createRequire(...)()` calls, inline imported `createRequire` factory calls, inline and aliased `createRequire(...)` `.resolve(...)` calls, embedded vendor-root constants, escaped unicode path separators and token characters, bracket/member loader calls including direct excluded-subtree arguments, `require.resolve(...)` bundling references including direct sync/script subtree references, `.mts`/`.cts` runtime files with filesystem-backed coverage, symlinked runtime source files, and root runtime entrypoint coverage before rerunning focused tests, typecheck, lint, full tests, and staged review
+- Decisions (why):
+  - Chose an architecture-boundary scanner over changing optimizer scoring because the current runtime optimizer code already uses repository-owned TypeScript and the story is primarily about enforcing the reference-only dependency boundary.
+  - Scoped the scanner to `app`, `components`, and `lib` with explicit `lib/sync` and `lib/scripts` exclusions because sync tooling intentionally executes local PvPoke code to generate checked-in data, while app/runtime code must not.
+  - Matched import, require, dynamic import, and file-loading patterns that target `vendor/pvpoke` or `pvpoke/src` JavaScript instead of banning all `PvPoke` text so runtime code can still describe PvPoke-derived ranking data as allowed input vocabulary.
+  - Expanded detection beyond `.js`-suffixed imports after specialist review because Next/TypeScript can resolve extensionless module specifiers to JavaScript and side-effect/re-export imports can also bundle vendor code.
+  - Treated constructed dynamic `import(...)` and `require(...)` arguments as runtime loads because they can execute vendor JavaScript even without a literal module specifier.
+  - Rejected runtime imports from excluded sync/script subtrees because those modules are allowed to execute local PvPoke code only outside app/runtime paths, and transitive runtime imports would bypass the direct vendor-path scanner.
+  - Tainted same-file variables assigned to PvPoke vendor JavaScript paths so later `import(...)`, `require(...)`, or file-load calls cannot evade the boundary by indirection.
+  - Normalized repeated slash and escaped backslash separators so actual source text like `vendor\\pvpoke\\src` is treated as a vendor path.
+  - Propagated taint through derived assigned values and split constants so runtime loads cannot hide vendor paths behind intermediate variables.
+  - Added aliased-loader detection for direct vendor path arguments because `createRequire(...)`-style calls can execute vendor JavaScript without using the literal `require(...)` callee name.
+  - Applied tainted-identifier checks to generic loader aliases so `createRequire(...)` wrappers cannot execute a vendor path variable or excluded sync/script module variable.
+  - Decoded escaped slash/backslash separators such as `\\u002f` before path matching because scanners read raw source text, not runtime-evaluated strings.
+  - Resolved assigned relative module specifiers from the current source file so variable-indirected `../sync/...` imports cannot bypass excluded-subtree checks.
+  - Included root runtime entrypoint files (`middleware.ts`, `instrumentation.ts`) in the boundary roots so future Next.js app runtime files are scanned if present.
+  - Added bracket/member loader-call checks for patterns such as `fs['readFileSync'](...)` and `globalThis['require'](...)`.
+  - Treated `require.resolve(...)` as a bundling-relevant dependency reference rather than a safe path builder.
+  - Added `.mts` and `.cts` to runtime source scanning because TypeScript module files can still import or bundle runtime JavaScript.
+  - Resolved repository aliases such as `@lib/*` and covered `.mts`/`.cts` discovery with real temporary fixture files because virtual-file tests do not exercise filesystem extension filtering.
+  - Checked direct excluded-subtree arguments for bracket/member loader calls and inline chained `createRequire(...)()` because both can load or bundle modules without a normal `require(...)` call expression.
+  - Normalize dot segments after resolving aliases/absolute specifiers, decode JavaScript `\u{...}` code-point escapes, expand split-token inline constructed vendor loads, limit generic call detection to loader aliases, and traverse symlinked runtime source files with realpath cycle protection.
+  - Treat aliases of `fs.readFileSync`/`readFile`/`createReadStream` and `createRequire(...)` alias `.resolve(...)` calls as runtime loader/bundling boundaries so renamed loaders cannot bypass the scanner.
+  - Parse named imports from `node:fs`, `node:fs/promises`, and `node:module`, propagate assigned loader/factory aliases, and cover inline `createRequire(...).resolve(...)` so imported or renamed loaders remain blocked.
+  - Expanded runtime call scan windows, allowed assignment tainting without semicolons, normalized concatenated string fragments, and treated bracket-created loader aliases plus bare `pvpoke` package references as boundary violations.
+  - Escaped identifier names before building taint regexes and blocked optional chaining plus `.call`/`.apply` loader invocation forms.
+  - Switched taint matching to JavaScript-identifier boundaries for `$`-prefixed/suffixed identifiers, blocked optional/call/apply `.resolve` variants, and made constructed excluded-subtree detection segment-based to avoid `async` false positives.
+  - Addressed final review findings by masking comments for static import scans, allowing type-only vendor references, checking realpaths for symlinked imports, normalizing absolute traversal paths, detecting indirect `createRequire`, and adding regressions for constructed `pvpoke/src` and extensionless PvPoke JS loads.
+  - Addressed follow-up review findings by ignoring loader-shaped comments/strings, supporting named type-only import/export and `typeof import(...)`, checking symlink realpaths for file-loader paths, filtering bracket calls to actual loaders, and blocking direct `require.resolve` optional/call/apply variants.
+  - Addressed final high/medium review findings by parsing executable template-literal expressions, detecting comment-separated loader calls, supporting optional bracket loader calls, avoiding non-loader bracket false positives, and tainting assigned symlinked file-loader paths via realpath resolution.
+  - Addressed last confirmation findings by masking line comments for executable call scans and normalizing inline string interpolation inside template module specifiers, with regressions for line-comment-separated calls and interpolated PvPoke template specifiers.
+  - Added API output-shape assertions rather than route behavior changes because `/api/generate-team` already passes through lineup-aware diagnostics and contribution analysis.
+- **Learnings for future iterations:**
+  - `lib/architecture/pvpokeRuntimeBoundary.test.ts` is the local regression gate for the PvPoke reference-only runtime boundary.
+  - PvPoke-derived ranking CSVs and descriptive vocabulary are allowed runtime inputs; importing, requiring, bundling, or loading PvPoke vendor JavaScript is not allowed outside sync tooling.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-013 does not require modifying the task PRD.
+- Next iteration start:
+  - US-014 - Add Lower-Is-Better Threat Score
 ---

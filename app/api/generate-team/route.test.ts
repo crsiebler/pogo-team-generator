@@ -302,6 +302,29 @@ describe('POST /api/generate-team', () => {
             closer: 'annihilape',
           },
           score: 0.91,
+          scoreBreakdown: {
+            components: {
+              synergy: 0.92,
+              coverage: 0.87,
+              safety: 0.72,
+              consistency: 0.7,
+              bulk: 0.66,
+              defensiveRatio: 0.81,
+              offensiveRatio: 0.77,
+              role: 0.69,
+            },
+            weights: {
+              synergy: 0.24,
+              coverage: 0.21,
+              safety: 0.17,
+              consistency: 0.13,
+              bulk: 0.1,
+              defensiveRatio: 0.07,
+              offensiveRatio: 0.05,
+              role: 0.03,
+            },
+            score: 0.81,
+          },
           coverageMetrics: {
             coverageRate: 0.86,
             dominatingMatchupCount: 5,
@@ -313,6 +336,29 @@ describe('POST /api/generate-team', () => {
           diagnosticLabel: 'ABC',
         },
       ],
+      scoreBreakdown: {
+        components: {
+          synergy: 0.91,
+          coverage: 0.82,
+          safety: 0.68,
+          consistency: 0.57,
+          bulk: 0.44,
+          defensiveRatio: 0.72,
+          offensiveRatio: 0.61,
+          role: 0.38,
+        },
+        weights: {
+          synergy: 0.24,
+          coverage: 0.21,
+          safety: 0.17,
+          consistency: 0.13,
+          bulk: 0.1,
+          defensiveRatio: 0.07,
+          offensiveRatio: 0.05,
+          role: 0.03,
+        },
+        score: 0.74,
+      },
     });
 
     const request = new Request('http://localhost/api/generate-team', {
@@ -330,6 +376,29 @@ describe('POST /api/generate-team', () => {
     const payload = (await response.json()) as {
       team: string[];
       fitness: number;
+      scoreBreakdown: {
+        components: {
+          synergy: number;
+          coverage: number;
+          safety: number;
+          consistency: number;
+          bulk: number;
+          defensiveRatio: number;
+          offensiveRatio: number;
+          role: number;
+        };
+        weights: {
+          synergy: number;
+          coverage: number;
+          safety: number;
+          consistency: number;
+          bulk: number;
+          defensiveRatio: number;
+          offensiveRatio: number;
+          role: number;
+        };
+        score: number;
+      };
       recommendedLineups: unknown[];
       analysis: {
         mode: string;
@@ -394,6 +463,29 @@ describe('POST /api/generate-team', () => {
           closer: 'Annihilape',
         },
         score: 0.91,
+        scoreBreakdown: {
+          components: {
+            synergy: 0.92,
+            coverage: 0.87,
+            safety: 0.72,
+            consistency: 0.7,
+            bulk: 0.66,
+            defensiveRatio: 0.81,
+            offensiveRatio: 0.77,
+            role: 0.69,
+          },
+          weights: {
+            synergy: 0.24,
+            coverage: 0.21,
+            safety: 0.17,
+            consistency: 0.13,
+            bulk: 0.1,
+            defensiveRatio: 0.07,
+            offensiveRatio: 0.05,
+            role: 0.03,
+          },
+          score: 0.81,
+        },
         coverageMetrics: {
           coverageRate: 0.86,
           dominatingMatchupCount: 5,
@@ -405,6 +497,23 @@ describe('POST /api/generate-team', () => {
         diagnosticLabel: 'ABC',
       },
     ]);
+    expect(payload.scoreBreakdown.components).toMatchObject({
+      synergy: 0.91,
+      defensiveRatio: 0.72,
+      offensiveRatio: 0.61,
+      role: 0.38,
+    });
+    expect(payload.scoreBreakdown.weights).toMatchObject({
+      synergy: 0.24,
+      coverage: 0.21,
+      safety: 0.17,
+      consistency: 0.13,
+      bulk: 0.1,
+      defensiveRatio: 0.07,
+      offensiveRatio: 0.05,
+      role: 0.03,
+    });
+    expect(payload.scoreBreakdown.score).toBe(0.74);
     expect(payload).not.toHaveProperty('algorithm');
     expect(payload.analysis).not.toHaveProperty('algorithm');
     expect(payload.analysis).toMatchObject({

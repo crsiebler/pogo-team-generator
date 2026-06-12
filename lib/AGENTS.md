@@ -9,6 +9,8 @@ For shield-scenario analysis, treat missing simulation rows (`null` results) as 
 
 For local PvPoke sync work, keep source-layout knowledge behind `lib/sync/adapter.ts`; sync modules should call adapter methods instead of hardcoding PvPoke internal file paths.
 
+Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript. Keep local PvPoke engine execution isolated to sync tooling and cover the runtime boundary with `lib/architecture/pvpokeRuntimeBoundary.test.ts` when boundary rules change.
+
 When syncing gamemaster JSON, call adapter `readPokemonJson`/`readMovesJson`, validate with `lib/sync/validation.ts`, then write normalized JSON outputs to `data/`.
 
 When syncing rankings, iterate all supported battle formats from `lib/data/battleFormats.ts` and read local PvPoke ranking JSON via adapter `readRankingJson(category, cp, cup)` from `src/data/rankings/<cup>/<category>/rankings-<cp>.json` before writing deterministic outputs under `data/rankings/cp<cp>/<cup>/<category>_rankings.csv`.
