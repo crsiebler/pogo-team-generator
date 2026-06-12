@@ -31,6 +31,13 @@ Create small deterministic fixtures for:
 - A roster with strong coverage but poor bulk.
 - A roster with high type diversity but poor matrix performance.
 
+Great League Show-6 Pick-3 calibration rosters should live as typed fixture
+data and remain calibration examples only. They are useful for broad regression
+checks such as valid species ids, 120 ordered lead/switch/closer lineups, finite
+normalized roster scores, and minimum viable-lineup sanity thresholds. Do not
+treat fixture teams as hardcoded optimizer truth labels, exact expected winners,
+or exact score snapshots.
+
 ## Explainability Review
 
 Every recommendation should make sense to a human reviewer. If the optimizer returns a surprising team, diagnostics should show why:

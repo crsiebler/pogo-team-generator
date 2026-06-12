@@ -27,6 +27,7 @@
 - Threat Score aggregation uses normalized active `pools.topMeta` and `pools.fullMeta` diagnostics; keep top-meta weighted higher by default, pass season-specific overrides through `LineupScoringContext.threatScorePoolWeights`, fall back to defaults for full-meta-dominant overrides, normalize configured weights over evaluated pools only, and let full-meta contribute without overpowering top-meta.
 - Soft matchup scoring is centralized in `lib/genetic/fitness/matchupScoring.ts`; use `scoreMatchupRating(...)` for optimizer scoring/diagnostic quality where close ratings should be intermediate, while preserving binary threshold counts for categorical labels such as covered threats, weaknesses, dominating matchups, and overwhelming losses.
 - Lineup-aware fitness caches are per-run context caches in `lib/genetic/fitness/index.ts`; keep keys versioned and format-scoped, and validate cache effectiveness with `cacheStats` counters instead of timing-only assertions.
+- Great League Show-6 Pick-3 calibration fixtures live in `data/calibration/great-league-show6-pick3.json` and load through `lib/data/calibrationFixtures.ts`; keep them tournament-backed, calibration-only, and covered by broad invariant tests rather than exact optimizer score or winner snapshots.
 
 ## Iteration Log
 - Next iteration start: US-001 - Resolve lineup role species names in generate-team API
@@ -631,4 +632,35 @@
   - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-017 does not require modifying the task PRD.
 - Next iteration start:
   - US-018 - Add Great League Show-6 Pick-3 Calibration Fixtures
+---
+
+## 2026-06-11 19:02 MST - US-018
+- Added typed Great League Show-6 Pick-3 calibration fixture loading, checked-in 2024 Worlds Great League roster fixtures, broad validation/scoring invariant coverage, and documentation that fixtures are calibration data only rather than optimizer truth labels.
+- Files changed: `data/calibration/great-league-show6-pick3.json`, `docs/team-optimization/validation.md`, `lib/AGENTS.md`, `lib/data/calibrationFixtures.ts`, `lib/data/calibrationFixtures.test.ts`, `lib/genetic/fitness/greatLeagueCalibrationFixtures.test.ts`, `progress.txt`
+- Commit message: `feat: US-018 - Add Great League Show-6 Pick-3 Calibration Fixtures`
+- Checks:
+  - `npx vitest run lib/data/calibrationFixtures.test.ts lib/genetic/fitness/greatLeagueCalibrationFixtures.test.ts` (fail before implementation for missing `calibrationFixtures` module, pass after implementation and after specialist review fixes)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail for import order before cleanup, pass after cleanup)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill, `test-driven-development` skill, and two `general` Task subagents for unavailable recommended-agent implementation/testing guidance; skipped direct Task invocation of `gbl-optimizer` and `test-driven-development` because they are skills, not available Task subagent types
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`
+  - Findings: fixed high/medium provenance findings by replacing synthetic role examples with traceable 2024 Worlds Great League roster fixtures and format-ranked species validation; fixed medium raw validation findings by accepting unknown fixture input, validating top-level/field/minimum types, and adding malformed-shape coverage; fixed medium weak-regression-threshold finding by raising per-fixture broad minimums; fixed medium/low validation coverage findings by adding isolated ranked-species, line-count minimum, top-quality minimum, and source-metadata negative tests; deferred low scoped-commit-format and source-reference suggestions because Ralph explicitly requires `feat: US-018 - Add Great League Show-6 Pick-3 Calibration Fixtures` and fixture source labels already identify the official result source within current story scope
+- Decisions (why):
+  - Chose a `lib/data` loader backed by checked-in JSON because calibration fixtures are runtime-safe data inputs and should be validated at the data boundary before scoring tests consume them.
+  - Chose 2024 Worlds Great League roster fixtures over synthetic role examples because US-018 requires tournament-team calibration data with season/event context.
+  - Chose broad minimum invariants for viable lineup count and top lineup quality because calibration fixtures should detect collapse-level regressions without becoming exact score snapshots or hidden expected winners.
+  - Chose `scorePlayPokemonRoster(...)` with `createDefaultLineupScoringContext('great-league', 30)` for scoring validation because it exercises the current production Great League data path while keeping fixture assertions intentionally non-exact.
+  - Documented calibration-only usage in `docs/team-optimization/validation.md` so future optimizer tuning does not treat these rosters as fixed truth labels.
+- **Learnings for future iterations:**
+  - `validateCalibrationFixtures(...)` accepts unknown fixture data and validates fixture ids, source labels, Great League format metadata, calibration-only notes, exact six-Pokemon rosters, known/ranked species ids, bounded finite numeric minimums, and 120 ordered lineup enumerability before tests score fixtures.
+  - Fixture scoring tests should assert finite normalized scores and broad minimums, not exact score values, lineup ordering, or optimizer output membership.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, `.opencode/skills/gbl-optimizer/SKILL.md`, and `~/.config/opencode/skills/test-driven-development/SKILL.md`.
+- Known issues / follow-ups:
+  - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-018 does not require modifying the task PRD.
+- Next iteration start:
+  - US-019 - Refresh Summary Statistics Letter Grades
 ---

@@ -79,6 +79,8 @@ For role scoring in `lib/genetic/fitness`, treat Leads, Switches, and Closers ra
 
 Optimizer validation fixtures live in `lib/genetic/fitness/optimizerValidationFixtures.test.ts`; add deterministic injected-context regressions there for documented tradeoffs before changing scoring weights, type-effectiveness behavior, lineup structures, threat-pool weighting, or roster aggregation.
 
+Great League Show-6 Pick-3 calibration fixtures live in `data/calibration/great-league-show6-pick3.json` and are loaded through `lib/data/calibrationFixtures.ts`; keep them tournament-backed, season/context-labeled calibration data only, validate species and 120 ordered lineups, and assert broad scoring invariants rather than exact optimizer scores or expected winners.
+
 Shared generation contracts in `lib/types.ts` do not include algorithm selectors or algorithm labels. Keep deprecated request compatibility isolated to API schemas and do not add algorithm fields back to `GenerationOptions` or `GenerationAnalysis`.
 
 ## Optimizer Guidance
