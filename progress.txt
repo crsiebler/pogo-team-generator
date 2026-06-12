@@ -26,6 +26,7 @@
 - Optimizer Threat Score diagnostics live on `OptimizerScoreBreakdown.threatScore` and are lower-is-better display/diagnostic data; do not add Threat Score to the weighted fitness components unless a current story explicitly changes optimizer selection behavior, and keep it disabled in fast/GA hot paths.
 - Threat Score aggregation uses normalized active `pools.topMeta` and `pools.fullMeta` diagnostics; keep top-meta weighted higher by default, pass season-specific overrides through `LineupScoringContext.threatScorePoolWeights`, fall back to defaults for full-meta-dominant overrides, normalize configured weights over evaluated pools only, and let full-meta contribute without overpowering top-meta.
 - Soft matchup scoring is centralized in `lib/genetic/fitness/matchupScoring.ts`; use `scoreMatchupRating(...)` for optimizer scoring/diagnostic quality where close ratings should be intermediate, while preserving binary threshold counts for categorical labels such as covered threats, weaknesses, dominating matchups, and overwhelming losses.
+- Lineup-aware fitness caches are per-run context caches in `lib/genetic/fitness/index.ts`; keep keys versioned and format-scoped, and validate cache effectiveness with `cacheStats` counters instead of timing-only assertions.
 
 ## Iteration Log
 - Next iteration start: US-001 - Resolve lineup role species names in generate-team API
@@ -599,4 +600,35 @@
   - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-016 does not require modifying the task PRD.
 - Next iteration start:
   - US-017 - Add Optimizer Caching And Precomputation Performance Safeguards
+---
+
+## 2026-06-11 18:48 MST - US-017
+- Implemented versioned, format-scoped lineup-aware fitness cache keys, exposed per-run cache hit/miss/size stats for validation, preserved per-context cache isolation, and added representative PlayPokemon roster scoring plus `generateTeam` under-one-minute performance guards.
+- Files changed: `lib/AGENTS.md`, `lib/genetic/algorithm.performance.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `progress.txt`
+- Commit message: `feat: US-017 - Add Optimizer Caching And Precomputation Performance Safeguards`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/fitness/rosterScoring.test.ts` (fail before test adjustment for mocked GBL scorer not exercising cache; pass after adjustment)
+  - `npx vitest run lib/genetic/algorithm.performance.test.ts` (pass after specialist review fix)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `test-runner`
+  - Used: `gbl-optimizer` skill, `test-runner` skill, and two `general` Task subagents for unavailable recommended-agent implementation/testing guidance; skipped direct Task invocation of `gbl-optimizer` and `test-runner` because they are skills, not available Task subagent types
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`
+  - Findings: fixed medium cache-key delimiter collision by switching to JSON-array keys and adding delimiter-collision coverage; fixed medium missing generation-level performance validation by adding a real nonzero-generation `generateTeam` performance guard; fixed medium stale `per-generation` cache wording in guidance/progress by clarifying per-run context cache scope; fixed low mutable cache-stats type contract by marking cache stats readonly; final review pass returned no actionable findings
+- Decisions (why):
+  - Chose to strengthen the existing per-run lineup cache instead of adding a new global cache because generation contexts already bound cache lifetime to one run and avoid stale cross-request season data.
+  - Chose explicit version and format fields in JSON-array cache keys instead of object-identity or delimiter-joined keys because cache safety must survive cloned lineup inputs, delimiter-containing ids, and format changes.
+  - Chose `cacheStats` counters for cache validation because timing-only assertions are flaky and counters prove repeated scoring reuses cached work.
+  - Chose generous under-one-minute roster scoring and small nonzero-generation `generateTeam` guards because they satisfy the performance acceptance criterion without making CI depend on tight benchmark timing.
+- **Learnings for future iterations:**
+  - `createLineupAwareFitnessContext(...)` is the GA cache boundary for lineup scoring; reuse a context across one GA run, but create a fresh context for separate runs or data/format changes.
+  - Cache tests should assert `cacheStats` and deterministic `getLineupAwareFitnessCacheKey(...)` output rather than comparing first-run and second-run elapsed time.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, `.opencode/skills/gbl-optimizer/SKILL.md`, and `.opencode/skills/test-runner/SKILL.md`.
+- Known issues / follow-ups:
+  - `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` was already untracked before implementation and is left unstaged because US-017 does not require modifying the task PRD.
+- Next iteration start:
+  - US-018 - Add Great League Show-6 Pick-3 Calibration Fixtures
 ---

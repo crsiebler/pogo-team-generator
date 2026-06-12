@@ -72,12 +72,24 @@ const FAST_LINEUP_AWARE_CONFIG: LineupAwareFitnessConfig = {
   includeDiagnostics: false,
   recommendationLimit: 0,
 };
+const LINEUP_AWARE_CACHE_VERSION = 1;
+
+/** Read-only cache counters for one cache namespace. */
+export interface LineupAwareFitnessCacheStats {
+  readonly hits: number;
+  readonly misses: number;
+  readonly size: number;
+}
 
 /** Per-run caches and data context for canonical lineup-aware fitness. */
 export interface LineupAwareFitnessContext {
   scoringContext: LineupScoringContext;
   scoreLineup: (lineup: OrderedLineup) => LineupScoreResult;
   scoreFastLineup: (lineup: OrderedLineup) => LineupScoreResult;
+  readonly cacheStats: {
+    readonly lineup: LineupAwareFitnessCacheStats;
+    readonly fastLineup: LineupAwareFitnessCacheStats;
+  };
 }
 
 /** Creates a cacheable fitness context for one generation run. */
@@ -87,16 +99,39 @@ export function createLineupAwareFitnessContext(
   const scoringContext = createDefaultLineupScoringContext(formatId, 30);
   const lineupScoreCache = new Map<string, LineupScoreResult>();
   const fastLineupScoreCache = new Map<string, LineupScoreResult>();
+  let lineupCacheHits = 0;
+  let lineupCacheMisses = 0;
+  let fastLineupCacheHits = 0;
+  let fastLineupCacheMisses = 0;
+  const cacheStats = {
+    get lineup(): LineupAwareFitnessCacheStats {
+      return {
+        hits: lineupCacheHits,
+        misses: lineupCacheMisses,
+        size: lineupScoreCache.size,
+      };
+    },
+    get fastLineup(): LineupAwareFitnessCacheStats {
+      return {
+        hits: fastLineupCacheHits,
+        misses: fastLineupCacheMisses,
+        size: fastLineupScoreCache.size,
+      };
+    },
+  };
 
   return {
     scoringContext,
+    cacheStats,
     scoreLineup: (lineup) => {
-      const cacheKey = getLineupCacheKey(lineup);
+      const cacheKey = getLineupAwareFitnessCacheKey(lineup, formatId);
       const cached = lineupScoreCache.get(cacheKey);
       if (cached) {
+        lineupCacheHits++;
         return cached;
       }
 
+      lineupCacheMisses++;
       const score = scoreOrderedLineup(lineup, scoringContext, {
         includeThreatScore: false,
       });
@@ -104,12 +139,14 @@ export function createLineupAwareFitnessContext(
       return score;
     },
     scoreFastLineup: (lineup) => {
-      const cacheKey = getLineupCacheKey(lineup);
+      const cacheKey = getLineupAwareFitnessCacheKey(lineup, formatId);
       const cached = fastLineupScoreCache.get(cacheKey);
       if (cached) {
+        fastLineupCacheHits++;
         return cached;
       }
 
+      fastLineupCacheMisses++;
       const score = scoreFastRosterLineup(lineup, scoringContext);
       fastLineupScoreCache.set(cacheKey, score);
       return score;
@@ -161,6 +198,16 @@ export function evaluatePopulation(
   }
 }
 
-function getLineupCacheKey(lineup: OrderedLineup): string {
-  return JSON.stringify([lineup.lead, lineup.switch, lineup.closer]);
+/** Builds a deterministic, versioned cache key for one ordered lineup score. */
+export function getLineupAwareFitnessCacheKey(
+  lineup: OrderedLineup,
+  formatId?: BattleFormatId,
+): string {
+  return JSON.stringify([
+    LINEUP_AWARE_CACHE_VERSION,
+    formatId ?? 'default-format',
+    lineup.lead,
+    lineup.switch,
+    lineup.closer,
+  ]);
 }

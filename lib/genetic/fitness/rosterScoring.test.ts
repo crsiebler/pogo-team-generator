@@ -28,6 +28,42 @@ describe('scorePlayPokemonRoster', () => {
     expect(result.metrics.viableLineupCount).toBe(120);
   });
 
+  test('scores a representative PlayPokemon roster under one minute', () => {
+    const startedAt = performance.now();
+
+    const result = scorePlayPokemonRoster(
+      ['water-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a', 'rock-a'],
+      createTypeCoverageContext({
+        threats: ['threat-fire-rock', 'threat-steel-fairy', 'threat-water'],
+        topThreats: ['threat-fire-rock', 'threat-steel-fairy'],
+        fullMetaThreats: [
+          'threat-fire-rock',
+          'threat-steel-fairy',
+          'threat-water',
+        ],
+        getMatchupRating: (speciesId, threat) => {
+          if (speciesId === 'water-a' && threat === 'threat-fire-rock') {
+            return 720;
+          }
+          if (speciesId === 'ground-a' && threat === 'threat-steel-fairy') {
+            return 690;
+          }
+          if (speciesId === 'grass-a' && threat === 'threat-water') {
+            return 680;
+          }
+
+          return 480;
+        },
+      }),
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const elapsedMs = performance.now() - startedAt;
+
+    expect(result.evaluatedLineupCount).toBe(120);
+    expect(result.fitness).toBeGreaterThan(0);
+    expect(elapsedMs).toBeLessThan(60_000);
+  }, 70_000);
+
   test('uses fast mode without returning all lineup diagnostics', () => {
     const result = scorePlayPokemonRoster(
       roster,

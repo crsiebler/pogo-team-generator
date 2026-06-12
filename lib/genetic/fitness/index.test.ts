@@ -5,6 +5,7 @@ import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
 import {
   calculateLineupAwareFitness,
   createLineupAwareFitnessContext,
+  getLineupAwareFitnessCacheKey,
   evaluatePopulation,
 } from './index';
 import type { Chromosome, OrderedLineup } from '@/lib/types';
@@ -146,6 +147,64 @@ describe('lineup-aware fitness entry point', () => {
     );
     expect(scoreFastRosterLineup).toHaveBeenCalledTimes(1);
     expect(scoreOrderedLineup).not.toHaveBeenCalled();
+    expect(context.cacheStats.fastLineup.size).toBe(1);
+    expect(context.cacheStats.fastLineup.hits).toBe(1);
+    expect(context.cacheStats.fastLineup.misses).toBe(1);
+  });
+
+  it('builds deterministic format-scoped cache keys for lineup scoring', () => {
+    const lineup = { lead: 'a', switch: 'b', closer: 'c' };
+
+    expect(
+      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-bayou-cup'),
+    ).toBe(
+      getLineupAwareFitnessCacheKey(
+        { lead: 'a', switch: 'b', closer: 'c' },
+        'battle-frontier-bayou-cup',
+      ),
+    );
+    expect(getLineupAwareFitnessCacheKey(lineup)).not.toBe(
+      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-bayou-cup'),
+    );
+    expect(
+      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-bayou-cup'),
+    ).not.toBe(getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-master'));
+    expect(
+      getLineupAwareFitnessCacheKey(
+        { lead: 'a|b', switch: 'c', closer: 'd' },
+        'battle-frontier-bayou-cup',
+      ),
+    ).not.toBe(
+      getLineupAwareFitnessCacheKey(
+        { lead: 'a', switch: 'b|c', closer: 'd' },
+        'battle-frontier-bayou-cup',
+      ),
+    );
+  });
+
+  it('isolates lineup caches between generation contexts', () => {
+    const firstContext = createLineupAwareFitnessContext(
+      'battle-frontier-bayou-cup',
+    );
+    const secondContext = createLineupAwareFitnessContext(
+      'battle-frontier-bayou-cup',
+    );
+    const lineup = { lead: 'a', switch: 'b', closer: 'c' };
+
+    firstContext.scoreLineup(lineup);
+    firstContext.scoreLineup(lineup);
+    secondContext.scoreLineup(lineup);
+
+    expect(firstContext.cacheStats.lineup).toEqual({
+      hits: 1,
+      misses: 1,
+      size: 1,
+    });
+    expect(secondContext.cacheStats.lineup).toEqual({
+      hits: 0,
+      misses: 1,
+      size: 1,
+    });
   });
 
   it('scores GBL chromosomes through the canonical role-ordered lineup helper', () => {
