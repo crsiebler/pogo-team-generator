@@ -1,0 +1,137 @@
+{
+  "project": "pogo-team-generator",
+  "branchName": "ralph/battle-frontier-master-support",
+  "description": "Add Battle Frontier (Master) support with cycle-specific point rules, shadow point inheritance, generator legality enforcement, and live anchor point usage UI.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add Battle Frontier Master cycle points CSV",
+      "description": "As a developer, I want the Battle Frontier Master cycle point table stored in a checked-in CSV so future cycles can be updated without changing rule logic.",
+      "acceptanceCriteria": [
+        "Add a checked-in CSV file under data/ for Battle Frontier Master cycle point values",
+        "The CSV uses canonical internal Pokemon identifiers that match project data",
+        "The CSV includes all point-listed species for this cycle",
+        "The CSV format is simple enough to update next cycle without code changes",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Add Battle Frontier Master rules helper",
+      "description": "As a developer, I want a reusable rules module for points and Mega detection so API, UI, and generation share one source of truth.",
+      "acceptanceCriteria": [
+        "Add a helper that loads and caches the Battle Frontier Master points CSV",
+        "Point lookup works for exact listed species ids",
+        "Point lookup applies shadow inheritance from a listed base species when appropriate",
+        "Mega detection uses structured Pokemon data and existing mega tags",
+        "The helper exposes team-level legality checks for point cap, one 5-point Pokemon, and one Mega",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Validate Battle Frontier Master anchors in the API",
+      "description": "As a user, I want illegal Battle Frontier Master anchor selections rejected before generation starts so I get immediate, clear feedback.",
+      "acceptanceCriteria": [
+        "POST /api/generate-team validates Battle Frontier Master anchors against the 11-point cap",
+        "POST /api/generate-team enforces at most one 5-point Pokemon for Battle Frontier Master",
+        "POST /api/generate-team enforces at most one Mega Pokemon for Battle Frontier Master",
+        "Invalid Battle Frontier Master anchor combinations return HTTP 400 with deterministic human-readable errors",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Keep random team construction legal for Battle Frontier Master",
+      "description": "As a user, I want Battle Frontier Master teams built from legal candidates so generated teams do not violate format rules during initial construction.",
+      "acceptanceCriteria": [
+        "Random chromosome creation does not finalize a Battle Frontier Master team over 11 points",
+        "Random chromosome creation does not finalize a Battle Frontier Master team with more than one 5-point Pokemon",
+        "Random chromosome creation does not finalize a Battle Frontier Master team with more than one Mega Pokemon",
+        "Non-Battle Frontier Master formats keep their current initialization behavior",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Keep mutated and crossed teams legal for Battle Frontier Master",
+      "description": "As a user, I want the genetic algorithm to preserve Battle Frontier Master legality after crossover and mutation so final generated teams remain tournament-legal.",
+      "acceptanceCriteria": [
+        "Mutation does not keep an illegal Battle Frontier Master child",
+        "Crossover does not keep an illegal Battle Frontier Master child",
+        "Final generated Battle Frontier Master teams always satisfy point cap, one 5-point Pokemon, and one Mega rules",
+        "Non-Battle Frontier Master formats keep their current operator behavior",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Show Battle Frontier Master rule messaging in the UI",
+      "description": "As a user, I want Battle Frontier Master rule messaging near team setup so I understand the current cycle constraints before generating a team.",
+      "acceptanceCriteria": [
+        "When Battle Frontier Master is selected, team configuration shows concise copy describing 11 total points, at most one 5-point Pokemon, and at most one Mega Pokemon",
+        "Validation failures surface clear user-visible error messages for point cap, 5-point limit, and Mega limit",
+        "Team generation does not proceed after a Battle Frontier Master legality failure",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Show live anchor point usage for Battle Frontier Master",
+      "description": "As a user, I want to see current Battle Frontier Master anchor point usage so I can build legal teams without guessing my remaining budget.",
+      "acceptanceCriteria": [
+        "When battle-frontier-master is selected, the anchor UI displays current point usage in the format '(# / 11 points)'",
+        "The point usage display updates immediately when anchors are added, changed, or removed",
+        "The point usage display uses the same point-resolution rules as server-side validation, including shadow inheritance",
+        "Non-Battle Frontier Master formats do not show the Battle Frontier Master point meter",
+        "Typecheck passes",
+        "Tests pass",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Add automated coverage for Battle Frontier Master rules",
+      "description": "As a developer, I want automated tests for Battle Frontier Master legality so future data or generator changes do not break rule enforcement.",
+      "acceptanceCriteria": [
+        "Add unit tests for point lookup and shadow inheritance",
+        "Add unit tests for one-Mega and one-5-point validation",
+        "Add API tests for invalid Battle Frontier Master anchor combinations",
+        "Add generator tests verifying produced Battle Frontier Master teams are legal",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    }
+  ]
+}

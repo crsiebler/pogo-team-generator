@@ -69,12 +69,166 @@ export interface RankedPokemon {
 
 export type TournamentMode = 'PlayPokemon' | 'GBL';
 
-export type FitnessAlgorithm = 'individual' | 'teamSynergy';
+/** Ordered battle roles for a pick-3 lineup. */
+export type LineupRole = 'lead' | 'switch' | 'closer';
+
+/** Diagnostic label for common PvP lineup structures. */
+export type LineupPatternLabel = 'ABC' | 'ABB' | 'ABA' | 'unknown';
+
+/** Canonical optimizer score components shown in priority order. */
+export type OptimizerScoreComponent =
+  | 'synergy'
+  | 'coverage'
+  | 'safety'
+  | 'consistency'
+  | 'bulk'
+  | 'defensiveRatio'
+  | 'offensiveRatio'
+  | 'role';
+
+/** Normalized optimizer component scores. */
+export type OptimizerScoreComponents = Record<OptimizerScoreComponent, number>;
+
+/** Weight table used to aggregate optimizer score components. */
+export type OptimizerScoreWeights = Readonly<OptimizerScoreComponents>;
+
+/** UI/API-ready normalized optimizer score breakdown. */
+export interface OptimizerScoreBreakdown {
+  components: OptimizerScoreComponents;
+  weights: OptimizerScoreWeights;
+  score: number;
+  threatScore?: OptimizerThreatScore;
+}
+
+/** Ranked optimizer threat score entry, where higher threatValue is worse. */
+export interface OptimizerThreatScoreEntry {
+  speciesId: string;
+  pokemon: string;
+  rank: number;
+  teamAnswers: number;
+  /** Higher-is-worse normalized risk contribution for ranked display. */
+  threatValue: number;
+  severityTier: ThreatSeverityTier;
+}
+
+/** Lower-is-better aggregate diagnostics for one threat pool. */
+export interface OptimizerThreatScorePool {
+  /** Normalized 0..1 pool score, or null when no threats were evaluated. */
+  score: number | null;
+  /** Count of threats in this pool with at least one matchup row. */
+  evaluatedCount: number;
+  /** Normalized active aggregate weight used for the final threat score. */
+  weight: number;
+}
+
+/** Split top-meta and full-meta threat pool diagnostics. */
+export interface OptimizerThreatScorePools {
+  topMeta: OptimizerThreatScorePool;
+  fullMeta: OptimizerThreatScorePool;
+}
+
+/** Lower-is-better optimizer threat score diagnostics for a team or lineup. */
+export interface OptimizerThreatScore {
+  /** Normalized 0..1 aggregate score where lower means fewer severe threats. */
+  score: number;
+  /** Count of unique top/full-meta threats with at least one matchup row. */
+  evaluatedCount: number;
+  /** Worst top-meta threats first; threats without matchup rows are excluded. */
+  topMetaThreats: OptimizerThreatScoreEntry[];
+  /** Worst unique top/full-meta threats first; missing rows are excluded. */
+  overallTeamThreats: OptimizerThreatScoreEntry[];
+  /** Per-pool lower-is-better diagnostics and active aggregate weights. */
+  pools: OptimizerThreatScorePools;
+}
+
+/** Ordered pick-3 lineup keyed by battle role. */
+export type OrderedLineup = Record<LineupRole, string>;
+
+/** Coverage metrics for one bounded threat pool. */
+export interface ThreatPoolCoverageMetrics {
+  coverageRate: number;
+  evaluatedThreatCount: number;
+  noAnswerThreatCount: number;
+  singleAnswerThreatCount: number;
+  dominatingMatchupCount: number;
+  overwhelmingLossCount: number;
+}
+
+/** Coverage metrics shared by fast scoring and recommendation output. */
+export interface LineupCoverageMetrics {
+  coverageRate: number;
+  dominatingMatchupCount: number;
+  overwhelmingLossCount: number;
+  singleAnswerThreatCount: number;
+  topThreatCoverage?: ThreatPoolCoverageMetrics;
+  fullMetaCoverage?: ThreatPoolCoverageMetrics;
+}
+
+/** Availability and score for one shield or resource path. */
+export type LineupResourcePathMetric =
+  | { available: true; score: number }
+  | { available: false; score?: never };
+
+/** Shield/resource path metrics for an ordered lineup. */
+export interface LineupResourcePathMetrics {
+  balanced: LineupResourcePathMetric;
+  shieldSpend: LineupResourcePathMetric;
+  shieldSave: LineupResourcePathMetric;
+}
+
+/** UI-ready recommended lineup with diagnostics. */
+export interface RecommendedLineup {
+  lineup: OrderedLineup;
+  score: number;
+  scoreBreakdown?: OptimizerScoreBreakdown;
+  coverageMetrics: LineupCoverageMetrics;
+  coveredThreats: string[];
+  weaknesses: string[];
+  diagnosticLabel: LineupPatternLabel;
+}
+
+/** Per-Pokemon utility in recommended PlayPokemon lineups. */
+export interface BenchUtility {
+  speciesId: string;
+  utilityScore: number;
+  totalAppearances: number;
+  leadAppearances: number;
+  switchAppearances: number;
+  closerAppearances: number;
+  warnings: string[];
+}
+
+/** Bring-6 roster-level metrics derived from lineup-aware scoring. */
+export interface PlayPokemonRosterMetrics {
+  viableLineupCount: number;
+  topLineupQuality: number;
+  topNLineupDepth: number;
+  dominatingMatchupRate: number;
+  overwhelmingLossRate: number;
+  singleAnswerRisks: string[];
+  viableLeadDiversity: number;
+  benchUtilitySummary: BenchUtility[];
+}
+
+/** Configuration for fast GA scoring versus full diagnostics. */
+export type LineupAwareFitnessConfig =
+  | {
+      mode: 'fast';
+      includeDiagnostics: false;
+      recommendationLimit: 0;
+    }
+  | {
+      mode: 'full';
+      includeDiagnostics: true;
+      recommendationLimit: number;
+    };
 
 export interface Chromosome {
   team: string[];
   anchors?: number[];
   fitness: number;
+  scoreBreakdown?: OptimizerScoreBreakdown;
+  recommendedLineups?: RecommendedLineup[];
 }
 
 export interface GenerationOptions {
@@ -84,12 +238,10 @@ export interface GenerationOptions {
   excludedPokemon?: string[];
   populationSize?: number;
   generations?: number;
-  algorithm?: FitnessAlgorithm;
 }
 
 export interface GenerationAnalysis {
   mode: TournamentMode;
-  algorithm: FitnessAlgorithm;
   teamSize: number;
   generatedAt: string;
   threats: ThreatAnalysis;
@@ -149,7 +301,6 @@ export interface PokemonContributionAnalysisEntry {
   coverageAdded: number;
   highSeverityRelief: number;
   fragilityRiskTier: PokemonContributionRiskTier;
-  rationale: string;
 }
 
 export interface PokemonContributionAnalysis {

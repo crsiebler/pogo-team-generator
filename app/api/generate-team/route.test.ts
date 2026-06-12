@@ -12,6 +12,7 @@ import {
 import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
 import {
   isBattleFrontierBannedSpeciesId,
+  speciesIdToSpeciesName,
   speciesNameToId,
   validateTeamUniqueness,
 } from '@/lib/data/pokemon';
@@ -37,6 +38,7 @@ vi.mock('@/lib/data/pokemon', async () => {
   return {
     ...actual,
     isBattleFrontierBannedSpeciesId: vi.fn(),
+    speciesIdToSpeciesName: vi.fn(),
     speciesNameToId: vi.fn(),
     validateTeamUniqueness: vi.fn(),
   };
@@ -84,6 +86,23 @@ describe('POST /api/generate-team', () => {
     vi.mocked(speciesNameToId).mockImplementation((name: string) =>
       name.toLowerCase().replace(/\s+/g, '-'),
     );
+    vi.mocked(speciesIdToSpeciesName).mockImplementation(
+      (speciesId: string) => {
+        const namesById: Record<string, string> = {
+          annihilape: 'Annihilape',
+          azumarill: 'Azumarill',
+          dewgong: 'Dewgong',
+          feraligatr: 'Feraligatr',
+          lanturn: 'Lanturn',
+          marowak: 'Marowak',
+          'marowak-shadow': 'Marowak (Shadow)',
+          morpeko_full_belly: 'Morpeko (Full Belly)',
+          venusaur: 'Venusaur',
+        };
+
+        return namesById[speciesId] ?? speciesId;
+      },
+    );
     vi.mocked(isBattleFrontierFormatId).mockImplementation((formatId) =>
       formatId.startsWith('battle-frontier-'),
     );
@@ -103,6 +122,48 @@ describe('POST /api/generate-team', () => {
       team: ['azumarill'],
       fitness: 1,
       anchors: [],
+      recommendedLineups: [
+        {
+          lineup: {
+            lead: 'azumarill',
+            switch: 'marowak',
+            closer: 'marowak-shadow',
+          },
+          score: 0.82,
+          coverageMetrics: {
+            coverageRate: 0.7,
+            dominatingMatchupCount: 4,
+            overwhelmingLossCount: 1,
+            singleAnswerThreatCount: 1,
+          },
+          coveredThreats: ['feraligatr'],
+          weaknesses: ['morpeko_full_belly'],
+          diagnosticLabel: 'ABC',
+        },
+      ],
+      scoreBreakdown: {
+        components: {
+          synergy: 0.91,
+          coverage: 0.82,
+          safety: 0.68,
+          consistency: 0.57,
+          bulk: 0.44,
+          defensiveRatio: 0.72,
+          offensiveRatio: 0.61,
+          role: 0.38,
+        },
+        weights: {
+          synergy: 0.24,
+          coverage: 0.21,
+          safety: 0.17,
+          consistency: 0.13,
+          bulk: 0.1,
+          defensiveRatio: 0.07,
+          offensiveRatio: 0.05,
+          role: 0.03,
+        },
+        score: 0.74,
+      },
     });
     vi.mocked(buildThreatAnalysis).mockReturnValue({
       evaluatedCount: 50,
@@ -153,7 +214,6 @@ describe('POST /api/generate-team', () => {
           coverageAdded: 3,
           highSeverityRelief: 4,
           fragilityRiskTier: 'moderate',
-          rationale: 'Test rationale.',
         },
       ],
     });
@@ -186,7 +246,6 @@ describe('POST /api/generate-team', () => {
     ['great-league'],
     ['ultra-league'],
     ['master-league'],
-    ['fantasy-cup'],
     ['naic-2026-championship-cup'],
     ['battle-frontier-bayou-cup'],
     ['battle-frontier-spellcraft-cup'],
@@ -230,11 +289,132 @@ describe('POST /api/generate-team', () => {
     );
   });
 
-  it('returns team and fitness unchanged with top-level analysis', async () => {
+  it('returns team, fitness, lineup-aware fields, and top-level analysis without algorithm labels', async () => {
     vi.mocked(generateTeam).mockResolvedValue({
       team: ['lanturn', 'dewgong', 'annihilape'],
       fitness: 0.8123,
       anchors: [],
+      recommendedLineups: [
+        {
+          lineup: {
+            lead: 'lanturn',
+            switch: 'dewgong',
+            closer: 'annihilape',
+          },
+          score: 0.91,
+          scoreBreakdown: {
+            components: {
+              synergy: 0.92,
+              coverage: 0.87,
+              safety: 0.72,
+              consistency: 0.7,
+              bulk: 0.66,
+              defensiveRatio: 0.81,
+              offensiveRatio: 0.77,
+              role: 0.69,
+            },
+            weights: {
+              synergy: 0.24,
+              coverage: 0.21,
+              safety: 0.17,
+              consistency: 0.13,
+              bulk: 0.1,
+              defensiveRatio: 0.07,
+              offensiveRatio: 0.05,
+              role: 0.03,
+            },
+            score: 0.81,
+            threatScore: {
+              score: 0.32,
+              evaluatedCount: 2,
+              topMetaThreats: [
+                {
+                  speciesId: 'venusaur',
+                  pokemon: 'Venusaur',
+                  rank: 1,
+                  teamAnswers: 0,
+                  threatValue: 1,
+                  severityTier: 'critical',
+                },
+              ],
+              overallTeamThreats: [
+                {
+                  speciesId: 'venusaur',
+                  pokemon: 'Venusaur',
+                  rank: 1,
+                  teamAnswers: 0,
+                  threatValue: 1,
+                  severityTier: 'critical',
+                },
+              ],
+              pools: {
+                topMeta: { score: 0.4, evaluatedCount: 1, weight: 0.7 },
+                fullMeta: { score: 0.13, evaluatedCount: 1, weight: 0.3 },
+              },
+            },
+          },
+          coverageMetrics: {
+            coverageRate: 0.86,
+            dominatingMatchupCount: 5,
+            overwhelmingLossCount: 1,
+            singleAnswerThreatCount: 1,
+          },
+          coveredThreats: ['feraligatr'],
+          weaknesses: ['venusaur'],
+          diagnosticLabel: 'ABC',
+        },
+      ],
+      scoreBreakdown: {
+        components: {
+          synergy: 0.91,
+          coverage: 0.82,
+          safety: 0.68,
+          consistency: 0.57,
+          bulk: 0.44,
+          defensiveRatio: 0.72,
+          offensiveRatio: 0.61,
+          role: 0.38,
+        },
+        weights: {
+          synergy: 0.24,
+          coverage: 0.21,
+          safety: 0.17,
+          consistency: 0.13,
+          bulk: 0.1,
+          defensiveRatio: 0.07,
+          offensiveRatio: 0.05,
+          role: 0.03,
+        },
+        score: 0.74,
+        threatScore: {
+          score: 0.28,
+          evaluatedCount: 2,
+          topMetaThreats: [
+            {
+              speciesId: 'venusaur',
+              pokemon: 'Venusaur',
+              rank: 1,
+              teamAnswers: 0,
+              threatValue: 1,
+              severityTier: 'critical',
+            },
+          ],
+          overallTeamThreats: [
+            {
+              speciesId: 'venusaur',
+              pokemon: 'Venusaur',
+              rank: 1,
+              teamAnswers: 0,
+              threatValue: 1,
+              severityTier: 'critical',
+            },
+          ],
+          pools: {
+            topMeta: { score: 0.34, evaluatedCount: 1, weight: 1 },
+            fullMeta: { score: null, evaluatedCount: 0, weight: 0 },
+          },
+        },
+      },
     });
 
     const request = new Request('http://localhost/api/generate-team', {
@@ -245,7 +425,6 @@ describe('POST /api/generate-team', () => {
         formatId: 'great-league',
         anchorPokemon: ['Marowak'],
         excludedPokemon: ['Azumarill'],
-        algorithm: 'teamSynergy',
       }),
     });
 
@@ -253,9 +432,33 @@ describe('POST /api/generate-team', () => {
     const payload = (await response.json()) as {
       team: string[];
       fitness: number;
+      scoreBreakdown: {
+        components: {
+          synergy: number;
+          coverage: number;
+          safety: number;
+          consistency: number;
+          bulk: number;
+          defensiveRatio: number;
+          offensiveRatio: number;
+          role: number;
+        };
+        weights: {
+          synergy: number;
+          coverage: number;
+          safety: number;
+          consistency: number;
+          bulk: number;
+          defensiveRatio: number;
+          offensiveRatio: number;
+          role: number;
+        };
+        score: number;
+        threatScore?: unknown;
+      };
+      recommendedLineups: unknown[];
       analysis: {
         mode: string;
-        algorithm: string;
         teamSize: number;
         generatedAt: string;
         threats: {
@@ -298,6 +501,9 @@ describe('POST /api/generate-team', () => {
             speciesId: string;
             pokemon: string;
             threatsHandled: number;
+            coverageAdded: number;
+            highSeverityRelief: number;
+            fragilityRiskTier: string;
           }>;
         };
       };
@@ -306,9 +512,125 @@ describe('POST /api/generate-team', () => {
     expect(response.status).toBe(200);
     expect(payload.team).toEqual(['lanturn', 'dewgong', 'annihilape']);
     expect(payload.fitness).toBe(0.8123);
+    expect(payload.recommendedLineups).toEqual([
+      {
+        lineup: {
+          lead: 'Lanturn',
+          switch: 'Dewgong',
+          closer: 'Annihilape',
+        },
+        score: 0.91,
+        scoreBreakdown: {
+          components: {
+            synergy: 0.92,
+            coverage: 0.87,
+            safety: 0.72,
+            consistency: 0.7,
+            bulk: 0.66,
+            defensiveRatio: 0.81,
+            offensiveRatio: 0.77,
+            role: 0.69,
+          },
+          weights: {
+            synergy: 0.24,
+            coverage: 0.21,
+            safety: 0.17,
+            consistency: 0.13,
+            bulk: 0.1,
+            defensiveRatio: 0.07,
+            offensiveRatio: 0.05,
+            role: 0.03,
+          },
+          score: 0.81,
+          threatScore: {
+            score: 0.32,
+            evaluatedCount: 2,
+            topMetaThreats: [
+              {
+                speciesId: 'venusaur',
+                pokemon: 'Venusaur',
+                rank: 1,
+                teamAnswers: 0,
+                threatValue: 1,
+                severityTier: 'critical',
+              },
+            ],
+            overallTeamThreats: [
+              {
+                speciesId: 'venusaur',
+                pokemon: 'Venusaur',
+                rank: 1,
+                teamAnswers: 0,
+                threatValue: 1,
+                severityTier: 'critical',
+              },
+            ],
+            pools: {
+              topMeta: { score: 0.4, evaluatedCount: 1, weight: 0.7 },
+              fullMeta: { score: 0.13, evaluatedCount: 1, weight: 0.3 },
+            },
+          },
+        },
+        coverageMetrics: {
+          coverageRate: 0.86,
+          dominatingMatchupCount: 5,
+          overwhelmingLossCount: 1,
+          singleAnswerThreatCount: 1,
+        },
+        coveredThreats: ['feraligatr'],
+        weaknesses: ['Venusaur'],
+        diagnosticLabel: 'ABC',
+      },
+    ]);
+    expect(payload.scoreBreakdown.components).toMatchObject({
+      synergy: 0.91,
+      defensiveRatio: 0.72,
+      offensiveRatio: 0.61,
+      role: 0.38,
+    });
+    expect(payload.scoreBreakdown.weights).toMatchObject({
+      synergy: 0.24,
+      coverage: 0.21,
+      safety: 0.17,
+      consistency: 0.13,
+      bulk: 0.1,
+      defensiveRatio: 0.07,
+      offensiveRatio: 0.05,
+      role: 0.03,
+    });
+    expect(payload.scoreBreakdown.score).toBe(0.74);
+    expect(payload.scoreBreakdown.threatScore).toEqual({
+      score: 0.28,
+      evaluatedCount: 2,
+      topMetaThreats: [
+        {
+          speciesId: 'venusaur',
+          pokemon: 'Venusaur',
+          rank: 1,
+          teamAnswers: 0,
+          threatValue: 1,
+          severityTier: 'critical',
+        },
+      ],
+      overallTeamThreats: [
+        {
+          speciesId: 'venusaur',
+          pokemon: 'Venusaur',
+          rank: 1,
+          teamAnswers: 0,
+          threatValue: 1,
+          severityTier: 'critical',
+        },
+      ],
+      pools: {
+        topMeta: { score: 0.34, evaluatedCount: 1, weight: 1 },
+        fullMeta: { score: null, evaluatedCount: 0, weight: 0 },
+      },
+    });
+    expect(payload).not.toHaveProperty('algorithm');
+    expect(payload.analysis).not.toHaveProperty('algorithm');
     expect(payload.analysis).toMatchObject({
       mode: 'GBL',
-      algorithm: 'teamSynergy',
       teamSize: 3,
       threats: {
         evaluatedCount: 50,
@@ -356,10 +678,16 @@ describe('POST /api/generate-team', () => {
             speciesId: 'lanturn',
             pokemon: 'Lanturn',
             threatsHandled: 12,
+            coverageAdded: 3,
+            highSeverityRelief: 4,
+            fragilityRiskTier: 'moderate',
           },
         ],
       },
     });
+    expect(payload.analysis.pokemonContributions.entries[0]).not.toHaveProperty(
+      'rationale',
+    );
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
     expect(buildThreatAnalysis).toHaveBeenCalledWith(
@@ -403,6 +731,187 @@ describe('POST /api/generate-team', () => {
     );
   });
 
+  it('passes no algorithm into canonical team generation', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const [generationOptions] = vi.mocked(generateTeam).mock.calls[0];
+
+    expect(response.status).toBe(200);
+    expect(generationOptions).not.toHaveProperty('algorithm');
+  });
+
+  it('ignores deprecated algorithm request fields', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+        algorithm: 'broken-algorithm',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const [generationOptions] = vi.mocked(generateTeam).mock.calls[0];
+
+    expect(response.status).toBe(200);
+    expect(generationOptions).not.toHaveProperty('algorithm');
+  });
+
+  it('returns PlayPokemon lineup recommendations without roster metrics display payload', async () => {
+    const generatedTeamResult = {
+      team: ['azumarill', 'marowak', 'marowak-shadow'],
+      fitness: 0.765,
+      anchors: [],
+      recommendedLineups: [
+        {
+          lineup: {
+            lead: 'azumarill',
+            switch: 'marowak',
+            closer: 'marowak-shadow',
+          },
+          score: 0.82,
+          coverageMetrics: {
+            coverageRate: 0.7,
+            dominatingMatchupCount: 4,
+            overwhelmingLossCount: 1,
+            singleAnswerThreatCount: 1,
+          },
+          coveredThreats: ['feraligatr'],
+          weaknesses: ['morpeko_full_belly'],
+          diagnosticLabel: 'ABC',
+          resourcePathMetrics: {
+            balanced: { available: true, score: 0.8 },
+            shieldSpend: { available: true, score: 0.65 },
+            shieldSave: { available: true, score: 0.55 },
+          },
+        },
+      ],
+      rosterMetrics: {
+        viableLineupCount: 12,
+        topLineupQuality: 0.82,
+        topNLineupDepth: 0.74,
+        dominatingMatchupRate: 0.2,
+        overwhelmingLossRate: 0.05,
+        singleAnswerRisks: ['morpeko_full_belly'],
+        viableLeadDiversity: 3,
+        benchUtilitySummary: [
+          {
+            speciesId: 'azumarill',
+            utilityScore: 1,
+            totalAppearances: 5,
+            leadAppearances: 5,
+            switchAppearances: 0,
+            closerAppearances: 0,
+            warnings: [],
+          },
+        ],
+      },
+      benchUtility: [
+        {
+          speciesId: 'azumarill',
+          utilityScore: 1,
+          totalAppearances: 5,
+          leadAppearances: 5,
+          switchAppearances: 0,
+          closerAppearances: 0,
+          warnings: [],
+        },
+      ],
+    } as unknown as Awaited<ReturnType<typeof generateTeam>>;
+
+    vi.mocked(generateTeam).mockResolvedValue(generatedTeamResult);
+
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      recommendedLineups: unknown[];
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.recommendedLineups).toEqual([
+      {
+        lineup: {
+          lead: 'Azumarill',
+          switch: 'Marowak',
+          closer: 'Marowak (Shadow)',
+        },
+        score: 0.82,
+        coverageMetrics: {
+          coverageRate: 0.7,
+          dominatingMatchupCount: 4,
+          overwhelmingLossCount: 1,
+          singleAnswerThreatCount: 1,
+        },
+        coveredThreats: ['feraligatr'],
+        weaknesses: ['Morpeko (Full Belly)'],
+        diagnosticLabel: 'ABC',
+      },
+    ]);
+    expect(payload).not.toHaveProperty('rosterMetrics');
+    expect(payload).not.toHaveProperty('benchUtility');
+    expect(payload.recommendedLineups[0]).not.toHaveProperty(
+      'resourcePathMetrics',
+    );
+  });
+
+  it('returns optimizer score breakdown for analysis display', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId: 'great-league',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      scoreBreakdown?: unknown;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.scoreBreakdown).toEqual({
+      components: {
+        synergy: 0.91,
+        coverage: 0.82,
+        safety: 0.68,
+        consistency: 0.57,
+        bulk: 0.44,
+        defensiveRatio: 0.72,
+        offensiveRatio: 0.61,
+        role: 0.38,
+      },
+      weights: {
+        synergy: 0.24,
+        coverage: 0.21,
+        safety: 0.17,
+        consistency: 0.13,
+        bulk: 0.1,
+        defensiveRatio: 0.07,
+        offensiveRatio: 0.05,
+        role: 0.03,
+      },
+      score: 0.74,
+    });
+  });
+
   it.each([['little-cup'], ['kanto-cup'], ['spring-cup']] as const)(
     'returns 400 for invalid formatId %s',
     async (formatId) => {
@@ -423,27 +932,6 @@ describe('POST /api/generate-team', () => {
       expect(generateTeam).not.toHaveBeenCalled();
     },
   );
-
-  it('returns 400 for invalid algorithm values', async () => {
-    const request = new Request('http://localhost/api/generate-team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'PlayPokemon',
-        formatId: 'great-league',
-        algorithm: 'broken-algorithm',
-      }),
-    });
-
-    const response = await POST(request as NextRequest);
-    const responseBody = (await response.json()) as { error: string };
-
-    expect(response.status).toBe(400);
-    expect(responseBody.error).toBe(
-      'Invalid fitness algorithm: broken-algorithm',
-    );
-    expect(generateTeam).not.toHaveBeenCalled();
-  });
 
   it('returns 400 when Battle Frontier requests use GBL mode', async () => {
     const request = new Request('http://localhost/api/generate-team', {

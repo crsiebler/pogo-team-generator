@@ -1,6 +1,10 @@
 import { speciesNameToChoosableId } from './pokemon';
 import {
+  getAllRankingsForPokemon,
+  getAttackersRankings,
+  getChargersRankings,
   getClosersRankings,
+  getConsistencyRankings,
   getLeadsRankings,
   getMetaThreats,
   getOverallRankings,
@@ -35,7 +39,6 @@ describe('format-aware rankings loading', () => {
     const greatLeagueRankings = getOverallRankings('great-league');
     const ultraLeagueRankings = getOverallRankings('ultra-league');
     const masterLeagueRankings = getOverallRankings('master-league');
-    const fantasyCupRankings = getOverallRankings('fantasy-cup');
     const naic2026CupRankings = getOverallRankings(
       'naic-2026-championship-cup',
     );
@@ -47,18 +50,15 @@ describe('format-aware rankings loading', () => {
     const battleFrontierMasterRankings = getOverallRankings(
       'battle-frontier-master',
     );
-    const jungleCupRankings = getOverallRankings('jungle-cup');
 
     expect(greatLeagueRankings.length).toBeGreaterThan(0);
     expect(ultraLeagueRankings.length).toBeGreaterThan(0);
     expect(masterLeagueRankings.length).toBeGreaterThan(0);
-    expect(fantasyCupRankings.length).toBeGreaterThan(0);
     expect(naic2026CupRankings.length).toBeGreaterThan(0);
     expect(bayouCupRankings.length).toBeGreaterThan(0);
     expect(spellcraftCupRankings.length).toBeGreaterThan(0);
     expect(ulRetroRankings.length).toBeGreaterThan(0);
     expect(battleFrontierMasterRankings.length).toBeGreaterThan(0);
-    expect(jungleCupRankings.length).toBeGreaterThan(0);
   });
 
   it('keeps Great League cache stable after loading other formats', () => {
@@ -67,6 +67,53 @@ describe('format-aware rankings loading', () => {
 
     const afterFailure = getOverallRankings();
     expect(afterFailure).toBe(beforeFailure);
+  });
+
+  it('supports all documented ranking categories at runtime', () => {
+    expect(getChargersRankings().length).toBeGreaterThan(0);
+    expect(getAttackersRankings().length).toBeGreaterThan(0);
+    expect(getConsistencyRankings().length).toBeGreaterThan(0);
+
+    expect(getRankingScore('Azumarill', 'chargers')).toBeGreaterThan(0);
+    expect(getRankingScore('Azumarill', 'attackers')).toBeGreaterThan(0);
+    expect(getRankingScore('Azumarill', 'consistency')).toBeGreaterThan(0);
+  });
+
+  it('loads documented category rankings for non-default formats', () => {
+    expect(
+      getChargersRankings('battle-frontier-bayou-cup').length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('exposes all category scores in the aggregate ranking contract', () => {
+    type AllRankingScores = ReturnType<typeof getAllRankingsForPokemon>;
+    const scoreKeys: Array<keyof AllRankingScores> = [
+      'overall',
+      'leads',
+      'switches',
+      'closers',
+      'chargers',
+      'attackers',
+      'consistency',
+      'average',
+    ];
+
+    expect(scoreKeys).toContain('chargers');
+    expect(scoreKeys).toContain('attackers');
+    expect(scoreKeys).toContain('consistency');
+  });
+
+  it('includes supporting role categories in aggregate rankings', () => {
+    const rankings = getAllRankingsForPokemon('Azumarill');
+
+    expect(rankings.overall).toBeGreaterThan(0);
+    expect(rankings.leads).toBeGreaterThan(0);
+    expect(rankings.switches).toBeGreaterThan(0);
+    expect(rankings.closers).toBeGreaterThan(0);
+    expect(rankings.chargers).toBeGreaterThan(0);
+    expect(rankings.attackers).toBeGreaterThan(0);
+    expect(rankings.consistency).toBeGreaterThan(0);
+    expect(rankings.average).toBeGreaterThan(0);
   });
 });
 

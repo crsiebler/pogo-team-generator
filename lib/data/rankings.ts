@@ -9,13 +9,23 @@ import {
   speciesIdToSpeciesName,
 } from './pokemon';
 
-type RankingCategory = 'overall' | 'leads' | 'switches' | 'closers';
+export type RankingCategory =
+  | 'overall'
+  | 'leads'
+  | 'switches'
+  | 'closers'
+  | 'chargers'
+  | 'attackers'
+  | 'consistency';
 
 interface FormatRankingsCache {
   overall: RankedPokemon[] | null;
   leads: RankedPokemon[] | null;
   switches: RankedPokemon[] | null;
   closers: RankedPokemon[] | null;
+  chargers: RankedPokemon[] | null;
+  attackers: RankedPokemon[] | null;
+  consistency: RankedPokemon[] | null;
 }
 
 const formatRankingsCache: Map<BattleFormatId, FormatRankingsCache> = new Map();
@@ -90,6 +100,9 @@ function getFormatRankingsCache(
     leads: null,
     switches: null,
     closers: null,
+    chargers: null,
+    attackers: null,
+    consistency: null,
   };
 
   formatRankingsCache.set(resolvedFormatId, newCache);
@@ -231,30 +244,82 @@ export function getClosersRankings(formatId?: BattleFormatId): RankedPokemon[] {
 }
 
 /**
+ * Get chargers rankings (lazy loaded)
+ */
+export function getChargersRankings(
+  formatId?: BattleFormatId,
+): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.chargers) {
+    cache.chargers = parseRankingCSV('chargers', formatId);
+  }
+
+  return cache.chargers;
+}
+
+/**
+ * Get attackers rankings (lazy loaded)
+ */
+export function getAttackersRankings(
+  formatId?: BattleFormatId,
+): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.attackers) {
+    cache.attackers = parseRankingCSV('attackers', formatId);
+  }
+
+  return cache.attackers;
+}
+
+/**
+ * Get consistency rankings (lazy loaded)
+ */
+export function getConsistencyRankings(
+  formatId?: BattleFormatId,
+): RankedPokemon[] {
+  const cache = getFormatRankingsCache(formatId);
+
+  if (!cache.consistency) {
+    cache.consistency = parseRankingCSV('consistency', formatId);
+  }
+
+  return cache.consistency;
+}
+
+function getRankingsByCategory(
+  role: RankingCategory,
+  formatId?: BattleFormatId,
+): RankedPokemon[] {
+  switch (role) {
+    case 'overall':
+      return getOverallRankings(formatId);
+    case 'leads':
+      return getLeadsRankings(formatId);
+    case 'switches':
+      return getSwitchesRankings(formatId);
+    case 'closers':
+      return getClosersRankings(formatId);
+    case 'chargers':
+      return getChargersRankings(formatId);
+    case 'attackers':
+      return getAttackersRankings(formatId);
+    case 'consistency':
+      return getConsistencyRankings(formatId);
+  }
+}
+
+/**
  * Get ranking score for a specific Pokémon in a specific role
  */
 export function getRankingScore(
   pokemonName: string,
-  role: 'overall' | 'leads' | 'switches' | 'closers',
+  role: RankingCategory,
   formatId?: BattleFormatId,
 ): number {
   const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
-  let rankings: RankedPokemon[];
-
-  switch (role) {
-    case 'overall':
-      rankings = getOverallRankings(formatId);
-      break;
-    case 'leads':
-      rankings = getLeadsRankings(formatId);
-      break;
-    case 'switches':
-      rankings = getSwitchesRankings(formatId);
-      break;
-    case 'closers':
-      rankings = getClosersRankings(formatId);
-      break;
-  }
+  const rankings = getRankingsByCategory(role, formatId);
 
   const entry = rankings.find((r) => r.Pokemon === canonicalPokemonName);
   return entry ? entry.Score : 0;
@@ -290,16 +355,70 @@ export function getAllRankingsForPokemon(
   leads: number;
   switches: number;
   closers: number;
+  chargers: number;
+  attackers: number;
+  consistency: number;
   average: number;
 } {
   const canonicalPokemonName = normalizeToChoosableSpeciesName(pokemonName);
+  const overall = getRankingScore(canonicalPokemonName, 'overall', formatId);
+  const leads = getRankingScore(canonicalPokemonName, 'leads', formatId);
+  const switches = getRankingScore(canonicalPokemonName, 'switches', formatId);
+  const closers = getRankingScore(canonicalPokemonName, 'closers', formatId);
+  const chargers = getOptionalRankingScore(
+    canonicalPokemonName,
+    'chargers',
+    formatId,
+  );
+  const attackers = getOptionalRankingScore(
+    canonicalPokemonName,
+    'attackers',
+    formatId,
+  );
+  const consistency = getOptionalRankingScore(
+    canonicalPokemonName,
+    'consistency',
+    formatId,
+  );
+  const scores = [
+    overall,
+    leads,
+    switches,
+    closers,
+    chargers,
+    attackers,
+    consistency,
+  ].filter((score) => score > 0);
+
   return {
-    overall: getRankingScore(canonicalPokemonName, 'overall', formatId),
-    leads: getRankingScore(canonicalPokemonName, 'leads', formatId),
-    switches: getRankingScore(canonicalPokemonName, 'switches', formatId),
-    closers: getRankingScore(canonicalPokemonName, 'closers', formatId),
-    average: getAverageRankingScore(canonicalPokemonName, formatId),
+    overall,
+    leads,
+    switches,
+    closers,
+    chargers,
+    attackers,
+    consistency,
+    average:
+      scores.length === 0
+        ? 0
+        : scores.reduce((sum, score) => sum + score, 0) / scores.length,
   };
+}
+
+function getOptionalRankingScore(
+  pokemonName: string,
+  role: RankingCategory,
+  formatId?: BattleFormatId,
+): number {
+  try {
+    return getRankingScore(pokemonName, role, formatId);
+  } catch (error) {
+    if (error instanceof MissingRankingDataError) {
+      return 0;
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -404,26 +523,11 @@ export function getTopRankedPokemonNames(
  * Get top N Pokémon by role
  */
 export function getTopPokemon(
-  role: 'overall' | 'leads' | 'switches' | 'closers',
+  role: RankingCategory,
   count: number,
   formatId?: BattleFormatId,
 ): RankedPokemon[] {
-  let rankings: RankedPokemon[];
-
-  switch (role) {
-    case 'overall':
-      rankings = getOverallRankings(formatId);
-      break;
-    case 'leads':
-      rankings = getLeadsRankings(formatId);
-      break;
-    case 'switches':
-      rankings = getSwitchesRankings(formatId);
-      break;
-    case 'closers':
-      rankings = getClosersRankings(formatId);
-      break;
-  }
+  const rankings = getRankingsByCategory(role, formatId);
 
   return rankings.slice(0, count);
 }
@@ -490,27 +594,11 @@ export function speciesIdToRankingName(speciesId: string): string {
  */
 export function getRankingForSpeciesId(
   speciesId: string,
-  role: 'overall' | 'leads' | 'switches' | 'closers',
+  role: RankingCategory,
   formatId?: BattleFormatId,
 ): RankedPokemon | undefined {
   const rankingName = speciesIdToRankingName(speciesId);
-
-  let rankings: RankedPokemon[];
-
-  switch (role) {
-    case 'overall':
-      rankings = getOverallRankings(formatId);
-      break;
-    case 'leads':
-      rankings = getLeadsRankings(formatId);
-      break;
-    case 'switches':
-      rankings = getSwitchesRankings(formatId);
-      break;
-    case 'closers':
-      rankings = getClosersRankings(formatId);
-      break;
-  }
+  const rankings = getRankingsByCategory(role, formatId);
 
   return rankings.find((r) => r.Pokemon === rankingName);
 }

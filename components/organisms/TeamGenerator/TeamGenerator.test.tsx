@@ -24,8 +24,6 @@ describe('TeamGenerator', () => {
         battleFrontierMasterPointsByPokemonName={{}}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
-        algorithm="individual"
-        onAlgorithmChange={() => {}}
       />,
     );
 
@@ -69,8 +67,6 @@ describe('TeamGenerator', () => {
         }}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
-        algorithm="individual"
-        onAlgorithmChange={() => {}}
       />,
     );
 
@@ -110,11 +106,27 @@ describe('TeamGenerator', () => {
         battleFrontierMasterPointsByPokemonName={{ Azumarill: 0 }}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
-        algorithm="individual"
-        onAlgorithmChange={() => {}}
       />,
     );
 
     expect(screen.queryByText(/\(\d+ \/ 11 points\)/i)).not.toBeInTheDocument();
+  });
+
+  it('renders generation controls without algorithm selection text', () => {
+    render(
+      <TeamGenerator
+        mode="PlayPokemon"
+        pokemonList={['Azumarill']}
+        selectedFormatId="great-league"
+        battleFrontierMasterPointsByPokemonName={{}}
+        onAnchorsChange={() => {}}
+        onExclusionsChange={() => {}}
+      />,
+    );
+
+    expect(screen.queryByText(/algorithm selection/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/individual scoring/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/team synergy/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/fitness mode/i)).not.toBeInTheDocument();
   });
 });

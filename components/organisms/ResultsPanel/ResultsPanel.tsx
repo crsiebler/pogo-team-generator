@@ -3,7 +3,7 @@
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import { TournamentMode } from '@/lib/types';
+import type { TournamentMode } from '@/lib/types';
 
 interface ResultsPanelProps {
   generatedTeam: {

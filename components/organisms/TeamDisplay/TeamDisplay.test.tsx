@@ -90,4 +90,128 @@ describe('TeamDisplay', () => {
       expect(screen.getByText(/4\s*\/\s*11 points/i)).toBeInTheDocument();
     });
   });
+
+  it('keeps recommended lineups out of the generated team card list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [
+            { speciesId: 'azumarill', speciesName: 'Azumarill' },
+            { speciesId: 'skarmory', speciesName: 'Skarmory' },
+            { speciesId: 'registeel', speciesName: 'Registeel' },
+          ],
+        }),
+      }),
+    );
+
+    render(
+      <TeamDisplay
+        team={['azumarill', 'skarmory', 'registeel']}
+        mode="PlayPokemon"
+        formatId="great-league"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Pokemon Card')).toHaveLength(3);
+    });
+
+    expect(screen.queryByText('Recommended Lineups')).not.toBeInTheDocument();
+    expect(screen.queryByText('Lineup 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Lead: Azumarill')).not.toBeInTheDocument();
+    expect(screen.queryByText('Score: 0.87')).not.toBeInTheDocument();
+  });
+
+  it('keeps GBL role-ordered lineups out of the generated team card list', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [
+            { speciesId: 'clodsire', speciesName: 'Clodsire' },
+            { speciesId: 'feraligatr', speciesName: 'Feraligatr' },
+            { speciesId: 'dunsparce', speciesName: 'Dunsparce' },
+          ],
+        }),
+      }),
+    );
+
+    render(
+      <TeamDisplay
+        team={['clodsire', 'feraligatr', 'dunsparce']}
+        mode="GBL"
+        formatId="great-league"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Pokemon Card')).toHaveLength(3);
+    });
+
+    expect(screen.queryByText('Recommended Lineup')).not.toBeInTheDocument();
+    expect(screen.queryByText('Lead: Clodsire')).not.toBeInTheDocument();
+    expect(screen.queryByText('Safe Swap: Feraligatr')).not.toBeInTheDocument();
+    expect(screen.queryByText('Closer: Dunsparce')).not.toBeInTheDocument();
+    expect(screen.queryByText('Lineup 2')).not.toBeInTheDocument();
+  });
+
+  it('omits PlayPokemon roster metrics and bench utility from generated team cards', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [
+            { speciesId: 'azumarill', speciesName: 'Azumarill' },
+            { speciesId: 'registeel', speciesName: 'Registeel' },
+          ],
+        }),
+      }),
+    );
+
+    render(
+      <TeamDisplay
+        team={['azumarill', 'registeel']}
+        mode="PlayPokemon"
+        formatId="great-league"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Pokemon Card')).toHaveLength(2);
+    });
+
+    expect(screen.queryByText('Roster Metrics')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bench Utility')).not.toBeInTheDocument();
+    expect(screen.queryByText('Viable Lineups')).not.toBeInTheDocument();
+    expect(screen.queryByText('Single-Answer Risks')).not.toBeInTheDocument();
+    expect(screen.queryByText('Warning: unbringable')).not.toBeInTheDocument();
+  });
+
+  it('does not show PlayPokemon roster metrics for GBL results', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ pokemon: [] }),
+      }),
+    );
+
+    render(
+      <TeamDisplay
+        team={['azumarill', 'registeel']}
+        mode="GBL"
+        formatId="great-league"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Team Notes/)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Roster Metrics')).not.toBeInTheDocument();
+  });
 });

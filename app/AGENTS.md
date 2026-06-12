@@ -14,6 +14,10 @@ When `battle-frontier-master` needs UI-side point awareness, enrich the existing
 
 When generation fails due to missing format datasets, map `MissingRankingDataError` and `MissingSimulationDataError` to HTTP 400 responses so users get actionable sync instructions instead of generic 500 errors.
 
+For `/api/generate-team`, ignore deprecated `algorithm` request fields, do not pass algorithm selectors into `generateTeam(...)`, and expose display-consumed lineup-aware output fields such as `recommendedLineups` from the returned chromosome without adding algorithm labels.
+
+When `/api/generate-team` returns display-facing lineup diagnostics, resolve threat species ids such as lineup weaknesses to readable species names in the route adapter so client components stay display-only.
+
 ## Testing
 
 Integration tests for APIs; run vitest on changes. Propagate errors/rejections.

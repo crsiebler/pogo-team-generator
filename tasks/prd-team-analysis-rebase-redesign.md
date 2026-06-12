@@ -11,6 +11,8 @@ Rebase the current Team Analysis Summary branch onto `main`, preserve the battle
 - Move Team Analysis Summary into a dedicated third column alongside Team Configuration and Generated Team.
 - Add consistent green / yellow / red value coding for summary statistics, contribution categories, and per-Pokemon metrics.
 - Add section-local legends that explain each metric and its expected baseline ranges.
+- Ensure PlayPokemon lineup recommendations evaluate ordered switch and closer assignments so role-specific scoring can select the strongest pick-3 order.
+- Ensure returned Overall Fitness matches the final full optimizer score used for displayed score breakdowns and multi-team sorting.
 
 ## User Stories
 
@@ -121,6 +123,35 @@ Rebase the current Team Analysis Summary branch onto `main`, preserve the battle
 - [ ] Typecheck passes.
 - [ ] Verify in browser using dev-browser skill.
 
+### US-009: Enumerate ordered PlayPokemon switch and closer assignments
+
+**Description:** As a user, I want PlayPokemon recommended lineups to evaluate both switch and closer role orders so that viable rosters are not underrated when the two backline Pokemon fit different roles.
+
+**Acceptance Criteria:**
+
+- [ ] `lib/genetic/fitness/lineupEnumeration.ts` evaluates every ordered switch and closer assignment for each lead from the remaining five Pokemon.
+- [ ] A six-Pokemon PlayPokemon roster produces 120 unique ordered pick-3 lineups instead of only 60 unordered backline pairs.
+- [ ] Roster input order is preserved for lead iteration.
+- [ ] Existing validation remains in place for duplicate, empty, and delimiter-containing species ids.
+- [ ] Roster scoring and fitness tests that currently assume 60 PlayPokemon lineups are updated.
+- [ ] Code comments or local guidance that describe PlayPokemon roster scoring as 60 lineups are updated to match ordered role enumeration.
+- [ ] Tests pass.
+- [ ] Typecheck passes.
+
+### US-010: Return recomputed full optimizer fitness
+
+**Description:** As a user, I want Overall Fitness to match the final optimizer breakdown so that the displayed score, recommendations, and multi-team sorting describe the same final roster evaluation.
+
+**Acceptance Criteria:**
+
+- [ ] `lib/genetic/algorithm.ts` sets the final PlayPokemon chromosome `fitness` from `rosterScore.fitness` after full diagnostics are recomputed.
+- [ ] Returned PlayPokemon `fitness` matches `scoreBreakdown.score` for the final roster evaluation.
+- [ ] `generateMultipleTeams` sorts by recomputed final fitness after diagnostics are attached.
+- [ ] The GBL final recommendation path is reviewed and changed only if its final recommendation score can differ from the hot-path fitness context.
+- [ ] Relevant Vitest coverage verifies final `fitness` and `scoreBreakdown.score` consistency.
+- [ ] Tests pass.
+- [ ] Typecheck passes.
+
 ## Functional Requirements
 
 - FR-1: The system must rebase the current analysis branch onto `main` while preserving `main`'s battle format support and format-aware generation flow.
@@ -139,6 +170,8 @@ Rebase the current Team Analysis Summary branch onto `main`, preserve the battle
 - FR-13: Each accordion section must include a legend that describes its metrics and lists the expected target range or interpretation band.
 - FR-14: The UI must degrade gracefully when `analysis` or `fitness` is missing.
 - FR-15: All updated UI must remain usable on mobile and desktop.
+- FR-16: PlayPokemon roster lineup enumeration must evaluate ordered lead, switch, and closer assignments rather than canonical unordered backline pairs.
+- FR-17: The generated-team response must return a final `fitness` value that matches the full optimizer `scoreBreakdown.score` used for the returned recommendations.
 
 ## Non-Goals
 
@@ -164,6 +197,8 @@ Rebase the current Team Analysis Summary branch onto `main`, preserve the battle
 - Overall Fitness color grading should use algorithm-normalized bands because acceptable raw scores can shift by meta and fitness model.
 - Preserve adapter-thin API and UI layers by keeping analysis computation in `lib/analysis/*`.
 - Update route, organism, and analysis tests together so response contract and rendering behavior do not drift.
+- Update PlayPokemon roster scoring tests and comments that assume 60 lineups, because ordered switch and closer roles increase six-Pokemon roster enumeration to 120 unique lineups.
+- Keep final optimizer score consistency in `lib/genetic/algorithm.ts` so API consumers and `generateMultipleTeams` sort by the same score displayed in the final analysis output.
 
 ## Success Metrics
 

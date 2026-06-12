@@ -1,137 +1,434 @@
 {
   "project": "pogo-team-generator",
-  "branchName": "ralph/battle-frontier-master-support",
-  "description": "Add Battle Frontier (Master) support with cycle-specific point rules, shadow point inheritance, generator legality enforcement, and live anchor point usage UI.",
+  "branchName": "ralph/lineup-aware-team-generation",
+  "description": "Overhaul Team Analysis Summary and lineup presentation by simplifying display-only analysis output, improving recommended lineup layout, resolving lineup role species names, and reordering optimizer score breakdown fields.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Add Battle Frontier Master cycle points CSV",
-      "description": "As a developer, I want the Battle Frontier Master cycle point table stored in a checked-in CSV so future cycles can be updated without changing rule logic.",
+      "title": "Resolve lineup role species names in generate-team API",
+      "description": "As a user, I want recommended lineup lead, switch, and closer entries to show species names instead of internal IDs so that lineup recommendations are readable.",
       "acceptanceCriteria": [
-        "Add a checked-in CSV file under data/ for Battle Frontier Master cycle point values",
-        "The CSV uses canonical internal Pokemon identifiers that match project data",
-        "The CSV includes all point-listed species for this cycle",
-        "The CSV format is simple enough to update next cycle without code changes",
-        "Typecheck passes",
-        "Tests pass"
+        "Update app/api/generate-team/route.ts so recommended lineup lead, switch, and closer role values are resolved to species names before reaching the UI",
+        "Species-name resolution follows the existing approach used for lineup weakness names",
+        "Existing lineup weakness species-name behavior is preserved",
+        "Add or update relevant Vitest coverage for role species-name resolution",
+        "Tests pass",
+        "Typecheck passes"
       ],
       "priority": 1,
       "passes": true,
-      "notes": ""
+      "notes": "@backend-developer implement route/data mapping; @api-designer review response contract and backward compatibility; @frontend-developer verify UI consumes names without extra client mapping."
     },
     {
       "id": "US-002",
-      "title": "Add Battle Frontier Master rules helper",
-      "description": "As a developer, I want a reusable rules module for points and Mega detection so API, UI, and generation share one source of truth.",
+      "title": "Remove Roster Metrics display and unused display-only generation",
+      "description": "As a user, I want the team display to omit Roster Metrics so that the analysis view is less cluttered.",
       "acceptanceCriteria": [
-        "Add a helper that loads and caches the Battle Frontier Master points CSV",
-        "Point lookup works for exact listed species ids",
-        "Point lookup applies shadow inheritance from a listed base species when appropriate",
-        "Mega detection uses structured Pokemon data and existing mega tags",
-        "The helper exposes team-level legality checks for point cap, one 5-point Pokemon, and one Mega",
+        "Remove the Roster Metrics output display from TeamDisplay.tsx",
+        "Remove code that generates Roster Metrics display values when those values have no remaining consumer",
+        "Do not delete internal optimizer/domain scoring calculations in lib/genetic/fitness/rosterScoring.ts unless proven unused outside display generation",
+        "Add or update relevant Vitest coverage for removed display-only output where applicable",
+        "Tests pass",
         "Typecheck passes",
-        "Tests pass"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 2,
       "passes": true,
-      "notes": ""
+      "notes": "@frontend-developer remove TeamDisplay UI; @backend-developer audit display-value generation; @api-designer review whether API payload fields should be removed or retained."
     },
     {
       "id": "US-003",
-      "title": "Validate Battle Frontier Master anchors in the API",
-      "description": "As a user, I want illegal Battle Frontier Master anchor selections rejected before generation starts so I get immediate, clear feedback.",
+      "title": "Simplify recommended lineup card content",
+      "description": "As a user, I want recommended lineup cards to focus on role assignments and matchup details without extra score or shield strategy labels.",
       "acceptanceCriteria": [
-        "POST /api/generate-team validates Battle Frontier Master anchors against the 11-point cap",
-        "POST /api/generate-team enforces at most one 5-point Pokemon for Battle Frontier Master",
-        "POST /api/generate-team enforces at most one Mega Pokemon for Battle Frontier Master",
-        "Invalid Battle Frontier Master anchor combinations return HTTP 400 with deterministic human-readable errors",
+        "Remove Score from the recommended lineup card display",
+        "Remove Balanced, Shield spend, and Shield save display from recommended lineup cards",
+        "Remove display-only generation for Balanced, Shield spend, and Shield save values when unused by remaining consumers",
+        "Do not delete internal lineup scoring calculations in lib/genetic/fitness/lineupScoring.ts unless proven unused outside display generation",
+        "Add or update relevant Vitest coverage for simplified lineup card data where applicable",
+        "Tests pass",
         "Typecheck passes",
-        "Tests pass"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 3,
       "passes": true,
-      "notes": ""
+      "notes": "@frontend-developer simplify AnalysisPanel lineup card UI; @backend-developer audit and prune unused display-only generation; @api-designer review removed display fields."
     },
     {
       "id": "US-004",
-      "title": "Keep random team construction legal for Battle Frontier Master",
-      "description": "As a user, I want Battle Frontier Master teams built from legal candidates so generated teams do not violate format rules during initial construction.",
+      "title": "Remove unused Per-Pokemon Contribution explanatory sections",
+      "description": "As a user, I want the Per-Pokemon Contribution section to be concise and avoid redundant grading and rationale text.",
       "acceptanceCriteria": [
-        "Random chromosome creation does not finalize a Battle Frontier Master team over 11 points",
-        "Random chromosome creation does not finalize a Battle Frontier Master team with more than one 5-point Pokemon",
-        "Random chromosome creation does not finalize a Battle Frontier Master team with more than one Mega Pokemon",
-        "Non-Battle Frontier Master formats keep their current initialization behavior",
+        "Remove the Fitness Contribution Categories section from the analysis UI",
+        "Remove the Relative grading guide from Per-Pokemon Contribution",
+        "Remove per-Pokemon contribution rationale text from the UI",
+        "Remove generation of Fitness Contribution Categories and contribution rationale only when no remaining consumer exists",
+        "Update lib/analysis/pokemonContributionAnalysis.ts only for display-only rationale generation that is no longer consumed",
+        "Add or update relevant Vitest coverage for contribution analysis output changes",
+        "Tests pass",
         "Typecheck passes",
-        "Tests pass"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 4,
       "passes": true,
-      "notes": ""
+      "notes": "@frontend-developer update AnalysisPanel contribution UI; @backend-developer audit pokemonContributionAnalysis generation; @api-designer review contribution payload shape."
     },
     {
       "id": "US-005",
-      "title": "Keep mutated and crossed teams legal for Battle Frontier Master",
-      "description": "As a user, I want the genetic algorithm to preserve Battle Frontier Master legality after crossover and mutation so final generated teams remain tournament-legal.",
+      "title": "Convert Recommended Lineups to analysis accordion section",
+      "description": "As a user, I want Recommended Lineup(s) presented as an accordion matching the Summary Statistics and Per-Pokemon Contribution style so that analysis sections are visually consistent.",
       "acceptanceCriteria": [
-        "Mutation does not keep an illegal Battle Frontier Master child",
-        "Crossover does not keep an illegal Battle Frontier Master child",
-        "Final generated Battle Frontier Master teams always satisfy point cap, one 5-point Pokemon, and one Mega rules",
-        "Non-Battle Frontier Master formats keep their current operator behavior",
+        "Convert Recommended Lineup(s) in AnalysisPanel.tsx into an accordion section",
+        "Recommended Lineup(s) accordion has similar look and feel to Summary Statistics and Per-Pokemon Contribution",
+        "Move Recommended Lineup(s) below Summary Statistics",
+        "Accordion expanded/collapsed behavior works consistently with adjacent analysis sections",
+        "Existing recommended lineup data remains visible inside the accordion when expanded",
         "Typecheck passes",
-        "Tests pass"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 5,
       "passes": true,
-      "notes": ""
+      "notes": "@frontend-developer implement accordion placement and behavior; @ui-designer review visual consistency, spacing, hierarchy, and responsive behavior."
     },
     {
       "id": "US-006",
-      "title": "Show Battle Frontier Master rule messaging in the UI",
-      "description": "As a user, I want Battle Frontier Master rule messaging near team setup so I understand the current cycle constraints before generating a team.",
+      "title": "Reorder Optimizer Score Breakdown fields",
+      "description": "As a user, I want the Optimizer Score Breakdown ordered so that offensive and defensive ratios are compared side-by-side before role information.",
       "acceptanceCriteria": [
-        "When Battle Frontier Master is selected, team configuration shows concise copy describing 11 total points, at most one 5-point Pokemon, and at most one Mega Pokemon",
-        "Validation failures surface clear user-visible error messages for point cap, 5-point limit, and Mega limit",
-        "Team generation does not proceed after a Battle Frontier Master legality failure",
+        "Update Optimizer Score Breakdown display order so Offensive Ratio and Defensive Ratio are side-by-side",
+        "Display Role after Offensive Ratio and Defensive Ratio",
+        "Preserve existing values and labels other than the requested ordering",
         "Typecheck passes",
-        "Tests pass",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 6,
       "passes": true,
-      "notes": ""
+      "notes": "@frontend-developer update display order in AnalysisPanel.tsx; @ui-designer review side-by-side layout and readability."
     },
     {
       "id": "US-007",
-      "title": "Show live anchor point usage for Battle Frontier Master",
-      "description": "As a user, I want to see current Battle Frontier Master anchor point usage so I can build legal teams without guessing my remaining budget.",
+      "title": "Remove structure from recommended lineup cards",
+      "description": "As a user, I want recommended lineup cards to show only the lineup roles and remaining useful matchup details so that the card stays concise.",
       "acceptanceCriteria": [
-        "When battle-frontier-master is selected, the anchor UI displays current point usage in the format '(# / 11 points)'",
-        "The point usage display updates immediately when anchors are added, changed, or removed",
-        "The point usage display uses the same point-resolution rules as server-side validation, including shadow inheritance",
-        "Non-Battle Frontier Master formats do not show the Battle Frontier Master point meter",
-        "Typecheck passes",
+        "Remove Structure from the Recommended Lineups card display",
+        "Do not remove or alter internal diagnosticLabel generation unless no remaining consumer exists",
+        "Recommended Lineups still display Lead, Switch, Closer, and Weaknesses when expanded",
+        "Add or update relevant AnalysisPanel Vitest coverage for the removed Structure text",
         "Tests pass",
+        "Typecheck passes",
         "Verify in browser using dev-browser skill"
       ],
       "priority": 7,
       "passes": true,
-      "notes": ""
+      "notes": "@frontend-developer remove the AnalysisPanel display; @backend-developer audit diagnosticLabel only if considering contract cleanup; @ui-designer verify card hierarchy remains clear."
     },
     {
       "id": "US-008",
-      "title": "Add automated coverage for Battle Frontier Master rules",
-      "description": "As a developer, I want automated tests for Battle Frontier Master legality so future data or generator changes do not break rule enforcement.",
+      "title": "Replace Summary Statistics content with optimizer score cards",
+      "description": "As a user, I want the Summary Statistics section to show optimizer score breakdown cards so that the highest-level summary uses the same metrics as the optimizer explanation.",
       "acceptanceCriteria": [
-        "Add unit tests for point lookup and shadow inheritance",
-        "Add unit tests for one-Mega and one-5-point validation",
-        "Add API tests for invalid Battle Frontier Master anchor combinations",
-        "Add generator tests verifying produced Battle Frontier Master teams are legal",
+        "Keep the accordion section header text Summary Statistics",
+        "Replace the current Summary Statistics body content with Optimizer Score Breakdown information",
+        "Overwrite the existing Summary Statistics metric content rather than appending optimizer score cards below the current summary metrics",
+        "Remove this description from the UI: Normalized optimizer categories explain the generated score in priority order. Range labels are shown with colors so category strength is not communicated by color alone.",
+        "Do not recompute optimizer score values in client components; continue consuming API-provided scoreBreakdown data",
+        "Add or update relevant AnalysisPanel Vitest coverage for the Summary Statistics content replacement",
+        "Tests pass",
         "Typecheck passes",
-        "Tests pass"
+        "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
       "passes": true,
-      "notes": ""
+      "notes": "@frontend-developer move/reuse the optimizer score card rendering inside Summary Statistics; @ui-designer review that the header/content pairing is understandable; @api-designer review only if API scoreBreakdown availability affects empty states."
+    },
+    {
+      "id": "US-009",
+      "title": "Move Role after Bulk in optimizer score layout",
+      "description": "As a user, I want Role to appear after Bulk and use the same card sizing as other optimizer score cards so that the score layout is consistent.",
+      "acceptanceCriteria": [
+        "Update optimizer score card display order so Role appears immediately after Bulk",
+        "Render Role with the same width and layout treatment as the other optimizer score cards",
+        "Keep Offensive Ratio and Defensive Ratio side-by-side after Role",
+        "Preserve existing optimizer score values and labels other than the requested ordering and Role card layout",
+        "Add or update relevant AnalysisPanel Vitest coverage for the new optimizer card order",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "@frontend-developer update AnalysisPanel optimizer score order/layout; @ui-designer review card width consistency and side-by-side ratio placement."
+    },
+    {
+      "id": "US-010",
+      "title": "Place Replacement Risk below Pokemon name",
+      "description": "As a user, I want the Replacement Risk pill to always appear below the Pokemon name so the Per-Pokemon Contribution header layout is stable across screen sizes.",
+      "acceptanceCriteria": [
+        "Move the Replacement Risk pill below the Pokemon name in a dedicated row",
+        "The Replacement Risk pill does not sit beside the Pokemon name on wide layouts",
+        "The Replacement Risk pill no longer only moves below the name when text wrapping occurs",
+        "Existing contribution metric boxes remain visible and unchanged",
+        "Add or update relevant AnalysisPanel Vitest coverage for the new Per-Pokemon Contribution header layout",
+        "Tests pass",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "@frontend-developer update Per-Pokemon Contribution markup/classes; @ui-designer verify row spacing, mobile behavior, and readability."
+    },
+    {
+      "id": "US-011",
+      "title": "Enumerate ordered PlayPokemon switch and closer assignments",
+      "description": "As a user, I want PlayPokemon recommended lineups to evaluate both switch and closer role orders so that viable rosters are not underrated when the two backline Pokemon fit different roles.",
+      "acceptanceCriteria": [
+        "Update lib/genetic/fitness/lineupEnumeration.ts so each lead evaluates every ordered switch and closer assignment from the remaining five Pokemon",
+        "A six-Pokemon PlayPokemon roster produces 120 unique ordered pick-3 lineups instead of only 60 unordered backline pairs",
+        "Preserve roster input order for lead iteration and keep validation for duplicate, empty, and delimiter-containing species ids",
+        "Update roster scoring and fitness tests that currently assume 60 PlayPokemon lineups",
+        "Update code comments or local guidance that describe PlayPokemon roster scoring as 60 lineups",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "@backend-developer update enumeration and dependent tests; @gbl-optimizer review role-ordering behavior and optimizer documentation alignment."
+    },
+    {
+      "id": "US-012",
+      "title": "Return recomputed full optimizer fitness",
+      "description": "As a user, I want Overall Fitness to match the final optimizer breakdown so that the displayed score, recommendations, and multi-team sorting describe the same final roster evaluation.",
+      "acceptanceCriteria": [
+        "Update lib/genetic/algorithm.ts so the final PlayPokemon chromosome fitness is set from rosterScore.fitness after full diagnostics are recomputed",
+        "Returned PlayPokemon fitness matches scoreBreakdown.score for the final roster evaluation",
+        "generateMultipleTeams sorts by the recomputed final fitness after diagnostics are attached",
+        "Review the GBL final recommendation path and update it only if its final recommendation score can differ from the hot-path fitness context",
+        "Add or update relevant Vitest coverage for final fitness and scoreBreakdown consistency",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "@backend-developer update final chromosome mapping and regression tests; @api-designer verify response contract exposes consistent fitness and scoreBreakdown values."
+    },
+    {
+      "id": "US-013",
+      "title": "Enforce PvPoke Reference-Only Optimizer Boundary",
+      "description": "As a developer, I want PvPoke-inspired concepts implemented only in repository-owned TypeScript so that the app gains better diagnostics without runtime PvPoke vendor dependencies.",
+      "acceptanceCriteria": [
+        "PvPoke Team Builder behavior is used only as a conceptual reference.",
+        "No PvPoke vendor JavaScript is imported, executed, bundled, runtime-loaded, or required by app code.",
+        "Optimizer logic is implemented in pure TypeScript within existing architecture boundaries.",
+        "Existing lineup-aware outputs remain available: recommended lineups, synergy, defensive ratio, offensive ratio, role, and per-Pokemon contributions.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "@gbl-optimizer and @test-driven-development enforce runtime boundary and coverage."
+    },
+    {
+      "id": "US-014",
+      "title": "Add Lower-Is-Better Threat Score",
+      "description": "As a competitive player, I want a lower-is-better Threat Score so that I can quickly understand how vulnerable a team is to the meta.",
+      "acceptanceCriteria": [
+        "Threat Score is computed where lower values indicate fewer or less severe threats.",
+        "Threat Score output includes ranked top meta threats and overall team threats.",
+        "Threat Score data is exposed through the optimizer output contract for UI use.",
+        "Threat ordering is deterministic for equivalent inputs.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "@gbl-optimizer implement threat score model; @test-driven-development cover lower-is-better ordering."
+    },
+    {
+      "id": "US-015",
+      "title": "Implement Weighted Top-Meta And Full-Meta Threat Pools",
+      "description": "As a competitive player, I want threat analysis to weight top-meta Pokemon more heavily while still accounting for broader full-meta coverage gaps.",
+      "acceptanceCriteria": [
+        "The optimizer evaluates a weighted top-meta threat pool.",
+        "The optimizer evaluates a broader full-meta threat pool.",
+        "Top-meta weighting is data-driven or configurable enough for season updates.",
+        "Full-meta threats contribute to diagnostics without overpowering top-meta threats.",
+        "Threat outputs include enough structured data for tests and UI display.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "@gbl-optimizer design weighted pools; @test-driven-development cover top-meta versus full-meta behavior."
+    },
+    {
+      "id": "US-016",
+      "title": "Add Soft Matchup Scoring",
+      "description": "As a user, I want matchup quality to support intermediate scores so that diagnostics are less brittle than hard win/loss thresholds.",
+      "acceptanceCriteria": [
+        "Matchups can produce soft scores instead of only binary win/loss values.",
+        "Close matchups produce intermediate scores.",
+        "Clearly favorable, neutral, close, and clearly unfavorable matchups remain distinguishable.",
+        "Relevant optimizer diagnostics consume soft matchup scores.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "@gbl-optimizer port matchup-scoring concepts; @test-driven-development add focused rating fixtures."
+    },
+    {
+      "id": "US-017",
+      "title": "Add Optimizer Caching And Precomputation Performance Safeguards",
+      "description": "As a user, I want team generation to complete in under one minute so that the app remains usable in standalone Next.js and Vercel-compatible environments.",
+      "acceptanceCriteria": [
+        "Expensive repeated matchup, threat, or scoring computations are cached or precomputed.",
+        "Cache keys are deterministic and safe for repeated generation requests.",
+        "Cache behavior does not introduce stale incorrect season data.",
+        "Representative generation completes in under one minute.",
+        "Performance validation exists for the expected generation path.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "@gbl-optimizer and @test-runner add cache/precompute safeguards and performance validation."
+    },
+    {
+      "id": "US-018",
+      "title": "Add Great League Show-6 Pick-3 Calibration Fixtures",
+      "description": "As a developer, I want season-specific Great League Show-6 Pick-3 fixtures so that optimizer changes can be calibrated against realistic teams without treating fixtures as hardcoded truth.",
+      "acceptanceCriteria": [
+        "Great League Show-6 Pick-3 tournament teams are added as season-specific calibration fixtures.",
+        "Fixture naming includes season or context metadata where practical.",
+        "Fixtures are validated through existing typed loader or validation patterns.",
+        "Tests or validation can detect major scoring regressions without requiring exact hardcoded optimizer outcomes.",
+        "Fixture documentation states that examples are calibration data only.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "@gbl-optimizer add calibration fixtures; @test-driven-development validate fixture handling."
+    },
+    {
+      "id": "US-019",
+      "title": "Refresh Summary Statistics Letter Grades",
+      "description": "As a user, I want Summary Statistics to show simple category-appropriate letter grades so that I can compare diagnostics without visual clutter.",
+      "acceptanceCriteria": [
+        "Summary Statistics remains an accordion.",
+        "Summary Statistics displays Synergy, Coverage, Safety, Consistency, Bulk, Role, Offensive Ratio, and Defensive Ratio.",
+        "Each Summary Statistics metric displays only A, B, C, D, or F.",
+        "No plus or minus grade modifiers are shown.",
+        "No elite, strong, neutral, or weak quality pills are shown in Summary Statistics.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "@feature-implementer update AnalysisPanel grade rendering; @dev-browser verify UI behavior."
+    },
+    {
+      "id": "US-020",
+      "title": "Add Threat Score Card To Summary Statistics",
+      "description": "As a user, I want threat diagnostics shown beside summary grades so that I can understand vulnerabilities from the same accordion.",
+      "acceptanceCriteria": [
+        "Summary Statistics includes a Threat Score card.",
+        "Threat Score card explains that lower is better.",
+        "Threat Score card displays top meta threats.",
+        "Threat Score card displays overall team threats.",
+        "Threat Score card does not introduce Summary Statistics quality pills.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": "@feature-implementer add Threat Score card; @dev-browser verify accessibility and layout."
+    },
+    {
+      "id": "US-021",
+      "title": "Refresh Recommended Lineups Blue Styling",
+      "description": "As a user, I want Recommended Lineups to use blue accordion styling so that the section visually matches the rest of the diagnostics UI.",
+      "acceptanceCriteria": [
+        "Recommended Lineups switches from greenish background styling to blueish accordion styling.",
+        "Styling is consistent with existing blue accordion patterns elsewhere in the UI.",
+        "Existing lineup content remains visible and readable.",
+        "Existing lineup ordering behavior is preserved unless intentionally changed by optimizer scoring.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": "@feature-implementer update Recommended Lineups styling; @dev-browser verify light/dark rendering."
+    },
+    {
+      "id": "US-022",
+      "title": "Add Lineup Quality Pills To Lineup Cards",
+      "description": "As a user, I want lineup cards to show quality pills so that I can quickly compare recommended lineups.",
+      "acceptanceCriteria": [
+        "Lineup cards display exactly one of: elite, strong, neutral, or weak.",
+        "Pills are based on lineup quality, not Summary Statistics grades.",
+        "Pill labels and colors are consistent across lineup cards.",
+        "Pills are not shown in Summary Statistics.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": "@feature-implementer add lineup quality pills; @dev-browser verify placement and accessibility."
+    },
+    {
+      "id": "US-023",
+      "title": "Update GBL Optimizer Skill Prompt Guidance",
+      "description": "As a contributor, I want .opencode/skills/gbl-optimizer/SKILL.md updated so optimizer agents follow the new PvPoke-inspired boundary, scoring, fixture, and UI expectations.",
+      "acceptanceCriteria": [
+        "The skill documents the PvPoke reference-only boundary.",
+        "The skill states that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
+        "The skill covers Threat Score, weighted threat pools, soft matchup scoring, performance safeguards, and calibration fixtures.",
+        "The skill references Summary Statistics and Recommended Lineups UI expectations at a high level.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 23,
+      "passes": true,
+      "notes": "@gbl-optimizer and @prompt-engineer update skill guidance."
+    },
+    {
+      "id": "US-024",
+      "title": "Update Root Contributor Guidance",
+      "description": "As a contributor, I want root AGENTS.md updated so future optimizer and UI work follows the refreshed diagnostics contract.",
+      "acceptanceCriteria": [
+        "Root AGENTS.md references the refreshed optimizer diagnostics expectations.",
+        "Root AGENTS.md reminds contributors to use gbl-optimizer for optimizer scoring, threat analysis, fixtures, and related UI diagnostics.",
+        "Root AGENTS.md states that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
+        "Root AGENTS.md references relevant docs for Summary Statistics, Threat Score, Recommended Lineups, and calibration fixtures.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 24,
+      "passes": true,
+      "notes": "@prompt-engineer update contributor guidance; @gbl-optimizer review optimizer consistency."
+    },
+    {
+      "id": "US-025",
+      "title": "Update Optimizer And UI Documentation",
+      "description": "As a contributor, I want docs updated so optimizer behavior, UI output contracts, and calibration assumptions remain consistent.",
+      "acceptanceCriteria": [
+        "Optimizer docs under docs describe Threat Score, weighted threat pools, soft matchup scoring, caching or precomputation, and performance expectations.",
+        "Docs include a UI output contract for Summary Statistics, Threat Score, Recommended Lineups, and lineup quality pills.",
+        "Docs state that Summary Statistics uses A, B, C, D, or F only with no plus or minus grades.",
+        "Docs state that Summary Statistics must not use elite, strong, neutral, or weak quality pills.",
+        "Docs state that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
+        "Docs describe Great League Show-6 Pick-3 fixtures as calibration data only.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 25,
+      "passes": true,
+      "notes": "@gbl-optimizer and @prompt-engineer update optimizer and UI docs."
     }
   ]
 }

@@ -4,15 +4,19 @@ import { KeyboardEvent, useId, useRef, useState } from 'react';
 import clsx from 'clsx';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type {
-  FitnessAlgorithm,
   GenerationAnalysis,
+  OptimizerScoreBreakdown,
+  OptimizerScoreComponent,
+  OptimizerThreatScoreEntry,
   PokemonContributionRiskTier,
-  ShieldScenarioKey,
+  RecommendedLineup,
 } from '@/lib/types';
 
 interface GeneratedTeamResult {
   team: string[];
   formatId: BattleFormatId;
+  recommendedLineups?: RecommendedLineup[];
+  scoreBreakdown?: OptimizerScoreBreakdown;
 }
 
 interface AnalysisPanelProps {
@@ -22,136 +26,156 @@ interface AnalysisPanelProps {
   analysis: GenerationAnalysis | null;
 }
 
-interface SummaryMetric {
-  label: string;
-  value: string;
-  description: string;
-  status: 'good' | 'average' | 'weak';
-  range: string;
-}
-
-interface CategoryMetric {
-  label: string;
-  value: string;
-  description: string;
-  range: string;
-  status: 'good' | 'average' | 'weak';
-}
-
 const ANALYSIS_ACCORDION_SECTIONS = [
   'summaryStatistics',
-  'fitnessContributionCategories',
+  'recommendedLineups',
   'perPokemonContributions',
 ] as const;
 
 type AnalysisAccordionSectionId = (typeof ANALYSIS_ACCORDION_SECTIONS)[number];
 
-const SHIELD_SCENARIO_ORDER: ShieldScenarioKey[] = ['0-0', '1-1', '2-2'];
+const OPTIMIZER_SCORE_COMPONENT_ORDER: OptimizerScoreComponent[] = [
+  'synergy',
+  'coverage',
+  'safety',
+  'consistency',
+  'bulk',
+  'role',
+  'offensiveRatio',
+  'defensiveRatio',
+];
 
-function getOverallFitnessStatus(
-  fitness: number,
-  algorithm: FitnessAlgorithm,
-): SummaryMetric['status'] {
-  const roundedFitness = roundToHundredths(fitness);
-  const thresholds =
-    algorithm === 'teamSynergy'
-      ? { good: 0.75, average: 0.55 }
-      : { good: 0.9, average: 0.65 };
+const MAX_VISIBLE_THREAT_SCORE_ENTRIES = 5;
 
-  if (roundedFitness >= thresholds.good) {
-    return 'good';
+const optimizerScoreComponentDetails: Record<
+  OptimizerScoreComponent,
+  { label: string; description: string }
+> = {
+  synergy: {
+    label: 'Synergy',
+    description:
+      'Pick-3 cohesion, complementary typing, and role interaction across the generated team.',
+  },
+  coverage: {
+    label: 'Coverage',
+    description:
+      'How broadly the roster answers expected threats, weighted toward top-threat matchups.',
+  },
+  safety: {
+    label: 'Safety',
+    description:
+      'Risk control against no-answer threats, single-answer dependencies, bad leads, and sweep paths.',
+  },
+  consistency: {
+    label: 'Consistency',
+    description:
+      'Reliability from consistency rankings, shield stability, neutral damage, and low bait dependence.',
+  },
+  bulk: {
+    label: 'Bulk',
+    description:
+      'Durability from bulk/stat balance so the roster avoids brittle low-bulk compositions.',
+  },
+  defensiveRatio: {
+    label: 'Defensive Ratio',
+    description:
+      'Resistance versus weakness spread into expected incoming attack types.',
+  },
+  offensiveRatio: {
+    label: 'Offensive Ratio',
+    description:
+      'Fast and charged move pressure into top-threat and full-meta defenders.',
+  },
+  role: {
+    label: 'Role',
+    description:
+      'Lineup role fit from lead, switch, closer, charger, attacker, and consistency signals.',
+  },
+};
+
+type OptimizerScoreGrade = 'A' | 'B' | 'C' | 'D' | 'F';
+
+type LineupQuality = 'elite' | 'strong' | 'neutral' | 'weak';
+
+const lineupQualityClasses: Record<LineupQuality, string> = {
+  elite:
+    'border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/60 dark:text-violet-200',
+  strong:
+    'border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800/60 dark:bg-emerald-950/60 dark:text-emerald-200',
+  neutral:
+    'border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/60 dark:text-sky-200',
+  weak: 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-200',
+};
+
+function getLineupQuality(score: number): LineupQuality {
+  if (score >= 0.85) {
+    return 'elite';
   }
 
-  if (roundedFitness >= thresholds.average) {
-    return 'average';
+  if (score >= 0.7) {
+    return 'strong';
+  }
+
+  if (score >= 0.5) {
+    return 'neutral';
   }
 
   return 'weak';
 }
 
-function getOverallFitnessRange(algorithm: FitnessAlgorithm): string {
-  return algorithm === 'teamSynergy'
-    ? 'Green >= 0.75, Yellow 0.55-0.74, Red < 0.55'
-    : 'Green >= 0.90, Yellow 0.65-0.89, Red < 0.65';
+function getOptimizerScoreGrade(score: number): OptimizerScoreGrade {
+  const displayedScore = Number(formatScore(score));
+
+  if (displayedScore >= 0.9) {
+    return 'A';
+  }
+
+  if (displayedScore >= 0.75) {
+    return 'B';
+  }
+
+  if (displayedScore >= 0.55) {
+    return 'C';
+  }
+
+  if (displayedScore >= 0.4) {
+    return 'D';
+  }
+
+  return 'F';
 }
 
-function getPercentStatus(percent: number): SummaryMetric['status'] {
-  if (percent >= 70) {
-    return 'good';
-  }
+function getOptimizerScoreMetrics(
+  scoreBreakdown: OptimizerScoreBreakdown,
+): Array<{
+  component: OptimizerScoreComponent;
+  label: string;
+  value: string;
+  description: string;
+}> {
+  return OPTIMIZER_SCORE_COMPONENT_ORDER.map((component) => {
+    const details = optimizerScoreComponentDetails[component];
+    const score = scoreBreakdown.components[component];
 
-  if (percent >= 50) {
-    return 'average';
-  }
-
-  return 'weak';
+    return {
+      component,
+      label: details.label,
+      value: getOptimizerScoreGrade(score),
+      description: details.description,
+    };
+  });
 }
 
-function getRiskStatus(risk: string): SummaryMetric['status'] {
-  if (risk === 'Low') {
-    return 'good';
-  }
-
-  if (risk === 'Moderate') {
-    return 'average';
-  }
-
-  return 'weak';
+function formatScore(score: number): string {
+  return score.toFixed(2);
 }
 
-function getContributionStatus(value: number): CategoryMetric['status'] {
-  if (value >= 10) {
-    return 'good';
-  }
-
-  if (value > -10) {
-    return 'average';
-  }
-
-  return 'weak';
+function formatOptionalScore(score: number | null): string {
+  return score === null ? 'Not evaluated' : formatScore(score);
 }
 
-function formatPercent(value: number): string {
-  return `${roundPercent(value)}%`;
-}
-
-function roundPercent(value: number): number {
-  return Math.round(value);
-}
-
-function roundToHundredths(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
-function formatImpactValue(value: number): string {
-  return value > 0 ? `+${value}` : `${value}`;
-}
-
-function getCoreBreakerRiskLabel(
-  coreBreakerCount: number,
-  highSeverityCount: number,
-): string {
-  if (coreBreakerCount === 0) {
-    return 'Low';
-  }
-
-  if (highSeverityCount >= 2 || coreBreakerCount >= 5) {
-    return 'High';
-  }
-
-  return 'Moderate';
-}
-
-function getValueClasses(status: SummaryMetric['status']): string {
-  if (status === 'good') {
-    return 'text-emerald-700 dark:text-emerald-300';
-  }
-
-  if (status === 'average') {
-    return 'text-amber-700 dark:text-amber-300';
-  }
-
-  return 'text-rose-700 dark:text-rose-300';
+function formatThreatEntry(threat: OptimizerThreatScoreEntry): string {
+  return `${threat.pokemon} (Rank #${threat.rank}, Answers: ${threat.teamAnswers}, Risk: ${formatScore(threat.threatValue)})`;
 }
 
 function getBadgeClasses(riskTier: PokemonContributionRiskTier): string {
@@ -174,134 +198,6 @@ function formatRiskTier(riskTier: PokemonContributionRiskTier): string {
   return riskTier === 'high' ? 'High' : 'Low';
 }
 
-function getRelativeMetricStatus(
-  value: number,
-  maxValue: number,
-): SummaryMetric['status'] {
-  if (maxValue <= 0) {
-    return 'average';
-  }
-
-  const ratio = value / maxValue;
-  if (ratio >= 0.67) {
-    return 'good';
-  }
-
-  if (ratio >= 0.34) {
-    return 'average';
-  }
-
-  return 'weak';
-}
-
-function buildSummaryMetrics(
-  fitness: number,
-  analysis: GenerationAnalysis,
-): SummaryMetric[] {
-  const evaluatedThreats = analysis.threats.evaluatedCount;
-  const coveredThreats = analysis.threats.entries.filter(
-    (threat) => threat.teamAnswers > 0,
-  ).length;
-  const threatHandlingPercent =
-    evaluatedThreats > 0 ? (coveredThreats / evaluatedThreats) * 100 : 0;
-  const shieldStabilityPercent =
-    SHIELD_SCENARIO_ORDER.reduce((sum, scenario) => {
-      return sum + analysis.shieldScenarios[scenario].coverageRate * 100;
-    }, 0) / SHIELD_SCENARIO_ORDER.length;
-  const highSeverityCoreBreakers = analysis.coreBreakers.entries.filter(
-    (entry) => entry.severityTier === 'high',
-  ).length;
-  const coreBreakerRisk = getCoreBreakerRiskLabel(
-    analysis.coreBreakers.entries.length,
-    highSeverityCoreBreakers,
-  );
-
-  const roundedThreatHandlingPercent = roundPercent(threatHandlingPercent);
-  const roundedShieldStabilityPercent = roundPercent(shieldStabilityPercent);
-  const roundedFitness = roundToHundredths(fitness);
-
-  return [
-    {
-      label: 'Overall Fitness',
-      value: roundedFitness.toFixed(2),
-      description:
-        'Composite algorithm score for the selected format. Bands are normalized by algorithm family because raw fitness varies by strategy model.',
-      status: getOverallFitnessStatus(roundedFitness, analysis.algorithm),
-      range: getOverallFitnessRange(analysis.algorithm),
-    },
-    {
-      label: 'Threat Handling',
-      value: `${coveredThreats}/${evaluatedThreats} (${formatPercent(roundedThreatHandlingPercent)})`,
-      description:
-        'How often the team has at least one practical answer into the evaluated GA threat pool.',
-      status: getPercentStatus(roundedThreatHandlingPercent),
-      range: 'Green >= 70%, Yellow 50-69%, Red < 50%',
-    },
-    {
-      label: 'Shield Stability',
-      value: formatPercent(roundedShieldStabilityPercent),
-      description:
-        'Average threat coverage across 0-0, 1-1, and 2-2 shield states for the selected format.',
-      status: getPercentStatus(roundedShieldStabilityPercent),
-      range: 'Green >= 70%, Yellow 50-69%, Red < 50%',
-    },
-    {
-      label: 'Core-Breaker Risk',
-      value: coreBreakerRisk,
-      description:
-        'How vulnerable the team is to threats that overwhelm most team members with limited counterplay.',
-      status: getRiskStatus(coreBreakerRisk),
-      range: 'Green = Low, Yellow = Moderate, Red = High',
-    },
-  ];
-}
-
-function buildContributionMetrics(
-  analysis: GenerationAnalysis,
-): CategoryMetric[] {
-  const evaluatedThreats = analysis.threats.evaluatedCount;
-  const coveredThreats = analysis.threats.entries.filter(
-    (threat) => threat.teamAnswers > 0,
-  ).length;
-  const threatHandlingPercent =
-    evaluatedThreats > 0 ? (coveredThreats / evaluatedThreats) * 100 : 0;
-  const shieldStabilityPercent =
-    SHIELD_SCENARIO_ORDER.reduce((sum, scenario) => {
-      return sum + analysis.shieldScenarios[scenario].coverageRate * 100;
-    }, 0) / SHIELD_SCENARIO_ORDER.length;
-  const coreBreakerExposurePercent =
-    evaluatedThreats > 0
-      ? (analysis.coreBreakers.entries.length / evaluatedThreats) * 100
-      : 0;
-  const categoryValues = [
-    {
-      label: 'Meta Coverage',
-      rawValue: Math.round(threatHandlingPercent - 50),
-      description:
-        'How consistently the team has at least one answer into the role-based threat field.',
-    },
-    {
-      label: 'Shield Reliability',
-      rawValue: Math.round(shieldStabilityPercent - 50),
-      description: 'How stable the team remains across common shield states.',
-    },
-    {
-      label: 'Core Stability',
-      rawValue: -Math.round(coreBreakerExposurePercent),
-      description:
-        'How well the team avoids collapse-prone matchups that pressure most slots at once.',
-    },
-  ];
-
-  return categoryValues.map((metric) => ({
-    label: metric.label,
-    value: formatImpactValue(metric.rawValue),
-    description: metric.description,
-    range: 'Green >= +10, Yellow -9 to +9, Red <= -10',
-    status: getContributionStatus(metric.rawValue),
-  }));
-}
-
 export function AnalysisPanel({
   generatedTeam,
   isGenerating,
@@ -312,36 +208,48 @@ export function AnalysisPanel({
     Record<AnalysisAccordionSectionId, boolean>
   >({
     summaryStatistics: false,
-    fitnessContributionCategories: false,
+    recommendedLineups: false,
     perPokemonContributions: false,
   });
   const accordionButtonRefs = useRef<
     Record<AnalysisAccordionSectionId, HTMLButtonElement | null>
   >({
     summaryStatistics: null,
-    fitnessContributionCategories: null,
+    recommendedLineups: null,
     perPokemonContributions: null,
   });
   const accordionIdPrefix = useId();
 
-  const summaryMetrics =
-    analysis !== null && fitness !== null
-      ? buildSummaryMetrics(fitness, analysis)
-      : [];
-  const contributionMetrics =
-    analysis !== null ? buildContributionMetrics(analysis) : [];
   const pokemonEntries = analysis?.pokemonContributions.entries ?? [];
-  const maxThreatsHandled = Math.max(
-    ...pokemonEntries.map((entry) => entry.threatsHandled),
-    0,
+  const recommendedLineups = generatedTeam?.recommendedLineups ?? [];
+  const scoreBreakdown = generatedTeam?.scoreBreakdown;
+  const optimizerScoreMetrics = scoreBreakdown
+    ? getOptimizerScoreMetrics(scoreBreakdown)
+    : [];
+  const primaryOptimizerScoreMetrics = optimizerScoreMetrics.filter(
+    (metric) =>
+      metric.component !== 'offensiveRatio' &&
+      metric.component !== 'defensiveRatio',
   );
-  const maxCoverageAdded = Math.max(
-    ...pokemonEntries.map((entry) => entry.coverageAdded),
-    0,
+  const ratioOptimizerScoreMetrics = optimizerScoreMetrics.filter(
+    (metric) =>
+      metric.component === 'offensiveRatio' ||
+      metric.component === 'defensiveRatio',
   );
-  const maxHighSeverityRelief = Math.max(
-    ...pokemonEntries.map((entry) => entry.highSeverityRelief),
-    0,
+  const hasRecommendedLineups = recommendedLineups.length > 0;
+  const hasAnalysisDetails = analysis !== null && fitness !== null;
+  const visibleAccordionSections = ANALYSIS_ACCORDION_SECTIONS.filter(
+    (sectionId) => {
+      if (sectionId === 'summaryStatistics') {
+        return generatedTeam !== null;
+      }
+
+      if (sectionId === 'perPokemonContributions') {
+        return hasAnalysisDetails;
+      }
+
+      return hasRecommendedLineups;
+    },
   );
 
   function toggleSection(sectionId: AnalysisAccordionSectionId): void {
@@ -359,34 +267,137 @@ export function AnalysisPanel({
     event: KeyboardEvent<HTMLButtonElement>,
     sectionId: AnalysisAccordionSectionId,
   ): void {
-    const currentIndex = ANALYSIS_ACCORDION_SECTIONS.indexOf(sectionId);
+    const currentIndex = visibleAccordionSections.indexOf(sectionId);
+
+    if (currentIndex === -1) {
+      return;
+    }
 
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      const nextIndex = (currentIndex + 1) % ANALYSIS_ACCORDION_SECTIONS.length;
-      focusSection(ANALYSIS_ACCORDION_SECTIONS[nextIndex]);
+      const nextIndex = (currentIndex + 1) % visibleAccordionSections.length;
+      focusSection(visibleAccordionSections[nextIndex]);
     }
 
     if (event.key === 'ArrowUp') {
       event.preventDefault();
       const previousIndex =
-        (currentIndex - 1 + ANALYSIS_ACCORDION_SECTIONS.length) %
-        ANALYSIS_ACCORDION_SECTIONS.length;
-      focusSection(ANALYSIS_ACCORDION_SECTIONS[previousIndex]);
+        (currentIndex - 1 + visibleAccordionSections.length) %
+        visibleAccordionSections.length;
+      focusSection(visibleAccordionSections[previousIndex]);
     }
 
     if (event.key === 'Home') {
       event.preventDefault();
-      focusSection(ANALYSIS_ACCORDION_SECTIONS[0]);
+      focusSection(visibleAccordionSections[0]);
     }
 
     if (event.key === 'End') {
       event.preventDefault();
       focusSection(
-        ANALYSIS_ACCORDION_SECTIONS[ANALYSIS_ACCORDION_SECTIONS.length - 1],
+        visibleAccordionSections[visibleAccordionSections.length - 1],
       );
     }
   }
+
+  const renderOptimizerScoreMetric = (
+    metric: (typeof optimizerScoreMetrics)[number],
+  ) => {
+    return (
+      <article
+        key={metric.component}
+        className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
+      >
+        <p
+          data-testid="optimizer-score-category-label"
+          className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300"
+        >
+          {metric.label}
+        </p>
+        <p className="mt-1 text-lg font-bold text-blue-950 dark:text-blue-50">
+          {metric.value}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
+          {metric.description}
+        </p>
+      </article>
+    );
+  };
+
+  const renderThreatScoreList = (
+    label: string,
+    threats: OptimizerThreatScoreEntry[],
+    emptyMessage: string,
+  ) => {
+    const visibleThreats = threats.slice(0, MAX_VISIBLE_THREAT_SCORE_ENTRIES);
+
+    return (
+      <div>
+        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+          {label}
+        </p>
+        {visibleThreats.length > 0 ? (
+          <>
+            <ul aria-label={label} className="mt-1 list-disc space-y-1 pl-5">
+              {visibleThreats.map((threat) => (
+                <li key={threat.speciesId}>{formatThreatEntry(threat)}</li>
+              ))}
+            </ul>
+            {threats.length > visibleThreats.length ? (
+              <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                {`Showing top ${visibleThreats.length} of ${threats.length}`}
+              </p>
+            ) : null}
+          </>
+        ) : (
+          <p className="mt-1">{emptyMessage}</p>
+        )}
+      </div>
+    );
+  };
+
+  const renderThreatScoreCard = (
+    threatScore: OptimizerScoreBreakdown['threatScore'],
+  ) => {
+    if (!threatScore) {
+      return null;
+    }
+
+    return (
+      <article className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-gray-800 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-gray-200">
+        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
+          Threat Score
+        </p>
+        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
+          Lower is better: this highlights meta threats the team may struggle to
+          answer.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+            {`Overall: ${formatScore(threatScore.score)}`}
+          </p>
+          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+            {`Top Meta: ${formatOptionalScore(threatScore.pools.topMeta.score)} (${threatScore.pools.topMeta.evaluatedCount} evaluated)`}
+          </p>
+          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+            {`Full Meta: ${formatOptionalScore(threatScore.pools.fullMeta.score)} (${threatScore.pools.fullMeta.evaluatedCount} evaluated)`}
+          </p>
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {renderThreatScoreList(
+            'Top Meta Threats',
+            threatScore.topMetaThreats,
+            'No top meta threats identified',
+          )}
+          {renderThreatScoreList(
+            'Overall Team Threats',
+            threatScore.overallTeamThreats,
+            'No overall team threats identified',
+          )}
+        </div>
+      </article>
+    );
+  };
 
   return (
     <div
@@ -424,227 +435,239 @@ export function AnalysisPanel({
           </div>
         )}
 
-      {generatedTeam && analysis !== null && fitness !== null && (
-        <section
-          className="space-y-3"
-          aria-label="Team analysis drill-down sections"
-        >
-          {[
-            {
-              id: 'summaryStatistics' as const,
-              title: 'Summary Statistics',
-              content: (
-                <div className="space-y-3 px-3 pb-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {summaryMetrics.map((metric) => (
-                      <article
-                        key={metric.label}
-                        className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                      >
-                        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                          {metric.label}
-                        </p>
-                        <p
-                          className={clsx(
-                            'mt-1 text-lg font-bold',
-                            getValueClasses(metric.status),
-                          )}
-                        >
-                          {metric.value}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                          {metric.description}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                    <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                      Expected Ranges
-                    </p>
-                    <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                      {summaryMetrics.map((metric) => (
-                        <p key={metric.label}>
-                          <span className="font-semibold">{metric.label}:</span>{' '}
-                          {metric.range}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              id: 'fitnessContributionCategories' as const,
-              title: 'Fitness Contribution Categories',
-              content: (
-                <div className="space-y-3 px-3 pb-3">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {contributionMetrics.map((metric) => (
-                      <article
-                        key={metric.label}
-                        className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                      >
-                        <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                          {metric.label}
-                        </p>
-                        <p
-                          className={clsx(
-                            'mt-1 text-lg font-bold',
-                            getValueClasses(metric.status),
-                          )}
-                        >
-                          {metric.value}
-                        </p>
-                        <p className="mt-1 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                          {metric.description}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                    <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                      Expected contribution bands
-                    </p>
-                    <div className="mt-2 space-y-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                      {contributionMetrics.map((metric) => (
-                        <p key={metric.label}>
-                          <span className="font-semibold">{metric.label}:</span>{' '}
-                          {metric.range}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ),
-            },
-            {
-              id: 'perPokemonContributions' as const,
-              title: 'Per-Pokemon Contribution',
-              content: (
-                <div className="space-y-3 px-3 pb-3">
-                  {pokemonEntries.map((entry) => (
-                    <article
-                      key={entry.speciesId}
-                      className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">
-                          {entry.pokemon}
-                        </p>
-                        <span
-                          className={clsx(
-                            'rounded-full px-2 py-1 text-xs font-semibold tracking-wide uppercase',
-                            getBadgeClasses(entry.fragilityRiskTier),
-                          )}
-                        >
-                          {`Replacement Risk: ${formatRiskTier(entry.fragilityRiskTier)}`}
-                        </span>
-                      </div>
-                      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                          <span
-                            className={getValueClasses(
-                              getRelativeMetricStatus(
-                                entry.threatsHandled,
-                                maxThreatsHandled,
-                              ),
+      {generatedTeam &&
+        visibleAccordionSections.length > 0 &&
+        !isGenerating && (
+          <section className="space-y-3" aria-label="Team analysis sections">
+            <section aria-label="Team analysis drill-down sections">
+              {[
+                ...(generatedTeam
+                  ? [
+                      {
+                        id: 'summaryStatistics' as const,
+                        title: 'Summary Statistics',
+                        content: (
+                          <div className="space-y-3 px-3 pb-3">
+                            {scoreBreakdown ? (
+                              <>
+                                <div
+                                  data-testid="optimizer-score-primary-grid"
+                                  className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                                >
+                                  {primaryOptimizerScoreMetrics.map(
+                                    renderOptimizerScoreMetric,
+                                  )}
+                                </div>
+                                <div
+                                  data-testid="optimizer-score-ratio-grid"
+                                  className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                                >
+                                  {ratioOptimizerScoreMetrics.map(
+                                    renderOptimizerScoreMetric,
+                                  )}
+                                </div>
+                                {renderThreatScoreCard(
+                                  scoreBreakdown.threatScore,
+                                )}
+                              </>
+                            ) : (
+                              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+                                Optimizer scores unavailable for this run.
+                              </div>
                             )}
-                          >
-                            {`Threats Handled: ${entry.threatsHandled}`}
-                          </span>
-                        </p>
-                        <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                          <span
-                            className={getValueClasses(
-                              getRelativeMetricStatus(
-                                entry.coverageAdded,
-                                maxCoverageAdded,
-                              ),
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(hasRecommendedLineups
+                  ? [
+                      {
+                        id: 'recommendedLineups' as const,
+                        title: 'Recommended Lineups',
+                        content: (
+                          <div className="space-y-3 px-3 pb-3">
+                            {recommendedLineups.map(
+                              (recommendedLineup, index) => {
+                                const quality = getLineupQuality(
+                                  recommendedLineup.score,
+                                );
+
+                                return (
+                                  <article
+                                    key={`${recommendedLineup.lineup.lead}-${recommendedLineup.lineup.switch}-${recommendedLineup.lineup.closer}-${index}`}
+                                    className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-xs text-gray-800 shadow-sm sm:text-sm dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-gray-200"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {recommendedLineups.length > 1 ? (
+                                        <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                                          Lineup {index + 1}
+                                        </h4>
+                                      ) : null}
+                                      <span
+                                        aria-label={`Lineup quality: ${quality}`}
+                                        data-testid="lineup-quality-pill"
+                                        className={clsx(
+                                          'inline-flex rounded-full border px-2 py-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase',
+                                          lineupQualityClasses[quality],
+                                        )}
+                                      >
+                                        {quality}
+                                      </span>
+                                    </div>
+                                    <dl className="mt-2 grid gap-2 sm:grid-cols-3">
+                                      <div>
+                                        <dt className="font-semibold">Lead</dt>
+                                        <dd>{recommendedLineup.lineup.lead}</dd>
+                                      </div>
+                                      <div>
+                                        <dt className="font-semibold">
+                                          Switch
+                                        </dt>
+                                        <dd>
+                                          {recommendedLineup.lineup.switch}
+                                        </dd>
+                                      </div>
+                                      <div>
+                                        <dt className="font-semibold">
+                                          Closer
+                                        </dt>
+                                        <dd>
+                                          {recommendedLineup.lineup.closer}
+                                        </dd>
+                                      </div>
+                                    </dl>
+                                    <div className="mt-3 text-gray-800 dark:text-gray-200">
+                                      <div>
+                                        <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                          Weaknesses
+                                        </p>
+                                        {recommendedLineup.weaknesses.length >
+                                        0 ? (
+                                          <ul
+                                            aria-label={`Lineup ${index + 1} weaknesses`}
+                                            className="mt-1 list-disc space-y-0.5 pl-5"
+                                          >
+                                            {recommendedLineup.weaknesses.map(
+                                              (weakness) => (
+                                                <li key={weakness}>
+                                                  {weakness}
+                                                </li>
+                                              ),
+                                            )}
+                                          </ul>
+                                        ) : (
+                                          <p className="mt-1">
+                                            No major weaknesses identified
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </article>
+                                );
+                              },
                             )}
-                          >
-                            {`Coverage Added: ${entry.coverageAdded}`}
-                          </span>
-                        </p>
-                        <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-                          <span
-                            className={getValueClasses(
-                              getRelativeMetricStatus(
-                                entry.highSeverityRelief,
-                                maxHighSeverityRelief,
-                              ),
-                            )}
-                          >
-                            {`High-Pressure Relief: ${entry.highSeverityRelief}`}
-                          </span>
-                        </p>
-                      </div>
-                      <p className="mt-2 text-xs leading-5 text-gray-700 dark:text-gray-300">
-                        {entry.rationale}
-                      </p>
-                    </article>
-                  ))}
-                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-                    <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
-                      Relative grading guide
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-blue-950 dark:text-blue-100">
-                      Green marks values near the strongest contributor on this
-                      team, yellow marks middle-of-team support, and red marks
-                      low relative contribution for the current lineup.
-                      Replacement risk uses Low / Moderate / High bands
-                      directly.
-                    </p>
-                  </div>
-                </div>
-              ),
-            },
-          ].map((section) => (
-            <div
-              key={section.id}
-              className="rounded-lg border border-blue-200 bg-white dark:border-blue-900/60 dark:bg-gray-900/40"
-            >
-              <h3>
-                <button
-                  ref={(buttonElement) => {
-                    accordionButtonRefs.current[section.id] = buttonElement;
-                  }}
-                  type="button"
-                  aria-expanded={expandedSections[section.id]}
-                  aria-controls={`${accordionIdPrefix}-${section.id}-panel`}
-                  id={`${accordionIdPrefix}-${section.id}-trigger`}
-                  className="flex w-full items-center justify-between rounded-lg p-3 text-left focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none"
-                  onClick={() => {
-                    toggleSection(section.id);
-                  }}
-                  onKeyDown={(event) => {
-                    onAccordionHeaderKeyDown(event, section.id);
-                  }}
-                >
-                  <span className="text-sm font-semibold tracking-wide text-blue-800 uppercase dark:text-blue-200">
-                    {section.title}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="text-sm font-semibold text-blue-700 dark:text-blue-300"
-                  >
-                    {expandedSections[section.id] ? '-' : '+'}
-                  </span>
-                </button>
-              </h3>
-              {expandedSections[section.id] && (
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(hasAnalysisDetails
+                  ? [
+                      {
+                        id: 'perPokemonContributions' as const,
+                        title: 'Per-Pokemon Contribution',
+                        content: (
+                          <div className="space-y-3 px-3 pb-3">
+                            {pokemonEntries.map((entry) => (
+                              <article
+                                key={entry.speciesId}
+                                className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 dark:border-blue-900/60 dark:bg-blue-950/20"
+                              >
+                                <div className="space-y-1">
+                                  <div data-testid="pokemon-contribution-name-row">
+                                    <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                                      {entry.pokemon}
+                                    </p>
+                                  </div>
+                                  <div data-testid="pokemon-contribution-risk-row">
+                                    <span
+                                      className={clsx(
+                                        'inline-flex rounded-full px-2 py-1 text-xs font-semibold tracking-wide uppercase',
+                                        getBadgeClasses(
+                                          entry.fragilityRiskTier,
+                                        ),
+                                      )}
+                                    >
+                                      {`Replacement Risk: ${formatRiskTier(entry.fragilityRiskTier)}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                  <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+                                    {`Threats Handled: ${entry.threatsHandled}`}
+                                  </p>
+                                  <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+                                    {`Coverage Added: ${entry.coverageAdded}`}
+                                  </p>
+                                  <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
+                                    {`High-Pressure Relief: ${entry.highSeverityRelief}`}
+                                  </p>
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
+              ].map((section) => (
                 <div
-                  id={`${accordionIdPrefix}-${section.id}-panel`}
-                  role="region"
-                  aria-labelledby={`${accordionIdPrefix}-${section.id}-trigger`}
+                  key={section.id}
+                  className="rounded-lg border border-blue-200 bg-white dark:border-blue-900/60 dark:bg-gray-900/40"
                 >
-                  {section.content}
+                  <h3>
+                    <button
+                      ref={(buttonElement) => {
+                        accordionButtonRefs.current[section.id] = buttonElement;
+                      }}
+                      type="button"
+                      aria-expanded={expandedSections[section.id]}
+                      aria-controls={`${accordionIdPrefix}-${section.id}-panel`}
+                      id={`${accordionIdPrefix}-${section.id}-trigger`}
+                      className="flex w-full items-center justify-between rounded-lg p-3 text-left focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none"
+                      onClick={() => {
+                        toggleSection(section.id);
+                      }}
+                      onKeyDown={(event) => {
+                        onAccordionHeaderKeyDown(event, section.id);
+                      }}
+                    >
+                      <span className="text-sm font-semibold tracking-wide text-blue-800 uppercase dark:text-blue-200">
+                        {section.title}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="text-sm font-semibold text-blue-700 dark:text-blue-300"
+                      >
+                        {expandedSections[section.id] ? '-' : '+'}
+                      </span>
+                    </button>
+                  </h3>
+                  {expandedSections[section.id] && (
+                    <div
+                      id={`${accordionIdPrefix}-${section.id}-panel`}
+                      role="region"
+                      aria-labelledby={`${accordionIdPrefix}-${section.id}-trigger`}
+                    >
+                      {section.content}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
+              ))}
+            </section>
+          </section>
+        )}
     </div>
   );
 }

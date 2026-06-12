@@ -3,8 +3,6 @@ export interface BattleFormat {
   label: string;
   cup:
     | 'all'
-    | 'jungle'
-    | 'fantasy'
     | 'naic2026'
     | 'bayou'
     | 'spellcraft'
@@ -20,13 +18,11 @@ export type BattleFormatId =
   | 'great-league'
   | 'ultra-league'
   | 'master-league'
-  | 'fantasy-cup'
   | 'naic-2026-championship-cup'
   | 'battle-frontier-bayou-cup'
   | 'battle-frontier-spellcraft-cup'
   | 'battle-frontier-ul-retro'
-  | 'battle-frontier-master'
-  | 'jungle-cup';
+  | 'battle-frontier-master';
 
 /**
  * Catalog of supported battle formats.
@@ -49,12 +45,6 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'Master League',
     cup: 'all',
     cp: 10000,
-  },
-  {
-    id: 'fantasy-cup',
-    label: 'Fantasy Cup',
-    cup: 'fantasy',
-    cp: 1500,
   },
   {
     id: 'naic-2026-championship-cup',
@@ -85,12 +75,6 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'Battle Frontier (Master)',
     cup: 'battlefrontiermaster',
     cp: 10000,
-  },
-  {
-    id: 'jungle-cup',
-    label: 'Jungle Cup',
-    cup: 'jungle',
-    cp: 1500,
   },
 ];
 

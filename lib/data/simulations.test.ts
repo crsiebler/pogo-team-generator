@@ -22,7 +22,6 @@ describe('format-aware simulation loading', () => {
     expect(() => ensureSimulationDataAvailable('great-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('ultra-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('master-league')).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('fantasy-cup')).not.toThrow();
     expect(() =>
       ensureSimulationDataAvailable('naic-2026-championship-cup'),
     ).not.toThrow();
@@ -38,7 +37,6 @@ describe('format-aware simulation loading', () => {
     expect(() =>
       ensureSimulationDataAvailable('battle-frontier-master'),
     ).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('jungle-cup')).not.toThrow();
   }, 15000);
 
   it('keeps Great League cache stable after loading other formats', () => {

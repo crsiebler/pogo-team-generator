@@ -17,10 +17,7 @@ Each format uses its own ranking CSVs, simulation data, and eligible Pokemon poo
 - Generates teams for both `PlayPokemon` (6 Pokemon) and `GBL` (3 Pokemon)
 - Filters anchor and excluded Pokemon by the selected battle format
 - Enforces species uniqueness across forms that share the same base Dex number
-- Scores teams with simulation-backed matchup coverage instead of ranking-only heuristics
-- Supports two fitness strategies:
-  - `individual`: balances individual strength, matchup quality, team coverage, type diversity, move coverage, and anchor support
-  - `teamSynergy`: emphasizes threat redundancy, shield-scenario balance, and team-level coverage
+- Scores teams with canonical lineup-aware fitness using simulation-backed matchup coverage, role quality, lineup depth, and team stability
 
 ## Quick Start
 
@@ -63,10 +60,7 @@ npm run sync
    - `GBL`: build a 3-Pokemon roster
 3. Optionally add anchor Pokemon you want locked into the generated team.
 4. Optionally add excluded Pokemon you do not want considered.
-5. Choose an algorithm:
-   - `individual` for faster, broad scoring
-   - `teamSynergy` for more coverage-focused analysis
-6. Generate a team.
+5. Generate a team.
 
 ## How Team Generation Works
 
@@ -86,39 +80,46 @@ npm run sync
 - Anchor slots are preserved during initialization, crossover, and mutation.
 - Teams are validated with base-species uniqueness rules, so different forms of the same Pokemon family cannot appear together.
 
-### Fitness Algorithms
+### Lineup-Aware Fitness
 
-#### `individual`
+Generation uses one canonical lineup-aware fitness path in `lib/genetic/fitness/index.ts`.
 
-Implemented in `lib/genetic/fitness/individual.ts`.
+- `PlayPokemon` bring-6 rosters are scored by enumerating ordered pick-3 lineups, rewarding viable lineup depth, lead diversity, bench utility, and broad threat coverage.
+- `GBL` teams are scored by evaluating ordered lead, safe swap, and closer recommendations for the three selected Pokemon.
+- Final results include recommended lineups and, for `PlayPokemon`, roster metrics plus bench utility diagnostics.
 
-This scorer combines:
+Simulation coverage remains a dominant factor, so the generator prefers teams that can repeatedly answer relevant threats in the selected format.
 
-- simulation-backed threat coverage
-- weighted team weaknesses
-- single-counter fragility penalties
-- average matchup quality
-- type coverage and type synergy
-- move coverage and energy pressure
-- stat balance and shadow preference
-- mode-specific bonuses for consistency or surprise
-- anchor synergy bonuses when anchors are present
+### Optimizer Architecture
 
-Simulation coverage is the dominant factor, so the generator prefers teams that can repeatedly answer relevant threats in the selected format.
+The optimizer keeps scoring logic in `lib/` and treats API and UI layers as adapters that validate, pass through, and display already-computed diagnostics. This keeps genetic search, lineup scoring, roster aggregation, ranking access, and type-effectiveness rules testable without coupling them to React components or route handlers.
 
-#### `teamSynergy`
+Key modules:
 
-Implemented in `lib/genetic/fitness/teamSynergy.ts`.
+- `lib/genetic/fitness/lineupEnumeration.ts` builds the deterministic ordered pick-3 lineup set for a bring-6 roster.
+- `lib/genetic/fitness/lineupScoring.ts` scores one ordered lineup as a battle plan with role, matchup, coverage, safety, consistency, bulk, and type-ratio signals.
+- `lib/genetic/fitness/rosterScoring.ts` aggregates lineup quality into bring-6 roster fitness, including best-lineup quality, top-N lineup depth, viable lineup count, viable lead diversity, bench utility, and one-line-team penalties.
+- `lib/genetic/fitness/recommendations.ts` converts bounded finalist diagnostics into API-ready recommended lineups and bench utility warnings.
+- `lib/genetic/fitness/scoreBreakdown.ts` defines the normalized weighted component contract used by lineup and roster scoring.
+- `lib/genetic/fitness/typeEffectivenessRatios.ts` evaluates offensive move pressure and defensive resistance or weakness ratios using `data/type-effectiveness.json`.
+- `lib/data/rankings.ts` provides runtime ranking access and caching by battle format and category.
+- `lib/sync/adapter.ts` and `lib/sync/rankings.ts` adapt local PvPoke exports into deterministic project CSVs under `data/rankings/`.
 
-This scorer focuses more on:
+The weighted score model combines normalized components in priority order: synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, and role. The current default weights are starting defaults for tuning, not guaranteed optimal constants: synergy `0.24`, coverage `0.21`, safety `0.17`, consistency `0.13`, bulk `0.10`, defensive ratio `0.07`, offensive ratio `0.05`, and role `0.03`. Hard constraints stay limited to legality and validity checks such as roster size, eligibility, anchors, exclusions, and base-species uniqueness.
 
-- having multiple counters to meta threats
-- shield-scenario consistency
-- avoiding cores that are broken by the same threats
-- preserving move diversity
-- keeping a baseline level of individual quality
+PvPoke rankings are scoring signals rather than immutable truth. Overall rankings seed broad candidate quality, while Leads, Switches, Closers, Chargers, Attackers, and Consistency exports inform role fit, energy pressure, shield-disadvantage pressure, volatility assumptions, move choices, and threat weighting. The optimizer combines those inputs with matchup simulations, type effectiveness, and lineup depth so it does not optimize blindly for raw rank.
 
-Use this mode when you care more about roster redundancy and team-wide structure than maximizing the ceiling of each individual slot.
+Optimizer strategy references:
+
+- [`docs/pokemon-go-team-optimization.md`](docs/pokemon-go-team-optimization.md)
+- [`docs/team-optimization/scoring-model.md`](docs/team-optimization/scoring-model.md)
+- [`docs/team-optimization/lineup-structures.md`](docs/team-optimization/lineup-structures.md)
+- [`docs/team-optimization/coverage-threat-pools.md`](docs/team-optimization/coverage-threat-pools.md)
+- [`docs/team-optimization/safety-consistency-bulk.md`](docs/team-optimization/safety-consistency-bulk.md)
+- [`docs/team-optimization/type-effectiveness.md`](docs/team-optimization/type-effectiveness.md)
+- [`docs/team-optimization/role-scoring.md`](docs/team-optimization/role-scoring.md)
+- [`docs/team-optimization/data-inputs.md`](docs/team-optimization/data-inputs.md)
+- [`docs/team-optimization/validation.md`](docs/team-optimization/validation.md)
 
 ### Moveset Selection
 
@@ -172,6 +173,8 @@ Examples:
 - `data/rankings/cp1500/kanto/leads_rankings.csv`
 - `data/rankings/cp2500/all/switches_rankings.csv`
 
+When source files exist, sync exports seven PvPoke categories for each supported format: Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency.
+
 `lib/data/rankings.ts` caches parsed rankings per format and throws `MissingRankingDataError` when a selected format has not been synced.
 
 ### Simulations
@@ -222,7 +225,7 @@ The sync pipeline:
 
 1. reads Pokemon and move data from the PvPoke source
 2. writes normalized `data/pokemon.json` and `data/moves.json`
-3. exports rankings for every supported battle format
+3. exports available Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency rankings for every supported battle format
 4. generates simulation CSVs for every supported battle format
 5. updates `data/sync-metadata.json`
 
@@ -242,8 +245,7 @@ Request body:
   "formatId": "kanto-cup",
   "mode": "GBL",
   "anchorPokemon": ["Mew"],
-  "excludedPokemon": ["Hypno"],
-  "algorithm": "teamSynergy"
+  "excludedPokemon": ["Hypno"]
 }
 ```
 
@@ -251,6 +253,7 @@ Notes:
 
 - `formatId` must be a supported value from `lib/data/battleFormats.ts`
 - anchors and exclusions must be eligible in the selected format
+- team generation uses the canonical lineup-aware strategy; `algorithm` request fields are deprecated and ignored
 - missing rankings or simulations return deterministic `400` responses with sync guidance
 
 ## Project Structure
@@ -288,10 +291,11 @@ data/
 
 - Data storage is now format-specific under `data/rankings/` and `data/simulations/`.
 - Multiple battle formats are supported through a single catalog in `lib/data/battleFormats.ts`.
-- The UI now lets users choose battle format and fitness algorithm.
+- The UI now lets users choose battle format for generation.
 - The generator now validates selected Pokemon against the chosen format before running.
 - Fitness scoring relies much more on simulation-backed matchup quality and threat redundancy.
 - Recommended movesets now come from ranking data instead of purely team-context heuristics.
+- Optimizer scoring now exposes a normalized score breakdown for synergy, coverage, safety, consistency, bulk, defensive ratio, offensive ratio, and role.
 
 ## Testing
 
@@ -302,6 +306,7 @@ Important coverage areas now include:
 - API validation for invalid or unsynced formats
 - genetic algorithm candidate-pool selection by format
 - team uniqueness validation across related species forms
+- optimizer validation fixtures for documented lineup, roster, coverage, type-effectiveness, bulk, and synergy tradeoffs
 
 Run the full suite with:
 
