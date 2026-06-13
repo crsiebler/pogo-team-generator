@@ -1,7 +1,7 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
 import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
-import { getTopRankedPokemonNames } from '@lib/data/rankings';
+import { getAutomaticCandidatePokemonNames } from '@lib/data/rankings';
 import { ensureSimulationDataAvailable } from '@lib/data/simulations';
 import type { Chromosome, GenerationOptions } from '../types';
 import {
@@ -43,9 +43,8 @@ export async function generateTeam(
 
   ensureSimulationDataAvailable(formatId);
 
-  // Get available Pokémon pool (only top 150 ranked Pokemon for competitive viability)
-  const topRankedNames = getTopRankedPokemonNames(80, 150, formatId);
-  const availablePokemon = getRankedPokemonForFormat(topRankedNames, formatId);
+  const candidateNames = getAutomaticCandidatePokemonNames(formatId);
+  const availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);
 
   // Filter out excluded Pokemon
   const filteredPokemon = availablePokemon.filter(

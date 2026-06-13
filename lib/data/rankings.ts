@@ -534,6 +534,24 @@ export function getTopRankedPokemonNames(
     .slice(0, maxCount);
   return new Set(rankings.map((r) => r.Pokemon));
 }
+
+/**
+ * Get dynamically banded non-specialist Pokemon names for automatic generation.
+ */
+export function getAutomaticCandidatePokemonNames(
+  formatId?: BattleFormatId,
+): Set<string> {
+  const bands = getCandidateRankingBands(formatId).bands;
+
+  return new Set(
+    [
+      ...bands.eliteAnchors,
+      ...bands.preferredAnchors,
+      ...bands.normalCompanions,
+      ...bands.flexibleCompanions,
+    ].map((assignment) => assignment.pokemon),
+  );
+}
 /**
  * Get top N Pokémon by role
  */

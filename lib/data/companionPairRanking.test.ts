@@ -375,4 +375,175 @@ describe('rankAnchorCompanionPairs', () => {
       secondOrder[1]?.scoreBreakdown.uniqueCoverageBonus,
     );
   });
+
+  it('excludes specialists from pair expansion when they only cover isolated threats', () => {
+    const anchor = makeProfile('Anchor', {
+      simulationCoverage: {
+        winsAgainst: [],
+        lossesAgainst: ['isolated-threat', 'core-breaker'],
+        checks: [],
+      },
+    });
+    const generalist = makeProfile('Generalist', {
+      rank: 8,
+      rankPercentile: 0.08,
+      score: 93,
+      simulationCoverage: {
+        winsAgainst: ['core-breaker'],
+        lossesAgainst: [],
+        checks: [],
+      },
+    });
+    const isolatedSpecialist = makeProfile('Isolated Specialist', {
+      band: 'specialists',
+      rank: 80,
+      rankPercentile: 0.8,
+      score: 72,
+      simulationCoverage: {
+        winsAgainst: ['isolated-threat'],
+        lossesAgainst: ['core-breaker'],
+        checks: [],
+      },
+    });
+
+    const results = rankAnchorCompanionPairs(
+      anchor,
+      [isolatedSpecialist, generalist],
+      {
+        importantLosses: [
+          { pokemon: 'isolated-threat', weight: 0.4 },
+          { pokemon: 'core-breaker', weight: 2 },
+        ],
+      },
+    );
+
+    expect(results.map((result) => result.companion.pokemon)).toEqual([
+      'Generalist',
+    ]);
+  });
+
+  it('does not admit specialists into pair expansion from duplicated low-priority losses', () => {
+    const anchor = makeProfile('Anchor', {
+      simulationCoverage: {
+        winsAgainst: [],
+        lossesAgainst: ['isolated-threat', 'core-breaker'],
+        checks: [],
+      },
+    });
+    const specialist = makeProfile('Duplicate Loss Specialist', {
+      band: 'specialists',
+      rank: 85,
+      rankPercentile: 0.85,
+      score: 70,
+      simulationCoverage: {
+        winsAgainst: ['isolated-threat'],
+        lossesAgainst: ['core-breaker'],
+        checks: [],
+      },
+    });
+
+    const results = rankAnchorCompanionPairs(anchor, [specialist], {
+      importantLosses: [
+        { pokemon: 'isolated-threat', weight: 0.6 },
+        { pokemon: 'isolated-threat', weight: 0.6 },
+        { pokemon: 'core-breaker', weight: 2 },
+      ],
+    });
+
+    expect(results).toEqual([]);
+  });
+
+  it('admits specialists into pair expansion when they uniquely patch high-priority losses', () => {
+    const anchor = makeProfile('Anchor', {
+      defensiveTyping: ['Flying'],
+      simulationCoverage: {
+        winsAgainst: [],
+        lossesAgainst: ['core-breaker', 'covered-threat'],
+        checks: [],
+      },
+    });
+    const generalist = makeProfile('Generalist', {
+      rank: 8,
+      rankPercentile: 0.08,
+      score: 93,
+      simulationCoverage: {
+        winsAgainst: ['covered-threat'],
+        lossesAgainst: ['core-breaker'],
+        checks: [],
+      },
+    });
+    const specialist = makeProfile('Specialist Patch', {
+      band: 'specialists',
+      rank: 78,
+      rankPercentile: 0.78,
+      score: 76,
+      defensiveTyping: ['Ghost'],
+      simulationCoverage: {
+        winsAgainst: ['core-breaker'],
+        lossesAgainst: [],
+        checks: [],
+      },
+    });
+
+    const results = rankAnchorCompanionPairs(anchor, [generalist, specialist], {
+      importantLosses: [
+        { pokemon: 'core-breaker', weight: 2 },
+        { pokemon: 'covered-threat', weight: 1 },
+      ],
+    });
+
+    expect(results.map((result) => result.companion.pokemon)).toContain(
+      'Specialist Patch',
+    );
+    expect(
+      results.find((result) => result.companion.pokemon === 'Specialist Patch')
+        ?.scoreBreakdown.coveredAnchorLosses,
+    ).toEqual(['core-breaker']);
+  });
+
+  it('does not rank pairs for specialist anchors', () => {
+    const specialistAnchor = makeProfile('Specialist Anchor', {
+      band: 'specialists',
+      rank: 82,
+      rankPercentile: 0.82,
+      score: 71,
+      simulationCoverage: {
+        winsAgainst: [],
+        lossesAgainst: ['core-breaker'],
+        checks: [],
+      },
+    });
+    const companion = makeProfile('Companion', {
+      simulationCoverage: {
+        winsAgainst: ['core-breaker'],
+        lossesAgainst: [],
+        checks: [],
+      },
+    });
+
+    expect(rankAnchorCompanionPairs(specialistAnchor, [companion])).toEqual([]);
+  });
+
+  it('requires prioritized threat context before fallback anchor losses admit specialists', () => {
+    const anchor = makeProfile('Anchor', {
+      simulationCoverage: {
+        winsAgainst: [],
+        lossesAgainst: ['raw-anchor-loss', 'second-raw-anchor-loss'],
+        checks: [],
+      },
+    });
+    const specialist = makeProfile('Raw Loss Specialist', {
+      band: 'specialists',
+      rank: 85,
+      rankPercentile: 0.85,
+      score: 70,
+      simulationCoverage: {
+        winsAgainst: ['raw-anchor-loss', 'second-raw-anchor-loss'],
+        lossesAgainst: [],
+        checks: [],
+      },
+    });
+
+    expect(rankAnchorCompanionPairs(anchor, [specialist])).toEqual([]);
+  });
 });

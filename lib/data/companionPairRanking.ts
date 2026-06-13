@@ -1,4 +1,9 @@
 import type { CandidateProfile } from './candidateProfiles';
+import type { SpecialistGateContext } from './specialistCandidateGate';
+import {
+  evaluateSpecialistAdmission,
+  isSpecialistCandidate,
+} from './specialistCandidateGate';
 import { calculateEffectiveness } from '@/lib/coverage/typeChart';
 
 /** Weighted meta loss that an anchor needs companions to solve. */
@@ -27,6 +32,7 @@ export interface AnchorCompanionPairRankingContext {
   importantLosses?: readonly AnchorCompanionPairThreat[];
   maxBulk?: number;
   weights?: Partial<AnchorCompanionPairWeights>;
+  specialistGate?: Partial<SpecialistGateContext>;
 }
 
 /** Explainable score components for one anchor plus companion pair. */
@@ -98,8 +104,20 @@ export function rankAnchorCompanionPairs(
   candidates: readonly CandidateProfile[],
   context: AnchorCompanionPairRankingContext = {},
 ): RankedAnchorCompanionPair[] {
-  const candidateList = candidates.filter(
+  if (isSpecialistCandidate(anchor)) {
+    return [];
+  }
+
+  const ungatedCandidateList = candidates.filter(
     (candidate) => candidate.pokemon !== anchor.pokemon,
+  );
+  const importantLosses = buildImportantLosses(anchor, context.importantLosses);
+  const candidateList = gateSpecialistCandidates(
+    anchor,
+    ungatedCandidateList,
+    importantLosses,
+    context.specialistGate,
+    Boolean(context.importantLosses && context.importantLosses.length > 0),
   );
   const maxBulk =
     context.maxBulk ??
@@ -108,7 +126,6 @@ export function rankAnchorCompanionPairs(
       ...candidateList.map((candidate) => candidate.bulk),
       1,
     );
-  const importantLosses = buildImportantLosses(anchor, context.importantLosses);
   const strongerCoverageByCandidate = buildStrongerCoverageByCandidate(
     candidateList,
     importantLosses,
@@ -125,6 +142,43 @@ export function rankAnchorCompanionPairs(
       });
     })
     .sort(compareRankedPairs);
+}
+
+function gateSpecialistCandidates(
+  anchor: CandidateProfile,
+  candidates: readonly CandidateProfile[],
+  importantLosses: readonly NormalizedAnchorCompanionPairThreat[],
+  specialistGate: Partial<SpecialistGateContext> | undefined,
+  hasPrioritizedLosses: boolean,
+): CandidateProfile[] {
+  const generalistCandidates = candidates.filter(
+    (candidate) => !isSpecialistCandidate(candidate),
+  );
+  const hasPrioritizedThreatContext =
+    hasPrioritizedLosses || Boolean(specialistGate?.unresolvedThreats);
+
+  if (!hasPrioritizedThreatContext) {
+    return generalistCandidates;
+  }
+
+  const unresolvedThreats =
+    specialistGate?.unresolvedThreats ??
+    importantLosses.map((loss) => ({
+      pokemon: loss.pokemon,
+      weight: loss.weight,
+      source: 'anchorLoss' as const,
+      defensiveTypes: loss.defensiveTypes,
+    }));
+
+  return candidates.filter((candidate) => {
+    return evaluateSpecialistAdmission(candidate, {
+      ...specialistGate,
+      anchor,
+      generalistCandidates:
+        specialistGate?.generalistCandidates ?? generalistCandidates,
+      unresolvedThreats,
+    }).admitted;
+  });
 }
 
 interface NormalizedPairContext {

@@ -11,6 +11,9 @@
 - Use `rankAnchorCompanionPairs(...)` in `lib/data/companionPairRanking.ts` to evaluate pure anchor plus companion candidate-profile pairs; keep rank and PvPoke score as priors while simulation coverage, unique anchor-loss coverage, safety, consistency, bulk, typing, and shared weakness penalties drive the pair score.
 - Anchor-first generation should seed elite or preferred anchors, rank anchor plus companion pairs, expand teams by remaining weaknesses and lineup quality, then rely on canonical lineup or roster scoring for final fitness.
 - Low-ranked specialists should be admitted only with unique measurable top-meta or core-weakness coverage and should not crowd out safer high-ranked generalists without matchup evidence.
+- Use `evaluateSpecialistAdmission(...)` in `lib/data/specialistCandidateGate.ts` for dynamic-band `specialists`; require unique simulation-backed unresolved threat or core-weakness coverage, reject isolated or duplicated coverage, and keep specialists out of automatic anchors.
+- Deduplicate unresolved threat context by Pokemon identity before weighting specialist admission so duplicate matchup rows cannot make isolated specialist coverage look unique or high-priority.
+- Use `getAutomaticCandidatePokemonNames(...)` in `lib/data/rankings.ts` for automatic generation pools so dynamic-band specialists are excluded before random team initialization, while explicit user-provided anchors remain allowed through `anchorPokemon`.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling.
 - For optimizer-adjacent changes, invoke/read the `gbl-optimizer` skill and record optimizer docs read in this file before marking the story complete.
 - Optimizer docs to read for this PRD: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
@@ -115,4 +118,72 @@
   - US-004 should apply specialist gating on top of pair-ranking output so rare niche picks remain bounded and justified by unresolved top-meta or core-weakness coverage.
 - Next iteration start:
   - US-004 - Gate specialist candidates behind unique coverage
+---
+
+## 2026-06-13 03:18 MST - US-004
+- Implemented a pure specialist candidate gate that classifies dynamic `specialists` band candidates, excludes specialists from automatic anchors, and admits specialists only when they provide unique simulation-backed coverage for unresolved high-priority threats or core weaknesses.
+- Integrated specialist gating into anchor plus companion pair expansion so rejected specialists do not enter ranked pair results while uniquely useful specialists can still be admitted.
+- Files changed: `lib/data/specialistCandidateGate.ts`, `lib/data/specialistCandidateGate.test.ts`, `lib/data/companionPairRanking.ts`, `lib/data/companionPairRanking.test.ts`, `lib/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-004 - Gate specialist candidates behind unique coverage`
+- Checks:
+  - `npx vitest run lib/data/specialistCandidateGate.test.ts` (pass; red first failed because `./specialistCandidateGate` did not exist)
+  - `npx vitest run lib/data/companionPairRanking.test.ts` (pass; red first failed because isolated specialists were still included in pair ranking)
+  - `npx vitest run lib/data/specialistCandidateGate.test.ts lib/data/companionPairRanking.test.ts` (pass; rerun after review fixes: 18 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; rerun after review fixes: 65 files, 508 tests)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `backend-developer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill and optimizer docs; `backend-developer` Task guidance; `test-driven-development` skill and `test-automator` Task guidance as the available TDD implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: blocked after 3 review passes; fixed fallback raw anchor-loss admission and specialist-anchor pair ranking, but unresolved medium findings remain to deduplicate repeated unresolved threats before unique-coverage scoring and to cover or wire specialist exclusion at the real production automatic anchor-selection callsite.
+- Decisions (why):
+  - Added a dedicated pure gate under `lib/data` so generation stages can reuse the same bounded specialist rules without reading ranking files or touching GA hot paths.
+  - Required simulation wins for admission because type-only paper coverage is too broad for niche picks and the PRD explicitly prioritizes simulation matchup coverage.
+  - Kept stronger generalist suppression separate from pair scoring so specialists remain rare unless they solve unresolved coverage that safer candidates do not already solve.
+  - Integrated the gate in `rankAnchorCompanionPairs(...)` because US-004 requires specialists to be blocked before pair expansion, while later team expansion can reuse the same helper with lineup-count context.
+  - Kept unprioritized fallback anchor losses non-admissive because raw loss lists do not prove top-meta or core-weakness priority, even when a specialist beats multiple raw losses.
+- **Learnings for future iterations:**
+  - `CandidateProfile.band === 'specialists'` is the dynamic-band source of truth for low-ranked niche candidates; do not infer specialist status from fixed PvPoke score thresholds.
+  - Specialist admission should use `simulationCoverage.winsAgainst` as the admission signal; `checks` and offensive typing can support scoring elsewhere but should not admit a specialist by themselves.
+  - `rankAnchorCompanionPairs(...)` now gates specialists against anchor losses by default, with optional `specialistGate` context for team-expansion inputs such as unresolved threats and viable lineup counts.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Blocker before commit: deduplicate unresolved threat rows in `evaluateSpecialistAdmission(...)` so one duplicated matchup cannot satisfy unique coverage by repeated weight.
+  - Blocker before commit: identify the production automatic anchor-selection callsite or defer specialist-anchor exclusion to US-005 only with explicit PRD scope clarification; current helper and pair-ranking guard are not enough for the reviewer.
+  - US-005 should reuse `selectAutomaticAnchorCandidates(...)` and `evaluateSpecialistAdmission(...)` when adding anchor-first GA seeding and team expansion.
+- Next iteration start:
+  - US-005 - Seed the genetic algorithm with anchor-first teams
+---
+
+## 2026-06-13 03:33 MST - US-004
+- Completed specialist gating by resolving the prior blockers: duplicate unresolved threat rows are deduplicated before unique-coverage scoring, pair expansion has a regression for duplicated low-priority losses, and automatic generation pools now use dynamic non-specialist candidate bands.
+- Files changed: `lib/data/specialistCandidateGate.ts`, `lib/data/specialistCandidateGate.test.ts`, `lib/data/companionPairRanking.ts`, `lib/data/companionPairRanking.test.ts`, `lib/data/rankings.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-004 - Gate specialist candidates behind unique coverage`
+- Checks:
+  - `npx vitest run lib/data/specialistCandidateGate.test.ts lib/data/companionPairRanking.test.ts` (pass; red first failed because duplicate unresolved threat rows inflated admission to `true`)
+  - `npx vitest run lib/genetic/algorithm.test.ts` (pass; red first failed because production generation still called `getTopRankedPokemonNames(...)` instead of the dynamic non-specialist pool loader)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 65 files, 511 tests)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `backend-developer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill and optimizer docs; `backend-developer` Task guidance; `test-driven-development` skill and `test-automator` Task guidance as the available TDD implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed before commit; first pass found automatic generation pools could still include specialists, so `getAutomaticCandidatePokemonNames(...)` now excludes dynamic-band specialists before random initialization while explicit user anchors remain supported through `anchorPokemon`; second pass returned no actionable findings
+- Decisions (why):
+  - Deduplicated unresolved threat context inside `normalizeThreats(...)` because specialist admission should evaluate unique threat identities, not repeated rows from matchup or diagnostic sources.
+  - Preserved the highest single threat weight and strongest source while merging defensive typing because duplicate rows should not add weight, but they may carry useful metadata.
+  - Added `getAutomaticCandidatePokemonNames(...)` instead of changing `getTopRankedPokemonNames(...)` so existing fixed-threshold ranking consumers keep their current contract while generation gets the PRD-specific dynamic non-specialist pool.
+  - Kept explicit user anchors outside the automatic pool filter because user-provided anchors are intentional constraints, not automatically selected specialists.
+- **Learnings for future iterations:**
+  - Duplicate unresolved threat rows can appear in optimizer context; dedupe by Pokemon before weighting coverage or admission decisions.
+  - Automatic generation candidate pools now exclude dynamic-band specialists through `getAutomaticCandidatePokemonNames(...)`; use explicit `anchorPokemon` for user-pinned anchors rather than adding specialists back into the random pool.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - US-005 should reuse `getAutomaticCandidatePokemonNames(...)` and `selectAutomaticAnchorCandidates(...)` when adding automatic anchor-first GA seeding.
+- Next iteration start:
+  - US-005 - Seed the genetic algorithm with anchor-first teams
 ---

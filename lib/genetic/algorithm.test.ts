@@ -1,7 +1,7 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
 import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
-import { getTopRankedPokemonNames } from '@lib/data/rankings';
+import { getAutomaticCandidatePokemonNames } from '@lib/data/rankings';
 import { ensureSimulationDataAvailable } from '@lib/data/simulations';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Chromosome, OptimizerScoreBreakdown, Pokemon } from '../types';
@@ -24,7 +24,7 @@ import {
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
 vi.mock('@lib/data/rankings', () => ({
-  getTopRankedPokemonNames: vi.fn(),
+  getAutomaticCandidatePokemonNames: vi.fn(),
 }));
 
 vi.mock('@lib/data/pokemon', () => ({
@@ -208,7 +208,7 @@ describe('generateTeam format-aware candidate selection', () => {
   it('loads top-ranked names and eligibility pool for selected format', async () => {
     const rankedNames = new Set<string>(['Mew']);
 
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(rankedNames);
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(rankedNames);
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
       createPokemon('mew', 'Mew'),
     ]);
@@ -220,9 +220,7 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 0,
     });
 
-    expect(getTopRankedPokemonNames).toHaveBeenCalledWith(
-      80,
-      150,
+    expect(getAutomaticCandidatePokemonNames).toHaveBeenCalledWith(
       'battle-frontier-bayou-cup',
     );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
@@ -249,8 +247,53 @@ describe('generateTeam format-aware candidate selection', () => {
     );
   });
 
+  it('excludes specialist-band candidates from automatic generation pools while preserving explicit anchors', async () => {
+    const nonSpecialistNames = new Set<string>(['Elite Anchor', 'Generalist']);
+
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      nonSpecialistNames,
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('elite_anchor', 'Elite Anchor'),
+      createPokemon('generalist', 'Generalist'),
+    ]);
+    vi.mocked(initializePopulation).mockReturnValue([
+      createChromosomeWithTeam([
+        'specialist_anchor',
+        'elite_anchor',
+        'generalist',
+      ]),
+    ]);
+
+    await generateTeam({
+      mode: 'GBL',
+      formatId: 'great-league',
+      anchorPokemon: ['specialist_anchor'],
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
+      nonSpecialistNames,
+      'great-league',
+    );
+    expect(initializePopulation).toHaveBeenCalledWith(
+      1,
+      ['elite_anchor', 'generalist'],
+      3,
+      ['specialist_anchor'],
+      'great-league',
+    );
+    expect(createNextGeneration).not.toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.arrayContaining(['low_ranked_specialist']),
+      expect.any(String),
+      expect.any(Object),
+    );
+  });
+
   it('defaults pool selection to Great League format when omitted', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -263,9 +306,7 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 0,
     });
 
-    expect(getTopRankedPokemonNames).toHaveBeenCalledWith(
-      80,
-      150,
+    expect(getAutomaticCandidatePokemonNames).toHaveBeenCalledWith(
       DEFAULT_BATTLE_FORMAT_ID,
     );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
@@ -278,7 +319,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('passes the selected format into next-generation operators', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -305,7 +346,7 @@ describe('generateTeam format-aware candidate selection', () => {
   it('rejects illegal final Battle Frontier Master teams before returning', async () => {
     const illegalTeam = ['palkia_origin', 'eternatus', 'swampert_mega'];
 
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Palkia', 'Eternatus', 'Swampert']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -344,7 +385,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('adds one role-ordered lineup recommendation for generated GBL teams', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -375,7 +416,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('builds bounded full diagnostics for the final PlayPokemon roster only', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -430,7 +471,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('returns final PlayPokemon fitness from recomputed full roster diagnostics', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -478,7 +519,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('returns final GBL fitness from the final lineup recommendation score', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -518,7 +559,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('sorts multiple teams by recomputed final fitness', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -595,7 +636,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('reuses one lineup-aware fitness context across the GA run', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
