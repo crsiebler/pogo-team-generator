@@ -29,6 +29,8 @@ For dynamic candidate quality bands, use the pure `deriveCandidateRankingBands(.
 
 For candidate profiles, use the pure `buildCandidateProfiles(...)` helper in `lib/data/candidateProfiles.ts` with preloaded dynamic ranking bands and injected species, role, consistency, move typing, and simulation coverage inputs; generation and scoring code should consume profiles instead of reading ranking files or recomputing profile metadata.
 
+For anchor-first generation, use `rankAnchorCompanionPairs(...)` in `lib/data/companionPairRanking.ts` to evaluate pure candidate-profile pairs before full team expansion; treat PvPoke rank and score as priors while simulation coverage, unique anchor-loss coverage, safety, consistency, bulk, typing, and shared-weakness penalties drive the pair score.
+
 Store Battle Frontier Master cycle point data in `data/battle-frontier-master-points.csv` with a simple `speciesId,points` header, keep ids canonical to `data/pokemon.json`, and keep the checked-in table aligned with the bundled PvPoke cup tier rules for the active cycle.
 
 For Battle Frontier Master legality, keep exact point values in the CSV and derive shadow inheritance in code only for shadow variants that are both present in `data/pokemon.json` and ranked for `battle-frontier-master`; do not duplicate inherited shadow rows in the CSV.

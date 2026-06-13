@@ -8,6 +8,7 @@
 - Dynamic candidate bands should be derived per format from score distribution, rank percentile, score density, score dropoffs, and bounded candidate counts.
 - Use `deriveCandidateRankingBands(...)` in `lib/data/candidateRankingBands.ts` for pure ranking-band logic and `getCandidateRankingBands(...)` in `lib/data/rankings.ts` for format-scoped overall ranking data; do not hardcode PvPoke scores like 92, 90, 88, or 85 as global viability bands.
 - Use `buildCandidateProfiles(...)` in `lib/data/candidateProfiles.ts` to combine dynamic band assignments with injected species, role, consistency, move typing, and simulation coverage inputs; keep candidate profiles pure and avoid file reads in generation or scoring code.
+- Use `rankAnchorCompanionPairs(...)` in `lib/data/companionPairRanking.ts` to evaluate pure anchor plus companion candidate-profile pairs; keep rank and PvPoke score as priors while simulation coverage, unique anchor-loss coverage, safety, consistency, bulk, typing, and shared weakness penalties drive the pair score.
 - Anchor-first generation should seed elite or preferred anchors, rank anchor plus companion pairs, expand teams by remaining weaknesses and lineup quality, then rely on canonical lineup or roster scoring for final fitness.
 - Low-ranked specialists should be admitted only with unique measurable top-meta or core-weakness coverage and should not crowd out safer high-ranked generalists without matchup evidence.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling.
@@ -79,4 +80,39 @@
   - US-003 should consume candidate profiles for pair ranking rather than recomputing ranking, typing, role, or coverage signals.
 - Next iteration start:
   - US-003 - Rank anchor plus companion pairs
+---
+
+## 2026-06-13 03:01 MST - US-003
+- Implemented a pure companion pair-ranking module that scores anchor plus companion profiles using PvPoke rank and score as priors, simulation coverage of anchor losses, unique measurable coverage, safety, consistency, bulk, offensive typing, defensive typing, missing-input penalties, and severe shared-weakness penalties.
+- Added focused tests for high-ranked synergistic companions, lower-ranked specialists with unique measurable coverage, severe shared weakness demotion, dual-type resistance cancellation, threat-typed offensive coverage, neutral missing defensive typing, missing optional inputs, empty candidate lists, peer-group unique coverage, and deterministic tie-break ordering.
+- Files changed: `lib/data/companionPairRanking.ts`, `lib/data/companionPairRanking.test.ts`, `lib/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-003 - Rank anchor plus companion pairs`
+- Checks:
+  - `npx vitest run lib/data/companionPairRanking.test.ts` (pass; red first failed because `./companionPairRanking` did not exist)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 64 files, 498 tests)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `backend-developer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill and optimizer docs; `backend-developer` Task guidance; `test-driven-development` skill and `test-automator` Task guidance as the available TDD implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed before commit; changed shared-weakness scoring to use the canonical type chart with dual-type resistance cancellation, added finite missing-input plus empty-candidate coverage, made same-rank unique-coverage ordering deterministic by peer grouping, changed offensive typing to score against injected anchor-loss threat typings instead of the anchor's own typing, and treated missing defensive typing as neutral instead of safest-possible
+- Decisions (why):
+  - Added the pair scorer under `lib/data` because it consumes normalized `CandidateProfile` values from data boundaries and prepares anchor-first generation inputs without reading ranking, simulation, or PvPoke files directly.
+  - Kept PvPoke rank and score as a bounded prior instead of a tier-list gate so a lower-ranked specialist can outrank a generalist only with unique measurable anchor-loss coverage.
+  - Used deterministic score and tie-break output with an explainable breakdown so later team expansion can inspect why a companion ranked highly before canonical lineup scoring.
+  - Reused the canonical type-effectiveness helper instead of maintaining a second local chart so pair typing respects Pokemon GO dual-type multiplier cancellation.
+  - Kept offensive typing neutral unless threat defensive typings are injected because anti-anchor move pressure is not useful pair synergy evidence.
+  - Treated candidates tied on rank and score as peers for unique coverage so species-id ordering remains only a final deterministic tie-breaker, not a semantic score input.
+- **Learnings for future iterations:**
+  - Pair ranking should use `CandidateProfile.simulationCoverage` first for anchor-loss coverage and use typing only as a supporting signal.
+  - Offensive typing pair signals require injected threat defensive typings on `importantLosses`; without threat typing, the pair scorer leaves offensive typing neutral rather than inferring coverage from the anchor's own types.
+  - Missing defensive typing should be scored as neutral and left to `missingInputs` penalties; it should not look safer than fully typed profiles with real weaknesses.
+  - Default anchor-loss weights preserve input order as a priority hint when no explicit threat weights are injected.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - US-004 should apply specialist gating on top of pair-ranking output so rare niche picks remain bounded and justified by unresolved top-meta or core-weakness coverage.
+- Next iteration start:
+  - US-004 - Gate specialist candidates behind unique coverage
 ---
