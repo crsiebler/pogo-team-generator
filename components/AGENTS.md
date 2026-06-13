@@ -42,7 +42,7 @@ Optimizer score card order in Summary Statistics should render Role immediately 
 
 Summary Statistics optimizer score cards should display only simple letter grades (`A`, `B`, `C`, `D`, or `F`) as metric values. Do not render numeric optimizer scores, plus/minus grade modifiers, or `elite`/`strong`/`neutral`/`weak` quality pills in Summary Statistics unless a current story explicitly changes the diagnostics contract.
 
-Summary Statistics may render the API-provided `scoreBreakdown.threatScore` as a separate lower-is-better diagnostic card. Keep it display-only, omit quality pills, and cap visible Top Meta/Overall Team Threat lists with a count summary so live meta pools do not overwhelm the accordion.
+Summary Statistics may render the API-provided `scoreBreakdown.threatScore` as a separate lower-is-better diagnostic card. Keep it display-only, omit quality pills, and cap visible Top Meta/Overall Team Threat lists with a count summary so live meta pools do not overwhelm the accordion. Threat list items should render readable Pokemon names only; do not append rank, answer count, risk, threat value, or other raw threat metadata.
 
 Per-Pokemon Contribution in `AnalysisPanel` should stay concise: render the Pokemon name, replacement risk, Threats Handled, Coverage Added, and High-Pressure Relief only unless a current story explicitly reintroduces explanatory copy. Keep the Replacement Risk pill in its own row below the Pokemon name so it never sits beside the name on wide layouts.
 

@@ -270,3 +270,33 @@
 - Next iteration start:
   - US-006 - Display Threat Score lists as readable weaknesses
 ---
+
+## 2026-06-13 04:40 MST - US-006
+- Implemented display-only Threat Score list rendering so Top Meta and Overall Team threat items show only readable Pokemon names from `threat.pokemon` while preserving list caps and `Showing top 5 of N` summaries.
+- Strengthened `AnalysisPanel` tests to assert exact name-only list item text, the old `Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49)` pattern is absent, and raw rank/answer/risk metadata is not rendered in Threat Score lists.
+- Files changed: `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `components/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-006 - Display Threat Score lists as readable weaknesses`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass; red first failed because threat list items still rendered rank, answer count, and risk metadata)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 66 files, 523 tests)
+  - Browser verification with `dev-browser` at `http://localhost:3000` (pass; generated a GBL team, expanded Summary Statistics, confirmed name-only threat list items and preserved `Showing top 5 of N` summaries; one unrelated 404 resource console error was present)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `ui-designer`, `test-driven-development`
+  - Used: `frontend-developer` Task guidance; `ui-designer` Task guidance; `test-driven-development` skill because no matching Task subagent was available
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `ui-designer`, `ux-researcher`
+  - Findings: none; all review passes returned no actionable findings, with residual risk limited to the unrelated browser 404 resource error outside this story's scope
+- Decisions (why):
+  - Kept the change in `formatThreatEntry(...)` rather than reshaping backend data because the story is display-only and backend threat metadata remains useful for sorting, diagnostics, and tests.
+  - Left raw Threat Score summary boxes unchanged because US-006 targets list item readability and US-007 owns replacing raw Threat Score numbers with a profile pill.
+  - Added exact list item assertions instead of broad text matches because regex checks for Pokemon names can pass even when metadata is still appended.
+- **Learnings for future iterations:**
+  - Threat Score list tests should inspect `listitem.textContent` exactly to prevent raw diagnostic metadata from leaking back into user-facing lists.
+  - `AnalysisPanel` can be browser-verified by generating a GBL team, expanding Summary Statistics, and inspecting the Top Meta/Overall Team Threat lists in the accessibility snapshot.
+- Known issues / follow-ups:
+  - US-007 should replace the raw Threat Score summary boxes with the team-level profile pill; this iteration intentionally did not change those boxes.
+- Next iteration start:
+  - US-007 - Replace raw Threat Score numbers with a profile pill
+---

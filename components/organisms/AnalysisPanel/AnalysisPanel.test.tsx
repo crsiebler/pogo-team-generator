@@ -162,11 +162,11 @@ describe('AnalysisPanel', () => {
       evaluatedCount: 18,
       topMetaThreats: [
         {
-          speciesId: 'clodsire',
-          pokemon: 'Clodsire',
-          rank: 3,
-          teamAnswers: 1,
-          threatValue: 0.72,
+          speciesId: 'samurott_shadow',
+          pokemon: 'Samurott (Shadow)',
+          rank: 16,
+          teamAnswers: 0,
+          threatValue: 0.49,
           severityTier: 'high',
         },
         {
@@ -528,9 +528,17 @@ describe('AnalysisPanel', () => {
     expect(
       within(section).getByRole('list', { name: 'Top Meta Threats' }),
     ).toBeInTheDocument();
-    expect(within(section).getByText(/Clodsire/)).toBeInTheDocument();
-    expect(within(section).getByText(/Toxapex/)).toBeInTheDocument();
-    expect(within(section).getByText(/Charjabug/)).toBeInTheDocument();
+    const topMetaThreatItems = within(
+      within(section).getByRole('list', { name: 'Top Meta Threats' }),
+    ).getAllByRole('listitem');
+
+    expect(topMetaThreatItems.map((item) => item.textContent)).toEqual([
+      'Samurott (Shadow)',
+      'Toxapex',
+      'Drapion',
+      'Lapras',
+      'Charjabug',
+    ]);
     expect(within(section).queryByText(/Jumpluff/)).not.toBeInTheDocument();
     expect(
       within(section).getByText('Overall Team Threats'),
@@ -538,11 +546,27 @@ describe('AnalysisPanel', () => {
     expect(
       within(section).getByRole('list', { name: 'Overall Team Threats' }),
     ).toBeInTheDocument();
-    expect(within(section).getByText(/Talonflame/)).toBeInTheDocument();
-    expect(within(section).getByText(/Lanturn/)).toBeInTheDocument();
-    expect(within(section).getByText(/Sealeo/)).toBeInTheDocument();
+    const overallThreatItems = within(
+      within(section).getByRole('list', { name: 'Overall Team Threats' }),
+    ).getAllByRole('listitem');
+
+    expect(overallThreatItems.map((item) => item.textContent)).toEqual([
+      'Talonflame',
+      'Lanturn',
+      'Forretress',
+      'Malamar',
+      'Sealeo',
+    ]);
     expect(within(section).queryByText(/Dunsparce/)).not.toBeInTheDocument();
     expect(within(section).getAllByText('Showing top 5 of 6')).toHaveLength(2);
+    expect(
+      within(section).queryByText(
+        'Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49)',
+      ),
+    ).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Rank #/)).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Answers:/)).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Risk:/)).not.toBeInTheDocument();
     expect(within(section).queryByText('elite')).not.toBeInTheDocument();
     expect(within(section).queryByText('strong')).not.toBeInTheDocument();
     expect(within(section).queryByText('neutral')).not.toBeInTheDocument();

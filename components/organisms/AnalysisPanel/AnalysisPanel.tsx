@@ -175,7 +175,7 @@ function formatOptionalScore(score: number | null): string {
 }
 
 function formatThreatEntry(threat: OptimizerThreatScoreEntry): string {
-  return `${threat.pokemon} (Rank #${threat.rank}, Answers: ${threat.teamAnswers}, Risk: ${formatScore(threat.threatValue)})`;
+  return threat.pokemon;
 }
 
 function getBadgeClasses(riskTier: PokemonContributionRiskTier): string {
