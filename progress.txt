@@ -335,3 +335,37 @@
 - Next iteration start:
   - US-008 - Remove quality pills from Recommended Lineups
 ---
+
+## 2026-06-13 04:59 MST - US-008
+- Removed display-only quality pills from Recommended Lineup cards while preserving Lead, Switch, Closer, semantic weakness lists, blue diagnostic styling, accordion behavior, and internal lineup score metadata.
+- Updated `AnalysisPanel` tests to assert Recommended Lineups render zero `lineup-quality-pill` elements and do not display `elite`, `strong`, `neutral`, or `weak` quality labels in that section.
+- Updated component guidance so future `AnalysisPanel` work does not reintroduce lineup quality pills or numeric lineup scores.
+- Files changed: `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `components/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-008 - Remove quality pills from Recommended Lineups`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass; red first failed because Recommended Lineups still rendered `lineup-quality-pill` elements and `elite`/`strong` labels)
+  - `npx prettier --check components/organisms/AnalysisPanel/AnalysisPanel.tsx components/organisms/AnalysisPanel/AnalysisPanel.test.tsx components/AGENTS.md` (pass after formatting `AnalysisPanel.tsx`; `progress.txt` intentionally not checked because Prettier cannot infer a parser for `.txt`)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 66 files, 524 tests)
+  - Browser verification with `dev-browser` at `http://localhost:3000` (pass; generated a GBL team, expanded Recommended Lineups, confirmed Lead/Switch/Closer and Weaknesses remain visible, `document.querySelectorAll('[data-testid="lineup-quality-pill"]').length === 0`, no quality labels or numeric scores appear in the Recommended Lineups region, and accordion behavior remains intact; one unrelated 404 resource console error was present)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `ui-designer`, `test-driven-development`
+  - Used: `frontend-developer` Task guidance; `ui-designer` Task guidance; `test-driven-development` skill
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `ui-designer`, `ux-researcher`, `documentation-engineer`
+  - Findings: fixed before commit for in-scope review items; formatted `AnalysisPanel.tsx` and strengthened tests to assert every fixture score is absent from Recommended Lineups. Deferred broader optimizer docs, root `AGENTS.md`, and `gbl-optimizer` skill contract alignment to US-009 because that story explicitly owns canonical optimizer/UI documentation updates. Discarded the suggested scoped commit-message change because Ralph instructions require `feat: US-008 - Remove quality pills from Recommended Lineups` for this iteration. Final review pass returned no actionable findings.
+- Decisions (why):
+  - Removed only the rendered Recommended Lineups pill instead of changing `RecommendedLineup.score` because the story is display-only and internal score metadata may still be useful for optimizer sorting and diagnostics.
+  - Kept Threat Score profile styling through a renamed `threatProfileClasses` map because US-007 still requires one team-level profile pill in Summary Statistics.
+  - Scoped quality-label absence assertions to the Recommended Lineups region so tests do not conflict with the valid Threat Score profile pill elsewhere in `AnalysisPanel`.
+  - Left root optimizer docs and skill updates for US-009 to preserve Ralph's one-story-per-iteration boundary.
+- **Learnings for future iterations:**
+  - Recommended Lineups should be tested independently from Summary Statistics because both sections can contain similar semantic labels for different contracts.
+  - `RecommendedLineup.score` can remain in generated data while the `AnalysisPanel` intentionally omits any lineup-level quality or numeric score display.
+- Known issues / follow-ups:
+  - The local app still reports an unrelated 404 resource console error during browser verification.
+  - US-009 should update root `AGENTS.md`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md` so canonical optimizer guidance matches the no-Recommended-Lineups-quality-pill contract.
+- Next iteration start:
+  - US-009 - Update optimizer and UI documentation contracts
+---

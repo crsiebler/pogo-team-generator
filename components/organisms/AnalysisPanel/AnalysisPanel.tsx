@@ -95,11 +95,9 @@ const optimizerScoreComponentDetails: Record<
 
 type OptimizerScoreGrade = 'A' | 'B' | 'C' | 'D' | 'F';
 
-type LineupQuality = 'elite' | 'strong' | 'neutral' | 'weak';
-
 type ThreatProfile = 'elite' | 'strong' | 'neutral' | 'weak';
 
-const lineupQualityClasses: Record<LineupQuality, string> = {
+const threatProfileClasses: Record<ThreatProfile, string> = {
   elite:
     'border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/60 dark:text-violet-200',
   strong:
@@ -108,22 +106,6 @@ const lineupQualityClasses: Record<LineupQuality, string> = {
     'border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/60 dark:text-sky-200',
   weak: 'border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/60 dark:text-amber-200',
 };
-
-function getLineupQuality(score: number): LineupQuality {
-  if (score >= 0.85) {
-    return 'elite';
-  }
-
-  if (score >= 0.7) {
-    return 'strong';
-  }
-
-  if (score >= 0.5) {
-    return 'neutral';
-  }
-
-  return 'weak';
-}
 
 function getThreatProfile(score: number): ThreatProfile {
   if (score <= 0.15) {
@@ -394,7 +376,7 @@ export function AnalysisPanel({
             data-testid="threat-profile-pill"
             className={clsx(
               'inline-flex rounded-full border px-2 py-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase',
-              lineupQualityClasses[threatProfile],
+              threatProfileClasses[threatProfile],
             )}
           >
             {threatProfile}
@@ -505,84 +487,56 @@ export function AnalysisPanel({
                         content: (
                           <div className="space-y-3 px-3 pb-3">
                             {recommendedLineups.map(
-                              (recommendedLineup, index) => {
-                                const quality = getLineupQuality(
-                                  recommendedLineup.score,
-                                );
-
-                                return (
-                                  <article
-                                    key={`${recommendedLineup.lineup.lead}-${recommendedLineup.lineup.switch}-${recommendedLineup.lineup.closer}-${index}`}
-                                    className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-xs text-gray-800 shadow-sm sm:text-sm dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-gray-200"
-                                  >
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      {recommendedLineups.length > 1 ? (
-                                        <h4 className="font-semibold text-blue-900 dark:text-blue-100">
-                                          Lineup {index + 1}
-                                        </h4>
-                                      ) : null}
-                                      <span
-                                        aria-label={`Lineup quality: ${quality}`}
-                                        data-testid="lineup-quality-pill"
-                                        className={clsx(
-                                          'inline-flex rounded-full border px-2 py-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase',
-                                          lineupQualityClasses[quality],
-                                        )}
-                                      >
-                                        {quality}
-                                      </span>
+                              (recommendedLineup, index) => (
+                                <article
+                                  key={`${recommendedLineup.lineup.lead}-${recommendedLineup.lineup.switch}-${recommendedLineup.lineup.closer}-${index}`}
+                                  className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-xs text-gray-800 shadow-sm sm:text-sm dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-gray-200"
+                                >
+                                  {recommendedLineups.length > 1 ? (
+                                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                                      Lineup {index + 1}
+                                    </h4>
+                                  ) : null}
+                                  <dl className="mt-2 grid gap-2 sm:grid-cols-3">
+                                    <div>
+                                      <dt className="font-semibold">Lead</dt>
+                                      <dd>{recommendedLineup.lineup.lead}</dd>
                                     </div>
-                                    <dl className="mt-2 grid gap-2 sm:grid-cols-3">
-                                      <div>
-                                        <dt className="font-semibold">Lead</dt>
-                                        <dd>{recommendedLineup.lineup.lead}</dd>
-                                      </div>
-                                      <div>
-                                        <dt className="font-semibold">
-                                          Switch
-                                        </dt>
-                                        <dd>
-                                          {recommendedLineup.lineup.switch}
-                                        </dd>
-                                      </div>
-                                      <div>
-                                        <dt className="font-semibold">
-                                          Closer
-                                        </dt>
-                                        <dd>
-                                          {recommendedLineup.lineup.closer}
-                                        </dd>
-                                      </div>
-                                    </dl>
-                                    <div className="mt-3 text-gray-800 dark:text-gray-200">
-                                      <div>
-                                        <p className="font-semibold text-blue-900 dark:text-blue-100">
-                                          Weaknesses
+                                    <div>
+                                      <dt className="font-semibold">Switch</dt>
+                                      <dd>{recommendedLineup.lineup.switch}</dd>
+                                    </div>
+                                    <div>
+                                      <dt className="font-semibold">Closer</dt>
+                                      <dd>{recommendedLineup.lineup.closer}</dd>
+                                    </div>
+                                  </dl>
+                                  <div className="mt-3 text-gray-800 dark:text-gray-200">
+                                    <div>
+                                      <p className="font-semibold text-blue-900 dark:text-blue-100">
+                                        Weaknesses
+                                      </p>
+                                      {recommendedLineup.weaknesses.length >
+                                      0 ? (
+                                        <ul
+                                          aria-label={`Lineup ${index + 1} weaknesses`}
+                                          className="mt-1 list-disc space-y-0.5 pl-5"
+                                        >
+                                          {recommendedLineup.weaknesses.map(
+                                            (weakness) => (
+                                              <li key={weakness}>{weakness}</li>
+                                            ),
+                                          )}
+                                        </ul>
+                                      ) : (
+                                        <p className="mt-1">
+                                          No major weaknesses identified
                                         </p>
-                                        {recommendedLineup.weaknesses.length >
-                                        0 ? (
-                                          <ul
-                                            aria-label={`Lineup ${index + 1} weaknesses`}
-                                            className="mt-1 list-disc space-y-0.5 pl-5"
-                                          >
-                                            {recommendedLineup.weaknesses.map(
-                                              (weakness) => (
-                                                <li key={weakness}>
-                                                  {weakness}
-                                                </li>
-                                              ),
-                                            )}
-                                          </ul>
-                                        ) : (
-                                          <p className="mt-1">
-                                            No major weaknesses identified
-                                          </p>
-                                        )}
-                                      </div>
+                                      )}
                                     </div>
-                                  </article>
-                                );
-                              },
+                                  </div>
+                                </article>
+                              ),
                             )}
                           </div>
                         ),

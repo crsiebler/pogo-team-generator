@@ -26,7 +26,7 @@ Recommended Lineups accordion cards should use the same blue diagnostic styling 
 
 Recommended lineup cards should stay concise: show role terms as `Lead`, `Switch`, and `Closer`, avoid duplicating those labels in values, omit covered-threat lists, and render API-provided readable weakness labels without importing canonical Pokemon data into client components.
 
-Recommended lineup cards should render exactly one quality pill derived from the API-provided lineup `score` metadata. Keep the pill textual (`elite`, `strong`, `neutral`, or `weak`) and do not display the numeric score value in the card.
+Recommended lineup cards should not render lineup quality pills (`elite`, `strong`, `neutral`, or `weak`) and should not display the numeric `score` value. Keep API-provided score metadata internal for optimizer diagnostics unless a current story explicitly reintroduces a display consumer.
 
 Recommended lineup cards should not render `diagnosticLabel`/`Structure`; keep lineup structure labels as internal optimizer/API diagnostics unless a current story explicitly reintroduces a display consumer.
 

@@ -683,9 +683,17 @@ describe('AnalysisPanel', () => {
     expect(
       screen.getByRole('region', { name: 'Recommended Lineups' }),
     ).toBeInTheDocument();
+    const recommendedLineupsRegion = screen.getByRole('region', {
+      name: 'Recommended Lineups',
+    });
+
     expect(screen.getByText('Lineup 1')).toBeInTheDocument();
-    expect(screen.getByText('elite')).toBeInTheDocument();
-    expect(screen.getByText('strong')).toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('elite'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('strong'),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText('Lead')).toHaveLength(2);
     expect(screen.getAllByText('azumarill')).toHaveLength(2);
     expect(screen.getAllByText('Switch')).toHaveLength(2);
@@ -715,7 +723,7 @@ describe('AnalysisPanel', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders exactly one lineup-quality pill per recommended lineup card from lineup score', () => {
+  it('renders zero lineup-quality pills for recommended lineup cards', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
@@ -761,40 +769,34 @@ describe('AnalysisPanel', () => {
     expect(lineupCards).toHaveLength(4);
     expect(lineupCards.every((lineupCard) => lineupCard !== null)).toBe(true);
 
-    const qualityAssertions = [
-      {
-        label: 'elite',
-        classes: ['border-violet-200', 'bg-violet-100', 'text-violet-800'],
-      },
-      {
-        label: 'strong',
-        classes: ['border-emerald-200', 'bg-emerald-100', 'text-emerald-800'],
-      },
-      {
-        label: 'neutral',
-        classes: ['border-sky-200', 'bg-sky-100', 'text-sky-800'],
-      },
-      {
-        label: 'weak',
-        classes: ['border-amber-200', 'bg-amber-100', 'text-amber-800'],
-      },
-    ];
-    for (const [index, lineupCard] of lineupCards.entries()) {
-      const qualityPills = within(lineupCard!).getAllByTestId(
-        'lineup-quality-pill',
-      );
-      const qualityAssertion = qualityAssertions[index];
+    const recommendedLineupsRegion = screen.getByRole('region', {
+      name: 'Recommended Lineups',
+    });
 
-      expect(qualityPills).toHaveLength(1);
-      expect(qualityPills[0]).toHaveTextContent(qualityAssertion.label);
-      expect(qualityPills[0]).toHaveAccessibleName(
-        `Lineup quality: ${qualityAssertion.label}`,
-      );
-      expect(qualityPills[0]).toHaveClass(...qualityAssertion.classes);
+    expect(
+      within(recommendedLineupsRegion).queryAllByTestId('lineup-quality-pill'),
+    ).toHaveLength(0);
+    expect(
+      within(recommendedLineupsRegion).queryByText('elite'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('strong'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('neutral'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('weak'),
+    ).not.toBeInTheDocument();
+
+    for (const score of ['0.85', '0.7', '0.5', '0.49']) {
+      expect(
+        within(recommendedLineupsRegion).queryByText(`Score: ${score}`),
+      ).not.toBeInTheDocument();
+      expect(
+        within(recommendedLineupsRegion).queryByText(score),
+      ).not.toBeInTheDocument();
     }
-
-    expect(screen.queryByText('Score: 0.85')).not.toBeInTheDocument();
-    expect(screen.queryByText('0.85')).not.toBeInTheDocument();
   });
 
   it('uses blue diagnostic styling for recommended lineup cards', () => {
