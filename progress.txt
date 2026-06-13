@@ -300,3 +300,38 @@
 - Next iteration start:
   - US-007 - Replace raw Threat Score numbers with a profile pill
 ---
+
+## 2026-06-13 04:48 MST - US-007
+- Implemented a display-only Threat Score profile pill that maps lower-is-better `scoreBreakdown.threatScore.score` values to `elite`, `strong`, `neutral`, or `weak` while removing raw Overall, Top Meta, and Full Meta score boxes from the card.
+- Added AnalysisPanel tests covering all four threshold labels, exact single-pill rendering, accessible labels, and continued absence of raw threat rank/answers/risk metadata.
+- Updated component guidance so future UI work preserves the single Threat Score profile pill contract.
+- Files changed: `components/organisms/AnalysisPanel/AnalysisPanel.tsx`, `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`, `components/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-007 - Replace raw Threat Score numbers with a profile pill`
+- Checks:
+  - `npx vitest run components/organisms/AnalysisPanel/AnalysisPanel.test.tsx` (pass; red first failed because `threat-profile-pill` did not exist and raw score boxes still rendered)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 66 files, 524 tests)
+  - Browser verification with `dev-browser` at `http://localhost:3000` (pass; generated a GBL team, expanded Summary Statistics, confirmed one accessible `Team threat profile: strong` pill, no raw Overall/Top Meta/Full Meta boxes, no Rank/Answers/Risk metadata, readable threat lists, and preserved `Showing top 5 of N` summaries; one unrelated 404 resource console error was present)
+- Implementation agents:
+  - Recommended: `frontend-developer`, `ui-designer`, `test-driven-development`
+  - Used: `frontend-developer` Task guidance; `ui-designer` Task guidance; `test-driven-development` skill
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `ui-designer`, `ux-researcher`, `documentation-engineer`
+  - Findings: fixed before commit; clarified `components/AGENTS.md` so the general Summary Statistics no-quality-pill guidance explicitly excepts the dedicated Threat Score profile pill and documents the display-only thresholds; deferred the remaining low canonical optimizer docs alignment note to US-009 because that story explicitly owns `docs/pokemon-go-team-optimization.md` and `docs/team-optimization/` contract updates
+- Decisions (why):
+  - Classified the change as display-only UI behavior and used `threatScore.score` only for the semantic label so backend threat scoring, optimizer fitness, sorting, and API fields remain unchanged.
+  - Kept the helper local to `AnalysisPanel` because the thresholds are a presentation contract for the Threat Score card, not a reusable optimizer scoring primitive.
+  - Reused the existing pill visual treatment to keep the Summary Statistics diagnostic card consistent with established component styling while adding an explicit `aria-label` for screen readers.
+  - Updated `components/AGENTS.md` now rather than waiting for US-009 because its prior Threat Score guidance explicitly contradicted the implemented single-pill contract.
+- **Learnings for future iterations:**
+  - Threat Score profile tests should verify both the visible label and `aria-label="Team threat profile: <label>"` so semantic meaning is not conveyed by color or short text alone.
+  - Raw Threat Score pool fields remain available on `scoreBreakdown.threatScore.pools` for diagnostics and tests, but the user-facing card should not render `Overall`, `Top Meta`, or `Full Meta` numeric boxes.
+  - Browser verification can assert the profile contract with `document.querySelectorAll('[data-testid="threat-profile-pill"]')` and body text checks for raw metadata leaks.
+- Known issues / follow-ups:
+  - US-008 should remove Recommended Lineups quality pills; this iteration intentionally did not change lineup quality rendering.
+  - US-009 should align the canonical optimizer docs with the Threat Score profile pill thresholds and no-raw-score UI contract.
+  - The local app still reports an unrelated 404 resource console error during browser verification.
+- Next iteration start:
+  - US-008 - Remove quality pills from Recommended Lineups
+---

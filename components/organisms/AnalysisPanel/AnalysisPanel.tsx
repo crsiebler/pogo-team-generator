@@ -97,6 +97,8 @@ type OptimizerScoreGrade = 'A' | 'B' | 'C' | 'D' | 'F';
 
 type LineupQuality = 'elite' | 'strong' | 'neutral' | 'weak';
 
+type ThreatProfile = 'elite' | 'strong' | 'neutral' | 'weak';
+
 const lineupQualityClasses: Record<LineupQuality, string> = {
   elite:
     'border-violet-200 bg-violet-100 text-violet-800 dark:border-violet-800/60 dark:bg-violet-950/60 dark:text-violet-200',
@@ -117,6 +119,22 @@ function getLineupQuality(score: number): LineupQuality {
   }
 
   if (score >= 0.5) {
+    return 'neutral';
+  }
+
+  return 'weak';
+}
+
+function getThreatProfile(score: number): ThreatProfile {
+  if (score <= 0.15) {
+    return 'elite';
+  }
+
+  if (score <= 0.3) {
+    return 'strong';
+  }
+
+  if (score <= 0.45) {
     return 'neutral';
   }
 
@@ -168,10 +186,6 @@ function getOptimizerScoreMetrics(
 
 function formatScore(score: number): string {
   return score.toFixed(2);
-}
-
-function formatOptionalScore(score: number | null): string {
-  return score === null ? 'Not evaluated' : formatScore(score);
 }
 
 function formatThreatEntry(threat: OptimizerThreatScoreEntry): string {
@@ -363,6 +377,8 @@ export function AnalysisPanel({
       return null;
     }
 
+    const threatProfile = getThreatProfile(threatScore.score);
+
     return (
       <article className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-gray-800 dark:border-blue-900/60 dark:bg-blue-950/20 dark:text-gray-200">
         <p className="text-xs font-semibold tracking-wide text-blue-700 uppercase dark:text-blue-300">
@@ -372,16 +388,17 @@ export function AnalysisPanel({
           Lower is better: this highlights meta threats the team may struggle to
           answer.
         </p>
-        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-            {`Overall: ${formatScore(threatScore.score)}`}
-          </p>
-          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-            {`Top Meta: ${formatOptionalScore(threatScore.pools.topMeta.score)} (${threatScore.pools.topMeta.evaluatedCount} evaluated)`}
-          </p>
-          <p className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs dark:border-blue-900/60 dark:bg-gray-900/40">
-            {`Full Meta: ${formatOptionalScore(threatScore.pools.fullMeta.score)} (${threatScore.pools.fullMeta.evaluatedCount} evaluated)`}
-          </p>
+        <div className="mt-3">
+          <span
+            aria-label={`Team threat profile: ${threatProfile}`}
+            data-testid="threat-profile-pill"
+            className={clsx(
+              'inline-flex rounded-full border px-2 py-0.5 text-[0.6875rem] font-semibold tracking-wide uppercase',
+              lineupQualityClasses[threatProfile],
+            )}
+          >
+            {threatProfile}
+          </span>
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {renderThreatScoreList(

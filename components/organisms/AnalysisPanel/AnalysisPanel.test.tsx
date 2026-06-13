@@ -495,7 +495,7 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
-  it('renders threat score diagnostics inside summary statistics without quality pills', () => {
+  it('renders threat score diagnostics inside summary statistics with one profile pill', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
@@ -517,13 +517,22 @@ describe('AnalysisPanel', () => {
 
     expect(within(section).getByText('Threat Score')).toBeInTheDocument();
     expect(within(section).getByText(/Lower is better/i)).toBeInTheDocument();
-    expect(within(section).getByText('Overall: 0.34')).toBeInTheDocument();
+    const profilePills = within(section).getAllByTestId('threat-profile-pill');
+
+    expect(profilePills).toHaveLength(1);
+    expect(profilePills[0]).toHaveTextContent('neutral');
+    expect(profilePills[0]).toHaveAccessibleName(
+      'Team threat profile: neutral',
+    );
     expect(
-      within(section).getByText('Top Meta: 0.28 (8 evaluated)'),
-    ).toBeInTheDocument();
+      within(section).queryByText('Overall: 0.34'),
+    ).not.toBeInTheDocument();
     expect(
-      within(section).getByText('Full Meta: 0.41 (42 evaluated)'),
-    ).toBeInTheDocument();
+      within(section).queryByText('Top Meta: 0.28 (8 evaluated)'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(section).queryByText('Full Meta: 0.41 (42 evaluated)'),
+    ).not.toBeInTheDocument();
     expect(within(section).getByText('Top Meta Threats')).toBeInTheDocument();
     expect(
       within(section).getByRole('list', { name: 'Top Meta Threats' }),
@@ -567,13 +576,61 @@ describe('AnalysisPanel', () => {
     expect(within(section).queryByText(/Rank #/)).not.toBeInTheDocument();
     expect(within(section).queryByText(/Answers:/)).not.toBeInTheDocument();
     expect(within(section).queryByText(/Risk:/)).not.toBeInTheDocument();
-    expect(within(section).queryByText('elite')).not.toBeInTheDocument();
-    expect(within(section).queryByText('strong')).not.toBeInTheDocument();
-    expect(within(section).queryByText('neutral')).not.toBeInTheDocument();
-    expect(within(section).queryByText('weak')).not.toBeInTheDocument();
     expect(
       within(section).getAllByTestId('optimizer-score-category-label'),
     ).toHaveLength(8);
+  });
+
+  it('maps lower-is-better threat scores to all profile labels', () => {
+    const profileAssertions = [
+      { score: 0.15, label: 'elite' },
+      { score: 0.3, label: 'strong' },
+      { score: 0.45, label: 'neutral' },
+      { score: 0.46, label: 'weak' },
+    ];
+
+    for (const { score, label } of profileAssertions) {
+      const { unmount } = render(
+        <AnalysisPanel
+          generatedTeam={{
+            team: ['azumarill', 'skarmory', 'registeel'],
+            formatId: 'great-league',
+            scoreBreakdown: {
+              ...optimizerScoreBreakdownWithThreatScore,
+              threatScore: {
+                ...optimizerScoreBreakdownWithThreatScore.threatScore!,
+                score,
+              },
+            },
+          }}
+          isGenerating={false}
+          fitness={0.78}
+          analysis={analysisFixture}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Summary Statistics' }),
+      );
+
+      const section = screen.getByRole('region', {
+        name: 'Summary Statistics',
+      });
+      const profilePills = within(section).getAllByTestId(
+        'threat-profile-pill',
+      );
+
+      expect(profilePills).toHaveLength(1);
+      expect(profilePills[0]).toHaveTextContent(label);
+      expect(profilePills[0]).toHaveAccessibleName(
+        `Team threat profile: ${label}`,
+      );
+      expect(
+        within(section).queryByText(`Overall: ${score.toFixed(2)}`),
+      ).not.toBeInTheDocument();
+
+      unmount();
+    }
   });
 
   it('omits the threat score card when threat diagnostics are unavailable', () => {
