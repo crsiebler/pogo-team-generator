@@ -25,6 +25,8 @@ Use `lib/data/battleFormats.ts` as the single source of truth for supported form
 
 For runtime ranking lookups in `lib/data/rankings.ts`, build file paths from format metadata (`rankings/cp{cp}/{cup}/{category}_rankings.csv`) and cache parsed CSV data per format id to avoid cross-format contamination.
 
+For dynamic candidate quality bands, use the pure `deriveCandidateRankingBands(...)` helper in `lib/data/candidateRankingBands.ts` or the format-scoped `getCandidateRankingBands(...)` wrapper in `lib/data/rankings.ts`; do not hardcode PvPoke score thresholds such as 92, 90, 88, or 85 as global viability bands.
+
 Store Battle Frontier Master cycle point data in `data/battle-frontier-master-points.csv` with a simple `speciesId,points` header, keep ids canonical to `data/pokemon.json`, and keep the checked-in table aligned with the bundled PvPoke cup tier rules for the active cycle.
 
 For Battle Frontier Master legality, keep exact point values in the CSV and derive shadow inheritance in code only for shadow variants that are both present in `data/pokemon.json` and ranked for `battle-frontier-master`; do not duplicate inherited shadow rows in the CSV.

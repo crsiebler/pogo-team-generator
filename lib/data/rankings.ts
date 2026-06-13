@@ -4,6 +4,11 @@ import type { RankedPokemon } from '../types';
 import type { BattleFormatId } from './battleFormats';
 import { DEFAULT_BATTLE_FORMAT_ID, getBattleFormatById } from './battleFormats';
 import {
+  deriveCandidateRankingBands,
+  type CandidateRankingBandOptions,
+  type CandidateRankingBandsResult,
+} from './candidateRankingBands';
+import {
   normalizeToChoosableSpeciesName,
   speciesNameToChoosableId,
   speciesIdToSpeciesName,
@@ -486,6 +491,16 @@ export function getOptimalMoveset(
 export function getRankedPokemonNames(formatId?: BattleFormatId): Set<string> {
   const rankings = getOverallRankings(formatId);
   return new Set(rankings.map((r) => r.Pokemon));
+}
+
+/**
+ * Derive format-scoped candidate quality bands from overall rankings.
+ */
+export function getCandidateRankingBands(
+  formatId?: BattleFormatId,
+  options?: CandidateRankingBandOptions,
+): CandidateRankingBandsResult {
+  return deriveCandidateRankingBands(getOverallRankings(formatId), options);
 }
 
 /**

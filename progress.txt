@@ -6,6 +6,7 @@
 - Summary Statistics optimizer score cards should render only simple `A`, `B`, `C`, `D`, or `F` letter grades for score components; do not render numeric optimizer component scores, plus/minus modifiers, or quality pills in the component cards.
 - Optimizer generation changes must use format-specific ranking data from `lib/data/rankings.ts`; do not hardcode open Great League score thresholds as global viability bands.
 - Dynamic candidate bands should be derived per format from score distribution, rank percentile, score density, score dropoffs, and bounded candidate counts.
+- Use `deriveCandidateRankingBands(...)` in `lib/data/candidateRankingBands.ts` for pure ranking-band logic and `getCandidateRankingBands(...)` in `lib/data/rankings.ts` for format-scoped overall ranking data; do not hardcode PvPoke scores like 92, 90, 88, or 85 as global viability bands.
 - Anchor-first generation should seed elite or preferred anchors, rank anchor plus companion pairs, expand teams by remaining weaknesses and lineup quality, then rely on canonical lineup or roster scoring for final fitness.
 - Low-ranked specialists should be admitted only with unique measurable top-meta or core-weakness coverage and should not crowd out safer high-ranked generalists without matchup evidence.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling.
@@ -14,3 +15,36 @@
 
 ## Iteration Log
 - Next iteration start: US-001 - Derive dynamic candidate ranking bands per format
+
+## 2026-06-13 02:32 MST - US-001
+- Implemented a pure dynamic candidate ranking-band helper that derives elite anchors, preferred anchors, normal companions, flexible companions, and specialists from ranking score distribution, rank percentile, density, score dropoffs, and bounded candidate counts.
+- Added a format-scoped `getCandidateRankingBands(...)` wrapper over existing overall ranking loaders.
+- Added tests for dense open Great League-style curves, steeper naic2026-style limited-meta curves, and shifted-score fixtures that reject global fixed score thresholds.
+- Files changed: `lib/data/candidateRankingBands.ts`, `lib/data/candidateRankingBands.test.ts`, `lib/data/rankings.ts`, `lib/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-001 - Derive dynamic candidate ranking bands per format`
+- Checks:
+  - `npx vitest run lib/data/candidateRankingBands.test.ts` (pass; red first failed because `./candidateRankingBands` did not exist)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 62 files, 486 tests)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `backend-developer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill and optimizer docs; `backend-developer` guidance via Task; `test-driven-development` skill and `test-automator` guidance as the available TDD implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed before commit; added small-pool feasible boundary handling and same-size steep-vs-dense test coverage so limited-meta behavior cannot pass due only to fixture size; second review pass returned no actionable findings
+- Decisions (why):
+  - Added the helper under `lib/data` because it derives runtime candidate bands from already-loaded ranking data and belongs near ranking loader boundaries, while remaining pure and testable.
+  - Returned assignments, grouped bands, summaries, and score cutoffs so future candidate-profile and generation stories can consume labels without re-deriving thresholds or reading files directly.
+  - Used distribution-relative candidate counts and large-gap detection instead of absolute PvPoke score thresholds so limited cups and open formats adapt independently.
+  - Added a small-pool boundary fallback because limited ranking exports can have fewer candidates than the default minimum allocation across five bands.
+  - Added a `lib/AGENTS.md` pattern because future optimizer work should reuse this helper and avoid reintroducing global fixed ranking cutoffs.
+- **Learnings for future iterations:**
+  - `RankedPokemon` does not include an explicit rank field; derive 1-based rank after sorting by descending `Score` while preserving input order for equal scores.
+  - `lib/data/rankings.ts` is the correct format-aware boundary for overall ranking data; pure scoring or generation helpers should accept loaded rankings instead of reading CSVs.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - US-002 should build candidate profiles on top of these band assignments rather than reading ranking CSVs directly.
+- Next iteration start:
+  - US-002 - Build ranked anchor and companion candidate profiles
+---
