@@ -7,6 +7,7 @@
 - Optimizer generation changes must use format-specific ranking data from `lib/data/rankings.ts`; do not hardcode open Great League score thresholds as global viability bands.
 - Dynamic candidate bands should be derived per format from score distribution, rank percentile, score density, score dropoffs, and bounded candidate counts.
 - Use `deriveCandidateRankingBands(...)` in `lib/data/candidateRankingBands.ts` for pure ranking-band logic and `getCandidateRankingBands(...)` in `lib/data/rankings.ts` for format-scoped overall ranking data; do not hardcode PvPoke scores like 92, 90, 88, or 85 as global viability bands.
+- Use `buildCandidateProfiles(...)` in `lib/data/candidateProfiles.ts` to combine dynamic band assignments with injected species, role, consistency, move typing, and simulation coverage inputs; keep candidate profiles pure and avoid file reads in generation or scoring code.
 - Anchor-first generation should seed elite or preferred anchors, rank anchor plus companion pairs, expand teams by remaining weaknesses and lineup quality, then rely on canonical lineup or roster scoring for final fitness.
 - Low-ranked specialists should be admitted only with unique measurable top-meta or core-weakness coverage and should not crowd out safer high-ranked generalists without matchup evidence.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; keep local PvPoke engine execution isolated to sync tooling.
@@ -47,4 +48,35 @@
   - US-002 should build candidate profiles on top of these band assignments rather than reading ranking CSVs directly.
 - Next iteration start:
   - US-002 - Build ranked anchor and companion candidate profiles
+---
+
+## 2026-06-13 02:44 MST - US-002
+- Implemented a pure candidate profile builder that converts dynamic ranking-band assignments into ranked candidate profiles with PvPoke rank, score, dynamic band, optional safety/switch/consistency signals, bulk/stat product, offensive typing, defensive typing, and injected simulation coverage.
+- Added fixture-based tests for open Great League-style and NAIC-style ranking curves, plus explicit missing optional signal handling that avoids invalid numeric output.
+- Files changed: `lib/data/candidateProfiles.ts`, `lib/data/candidateProfiles.test.ts`, `lib/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-002 - Build ranked anchor and companion candidate profiles`
+- Checks:
+  - `npx vitest run lib/data/candidateProfiles.test.ts` (pass; red first failed because `./candidateProfiles` did not exist)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after fixing new test import order)
+  - `npm test` (pass; 63 files, 490 tests)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `backend-developer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill and optimizer docs; `backend-developer` guidance via Task; `test-driven-development` skill and `test-automator` guidance as the available TDD implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed before commit; returned fresh empty simulation coverage arrays per profile, flagged partial move-type resolution through `missingInputs`, computed bulk independently from stat product, and marked unavailable fallback bulk; final pass had no critical/high/medium findings
+- Decisions (why):
+  - Kept `buildCandidateProfiles(...)` in `lib/data` because it transforms already-loaded ranking and metadata inputs into normalized candidate data without entering optimizer scoring hot paths.
+  - Used injected maps for species ids, role/consistency ranking signals, move-type resolution, and simulation coverage so profile construction remains pure and format-scoped by its caller.
+  - Represented unavailable optional inputs as `{ available: false }`, `null`, empty coverage arrays, and `missingInputs` entries instead of misleading zero scores or invalid numeric values.
+- **Learnings for future iterations:**
+  - Candidate profile consumers should read `missingInputs` before treating optional role, consistency, or coverage data as available.
+  - Offensive typing is derived from selected ranking moves through injected move-name-to-type data; defensive typing comes directly from ranking type columns.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Low-priority review suggestions for future hardening: reject non-positive injected ranking-signal ranks and add a defensive-typing missing-input marker for malformed ranking rows.
+  - US-003 should consume candidate profiles for pair ranking rather than recomputing ranking, typing, role, or coverage signals.
+- Next iteration start:
+  - US-003 - Rank anchor plus companion pairs
 ---
