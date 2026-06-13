@@ -369,3 +369,33 @@
 - Next iteration start:
   - US-009 - Update optimizer and UI documentation contracts
 ---
+
+## 2026-06-13 09:29 MST - US-009
+- Updated optimizer and UI documentation contracts to match implemented diagnostics and generation behavior: Threat Score owns the single team-level profile pill and readable threat lists, raw threat numbers remain backend diagnostics only, Recommended Lineups render no quality pills or numeric scores, and dynamic per-meta ranking bands plus anchor-first generation are documented.
+- Aligned canonical optimizer docs, related team-optimization subdocs, component guidance, the root project guidance, the historical PvPoke-inspired diagnostics task PRD, and the `gbl-optimizer` skill so future agents do not reintroduce stale lineup quality-pill or fixed-threshold guidance.
+- Files changed: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/validation.md`, `components/AGENTS.md`, `AGENTS.md`, `.opencode/skills/gbl-optimizer/SKILL.md`, `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md`, `progress.txt`
+- Commit message: `feat: US-009 - Update optimizer and UI documentation contracts`
+- Checks:
+  - `npx prettier --check AGENTS.md components/AGENTS.md docs/pokemon-go-team-optimization.md docs/team-optimization/lineup-structures.md docs/team-optimization/validation.md docs/team-optimization/coverage-threat-pools.md .opencode/skills/gbl-optimizer/SKILL.md tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 66 files, 524 tests)
+- Implementation agents:
+  - Recommended: `documentation-engineer`, `gbl-optimizer`
+  - Used: `documentation-engineer` Task guidance; `gbl-optimizer` skill and optimizer docs guidance
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `documentation-engineer`
+  - Findings: first pass found medium documentation contradictions in `docs/team-optimization/validation.md` and `docs/team-optimization/coverage-threat-pools.md`; second pass found the same Threat Score profile-pill exception missing from `docs/pokemon-go-team-optimization.md`; third pass found stale historical task PRD lineup quality-pill guidance and low commit-message suggestions that conflict with Ralph's required commit format. Fixed documentation findings before commit by explicitly exempting the dedicated Threat Score profile pill, separating backend Threat Score diagnostics from user-facing UI fields, and aligning the historical task PRD; kept the Ralph-required commit message.
+- Decisions (why):
+  - Updated the related `docs/team-optimization/` contract sections in addition to the main optimizer doc because they still contained stale Recommended Lineups quality-pill guidance and are referenced by the main contract.
+  - Updated root `AGENTS.md` because it contained reusable optimizer diagnostics guidance that contradicted the implemented no-Recommended-Lineups-quality-pill contract.
+  - Updated the older `tasks/prd-pvpoke-inspired-optimizer-diagnostics.md` because it is still a searchable task contract and contained stale Recommended Lineups quality-pill requirements contradicted by this PRD.
+  - Kept the story documentation-only because the acceptance criteria describe contract alignment and prior stories already implemented the UI and optimizer behavior.
+- **Learnings for future iterations:**
+  - Optimizer diagnostics guidance is duplicated across the main optimizer doc, selected `docs/team-optimization/` subdocs, root `AGENTS.md`, `components/AGENTS.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`; contract changes should check all of them for stale UI wording.
+  - Documentation-only Ralph stories can still run the full project validation set without browser verification when no rendered UI behavior changes.
+- Known issues / follow-ups:
+  - Unrelated `.ralph-dev-server.log` and `.ralph-dev-server.pid` files are present and intentionally left unstaged.
+- Next iteration start:
+  - All PRD stories should be complete after US-009 metadata is updated.
+---

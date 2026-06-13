@@ -43,9 +43,15 @@ missing data as zero risk. Full-meta diagnostics should expose broad coverage
 gaps, but configured weights should prevent full-meta results from overpowering
 top-meta viability.
 
-Threat Score output should include enough structured data for both tests and UI
-display, including aggregate score, per-pool score, evaluated counts, active
-weights, ranked top-meta threats, and ranked overall team threats.
+Threat Score output should include enough structured data for sorting,
+diagnostics, calibration, and tests, including aggregate score, per-pool score,
+evaluated counts, active weights, ranked top-meta threats, and ranked overall
+team threats.
+
+The UI should consume that structured output only as readable team weaknesses and
+one lower-is-better team threat profile pill. Raw aggregate or per-pool threat
+numbers, ranks, answer counts, risk values, and threat values are diagnostic data
+for sorting, calibration, and tests, not user-facing Threat Score text.
 
 ## Coverage Metrics
 

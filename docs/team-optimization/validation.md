@@ -57,13 +57,16 @@ and deployment-compatible environments, without becoming flaky microbenchmarks.
 
 Documentation and UI tests should keep Summary Statistics display-only. Summary
 Statistics grades are limited to `A`, `B`, `C`, `D`, or `F` with no plus or
-minus modifiers. Summary Statistics must not use `elite`, `strong`, `neutral`,
-or `weak` quality pills.
+minus modifiers. Summary Statistics component cards must not use `elite`,
+`strong`, `neutral`, or `weak` quality pills, except for the dedicated Threat
+Score profile pill described below.
 
-Threat Score belongs in Summary Statistics only as a lower-is-better diagnostic.
-Recommended Lineups may show one lineup quality pill per lineup card using
-`elite`, `strong`, `neutral`, or `weak`, but those labels describe lineup quality
-and are not optimizer category grades.
+Threat Score belongs in Summary Statistics only as a lower-is-better diagnostic
+with the single team-level threat profile pill. Raw threat score numbers and
+per-threat rank, answer count, risk, or threat value metadata are not
+user-facing, though backend fields may remain for sorting, diagnostics, and
+tests. Recommended Lineups must not render `elite`, `strong`, `neutral`, or
+`weak` quality pills and must not show numeric lineup scores.
 
 ## Explainability Review
 

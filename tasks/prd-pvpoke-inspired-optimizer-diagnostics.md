@@ -34,8 +34,8 @@ consistent guidance.
 - Add a Threat Score card to Summary Statistics.
 - Refresh Recommended Lineups styling to match the blue accordion style used
   elsewhere.
-- Use elite/strong/neutral/weak pills on lineup cards only, not in Summary
-  Statistics.
+- Keep the team-level elite/strong/neutral/weak profile pill in Threat Score;
+  Recommended Lineups should not render lineup quality pills.
 - Add season-specific Great League Show-6 Pick-3 tournament teams as
   calibration fixtures, not hardcoded truth.
 - Update docs and OpenCode guidance so optimizer, prompt, and UI expectations
@@ -173,9 +173,8 @@ so that I can understand team vulnerabilities from the same accordion.
 - [ ] Threat Score card explains that lower is better.
 - [ ] Threat Score card displays top meta threats.
 - [ ] Threat Score card displays overall team threats.
-- [ ] Threat Score card does not use elite/strong/neutral/weak pills unless
-      explicitly used inside threat-specific UI and not as Summary Statistics
-      metric grades.
+- [ ] Threat Score card displays the single team-level elite/strong/neutral/weak
+      profile pill and does not expose raw threat numbers.
 - [ ] Typecheck passes.
 - [ ] Verify in browser using dev-browser skill.
 
@@ -194,19 +193,20 @@ of the diagnostics UI so that the page feels consistent.
 - [ ] Typecheck passes.
 - [ ] Verify in browser using dev-browser skill.
 
-### US-010: Show Lineup Quality Pills On Lineup Cards
+### US-010: Keep Lineup Quality Metadata Internal
 
-**Description:** As a user, I want lineup cards to show quality pills so that I
-can quickly compare recommended lineups.
+**Description:** As a user, I want lineup cards to focus on lead, switch,
+closer, and weaknesses so that Recommended Lineups stay concise.
 
 **Acceptance Criteria:**
 
-- [ ] Lineup cards display one of: elite, strong, neutral, weak.
-- [ ] Pills are based on lineup quality, not summary metric grades.
-- [ ] Pill labels and colors are consistent across lineup cards.
-- [ ] Pills are not shown in Summary Statistics.
+- [ ] Lineup cards do not render elite, strong, neutral, or weak quality pills.
+- [ ] Lineup cards do not show numeric lineup scores.
+- [ ] API-provided lineup score metadata remains available for sorting and
+      diagnostics unless proven unused.
+- [ ] Lead, Switch, Closer, and semantic weakness lists remain visible.
 - [ ] Typecheck passes.
-- [ ] Tests pass for lineup quality classification if computed in logic.
+- [ ] Tests pass for Recommended Lineups display behavior.
 - [ ] Verify in browser using dev-browser skill.
 
 ### US-011: Add Great League Show-6 Pick-3 Calibration Fixtures
@@ -278,7 +278,9 @@ optimizer and UI changes follow the same assumptions and output contract.
 - FR-20: Summary Statistics metric grades must use only `A`, `B`, `C`, `D`, or
   `F`.
 - FR-21: Summary Statistics must not display `+` or `-` grade modifiers.
-- FR-22: Summary Statistics must not display elite/strong/neutral/weak pills.
+- FR-22: Summary Statistics component cards must not display
+  elite/strong/neutral/weak pills except for the dedicated Threat Score profile
+  pill.
 - FR-23: Summary Statistics must include a Threat Score card.
 - FR-24: Threat Score card must display top meta threats.
 - FR-25: Threat Score card must display overall team threats.
@@ -286,9 +288,10 @@ optimizer and UI changes follow the same assumptions and output contract.
   accordions.
 - FR-27: Recommended Lineups must no longer use the current greenish background
   style.
-- FR-28: Lineup cards must display one quality pill: elite, strong, neutral, or
-  weak.
-- FR-29: Lineup quality pills must not be reused as Summary Statistics grades.
+- FR-28: Recommended Lineup cards must not render elite/strong/neutral/weak
+  quality pills.
+- FR-29: Lineup score metadata must remain internal unless a future UI contract
+  explicitly reintroduces a display consumer.
 - FR-30: Great League Show-6 Pick-3 tournament teams must be represented as
   season-specific calibration fixtures.
 - FR-31: Calibration fixtures must not be hardcoded as optimizer truth.
@@ -313,7 +316,8 @@ optimizer and UI changes follow the same assumptions and output contract.
 - Do not hardcode tournament fixture teams as always-correct optimizer outcomes.
 - Do not introduce `A+`, `A-`, `B+`, or any other plus/minus grade variants in
   Summary Statistics.
-- Do not keep elite/strong/neutral/weak pills in Summary Statistics.
+- Do not keep elite/strong/neutral/weak pills in Summary Statistics component
+  cards, except for the dedicated Threat Score profile pill.
 - Do not make performance dependent on long-running server processes unavailable
   on Vercel.
 - Do not introduce new package dependencies unless separately approved.
@@ -332,8 +336,8 @@ optimizer and UI changes follow the same assumptions and output contract.
 - Threat Score card should show both top meta threats and overall team threats.
 - Recommended Lineups should use blueish styling consistent with other
   accordions.
-- Lineup cards should use elite/strong/neutral/weak pills as quick visual
-  quality indicators.
+- Recommended Lineup cards should not render elite/strong/neutral/weak quality
+  pills or numeric lineup scores.
 - UI copy should avoid implying that calibration fixtures are absolute truth.
 - UI should remain understandable to users who are not familiar with PvPoke
   internals.
@@ -371,10 +375,12 @@ optimizer and UI changes follow the same assumptions and output contract.
 - No PvPoke vendor JavaScript appears in runtime imports, bundles, or execution
   paths.
 - Summary Statistics shows all eight required metrics as `A/B/C/D/F` only.
-- Summary Statistics no longer shows elite/strong/neutral/weak pills.
+- Summary Statistics component cards no longer show elite/strong/neutral/weak
+  pills, except for the dedicated Threat Score profile pill.
 - Threat Score card displays top meta and overall threats.
 - Recommended Lineups uses blueish accordion styling.
-- Lineup cards show elite/strong/neutral/weak quality pills.
+- Recommended Lineup cards omit elite/strong/neutral/weak quality pills and
+  numeric lineup scores.
 - Calibration fixtures can detect major optimizer regressions without acting as
   hardcoded truth.
 - Documentation and prompt guidance are consistent with implemented behavior.
@@ -387,7 +393,8 @@ optimizer and UI changes follow the same assumptions and output contract.
   full-meta threats?
 - What thresholds should map raw metric values to `A/B/C/D/F` for each Summary
   Statistics category?
-- Should Threat Score display raw numeric values, letter grades, ranked lists
-  only, or a combination?
+- Threat Score should not display raw numeric values; it should show readable
+  threat lists and one team-level profile pill while keeping raw fields internal
+  for sorting, diagnostics, calibration, and tests.
 - What representative workload should be used as the official under-one-minute
   performance benchmark?
