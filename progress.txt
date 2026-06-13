@@ -9,7 +9,11 @@
 - Use `deriveCandidateRankingBands(...)` in `lib/data/candidateRankingBands.ts` for pure ranking-band logic and `getCandidateRankingBands(...)` in `lib/data/rankings.ts` for format-scoped overall ranking data; do not hardcode PvPoke scores like 92, 90, 88, or 85 as global viability bands.
 - Use `buildCandidateProfiles(...)` in `lib/data/candidateProfiles.ts` to combine dynamic band assignments with injected species, role, consistency, move typing, and simulation coverage inputs; keep candidate profiles pure and avoid file reads in generation or scoring code.
 - Use `rankAnchorCompanionPairs(...)` in `lib/data/companionPairRanking.ts` to evaluate pure anchor plus companion candidate-profile pairs; keep rank and PvPoke score as priors while simulation coverage, unique anchor-loss coverage, safety, consistency, bulk, typing, and shared weakness penalties drive the pair score.
-- Anchor-first generation should seed elite or preferred anchors, rank anchor plus companion pairs, expand teams by remaining weaknesses and lineup quality, then rely on canonical lineup or roster scoring for final fitness.
+- Anchor-first generation should use `initializeAnchorFirstPopulation(...)` in `lib/genetic/chromosome.ts` to seed elite or preferred anchors, rank anchor plus companion pairs, expand teams by remaining weaknesses and lineup quality, preserve a bounded random diversity slice, then rely on canonical lineup or roster scoring for final fitness.
+- Anchor-first profile construction should use the automatic non-specialist candidate pool plus explicit `anchorPokemon` ranking names; keep random initialization and mutation pools restricted to `getAutomaticCandidatePokemonNames(...)` output so pinned specialists do not leak into automatic generation.
+- Anchor-first candidate profile coverage should evaluate wins/losses against a format-scoped meta threat pool such as `getRoleBasedThreatSpeciesIds(...)`, not only against the automatic generation pool.
+- Anchor-first seeding should preserve at least one ranked seed when `populationSize > 0` and candidate profiles are available; the random diversity reserve must not consume the whole population.
+- Anchor-first expansion should consider remaining weaknesses first, then profile-backed lineup quality and broad meta wins/checks as tie-break signals; reject non-explicit specialist companions even if a custom pair ranker returns them.
 - Low-ranked specialists should be admitted only with unique measurable top-meta or core-weakness coverage and should not crowd out safer high-ranked generalists without matchup evidence.
 - Use `evaluateSpecialistAdmission(...)` in `lib/data/specialistCandidateGate.ts` for dynamic-band `specialists`; require unique simulation-backed unresolved threat or core-weakness coverage, reject isolated or duplicated coverage, and keep specialists out of automatic anchors.
 - Deduplicate unresolved threat context by Pokemon identity before weighting specialist admission so duplicate matchup rows cannot make isolated specialist coverage look unique or high-priority.
@@ -157,6 +161,44 @@
   - US-005 - Seed the genetic algorithm with anchor-first teams
 ---
 
+## 2026-06-13 03:51 MST - US-005
+- Implemented anchor-first GA initialization using dynamic candidate profiles, elite/preferred anchor selection, ranked anchor-companion pair expansion, GBL and PlayPokemon team sizing, explicit anchor preservation, and bounded random diversity fill before normal GA evaluation.
+- Wired `generateTeam(...)` to build format-scoped candidate profiles from existing ranking and simulation loader boundaries, then seed the initial population without bypassing canonical final GBL lineup or PlayPokemon roster scoring.
+- Added deterministic tests for Lickilicky / Altaria / Empoleon and Feraligatr / Quagsire / Altaria seed plausibility, bring-six roster expansion, bounded random diversity, and explicit specialist anchors.
+- Files changed: `lib/genetic/chromosome.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/anchorFirstPopulation.test.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-005 - Seed the genetic algorithm with anchor-first teams`
+- Checks:
+  - `npx vitest run lib/genetic/anchorFirstPopulation.test.ts` (pass; red first failed because `initializeAnchorFirstPopulation` did not exist)
+  - `npx vitest run lib/genetic/anchorFirstPopulation.test.ts lib/genetic/algorithm.test.ts` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after import-order cleanup)
+  - `npm test` (pass after review fixes; 66 files, 516 tests)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `backend-developer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill and optimizer docs; `backend-developer` Task guidance; `test-driven-development` skill and `test-automator` Task guidance as the available TDD implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: blocked after 3 review passes; fixed seeded-team validation for base-species uniqueness and Battle Frontier Master legality, production wiring for switch/safety rankings, consistency rankings, move-name-to-type inputs, canonical unordered roster dedupe, and specialist exclusion from ungated filler expansion, but a final medium finding remains for explicitly pinned specialist anchors being absent from production candidate profiles
+- Decisions (why):
+  - Kept anchor-first seed construction in `lib/genetic/chromosome.ts` because it creates initial chromosomes while leaving `lib/genetic/algorithm.ts` as orchestration and preserving existing evaluation, mutation, crossover, and final scoring paths.
+  - Used a fixed 25% random diversity reserve so most initial candidates come from ranked anchors and pairs while random initialization still contributes exploration.
+  - Built candidate profiles once per generation run from existing ranking and simulation loaders so the initializer consumes normalized profile data and does not read ranking files or simulation files directly.
+  - Treated explicit anchors as intentional constraints that can seed even when outside the automatic non-specialist pool, while automatic anchor selection still excludes dynamic `specialists`.
+  - Used broad seed-admission assertions for Great League examples rather than exact optimizer winners because calibration guidance treats fixture teams as plausible regressions, not hard truth labels.
+  - Rejected invalid anchor-first seeds before random fill because seeded chromosomes must obey the same uniqueness and format-legality constraints as random chromosomes before entering evaluation.
+  - Canonicalized seed dedupe across flexible team members because GBL final lineup scoring already evaluates role permutations, so reordered copies of the same roster do not add meaningful diversity.
+- **Learnings for future iterations:**
+  - `initializeAnchorFirstPopulation(...)` is the seed-construction seam for GA initialization; do not add pair expansion directly inside `generateTeam(...)`.
+  - Anchor-first seeded chromosomes should start with neutral fitness and always flow through `evaluatePopulation(...)` plus final `buildGblLineupRecommendation(...)` or `scorePlayPokemonRoster(...)` synchronization.
+  - Deterministic seed tests are easiest with injected `rankPairs` and `randomPopulation` inputs rather than patching global randomness.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - Blocker before commit: production profile construction starts from `getAutomaticCandidatePokemonNames(formatId)`, which excludes specialists; explicit `anchorPokemon` that are specialists or otherwise outside the automatic pool need profile inputs for their losses and companion fit while keeping the random pool non-specialist.
+  - Anchor-first expansion uses bounded profile coverage signals and broad ranking priors; future tuning can add richer lineup-quality prechecks without moving final diagnostics into the initializer hot path.
+- Next iteration start:
+  - US-006 - Display Threat Score lists as readable weaknesses
+---
+
 ## 2026-06-13 03:33 MST - US-004
 - Completed specialist gating by resolving the prior blockers: duplicate unresolved threat rows are deduplicated before unique-coverage scoring, pair expansion has a regression for duplicated low-priority losses, and automatic generation pools now use dynamic non-specialist candidate bands.
 - Files changed: `lib/data/specialistCandidateGate.ts`, `lib/data/specialistCandidateGate.test.ts`, `lib/data/companionPairRanking.ts`, `lib/data/companionPairRanking.test.ts`, `lib/data/rankings.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `progress.txt`
@@ -186,4 +228,45 @@
   - US-005 should reuse `getAutomaticCandidatePokemonNames(...)` and `selectAutomaticAnchorCandidates(...)` when adding automatic anchor-first GA seeding.
 - Next iteration start:
   - US-005 - Seed the genetic algorithm with anchor-first teams
+---
+
+## 2026-06-13 04:08 MST - US-005
+- Resolved the remaining US-005 blocker by expanding production anchor-first candidate profile inputs to include explicit `anchorPokemon` ranking names while keeping the automatic/random Pokemon pool limited to dynamic non-specialist candidates.
+- Added a regression test proving explicit anchors outside the automatic pool are included in profile construction without being added back to `pokemonPool`.
+- Files changed: `lib/genetic/chromosome.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/anchorFirstPopulation.test.ts`, `lib/genetic/algorithm.test.ts`, `lib/AGENTS.md`, `progress.txt`
+- Commit message: `feat: US-005 - Seed the genetic algorithm with anchor-first teams`
+- Checks:
+  - `npx vitest run lib/genetic/algorithm.test.ts` (pass; red first failed because `speciesIdToRankingName(...)` was not called for the explicit specialist anchor)
+  - `npx vitest run lib/genetic/anchorFirstPopulation.test.ts lib/genetic/algorithm.test.ts` (pass after review fixes; red first failed because meta threat coverage was not loaded, explicit specialist anchors fell back to random with the default ranker, expansion repeated already-covered losses, single-member populations reserved all slots for random fill, out-of-band explicit anchors were missing from profile assignments, losses were truncated before meta-pool filtering, expansion ignored lineup quality and broad coverage tie-breaks, and injected rankers could return non-explicit specialists)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass; 66 files, 523 tests)
+- Implementation agents:
+  - Recommended: `gbl-optimizer`, `backend-developer`, `test-driven-development`
+  - Used: `gbl-optimizer` skill and optimizer docs; `backend-developer` Task guidance; `test-driven-development` skill and `test-automator` Task guidance as the available TDD implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: fixed before commit; recomputed remaining weaknesses after expansion picks, built profile coverage against role-based meta threats before truncating losses, allowed explicit specialist anchors through the default pair ranker without adding specialists to automatic pools, appended out-of-band explicit anchors to profile assignments, preserved at least one seed slot for small populations, added expansion tie-breaks for lineup quality and broad meta coverage, and rejected non-explicit specialists returned by injected pair rankers; final pass returned no actionable blockers
+- Decisions (why):
+  - Loaded profile data from automatic candidate names plus explicit anchor ranking names so pinned specialists have ranking, role, move, and simulation profile inputs for anchor-first pairing.
+  - Kept `pokemonPool` built only from automatic non-specialists so random initialization, mutation, and diversity fill do not reintroduce specialists broadly.
+  - Allowed explicit anchors through profile filtering because user-pinned anchors are constraints, not automatic anchor selections.
+  - Used role-based threat species for profile coverage so anchor-first expansion can see top-meta weaknesses outside the automatic generation pool.
+  - Treated an explicitly pinned specialist as rankable only for pair ranking so user constraints can seed companion fit while automatic specialist anchors remain blocked.
+  - Scored expansion picks against remaining uncovered core losses first, with original-loss redundancy only after all current core losses are covered, preserving documented Great League seed plausibility.
+  - Appended missing explicit anchor ranking rows to candidate-band assignments as `specialists` because `buildCandidateProfiles(...)` iterates assignments, not only the separate species map.
+  - Kept at least one seed slot for non-empty populations with candidate profiles so small deterministic runs still exercise anchor-first construction.
+  - Requested all ranked losses before filtering within the role-based meta pool and truncating to five losses, otherwise top non-meta losses could hide relevant meta losses.
+  - Used safety, switch, consistency, bulk, and broad coverage as expansion tie-breaks after remaining-loss coverage so third picks reflect playable lineup quality without replacing final canonical lineup scoring.
+- **Learnings for future iterations:**
+  - `generateTeam(...)` needs two related candidate sets for anchor-first seeding: automatic non-specialists for the generated pool and automatic non-specialists plus explicit anchors for candidate-profile construction.
+  - Use `speciesIdToRankingName(...)` when adding explicit anchors to ranking-name sets; ranking loaders operate on display names, while GA pools operate on species ids.
+  - Anchor-first expansion should subtract losses already covered by selected members before choosing the next companion, otherwise it can duplicate coverage instead of patching remaining weaknesses.
+  - `buildCandidateProfiles(...)` only creates profiles for `rankingBands.assignments`; callers that need explicit out-of-band anchors must add assignment rows, not only species ids.
+  - Custom `rankPairs` injection is a test seam only; initializer invariants still need to reject non-explicit specialist companions before seed construction.
+  - Optimizer docs read for this iteration: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, `docs/team-optimization/validation.md`, and `.opencode/skills/gbl-optimizer/SKILL.md`.
+- Known issues / follow-ups:
+  - None for US-005.
+- Next iteration start:
+  - US-006 - Display Threat Score lists as readable weaknesses
 ---

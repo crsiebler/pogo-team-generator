@@ -1,4 +1,7 @@
 import type { BattleFormatId } from '@lib/data/battleFormats';
+import type { CandidateProfile } from '@lib/data/candidateProfiles';
+import { rankAnchorCompanionPairs } from '@lib/data/companionPairRanking';
+import type { RankedAnchorCompanionPair } from '@lib/data/companionPairRanking';
 import {
   validateTeamUniqueness,
   getPokemonBySpeciesId,
@@ -16,6 +19,19 @@ import {
 import { calculateEffectiveness } from '../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../types';
 import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
+
+export interface AnchorFirstPopulationOptions {
+  anchorPokemon?: string[];
+  candidateProfiles?: readonly CandidateProfile[];
+  randomPopulation?: readonly Chromosome[];
+  formatId?: BattleFormatId;
+  rankPairs?: (
+    anchor: CandidateProfile,
+    candidates: readonly CandidateProfile[],
+  ) => RankedAnchorCompanionPair[];
+}
+
+const ANCHOR_FIRST_RANDOM_FRACTION = 0.25;
 
 function shouldEnforceBattleFrontierMasterLegality(
   formatId?: BattleFormatId,
@@ -486,6 +502,401 @@ export function initializePopulation(
   }
 
   return population;
+}
+
+/**
+ * Initialize a GA population with ranked anchor-first seeds followed by a
+ * bounded random diversity slice.
+ */
+export function initializeAnchorFirstPopulation(
+  populationSize: number,
+  pokemonPool: string[],
+  teamSize: number,
+  options: AnchorFirstPopulationOptions = {},
+): Chromosome[] {
+  const candidateProfiles = options.candidateProfiles ?? [];
+  const explicitAnchors = options.anchorPokemon ?? [];
+  const randomReserve = Math.ceil(
+    populationSize * ANCHOR_FIRST_RANDOM_FRACTION,
+  );
+  const seedLimit =
+    populationSize > 0 && candidateProfiles.length > 0
+      ? Math.max(1, populationSize - randomReserve)
+      : 0;
+  const seededChromosomes = buildAnchorFirstSeeds(
+    candidateProfiles,
+    pokemonPool,
+    teamSize,
+    seedLimit,
+    explicitAnchors,
+    options.formatId,
+    options.rankPairs ?? rankAnchorCompanionPairs,
+  );
+  const randomNeeded = Math.max(0, populationSize - seededChromosomes.length);
+  const randomPopulation =
+    options.randomPopulation ??
+    initializePopulation(
+      randomNeeded,
+      pokemonPool,
+      teamSize,
+      explicitAnchors,
+      options.formatId,
+    );
+
+  return [...seededChromosomes, ...randomPopulation].slice(0, populationSize);
+}
+
+function buildAnchorFirstSeeds(
+  candidateProfiles: readonly CandidateProfile[],
+  pokemonPool: readonly string[],
+  teamSize: number,
+  seedLimit: number,
+  explicitAnchors: readonly string[],
+  formatId: BattleFormatId | undefined,
+  rankPairs: (
+    anchor: CandidateProfile,
+    candidates: readonly CandidateProfile[],
+  ) => RankedAnchorCompanionPair[],
+): Chromosome[] {
+  if (seedLimit === 0 || candidateProfiles.length === 0) {
+    return [];
+  }
+
+  const eligibleProfiles = candidateProfiles.filter((candidate) => {
+    const speciesId = getProfileSpeciesId(candidate);
+    return (
+      speciesId !== null &&
+      (pokemonPool.includes(speciesId) || explicitAnchors.includes(speciesId))
+    );
+  });
+  const anchors = selectAnchorProfiles(eligibleProfiles, explicitAnchors);
+  const teams: Chromosome[] = [];
+  const seenTeams = new Set<string>();
+
+  for (const anchor of anchors) {
+    if (teams.length >= seedLimit) break;
+
+    const rankedPairs = rankPairs(
+      getPairRankingAnchor(anchor, explicitAnchors),
+      eligibleProfiles,
+    );
+
+    for (const rankedPair of rankedPairs) {
+      if (teams.length >= seedLimit) break;
+      if (
+        !isAllowedAnchorFirstCompanion(rankedPair.companion, explicitAnchors)
+      ) {
+        continue;
+      }
+
+      const team = expandAnchorPair(
+        rankedPair.anchor,
+        rankedPair.companion,
+        eligibleProfiles,
+        teamSize,
+        explicitAnchors,
+      );
+      const teamKey = getAnchorFirstTeamKey(team, explicitAnchors.length);
+
+      if (
+        team.length === teamSize &&
+        !seenTeams.has(teamKey) &&
+        isValidAnchorFirstSeed(team, formatId)
+      ) {
+        seenTeams.add(teamKey);
+        teams.push(
+          createChromosome(
+            team,
+            explicitAnchors.map((_, index) => index),
+          ),
+        );
+      }
+    }
+  }
+
+  return teams;
+}
+
+function isValidAnchorFirstSeed(
+  team: readonly string[],
+  formatId: BattleFormatId | undefined,
+): boolean {
+  if (!validateTeamUniqueness([...team])) {
+    return false;
+  }
+
+  if (
+    shouldEnforceBattleFrontierMasterLegality(formatId) &&
+    !getBattleFrontierMasterTeamLegality([...team]).isLegal
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function selectAnchorProfiles(
+  profiles: readonly CandidateProfile[],
+  explicitAnchors: readonly string[],
+): CandidateProfile[] {
+  const explicitAnchorProfiles = explicitAnchors
+    .map((speciesId) => {
+      return profiles.find(
+        (profile) => getProfileSpeciesId(profile) === speciesId,
+      );
+    })
+    .filter((profile): profile is CandidateProfile => Boolean(profile));
+  const automaticAnchors = profiles
+    .filter((profile) => {
+      return (
+        profile.band !== 'specialists' &&
+        (profile.band === 'eliteAnchors' || profile.band === 'preferredAnchors')
+      );
+    })
+    .sort(compareProfiles);
+
+  return dedupeProfiles([...explicitAnchorProfiles, ...automaticAnchors]);
+}
+
+function expandAnchorPair(
+  anchor: CandidateProfile,
+  companion: CandidateProfile,
+  profiles: readonly CandidateProfile[],
+  teamSize: number,
+  explicitAnchors: readonly string[],
+): string[] {
+  const team = uniqueSpeciesIds([
+    ...explicitAnchors,
+    getProfileSpeciesId(anchor),
+    getProfileSpeciesId(companion),
+  ]).slice(0, teamSize);
+
+  while (team.length < teamSize) {
+    const nextProfile = profiles
+      .filter((profile) => {
+        const speciesId = getProfileSpeciesId(profile);
+        return (
+          speciesId !== null &&
+          !team.includes(speciesId) &&
+          (profile.band !== 'specialists' ||
+            explicitAnchors.includes(speciesId))
+        );
+      })
+      .sort((first, second) => {
+        return compareExpansionProfiles(
+          first,
+          second,
+          team,
+          [anchor, companion],
+          profiles,
+        );
+      })[0];
+
+    const nextSpeciesId = nextProfile ? getProfileSpeciesId(nextProfile) : null;
+
+    if (!nextSpeciesId) break;
+    team.push(nextSpeciesId);
+  }
+
+  return team;
+}
+
+function getAnchorFirstTeamKey(
+  team: readonly string[],
+  explicitAnchorCount: number,
+): string {
+  const fixedAnchors = team.slice(0, explicitAnchorCount);
+  const flexibleMembers = team.slice(explicitAnchorCount).sort();
+
+  return [...fixedAnchors, ...flexibleMembers].join('|');
+}
+
+function compareExpansionProfiles(
+  first: CandidateProfile,
+  second: CandidateProfile,
+  team: readonly string[],
+  coreProfiles: readonly CandidateProfile[],
+  profiles: readonly CandidateProfile[],
+): number {
+  const firstScore = scoreExpansionProfile(first, team, coreProfiles, profiles);
+  const secondScore = scoreExpansionProfile(
+    second,
+    team,
+    coreProfiles,
+    profiles,
+  );
+
+  return secondScore - firstScore || compareProfiles(first, second);
+}
+
+function scoreExpansionProfile(
+  candidate: CandidateProfile,
+  team: readonly string[],
+  coreProfiles: readonly CandidateProfile[],
+  profiles: readonly CandidateProfile[],
+): number {
+  const unresolvedLosses = getRemainingCoreLosses(coreProfiles, team, profiles);
+  const originalCoreLosses = new Set(
+    coreProfiles.flatMap((profile) => profile.simulationCoverage.lossesAgainst),
+  );
+  const coverageTargets =
+    unresolvedLosses.size > 0 ? unresolvedLosses : originalCoreLosses;
+  const coverageScore = candidate.simulationCoverage.winsAgainst.filter((win) =>
+    coverageTargets.has(win),
+  ).length;
+  const checkingScore = candidate.simulationCoverage.checks.filter((check) =>
+    coverageTargets.has(check),
+  ).length;
+  const broadCoverageScore = new Set([
+    ...candidate.simulationCoverage.winsAgainst,
+    ...candidate.simulationCoverage.checks,
+  ]).size;
+  const lineupQualityScore = getExpansionLineupQualityScore(candidate);
+  const duplicatePenalty = team.includes(getProfileSpeciesId(candidate) ?? '')
+    ? 10
+    : 0;
+
+  return (
+    candidate.score / 100 +
+    (1 - candidate.rankPercentile) * 0.25 +
+    lineupQualityScore +
+    coverageScore * 2 +
+    checkingScore +
+    broadCoverageScore * 0.05 -
+    duplicatePenalty
+  );
+}
+
+function getExpansionLineupQualityScore(candidate: CandidateProfile): number {
+  const signalScores = [
+    candidate.safety,
+    candidate.switch,
+    candidate.consistency,
+  ].flatMap((signal) => (signal.available ? [signal.score / 100] : []));
+  const bulkScore =
+    candidate.bulk === null ? null : Math.min(candidate.bulk / 120, 1);
+  const availableScores =
+    bulkScore === null ? signalScores : [...signalScores, bulkScore];
+
+  if (availableScores.length === 0) {
+    return 0;
+  }
+
+  return (
+    availableScores.reduce((total, score) => total + score, 0) /
+    availableScores.length
+  );
+}
+
+function getPairRankingAnchor(
+  anchor: CandidateProfile,
+  explicitAnchors: readonly string[],
+): CandidateProfile {
+  const speciesId = getProfileSpeciesId(anchor);
+
+  if (anchor.band !== 'specialists' || !speciesId) {
+    return anchor;
+  }
+
+  if (!explicitAnchors.includes(speciesId)) {
+    return anchor;
+  }
+
+  return { ...anchor, band: 'preferredAnchors' };
+}
+
+function isAllowedAnchorFirstCompanion(
+  companion: CandidateProfile,
+  explicitAnchors: readonly string[],
+): boolean {
+  const speciesId = getProfileSpeciesId(companion);
+
+  return (
+    speciesId !== null &&
+    (companion.band !== 'specialists' || explicitAnchors.includes(speciesId))
+  );
+}
+
+function getRemainingCoreLosses(
+  coreProfiles: readonly CandidateProfile[],
+  team: readonly string[],
+  profiles: readonly CandidateProfile[],
+): Set<string> {
+  const remainingLosses = new Set(
+    coreProfiles.flatMap((profile) => profile.simulationCoverage.lossesAgainst),
+  );
+
+  for (const teamMember of team) {
+    const profile = profiles.find(
+      (candidate) => getProfileSpeciesId(candidate) === teamMember,
+    );
+
+    if (!profile) continue;
+
+    for (const coveredThreat of [
+      ...profile.simulationCoverage.winsAgainst,
+      ...profile.simulationCoverage.checks,
+    ]) {
+      remainingLosses.delete(coveredThreat);
+    }
+  }
+
+  return remainingLosses;
+}
+
+function compareProfiles(
+  first: CandidateProfile,
+  second: CandidateProfile,
+): number {
+  return (
+    bandPriority(second.band) - bandPriority(first.band) ||
+    second.score - first.score ||
+    first.rank - second.rank ||
+    (getProfileSpeciesId(first) ?? first.pokemon).localeCompare(
+      getProfileSpeciesId(second) ?? second.pokemon,
+    )
+  );
+}
+
+function bandPriority(band: CandidateProfile['band']): number {
+  switch (band) {
+    case 'eliteAnchors':
+      return 5;
+    case 'preferredAnchors':
+      return 4;
+    case 'normalCompanions':
+      return 3;
+    case 'flexibleCompanions':
+      return 2;
+    case 'specialists':
+      return 1;
+  }
+}
+
+function dedupeProfiles(
+  profiles: readonly CandidateProfile[],
+): CandidateProfile[] {
+  const seen = new Set<string>();
+  const deduped: CandidateProfile[] = [];
+
+  for (const profile of profiles) {
+    const speciesId = getProfileSpeciesId(profile);
+    if (!speciesId || seen.has(speciesId)) continue;
+    seen.add(speciesId);
+    deduped.push(profile);
+  }
+
+  return deduped;
+}
+
+function uniqueSpeciesIds(values: Array<string | null>): string[] {
+  return Array.from(
+    new Set(values.filter((value): value is string => Boolean(value))),
+  );
+}
+
+function getProfileSpeciesId(profile: CandidateProfile): string | null {
+  return profile.speciesId ?? null;
 }
 
 /**
