@@ -4,6 +4,11 @@ import type { RankedPokemon } from '../types';
 import type { BattleFormatId } from './battleFormats';
 import { DEFAULT_BATTLE_FORMAT_ID, getBattleFormatById } from './battleFormats';
 import {
+  deriveCandidateRankingBands,
+  type CandidateRankingBandOptions,
+  type CandidateRankingBandsResult,
+} from './candidateRankingBands';
+import {
   normalizeToChoosableSpeciesName,
   speciesNameToChoosableId,
   speciesIdToSpeciesName,
@@ -489,6 +494,16 @@ export function getRankedPokemonNames(formatId?: BattleFormatId): Set<string> {
 }
 
 /**
+ * Derive format-scoped candidate quality bands from overall rankings.
+ */
+export function getCandidateRankingBands(
+  formatId?: BattleFormatId,
+  options?: CandidateRankingBandOptions,
+): CandidateRankingBandsResult {
+  return deriveCandidateRankingBands(getOverallRankings(formatId), options);
+}
+
+/**
  * Get ranked canonical speciesIds from overall rankings.
  */
 export function getRankedSpeciesIds(formatId?: BattleFormatId): Set<string> {
@@ -518,6 +533,24 @@ export function getTopRankedPokemonNames(
     .filter((r) => r.Score >= minScore)
     .slice(0, maxCount);
   return new Set(rankings.map((r) => r.Pokemon));
+}
+
+/**
+ * Get dynamically banded non-specialist Pokemon names for automatic generation.
+ */
+export function getAutomaticCandidatePokemonNames(
+  formatId?: BattleFormatId,
+): Set<string> {
+  const bands = getCandidateRankingBands(formatId).bands;
+
+  return new Set(
+    [
+      ...bands.eliteAnchors,
+      ...bands.preferredAnchors,
+      ...bands.normalCompanions,
+      ...bands.flexibleCompanions,
+    ].map((assignment) => assignment.pokemon),
+  );
 }
 /**
  * Get top N Pokémon by role

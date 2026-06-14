@@ -46,6 +46,20 @@ Weight strategy in this order:
 
 Score ordered pick-3 lineups as playable battle plans. Then aggregate lineup quality into show-6 roster quality.
 
+Derive candidate quality bands per format from the selected format's ranking
+score distribution, rank percentile, score density, meaningful score dropoffs,
+and bounded candidate counts. Do not hardcode fixed PvPoke score thresholds such
+as 92, 90, 88, or 85 as global viability rules; those are Great League examples
+only.
+
+Generate teams anchor-first when ranking data is available: seed elite or
+preferred anchors, rank anchor plus companion pairs using candidate profiles,
+expand teams by remaining weaknesses and playable lineup quality, preserve a
+bounded random diversity slice, and then rely on canonical lineup or roster
+scoring for final fitness and diagnostics. Low-ranked specialists should be
+admitted only when simulation-backed evidence shows unique top-meta or
+core-weakness coverage without crowding out safer generalists.
+
 Keep Threat Score diagnostic and lower-is-better on
 `OptimizerScoreBreakdown.threatScore`; do not add it to weighted fitness
 components unless a current story explicitly changes optimizer selection
@@ -79,6 +93,7 @@ When changing scoring, check for:
 - Bulk using stat product or `defense * hp / attack` when direct stat product is unavailable.
 - Role fit using PvPoke Leads, Switches, Closers, Chargers, Attackers, and Consistency exports when available.
 - Lower-is-better Threat Score diagnostics from weighted top-meta and full-meta threat pools.
+- Dynamic per-meta ranking bands, ranked anchor-companion pairs, and specialist gating before broad generation.
 - Soft matchup quality for scoring, while preserving categorical coverage and weakness labels.
 - Performance effects of any diagnostic added to lineup-aware hot paths.
 
@@ -95,11 +110,17 @@ When changing scoring, check for:
 - Treat calibration fixtures as broad regression inputs only; do not hardcode
   exact optimizer winners, exact scores, or runtime scoring shortcuts from them.
 - Keep Summary Statistics display-only: A-F grades only, no plus/minus modifiers,
-  no `elite`/`strong`/`neutral`/`weak` quality pills, and lower-is-better Threat
-  Score when present.
+  no `elite`/`strong`/`neutral`/`weak` quality pills in component cards, and
+  lower-is-better Threat Score when present.
+- Keep Threat Score display-only in UI: it owns the one team-level threat profile
+  pill, shows readable threat names, and does not expose raw Overall, Top Meta,
+  Full Meta, rank, answer count, risk, or threat value metadata. Backend threat
+  fields may remain available for sorting, diagnostics, calibration, and tests.
 - Keep Recommended Lineup cards display-only with blue diagnostic styling and
-  exactly one textual quality pill derived from API-provided lineup score
-  metadata; do not show numeric lineup scores there.
+  ordered lead, switch, closer, and semantic weakness lists. Do not render
+  lineup quality pills or numeric lineup scores there; keep score metadata
+  internal unless a future UI contract explicitly reintroduces a display
+  consumer.
 
 ## Testing Expectations
 

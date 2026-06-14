@@ -1,11 +1,32 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
 import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
+import { buildCandidateProfiles } from '@lib/data/candidateProfiles';
+import { allMoves } from '@lib/data/moves';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
-import { getTopRankedPokemonNames } from '@lib/data/rankings';
-import { ensureSimulationDataAvailable } from '@lib/data/simulations';
-import type { Chromosome, GenerationOptions } from '../types';
+import {
+  getAutomaticCandidatePokemonNames,
+  getCandidateRankingBands,
+  getConsistencyRankings,
+  getOverallRankings,
+  getRoleBasedThreatSpeciesIds,
+  getSwitchesRankings,
+  MissingRankingDataError,
+  speciesIdToRankingName,
+} from '@lib/data/rankings';
+import {
+  countersThreats,
+  ensureSimulationDataAvailable,
+  getWorstMatchups,
+} from '@lib/data/simulations';
+import type {
+  Chromosome,
+  GenerationOptions,
+  Pokemon,
+  RankedPokemon,
+} from '../types';
 import {
   initializePopulation,
+  initializeAnchorFirstPopulation,
   getBestChromosome,
   hasConverged,
   calculateDiversity,
@@ -43,15 +64,41 @@ export async function generateTeam(
 
   ensureSimulationDataAvailable(formatId);
 
-  // Get available Pokémon pool (only top 150 ranked Pokemon for competitive viability)
-  const topRankedNames = getTopRankedPokemonNames(80, 150, formatId);
-  const availablePokemon = getRankedPokemonForFormat(topRankedNames, formatId);
+  const candidateNames = getAutomaticCandidatePokemonNames(formatId);
+  const availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);
+  const profileCandidateNames = new Set(candidateNames);
+  const anchorRankingNames: string[] = [];
+
+  for (const anchorSpeciesId of anchorPokemon) {
+    const anchorRankingName = speciesIdToRankingName(anchorSpeciesId);
+    anchorRankingNames.push(anchorRankingName);
+    profileCandidateNames.add(anchorRankingName);
+  }
+
+  const profilePokemon = getRankedPokemonForFormat(
+    profileCandidateNames,
+    formatId,
+  );
 
   // Filter out excluded Pokemon
   const filteredPokemon = availablePokemon.filter(
     (p) => !excludedPokemon.includes(p.speciesId),
   );
+  const filteredProfilePokemon = profilePokemon.filter(
+    (p) =>
+      !excludedPokemon.includes(p.speciesId) ||
+      anchorPokemon.includes(p.speciesId),
+  );
   const pokemonPool = filteredPokemon.map((p) => p.speciesId);
+  const metaThreatPool = getRoleBasedThreatSpeciesIds(100, formatId);
+  const candidateProfiles = buildAnchorFirstCandidateProfiles(
+    filteredProfilePokemon,
+    pokemonPool,
+    metaThreatPool.length > 0 ? metaThreatPool : pokemonPool,
+    anchorRankingNames,
+    anchorPokemon,
+    formatId,
+  );
 
   // Validate anchors
   if (anchorPokemon.length > teamSize) {
@@ -61,12 +108,15 @@ export async function generateTeam(
   }
 
   // Initialize population
-  let population = initializePopulation(
+  let population = initializeAnchorFirstPopulation(
     populationSize,
     pokemonPool,
     teamSize,
-    anchorPokemon,
-    formatId,
+    {
+      anchorPokemon,
+      candidateProfiles,
+      formatId,
+    },
   );
 
   // Evaluate initial population
@@ -256,6 +306,140 @@ export async function generateTeam(
   }
 
   return bestOverall;
+}
+
+function buildAnchorFirstCandidateProfiles(
+  availablePokemon: readonly Pokemon[],
+  pokemonPool: readonly string[],
+  coveragePool: readonly string[],
+  anchorRankingNames: readonly string[],
+  anchorPokemon: readonly string[],
+  formatId: NonNullable<GenerationOptions['formatId']>,
+): ReturnType<typeof buildCandidateProfiles> {
+  const pokemonPoolSet = new Set(pokemonPool);
+  const coveragePoolSet = new Set(coveragePool);
+  const explicitAnchorSet = new Set(anchorPokemon);
+  const speciesIdsByPokemon = new Map(
+    availablePokemon.map((pokemon) => [pokemon.speciesName, pokemon.speciesId]),
+  );
+  const simulationCoverageByPokemon = new Map(
+    availablePokemon.map((pokemon) => {
+      const relevantOpponents = coveragePool.filter(
+        (opponent) => opponent !== pokemon.speciesId,
+      );
+      const winsAgainst = relevantOpponents.filter((opponent) => {
+        return countersThreats(pokemon.speciesId, [opponent], formatId) > 0;
+      });
+      const lossesAgainst = getWorstMatchups(
+        pokemon.speciesId,
+        Number.MAX_SAFE_INTEGER,
+        formatId,
+      )
+        .filter((opponent) => coveragePoolSet.has(opponent))
+        .slice(0, 5);
+
+      return [
+        pokemon.speciesName,
+        {
+          winsAgainst,
+          lossesAgainst,
+          checks: winsAgainst,
+        },
+      ];
+    }),
+  );
+
+  return buildCandidateProfiles({
+    rankingBands: extendRankingBandsWithExplicitAnchors(
+      getCandidateRankingBands(formatId),
+      getOverallRankings(formatId),
+      anchorRankingNames,
+    ),
+    speciesIdsByPokemon,
+    safetyRankings: getRankingSignalMap(() => getSwitchesRankings(formatId)),
+    switchRankings: getRankingSignalMap(() => getSwitchesRankings(formatId)),
+    consistencyRankings: getRankingSignalMap(() =>
+      getConsistencyRankings(formatId),
+    ),
+    moveTypesByName: new Map(allMoves.map((move) => [move.name, move.type])),
+    simulationCoverageByPokemon,
+  }).filter((profile) => {
+    return (
+      profile.speciesId !== null &&
+      (pokemonPoolSet.has(profile.speciesId) ||
+        explicitAnchorSet.has(profile.speciesId))
+    );
+  });
+}
+
+function extendRankingBandsWithExplicitAnchors(
+  rankingBands: ReturnType<typeof getCandidateRankingBands>,
+  overallRankings: readonly RankedPokemon[],
+  anchorRankingNames: readonly string[],
+): ReturnType<typeof getCandidateRankingBands> {
+  const assignedPokemon = new Set(
+    rankingBands.assignments.map((assignment) => assignment.pokemon),
+  );
+  const appendedAssignments = anchorRankingNames.flatMap((pokemon) => {
+    if (assignedPokemon.has(pokemon)) {
+      return [];
+    }
+
+    const rankingIndex = overallRankings.findIndex(
+      (ranking) => ranking.Pokemon === pokemon,
+    );
+
+    if (rankingIndex < 0) {
+      return [];
+    }
+
+    const ranking = overallRankings[rankingIndex];
+    const rank = rankingIndex + 1;
+
+    return [
+      {
+        pokemon,
+        ranking,
+        rank,
+        rankPercentile: rank / Math.max(overallRankings.length, 1),
+        score: ranking.Score,
+        band: 'specialists' as const,
+      },
+    ];
+  });
+
+  if (appendedAssignments.length === 0) {
+    return rankingBands;
+  }
+
+  return {
+    ...rankingBands,
+    candidateCount: rankingBands.candidateCount + appendedAssignments.length,
+    assignments: [...rankingBands.assignments, ...appendedAssignments],
+    bands: {
+      ...rankingBands.bands,
+      specialists: [...rankingBands.bands.specialists, ...appendedAssignments],
+    },
+  };
+}
+
+function getRankingSignalMap(
+  loadRankings: () => RankedPokemon[],
+): Map<string, { rank: number; score: number }> {
+  try {
+    return new Map(
+      loadRankings().map((ranking, index) => [
+        ranking.Pokemon,
+        { rank: index + 1, score: ranking.Score },
+      ]),
+    );
+  } catch (error) {
+    if (error instanceof MissingRankingDataError) {
+      return new Map();
+    }
+
+    throw error;
+  }
 }
 
 /**

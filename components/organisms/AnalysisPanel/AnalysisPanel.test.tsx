@@ -162,11 +162,11 @@ describe('AnalysisPanel', () => {
       evaluatedCount: 18,
       topMetaThreats: [
         {
-          speciesId: 'clodsire',
-          pokemon: 'Clodsire',
-          rank: 3,
-          teamAnswers: 1,
-          threatValue: 0.72,
+          speciesId: 'samurott_shadow',
+          pokemon: 'Samurott (Shadow)',
+          rank: 16,
+          teamAnswers: 0,
+          threatValue: 0.49,
           severityTier: 'high',
         },
         {
@@ -495,7 +495,7 @@ describe('AnalysisPanel', () => {
     expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
   });
 
-  it('renders threat score diagnostics inside summary statistics without quality pills', () => {
+  it('renders threat score diagnostics inside summary statistics with one profile pill', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
@@ -517,20 +517,37 @@ describe('AnalysisPanel', () => {
 
     expect(within(section).getByText('Threat Score')).toBeInTheDocument();
     expect(within(section).getByText(/Lower is better/i)).toBeInTheDocument();
-    expect(within(section).getByText('Overall: 0.34')).toBeInTheDocument();
+    const profilePills = within(section).getAllByTestId('threat-profile-pill');
+
+    expect(profilePills).toHaveLength(1);
+    expect(profilePills[0]).toHaveTextContent('neutral');
+    expect(profilePills[0]).toHaveAccessibleName(
+      'Team threat profile: neutral',
+    );
     expect(
-      within(section).getByText('Top Meta: 0.28 (8 evaluated)'),
-    ).toBeInTheDocument();
+      within(section).queryByText('Overall: 0.34'),
+    ).not.toBeInTheDocument();
     expect(
-      within(section).getByText('Full Meta: 0.41 (42 evaluated)'),
-    ).toBeInTheDocument();
+      within(section).queryByText('Top Meta: 0.28 (8 evaluated)'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(section).queryByText('Full Meta: 0.41 (42 evaluated)'),
+    ).not.toBeInTheDocument();
     expect(within(section).getByText('Top Meta Threats')).toBeInTheDocument();
     expect(
       within(section).getByRole('list', { name: 'Top Meta Threats' }),
     ).toBeInTheDocument();
-    expect(within(section).getByText(/Clodsire/)).toBeInTheDocument();
-    expect(within(section).getByText(/Toxapex/)).toBeInTheDocument();
-    expect(within(section).getByText(/Charjabug/)).toBeInTheDocument();
+    const topMetaThreatItems = within(
+      within(section).getByRole('list', { name: 'Top Meta Threats' }),
+    ).getAllByRole('listitem');
+
+    expect(topMetaThreatItems.map((item) => item.textContent)).toEqual([
+      'Samurott (Shadow)',
+      'Toxapex',
+      'Drapion',
+      'Lapras',
+      'Charjabug',
+    ]);
     expect(within(section).queryByText(/Jumpluff/)).not.toBeInTheDocument();
     expect(
       within(section).getByText('Overall Team Threats'),
@@ -538,18 +555,82 @@ describe('AnalysisPanel', () => {
     expect(
       within(section).getByRole('list', { name: 'Overall Team Threats' }),
     ).toBeInTheDocument();
-    expect(within(section).getByText(/Talonflame/)).toBeInTheDocument();
-    expect(within(section).getByText(/Lanturn/)).toBeInTheDocument();
-    expect(within(section).getByText(/Sealeo/)).toBeInTheDocument();
+    const overallThreatItems = within(
+      within(section).getByRole('list', { name: 'Overall Team Threats' }),
+    ).getAllByRole('listitem');
+
+    expect(overallThreatItems.map((item) => item.textContent)).toEqual([
+      'Talonflame',
+      'Lanturn',
+      'Forretress',
+      'Malamar',
+      'Sealeo',
+    ]);
     expect(within(section).queryByText(/Dunsparce/)).not.toBeInTheDocument();
     expect(within(section).getAllByText('Showing top 5 of 6')).toHaveLength(2);
-    expect(within(section).queryByText('elite')).not.toBeInTheDocument();
-    expect(within(section).queryByText('strong')).not.toBeInTheDocument();
-    expect(within(section).queryByText('neutral')).not.toBeInTheDocument();
-    expect(within(section).queryByText('weak')).not.toBeInTheDocument();
+    expect(
+      within(section).queryByText(
+        'Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49)',
+      ),
+    ).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Rank #/)).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Answers:/)).not.toBeInTheDocument();
+    expect(within(section).queryByText(/Risk:/)).not.toBeInTheDocument();
     expect(
       within(section).getAllByTestId('optimizer-score-category-label'),
     ).toHaveLength(8);
+  });
+
+  it('maps lower-is-better threat scores to all profile labels', () => {
+    const profileAssertions = [
+      { score: 0.15, label: 'elite' },
+      { score: 0.3, label: 'strong' },
+      { score: 0.45, label: 'neutral' },
+      { score: 0.46, label: 'weak' },
+    ];
+
+    for (const { score, label } of profileAssertions) {
+      const { unmount } = render(
+        <AnalysisPanel
+          generatedTeam={{
+            team: ['azumarill', 'skarmory', 'registeel'],
+            formatId: 'great-league',
+            scoreBreakdown: {
+              ...optimizerScoreBreakdownWithThreatScore,
+              threatScore: {
+                ...optimizerScoreBreakdownWithThreatScore.threatScore!,
+                score,
+              },
+            },
+          }}
+          isGenerating={false}
+          fitness={0.78}
+          analysis={analysisFixture}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Summary Statistics' }),
+      );
+
+      const section = screen.getByRole('region', {
+        name: 'Summary Statistics',
+      });
+      const profilePills = within(section).getAllByTestId(
+        'threat-profile-pill',
+      );
+
+      expect(profilePills).toHaveLength(1);
+      expect(profilePills[0]).toHaveTextContent(label);
+      expect(profilePills[0]).toHaveAccessibleName(
+        `Team threat profile: ${label}`,
+      );
+      expect(
+        within(section).queryByText(`Overall: ${score.toFixed(2)}`),
+      ).not.toBeInTheDocument();
+
+      unmount();
+    }
   });
 
   it('omits the threat score card when threat diagnostics are unavailable', () => {
@@ -602,9 +683,17 @@ describe('AnalysisPanel', () => {
     expect(
       screen.getByRole('region', { name: 'Recommended Lineups' }),
     ).toBeInTheDocument();
+    const recommendedLineupsRegion = screen.getByRole('region', {
+      name: 'Recommended Lineups',
+    });
+
     expect(screen.getByText('Lineup 1')).toBeInTheDocument();
-    expect(screen.getByText('elite')).toBeInTheDocument();
-    expect(screen.getByText('strong')).toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('elite'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('strong'),
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText('Lead')).toHaveLength(2);
     expect(screen.getAllByText('azumarill')).toHaveLength(2);
     expect(screen.getAllByText('Switch')).toHaveLength(2);
@@ -634,7 +723,7 @@ describe('AnalysisPanel', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders exactly one lineup-quality pill per recommended lineup card from lineup score', () => {
+  it('renders zero lineup-quality pills for recommended lineup cards', () => {
     render(
       <AnalysisPanel
         generatedTeam={{
@@ -680,40 +769,34 @@ describe('AnalysisPanel', () => {
     expect(lineupCards).toHaveLength(4);
     expect(lineupCards.every((lineupCard) => lineupCard !== null)).toBe(true);
 
-    const qualityAssertions = [
-      {
-        label: 'elite',
-        classes: ['border-violet-200', 'bg-violet-100', 'text-violet-800'],
-      },
-      {
-        label: 'strong',
-        classes: ['border-emerald-200', 'bg-emerald-100', 'text-emerald-800'],
-      },
-      {
-        label: 'neutral',
-        classes: ['border-sky-200', 'bg-sky-100', 'text-sky-800'],
-      },
-      {
-        label: 'weak',
-        classes: ['border-amber-200', 'bg-amber-100', 'text-amber-800'],
-      },
-    ];
-    for (const [index, lineupCard] of lineupCards.entries()) {
-      const qualityPills = within(lineupCard!).getAllByTestId(
-        'lineup-quality-pill',
-      );
-      const qualityAssertion = qualityAssertions[index];
+    const recommendedLineupsRegion = screen.getByRole('region', {
+      name: 'Recommended Lineups',
+    });
 
-      expect(qualityPills).toHaveLength(1);
-      expect(qualityPills[0]).toHaveTextContent(qualityAssertion.label);
-      expect(qualityPills[0]).toHaveAccessibleName(
-        `Lineup quality: ${qualityAssertion.label}`,
-      );
-      expect(qualityPills[0]).toHaveClass(...qualityAssertion.classes);
+    expect(
+      within(recommendedLineupsRegion).queryAllByTestId('lineup-quality-pill'),
+    ).toHaveLength(0);
+    expect(
+      within(recommendedLineupsRegion).queryByText('elite'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('strong'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('neutral'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(recommendedLineupsRegion).queryByText('weak'),
+    ).not.toBeInTheDocument();
+
+    for (const score of ['0.85', '0.7', '0.5', '0.49']) {
+      expect(
+        within(recommendedLineupsRegion).queryByText(`Score: ${score}`),
+      ).not.toBeInTheDocument();
+      expect(
+        within(recommendedLineupsRegion).queryByText(score),
+      ).not.toBeInTheDocument();
     }
-
-    expect(screen.queryByText('Score: 0.85')).not.toBeInTheDocument();
-    expect(screen.queryByText('0.85')).not.toBeInTheDocument();
   });
 
   it('uses blue diagnostic styling for recommended lineup cards', () => {

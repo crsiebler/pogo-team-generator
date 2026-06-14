@@ -25,6 +25,14 @@ Use `lib/data/battleFormats.ts` as the single source of truth for supported form
 
 For runtime ranking lookups in `lib/data/rankings.ts`, build file paths from format metadata (`rankings/cp{cp}/{cup}/{category}_rankings.csv`) and cache parsed CSV data per format id to avoid cross-format contamination.
 
+For dynamic candidate quality bands, use the pure `deriveCandidateRankingBands(...)` helper in `lib/data/candidateRankingBands.ts` or the format-scoped `getCandidateRankingBands(...)` wrapper in `lib/data/rankings.ts`; do not hardcode PvPoke score thresholds such as 92, 90, 88, or 85 as global viability bands.
+
+For candidate profiles, use the pure `buildCandidateProfiles(...)` helper in `lib/data/candidateProfiles.ts` with preloaded dynamic ranking bands and injected species, role, consistency, move typing, and simulation coverage inputs; generation and scoring code should consume profiles instead of reading ranking files or recomputing profile metadata.
+
+For anchor-first generation, use `initializeAnchorFirstPopulation(...)` in `lib/genetic/chromosome.ts` to seed bounded initial GA populations from elite/preferred candidate profiles, ranked anchor-companion pairs, and pair expansion before random diversity fill. Use `rankAnchorCompanionPairs(...)` in `lib/data/companionPairRanking.ts` to evaluate pure candidate-profile pairs before full team expansion; treat PvPoke rank and score as priors while simulation coverage, unique anchor-loss coverage, safety, consistency, bulk, typing, and shared-weakness penalties drive the pair score.
+
+For low-ranked niche candidates, use `evaluateSpecialistAdmission(...)` in `lib/data/specialistCandidateGate.ts`; dynamic `specialists` band candidates must be excluded from automatic anchors and require unique simulation-backed unresolved threat or core-weakness coverage before pair or team expansion. Deduplicate unresolved threat context by Pokemon identity before weighting admission decisions so repeated matchup rows cannot inflate specialist value.
+
 Store Battle Frontier Master cycle point data in `data/battle-frontier-master-points.csv` with a simple `speciesId,points` header, keep ids canonical to `data/pokemon.json`, and keep the checked-in table aligned with the bundled PvPoke cup tier rules for the active cycle.
 
 For Battle Frontier Master legality, keep exact point values in the CSV and derive shadow inheritance in code only for shadow variants that are both present in `data/pokemon.json` and ranked for `battle-frontier-master`; do not duplicate inherited shadow rows in the CSV.
@@ -32,6 +40,8 @@ For Battle Frontier Master legality, keep exact point values in the CSV and deri
 When format-specific ranking CSVs are missing, throw `MissingRankingDataError` (not a generic `Error`) so API adapters can return deterministic HTTP 400 messages with sync guidance.
 
 For genetic candidate pool construction, always pass `formatId` into `getTopRankedPokemonNames(...)` and filter species via `getRankedPokemonForFormat(...)` so league/cup eligibility stays aligned with the selected battle format.
+
+For automatic genetic candidate pool construction, use `getAutomaticCandidatePokemonNames(...)` from `lib/data/rankings.ts` before `getRankedPokemonForFormat(...)` so dynamic-band specialists stay out of random initialization and mutation pools unless the user explicitly pins them as anchors. Anchor-first profile construction may load automatic candidate ranking names plus explicit `anchorPokemon` ranking names, but keep the generated `pokemonPool` restricted to automatic non-specialists. When explicit anchors are outside dynamic band assignments, append assignment rows for profile construction because `buildCandidateProfiles(...)` only emits profiles for assignments. Build anchor-first profile coverage against a format-scoped meta threat pool such as `getRoleBasedThreatSpeciesIds(...)` rather than only the generated Pokemon pool, retrieve all ranked losses before filtering and truncating losses within that meta pool, and preserve at least one anchor-first seed for non-empty populations with candidate profiles. Expansion should prioritize remaining weaknesses, then profile-backed lineup quality and broad meta coverage; reject non-explicit specialist companions even if a custom pair ranker returns them.
 
 For Battle Frontier Master random team initialization in `lib/genetic/chromosome.ts`, reject illegal candidates incrementally during both scored selection and fallback selection using `getBattleFrontierMasterTeamLegality(...)`, then assert the completed team is legal before returning it.
 

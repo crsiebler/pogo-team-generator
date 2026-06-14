@@ -1,8 +1,21 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
 import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
+import { buildCandidateProfiles } from '@lib/data/candidateProfiles';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
-import { getTopRankedPokemonNames } from '@lib/data/rankings';
-import { ensureSimulationDataAvailable } from '@lib/data/simulations';
+import {
+  getAutomaticCandidatePokemonNames,
+  getCandidateRankingBands,
+  getConsistencyRankings,
+  getOverallRankings,
+  getRoleBasedThreatSpeciesIds,
+  getSwitchesRankings,
+  speciesIdToRankingName,
+} from '@lib/data/rankings';
+import {
+  countersThreats,
+  ensureSimulationDataAvailable,
+  getWorstMatchups,
+} from '@lib/data/simulations';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Chromosome, OptimizerScoreBreakdown, Pokemon } from '../types';
 import { generateMultipleTeams, generateTeam } from './algorithm';
@@ -12,6 +25,7 @@ import {
   getBestChromosome,
   hasConverged,
   initializePopulation,
+  initializeAnchorFirstPopulation,
 } from './chromosome';
 import { evaluatePopulation } from './fitness';
 import {
@@ -24,7 +38,18 @@ import {
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
 vi.mock('@lib/data/rankings', () => ({
-  getTopRankedPokemonNames: vi.fn(),
+  getAutomaticCandidatePokemonNames: vi.fn(),
+  getCandidateRankingBands: vi.fn(),
+  getConsistencyRankings: vi.fn(),
+  getOverallRankings: vi.fn(),
+  getRoleBasedThreatSpeciesIds: vi.fn(),
+  getSwitchesRankings: vi.fn(),
+  speciesIdToRankingName: vi.fn((speciesId: string) => speciesId),
+  MissingRankingDataError: class MissingRankingDataError extends Error {},
+}));
+
+vi.mock('@lib/data/candidateProfiles', () => ({
+  buildCandidateProfiles: vi.fn(),
 }));
 
 vi.mock('@lib/data/pokemon', () => ({
@@ -37,10 +62,13 @@ vi.mock('@lib/data/battleFrontierMasterRules', () => ({
 
 vi.mock('@lib/data/simulations', () => ({
   ensureSimulationDataAvailable: vi.fn(),
+  countersThreats: vi.fn(),
+  getWorstMatchups: vi.fn(),
 }));
 
 vi.mock('./chromosome', () => ({
   initializePopulation: vi.fn(),
+  initializeAnchorFirstPopulation: vi.fn(),
   getBestChromosome: vi.fn(),
   hasConverged: vi.fn(),
   calculateDiversity: vi.fn(),
@@ -187,6 +215,27 @@ describe('generateTeam format-aware candidate selection', () => {
     vi.mocked(ensureSimulationDataAvailable).mockImplementation(
       () => undefined,
     );
+    vi.mocked(countersThreats).mockReturnValue(0);
+    vi.mocked(getWorstMatchups).mockReturnValue([]);
+    vi.mocked(getRoleBasedThreatSpeciesIds).mockReturnValue([]);
+    vi.mocked(getCandidateRankingBands).mockReturnValue({
+      totalRanked: 0,
+      candidateCount: 0,
+      assignments: [],
+      bands: {
+        eliteAnchors: [],
+        preferredAnchors: [],
+        normalCompanions: [],
+        flexibleCompanions: [],
+        specialists: [],
+      },
+      summaries: [],
+      scoreCutoffs: [],
+    });
+    vi.mocked(getOverallRankings).mockReturnValue([]);
+    vi.mocked(getSwitchesRankings).mockReturnValue([]);
+    vi.mocked(getConsistencyRankings).mockReturnValue([]);
+    vi.mocked(buildCandidateProfiles).mockReturnValue([]);
     vi.mocked(getBattleFrontierMasterTeamLegality).mockReturnValue({
       isLegal: true,
       totalPoints: 0,
@@ -200,6 +249,9 @@ describe('generateTeam format-aware candidate selection', () => {
     ];
 
     vi.mocked(initializePopulation).mockReturnValue(initialPopulation);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue(
+      initialPopulation,
+    );
     vi.mocked(getBestChromosome).mockImplementation(
       (population) => population[0],
     );
@@ -208,7 +260,7 @@ describe('generateTeam format-aware candidate selection', () => {
   it('loads top-ranked names and eligibility pool for selected format', async () => {
     const rankedNames = new Set<string>(['Mew']);
 
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(rankedNames);
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(rankedNames);
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
       createPokemon('mew', 'Mew'),
     ]);
@@ -220,9 +272,7 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 0,
     });
 
-    expect(getTopRankedPokemonNames).toHaveBeenCalledWith(
-      80,
-      150,
+    expect(getAutomaticCandidatePokemonNames).toHaveBeenCalledWith(
       'battle-frontier-bayou-cup',
     );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
@@ -232,12 +282,25 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(ensureSimulationDataAvailable).toHaveBeenCalledWith(
       'battle-frontier-bayou-cup',
     );
-    expect(initializePopulation).toHaveBeenCalledWith(
+    expect(buildCandidateProfiles).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rankingBands: expect.any(Object),
+        speciesIdsByPokemon: expect.any(Map),
+        safetyRankings: expect.any(Map),
+        switchRankings: expect.any(Map),
+        consistencyRankings: expect.any(Map),
+        moveTypesByName: expect.any(Map),
+        simulationCoverageByPokemon: expect.any(Map),
+      }),
+    );
+    expect(initializeAnchorFirstPopulation).toHaveBeenCalledWith(
       1,
       ['mew'],
       3,
-      [],
-      'battle-frontier-bayou-cup',
+      expect.objectContaining({
+        anchorPokemon: [],
+        formatId: 'battle-frontier-bayou-cup',
+      }),
     );
     expect(evaluatePopulation).toHaveBeenCalledWith(
       expect.any(Array),
@@ -249,8 +312,288 @@ describe('generateTeam format-aware candidate selection', () => {
     );
   });
 
+  it('excludes specialist-band candidates from automatic generation pools while preserving explicit anchors', async () => {
+    const nonSpecialistNames = new Set<string>(['Elite Anchor', 'Generalist']);
+
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      nonSpecialistNames,
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('elite_anchor', 'Elite Anchor'),
+      createPokemon('generalist', 'Generalist'),
+    ]);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam([
+        'specialist_anchor',
+        'elite_anchor',
+        'generalist',
+      ]),
+    ]);
+
+    await generateTeam({
+      mode: 'GBL',
+      formatId: 'great-league',
+      anchorPokemon: ['specialist_anchor'],
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
+      nonSpecialistNames,
+      'great-league',
+    );
+    expect(initializeAnchorFirstPopulation).toHaveBeenCalledWith(
+      1,
+      ['elite_anchor', 'generalist'],
+      3,
+      expect.objectContaining({
+        anchorPokemon: ['specialist_anchor'],
+        formatId: 'great-league',
+      }),
+    );
+    expect(createNextGeneration).not.toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.arrayContaining(['low_ranked_specialist']),
+      expect.any(String),
+      expect.any(Object),
+    );
+  });
+
+  it('builds candidate profiles for explicit anchors outside the automatic pool', async () => {
+    const nonSpecialistNames = new Set<string>(['Elite Anchor', 'Generalist']);
+    const profileNames = new Set<string>([
+      'Elite Anchor',
+      'Generalist',
+      'Specialist Anchor',
+    ]);
+
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      nonSpecialistNames,
+    );
+    vi.mocked(speciesIdToRankingName).mockReturnValue('Specialist Anchor');
+    vi.mocked(getRankedPokemonForFormat).mockImplementation(
+      (requestedNames) => {
+        if (requestedNames === nonSpecialistNames) {
+          return [
+            createPokemon('elite_anchor', 'Elite Anchor'),
+            createPokemon('generalist', 'Generalist'),
+          ];
+        }
+
+        expect(requestedNames).toEqual(profileNames);
+        return [
+          createPokemon('elite_anchor', 'Elite Anchor'),
+          createPokemon('generalist', 'Generalist'),
+          createPokemon('specialist_anchor', 'Specialist Anchor'),
+        ];
+      },
+    );
+    vi.mocked(getCandidateRankingBands).mockReturnValue({
+      totalRanked: 3,
+      candidateCount: 2,
+      assignments: [
+        {
+          pokemon: 'Elite Anchor',
+          ranking: {
+            Pokemon: 'Elite Anchor',
+            Score: 96,
+            'Stat Product': 2000,
+            Attack: 100,
+            Defense: 120,
+            Stamina: 140,
+            'Type 1': 'Normal',
+            'Type 2': '',
+            'Fast Move': 'Tackle',
+            'Charged Move 1': 'Body Slam',
+            'Charged Move 2': '',
+          } as never,
+          rank: 1,
+          rankPercentile: 1 / 3,
+          score: 96,
+          band: 'eliteAnchors',
+        },
+        {
+          pokemon: 'Generalist',
+          ranking: {
+            Pokemon: 'Generalist',
+            Score: 90,
+            'Stat Product': 1900,
+            Attack: 100,
+            Defense: 110,
+            Stamina: 130,
+            'Type 1': 'Normal',
+            'Type 2': '',
+            'Fast Move': 'Tackle',
+            'Charged Move 1': 'Body Slam',
+            'Charged Move 2': '',
+          } as never,
+          rank: 2,
+          rankPercentile: 2 / 3,
+          score: 90,
+          band: 'normalCompanions',
+        },
+      ],
+      bands: {
+        eliteAnchors: [],
+        preferredAnchors: [],
+        normalCompanions: [],
+        flexibleCompanions: [],
+        specialists: [],
+      },
+      summaries: [],
+      scoreCutoffs: [],
+    });
+    vi.mocked(getOverallRankings).mockReturnValue([
+      {
+        Pokemon: 'Elite Anchor',
+        Score: 96,
+      },
+      {
+        Pokemon: 'Generalist',
+        Score: 90,
+      },
+      {
+        Pokemon: 'Specialist Anchor',
+        Score: 72,
+        'Stat Product': 1700,
+        Attack: 100,
+        Defense: 100,
+        Stamina: 120,
+        'Type 1': 'Water',
+        'Type 2': '',
+        'Fast Move': 'Water Gun',
+        'Charged Move 1': 'Surf',
+        'Charged Move 2': '',
+      } as never,
+    ] as never);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam([
+        'specialist_anchor',
+        'elite_anchor',
+        'generalist',
+      ]),
+    ]);
+
+    await generateTeam({
+      mode: 'GBL',
+      formatId: 'great-league',
+      anchorPokemon: ['specialist_anchor'],
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(speciesIdToRankingName).toHaveBeenCalledWith('specialist_anchor');
+    expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
+      nonSpecialistNames,
+      'great-league',
+    );
+    expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
+      profileNames,
+      'great-league',
+    );
+    expect(buildCandidateProfiles).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rankingBands: expect.objectContaining({
+          assignments: expect.arrayContaining([
+            expect.objectContaining({
+              pokemon: 'Specialist Anchor',
+              band: 'specialists',
+              rank: 3,
+            }),
+          ]),
+        }),
+        speciesIdsByPokemon: new Map([
+          ['Elite Anchor', 'elite_anchor'],
+          ['Generalist', 'generalist'],
+          ['Specialist Anchor', 'specialist_anchor'],
+        ]),
+      }),
+    );
+    expect(initializeAnchorFirstPopulation).toHaveBeenCalledWith(
+      1,
+      ['elite_anchor', 'generalist'],
+      3,
+      expect.objectContaining({
+        anchorPokemon: ['specialist_anchor'],
+      }),
+    );
+  });
+
+  it('builds anchor-first coverage profiles against meta threats outside the automatic pool', async () => {
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      new Set<string>(['Elite Anchor', 'Generalist']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('elite_anchor', 'Elite Anchor'),
+      createPokemon('generalist', 'Generalist'),
+    ]);
+    vi.mocked(getRoleBasedThreatSpeciesIds).mockReturnValue([
+      'top_meta_threat',
+      'meta_threat_2',
+      'meta_threat_3',
+      'meta_threat_4',
+      'meta_threat_5',
+      'generalist',
+    ]);
+    vi.mocked(countersThreats).mockImplementation((pokemon, threats) => {
+      return pokemon === 'elite_anchor' && threats.includes('top_meta_threat')
+        ? 1
+        : 0;
+    });
+    vi.mocked(getWorstMatchups).mockImplementation((_pokemon, count) => {
+      return [
+        'outside_meta_1',
+        'outside_meta_2',
+        'outside_meta_3',
+        'outside_meta_4',
+        'outside_meta_5',
+        'outside_meta_6',
+        'outside_meta_7',
+        'top_meta_threat',
+        'generalist',
+      ].slice(0, count);
+    });
+
+    await generateTeam({
+      mode: 'GBL',
+      formatId: 'great-league',
+      populationSize: 1,
+      generations: 0,
+    });
+
+    const profileOptions = vi.mocked(buildCandidateProfiles).mock.calls[0]?.[0];
+
+    expect(profileOptions).toBeDefined();
+    if (!profileOptions) {
+      throw new Error('Expected candidate profile options to be built');
+    }
+    const simulationCoverageByPokemon =
+      profileOptions.simulationCoverageByPokemon;
+
+    expect(simulationCoverageByPokemon).toBeDefined();
+    if (!simulationCoverageByPokemon) {
+      throw new Error('Expected simulation coverage map to be built');
+    }
+
+    expect(getRoleBasedThreatSpeciesIds).toHaveBeenCalledWith(
+      100,
+      'great-league',
+    );
+    expect(simulationCoverageByPokemon.get('Elite Anchor')).toEqual({
+      winsAgainst: ['top_meta_threat'],
+      lossesAgainst: ['top_meta_threat', 'generalist'],
+      checks: ['top_meta_threat'],
+    });
+    expect(initializeAnchorFirstPopulation).toHaveBeenCalledWith(
+      1,
+      ['elite_anchor', 'generalist'],
+      3,
+      expect.any(Object),
+    );
+  });
+
   it('defaults pool selection to Great League format when omitted', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -263,9 +606,7 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 0,
     });
 
-    expect(getTopRankedPokemonNames).toHaveBeenCalledWith(
-      80,
-      150,
+    expect(getAutomaticCandidatePokemonNames).toHaveBeenCalledWith(
       DEFAULT_BATTLE_FORMAT_ID,
     );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
@@ -278,7 +619,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('passes the selected format into next-generation operators', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -305,7 +646,7 @@ describe('generateTeam format-aware candidate selection', () => {
   it('rejects illegal final Battle Frontier Master teams before returning', async () => {
     const illegalTeam = ['palkia_origin', 'eternatus', 'swampert_mega'];
 
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Palkia', 'Eternatus', 'Swampert']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -313,7 +654,7 @@ describe('generateTeam format-aware candidate selection', () => {
       createPokemon('eternatus', 'Eternatus'),
       createPokemon('swampert_mega', 'Swampert (Mega)'),
     ]);
-    vi.mocked(initializePopulation).mockReturnValue([
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
       createChromosomeWithTeam(illegalTeam),
     ]);
     vi.mocked(getBestChromosome).mockReturnValue(
@@ -344,7 +685,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('adds one role-ordered lineup recommendation for generated GBL teams', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -375,7 +716,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('builds bounded full diagnostics for the final PlayPokemon roster only', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -386,7 +727,7 @@ describe('generateTeam format-aware candidate selection', () => {
       createPokemon('ho_oh', 'Ho-Oh'),
       createPokemon('rayquaza', 'Rayquaza'),
     ]);
-    vi.mocked(initializePopulation).mockReturnValue([
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
       createChromosomeWithTeam([
         'mew',
         'mewtwo',
@@ -430,7 +771,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('returns final PlayPokemon fitness from recomputed full roster diagnostics', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -441,7 +782,7 @@ describe('generateTeam format-aware candidate selection', () => {
       createPokemon('ho_oh', 'Ho-Oh'),
       createPokemon('rayquaza', 'Rayquaza'),
     ]);
-    vi.mocked(initializePopulation).mockReturnValue([
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
       createChromosomeWithTeam(
         ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
         0.42,
@@ -478,7 +819,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('returns final GBL fitness from the final lineup recommendation score', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -486,7 +827,7 @@ describe('generateTeam format-aware candidate selection', () => {
       createPokemon('mewtwo', 'Mewtwo'),
       createPokemon('dragonite', 'Dragonite'),
     ]);
-    vi.mocked(initializePopulation).mockReturnValue([
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
       createChromosomeWithTeam(['mew', 'mewtwo', 'dragonite'], 0.51),
     ]);
     vi.mocked(buildGblLineupRecommendation).mockReturnValue({
@@ -518,7 +859,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('sorts multiple teams by recomputed final fitness', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
@@ -529,7 +870,7 @@ describe('generateTeam format-aware candidate selection', () => {
       createPokemon('ho_oh', 'Ho-Oh'),
       createPokemon('rayquaza', 'Rayquaza'),
     ]);
-    vi.mocked(initializePopulation)
+    vi.mocked(initializeAnchorFirstPopulation)
       .mockReturnValueOnce([
         createChromosomeWithTeam(
           ['mew', 'mewtwo', 'dragonite', 'lugia', 'ho_oh', 'rayquaza'],
@@ -595,7 +936,7 @@ describe('generateTeam format-aware candidate selection', () => {
   });
 
   it('reuses one lineup-aware fitness context across the GA run', async () => {
-    vi.mocked(getTopRankedPokemonNames).mockReturnValue(
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([

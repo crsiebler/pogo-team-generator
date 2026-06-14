@@ -35,15 +35,16 @@ Higher-priority categories should have larger weights, but lower-priority catego
 
 ## Optimization Flow
 
-1. Build a candidate pool from ranking exports, eligibility data, and matchup matrices.
+1. Derive format-specific candidate quality bands from ranking exports, eligibility data, and matchup matrices.
 2. Build a top-threat pool and a broader full-meta pool.
-3. Generate candidate show-6 rosters.
-4. Enumerate ordered pick-3 lineups from each roster.
-5. Score each lineup as a playable battle plan.
-6. Aggregate lineup scores into a roster score.
-7. Return the best roster and multiple recommended lineups with explanation metrics.
+3. Build ranked anchor and companion profiles from those bands, role data, typing, bulk, and matchup coverage.
+4. Seed candidate show-6 rosters with elite or preferred anchors, ranked companion pairs, and bounded random diversity.
+5. Enumerate ordered pick-3 lineups from each roster.
+6. Score each lineup as a playable battle plan.
+7. Aggregate lineup scores into a roster score.
+8. Return the best roster and multiple recommended lineups with explanation metrics.
 
-PvPoke rankings can seed candidate pools, role assumptions, move choices, and threat weighting. Treat them as a best-estimate resource from simulations, not as fixed truth. Prefer score-based and category-specific signals over raw rank alone.
+PvPoke rankings can seed candidate pools, role assumptions, move choices, and threat weighting. Treat them as a best-estimate resource from simulations, not as fixed truth. Prefer score-based and category-specific signals over raw rank alone. Candidate quality bands must be derived per format from that format's score distribution, rank percentile, score density, meaningful score dropoffs, and bounded candidate counts. Fixed score examples such as 92, 90, 88, and 85 are Great League examples only, not global viability rules.
 
 PvPoke behavior is reference-only. Runtime application, component, and optimizer
 code must not import, require, execute, bundle, or runtime-load PvPoke vendor
@@ -101,15 +102,21 @@ optimizer score categories `Synergy`, `Coverage`, `Safety`, `Consistency`,
 `Bulk`, `Role`, `Offensive Ratio`, and `Defensive Ratio` using only simple
 `A`, `B`, `C`, `D`, or `F` grades. Do not show plus or minus grade modifiers,
 numeric score values, or `elite`, `strong`, `neutral`, or `weak` quality pills in
-Summary Statistics.
+Summary Statistics component cards, except for the dedicated Threat Score
+profile pill described below.
 
 Threat Score may appear in Summary Statistics as a separate lower-is-better
 diagnostic sourced from optimizer output. It should explain that lower is better
-and may display ranked top-meta threats, overall team threats, and pool
-diagnostics without reusing Summary Statistics quality pills.
+and owns the one team-level threat profile pill (`elite`, `strong`, `neutral`,
+or `weak`) in the Threat Score card. Threat lists should display readable
+Pokemon names only. Do not expose raw Overall, Top Meta, Full Meta, rank,
+answer count, risk, threat value, or other raw threat score metadata in the
+user-facing Threat Score UI; backend fields may remain available for sorting,
+diagnostics, calibration, and tests.
 
 Recommended Lineups should present ordered lead, switch, and closer assignments
-with useful matchup details such as weaknesses. Lineup cards may show exactly
-one textual quality pill from lineup metadata: `elite`, `strong`, `neutral`, or
-`weak`. Do not use lineup quality pills as Summary Statistics grades, and do not
-show numeric lineup scores unless a future UI contract explicitly requires it.
+with useful matchup details such as semantic weakness lists. Lineup cards should
+retain blue diagnostic styling and must not render lineup quality pills such as
+`elite`, `strong`, `neutral`, or `weak`. Keep any API-provided lineup score
+metadata internal for sorting and diagnostics, and do not show numeric lineup
+scores unless a future UI contract explicitly requires it.

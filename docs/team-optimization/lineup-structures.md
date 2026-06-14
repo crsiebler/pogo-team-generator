@@ -90,7 +90,8 @@ assignments. UI cards should stay concise: show the role assignments and useful
 matchup details such as weaknesses, not internal structure labels or numeric
 lineup scores unless a future contract explicitly reintroduces them.
 
-Lineup quality is separate from Summary Statistics. If lineup cards show a
-quality pill, each card should show exactly one textual value derived from lineup
-metadata: `elite`, `strong`, `neutral`, or `weak`. These pills describe lineup
-quality only and must not be reused as Summary Statistics grades.
+Lineup quality is separate from Summary Statistics and Threat Score. Lineup cards
+should not render `elite`, `strong`, `neutral`, or `weak` quality pills, and they
+should not show numeric lineup scores. Keep lineup score metadata internal for
+sorting and diagnostics unless a future UI contract explicitly reintroduces a
+display consumer.

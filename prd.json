@@ -1,434 +1,169 @@
 {
   "project": "pogo-team-generator",
-  "branchName": "ralph/lineup-aware-team-generation",
-  "description": "Overhaul Team Analysis Summary and lineup presentation by simplifying display-only analysis output, improving recommended lineup layout, resolving lineup role species names, and reordering optimizer score breakdown fields.",
+  "branchName": "ralph/human-readable-threat-diagnostics",
+  "description": "Make Threat Score diagnostics human-readable and revise team generation to use dynamic meta-specific ranking bands, elite anchors, ranked companions, and specialist gating.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Resolve lineup role species names in generate-team API",
-      "description": "As a user, I want recommended lineup lead, switch, and closer entries to show species names instead of internal IDs so that lineup recommendations are readable.",
+      "title": "Derive dynamic candidate ranking bands per format",
+      "description": "As a competitive user, I want the generator to understand each meta's ranking score distribution so that limited cups and open formats both use appropriate anchor and companion pools.",
       "acceptanceCriteria": [
-        "Update app/api/generate-team/route.ts so recommended lineup lead, switch, and closer role values are resolved to species names before reaching the UI",
-        "Species-name resolution follows the existing approach used for lineup weakness names",
-        "Existing lineup weakness species-name behavior is preserved",
-        "Add or update relevant Vitest coverage for role species-name resolution",
-        "Tests pass",
-        "Typecheck passes"
+        "Add a pure helper for deriving candidate quality bands from the selected format's overall ranking export instead of fixed global score cutoffs.",
+        "Band derivation considers PvPoke Score, rank percentile, score density, meaningful score dropoffs, and bounded minimum and maximum candidate counts.",
+        "The helper exposes band labels for elite anchors, preferred anchors, normal companions, flexible companions, and specialists.",
+        "Tests cover a dense open Great League-style score curve and a smaller steeper naic2026-style limited-meta score curve.",
+        "Tests assert fixed score thresholds such as 92, 90, 88, and 85 are not hardcoded as global band rules.",
+        "Tests pass.",
+        "Typecheck passes."
       ],
       "priority": 1,
       "passes": true,
-      "notes": "@backend-developer implement route/data mapping; @api-designer review response contract and backward compatibility; @frontend-developer verify UI consumes names without extra client mapping."
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Read optimizer docs before changing ranking or generation logic."
     },
     {
       "id": "US-002",
-      "title": "Remove Roster Metrics display and unused display-only generation",
-      "description": "As a user, I want the team display to omit Roster Metrics so that the analysis view is less cluttered.",
+      "title": "Build ranked anchor and companion candidate profiles",
+      "description": "As a competitive user, I want candidate profiles to combine ranking quality, role data, safety, consistency, bulk, typing, and simulations so companion selection reflects team fit instead of raw rank alone.",
       "acceptanceCriteria": [
-        "Remove the Roster Metrics output display from TeamDisplay.tsx",
-        "Remove code that generates Roster Metrics display values when those values have no remaining consumer",
-        "Do not delete internal optimizer/domain scoring calculations in lib/genetic/fitness/rosterScoring.ts unless proven unused outside display generation",
-        "Add or update relevant Vitest coverage for removed display-only output where applicable",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add a pure candidate profile builder that uses the dynamic bands from US-001 for the selected format.",
+        "Candidate profiles include PvPoke rank, PvPoke Score, dynamic band, safety or switch ranking signal where available, consistency ranking signal where available, bulk or stat product, offensive typing, defensive typing, and simulation coverage inputs available through existing loaders or injected contexts.",
+        "Candidate profile code does not read ranking files directly from scoring functions and uses existing data loader boundaries.",
+        "Tests cover profile creation for open Great League and naic2026 ranking data or representative fixtures.",
+        "Tests cover missing optional role or consistency data without silent failure or invalid numeric output.",
+        "Tests pass.",
+        "Typecheck passes."
       ],
       "priority": 2,
       "passes": true,
-      "notes": "@frontend-developer remove TeamDisplay UI; @backend-developer audit display-value generation; @api-designer review whether API payload fields should be removed or retained."
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Keep profiles pure and format-scoped."
     },
     {
       "id": "US-003",
-      "title": "Simplify recommended lineup card content",
-      "description": "As a user, I want recommended lineup cards to focus on role assignments and matchup details without extra score or shield strategy labels.",
+      "title": "Rank anchor plus companion pairs",
+      "description": "As a competitive user, I want the generator to evaluate high-quality anchors with synergistic companions before building full teams so that generated teams start from viable meta cores.",
       "acceptanceCriteria": [
-        "Remove Score from the recommended lineup card display",
-        "Remove Balanced, Shield spend, and Shield save display from recommended lineup cards",
-        "Remove display-only generation for Balanced, Shield spend, and Shield save values when unused by remaining consumers",
-        "Do not delete internal lineup scoring calculations in lib/genetic/fitness/lineupScoring.ts unless proven unused outside display generation",
-        "Add or update relevant Vitest coverage for simplified lineup card data where applicable",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Add a pure pair-ranking module that evaluates anchor plus companion candidates before full team expansion.",
+        "Pair ranking rewards companions that cover the anchor's important meta losses without creating severe shared weaknesses.",
+        "Pair ranking considers PvPoke rank, PvPoke Score, simulation matchup coverage, safety rank, consistency rank, bulk, offensive typing, and defensive typing from candidate profiles.",
+        "Pair ranking treats rank and score as search priors, not as a strict tier-list override.",
+        "Tests show a high-ranked synergistic companion outranks a low-ranked niche pick unless the niche pick provides unique measurable coverage.",
+        "Tests show severe shared weakness is penalized for an anchor plus companion pair.",
+        "Tests pass.",
+        "Typecheck passes."
       ],
       "priority": 3,
       "passes": true,
-      "notes": "@frontend-developer simplify AnalysisPanel lineup card UI; @backend-developer audit and prune unused display-only generation; @api-designer review removed display fields."
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Prefer injected scoring dependencies and deterministic tie-breaks."
     },
     {
       "id": "US-004",
-      "title": "Remove unused Per-Pokemon Contribution explanatory sections",
-      "description": "As a user, I want the Per-Pokemon Contribution section to be concise and avoid redundant grading and rationale text.",
+      "title": "Gate specialist candidates behind unique coverage",
+      "description": "As a competitive user, I want lower-ranked niche Pokemon to appear only when they solve a real team problem so that core-breakers do not crowd out safer top-ranked picks.",
       "acceptanceCriteria": [
-        "Remove the Fitness Contribution Categories section from the analysis UI",
-        "Remove the Relative grading guide from Per-Pokemon Contribution",
-        "Remove per-Pokemon contribution rationale text from the UI",
-        "Remove generation of Fitness Contribution Categories and contribution rationale only when no remaining consumer exists",
-        "Update lib/analysis/pokemonContributionAnalysis.ts only for display-only rationale generation that is no longer consumed",
-        "Add or update relevant Vitest coverage for contribution analysis output changes",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Candidates below the dynamically derived flexible companion pool are treated as specialists.",
+        "Specialists are not selected as automatic anchors.",
+        "Specialists can enter pair or team expansion only when they provide unique measurable coverage against unresolved top-meta threats or a known core weakness.",
+        "Specialist admission uses simulation matchup coverage before type-only coverage.",
+        "Specialist admission rejects or penalizes candidates that create severe shared weakness, reduce viable lineup count, or merely duplicate a stronger generalist's role.",
+        "Tests show a low-ranked specialist is rejected when it only beats an isolated threat.",
+        "Tests show a low-ranked specialist can be admitted when it uniquely patches an otherwise unresolved high-priority weakness.",
+        "Tests pass.",
+        "Typecheck passes."
       ],
       "priority": 4,
       "passes": true,
-      "notes": "@frontend-developer update AnalysisPanel contribution UI; @backend-developer audit pokemonContributionAnalysis generation; @api-designer review contribution payload shape."
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Keep specialist rules bounded so niche picks remain rare."
     },
     {
       "id": "US-005",
-      "title": "Convert Recommended Lineups to analysis accordion section",
-      "description": "As a user, I want Recommended Lineup(s) presented as an accordion matching the Summary Statistics and Per-Pokemon Contribution style so that analysis sections are visually consistent.",
+      "title": "Seed the genetic algorithm with anchor-first teams",
+      "description": "As a competitive user, I want generated teams to start from elite anchors, ranked pairs, and companion expansion so outputs look like viable meta teams instead of random collections of core-breakers.",
       "acceptanceCriteria": [
-        "Convert Recommended Lineup(s) in AnalysisPanel.tsx into an accordion section",
-        "Recommended Lineup(s) accordion has similar look and feel to Summary Statistics and Per-Pokemon Contribution",
-        "Move Recommended Lineup(s) below Summary Statistics",
-        "Accordion expanded/collapsed behavior works consistently with adjacent analysis sections",
-        "Existing recommended lineup data remains visible inside the accordion when expanded",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "The genetic algorithm seeds its initial population from dynamically selected elite or preferred anchors before random full-team construction.",
+        "The generator expands ranked anchor plus companion pairs into complete teams by repeatedly evaluating remaining team weaknesses, playable lineup quality, and broad meta coverage.",
+        "The anchor-first initializer supports GBL teams and PlayPokemon roster sizes without bypassing final canonical lineup or roster scoring.",
+        "A bounded portion of the population preserves diversity so the search does not become a strict top-ranked tier list.",
+        "Fixed-seed tests demonstrate deterministic anchor-first population output.",
+        "Regression tests keep examples like Lickilicky / Altaria / Empoleon and Feraligatr / Quagsire / Altaria plausible for open Great League when supported by current data.",
+        "Tests pass.",
+        "Typecheck passes."
       ],
       "priority": 5,
       "passes": true,
-      "notes": "@frontend-developer implement accordion placement and behavior; @ui-designer review visual consistency, spacing, hierarchy, and responsive behavior."
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Preserve final fitness and scoreBreakdown synchronization."
     },
     {
       "id": "US-006",
-      "title": "Reorder Optimizer Score Breakdown fields",
-      "description": "As a user, I want the Optimizer Score Breakdown ordered so that offensive and defensive ratios are compared side-by-side before role information.",
+      "title": "Display Threat Score lists as readable weaknesses",
+      "description": "As a user, I want threat lists to show only Pokemon names so that I can quickly understand which Pokemon threaten my team.",
       "acceptanceCriteria": [
-        "Update Optimizer Score Breakdown display order so Offensive Ratio and Defensive Ratio are side-by-side",
-        "Display Role after Offensive Ratio and Defensive Ratio",
-        "Preserve existing values and labels other than the requested ordering",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Threat list items in AnalysisPanel render only the readable Pokemon name from threat.pokemon.",
+        "Threat list items do not show rank, answer count, risk score, threat value, or raw threat metadata.",
+        "The old display pattern like Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49) no longer appears.",
+        "Threat list caps remain unchanged and Showing top 5 of N summaries remain visible when applicable.",
+        "AnalysisPanel tests assert the new readable threat list contract.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
       ],
       "priority": 6,
       "passes": true,
-      "notes": "@frontend-developer update display order in AnalysisPanel.tsx; @ui-designer review side-by-side layout and readability."
+      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. Keep the UI display-only."
     },
     {
       "id": "US-007",
-      "title": "Remove structure from recommended lineup cards",
-      "description": "As a user, I want recommended lineup cards to show only the lineup roles and remaining useful matchup details so that the card stays concise.",
+      "title": "Replace raw Threat Score numbers with a profile pill",
+      "description": "As a user, I want the Threat Score card to summarize overall threat strength in simple human terms so that I know whether my team is weak, neutral, strong, or elite against threats.",
       "acceptanceCriteria": [
-        "Remove Structure from the Recommended Lineups card display",
-        "Do not remove or alter internal diagnosticLabel generation unless no remaining consumer exists",
-        "Recommended Lineups still display Lead, Switch, Closer, and Weaknesses when expanded",
-        "Add or update relevant AnalysisPanel Vitest coverage for the removed Structure text",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "The Threat Score card no longer displays raw score boxes for Overall, Top Meta, or Full Meta.",
+        "The Threat Score card displays exactly one team-level quality pill with one of elite, strong, neutral, or weak.",
+        "The pill text and accessible label communicate the semantic meaning, such as Team threat profile: strong.",
+        "The display-only lower-is-better thresholds are covered by tests: <= 0.15 elite, <= 0.30 strong, <= 0.45 neutral, and > 0.45 weak.",
+        "The threshold helper does not change backend threat scoring or optimizer fitness behavior.",
+        "AnalysisPanel tests cover all four threat profile labels.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
       ],
       "priority": 7,
       "passes": true,
-      "notes": "@frontend-developer remove the AnalysisPanel display; @backend-developer audit diagnosticLabel only if considering contract cleanup; @ui-designer verify card hierarchy remains clear."
+      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. This is a display-only mapping from lower-is-better diagnostics."
     },
     {
       "id": "US-008",
-      "title": "Replace Summary Statistics content with optimizer score cards",
-      "description": "As a user, I want the Summary Statistics section to show optimizer score breakdown cards so that the highest-level summary uses the same metrics as the optimizer explanation.",
+      "title": "Remove quality pills from Recommended Lineups",
+      "description": "As a user, I want Recommended Lineups to focus on lead, switch, closer, and weaknesses without duplicate or confusing quality labels.",
       "acceptanceCriteria": [
-        "Keep the accordion section header text Summary Statistics",
-        "Replace the current Summary Statistics body content with Optimizer Score Breakdown information",
-        "Overwrite the existing Summary Statistics metric content rather than appending optimizer score cards below the current summary metrics",
-        "Remove this description from the UI: Normalized optimizer categories explain the generated score in priority order. Range labels are shown with colors so category strength is not communicated by color alone.",
-        "Do not recompute optimizer score values in client components; continue consuming API-provided scoreBreakdown data",
-        "Add or update relevant AnalysisPanel Vitest coverage for the Summary Statistics content replacement",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Recommended Lineup cards no longer render lineup-quality-pill elements.",
+        "Recommended Lineup cards do not display weak, neutral, strong, or elite quality pills.",
+        "Recommended Lineup cards continue to display Lead, Switch, Closer, and semantic weakness lists.",
+        "Recommended Lineup cards continue to omit numeric lineup scores.",
+        "Recommended Lineup cards retain blue diagnostic styling and existing accordion behavior.",
+        "AnalysisPanel tests assert Recommended Lineups render zero lineup quality pills.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
       ],
       "priority": 8,
       "passes": true,
-      "notes": "@frontend-developer move/reuse the optimizer score card rendering inside Summary Statistics; @ui-designer review that the header/content pairing is understandable; @api-designer review only if API scoreBreakdown availability affects empty states."
+      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. Do not remove internal lineup score metadata unless proven unused."
     },
     {
       "id": "US-009",
-      "title": "Move Role after Bulk in optimizer score layout",
-      "description": "As a user, I want Role to appear after Bulk and use the same card sizing as other optimizer score cards so that the score layout is consistent.",
+      "title": "Update optimizer and UI documentation contracts",
+      "description": "As a developer, I need documentation to match the new diagnostics and generation contracts so future optimizer and UI changes preserve the intended behavior.",
       "acceptanceCriteria": [
-        "Update optimizer score card display order so Role appears immediately after Bulk",
-        "Render Role with the same width and layout treatment as the other optimizer score cards",
-        "Keep Offensive Ratio and Defensive Ratio side-by-side after Role",
-        "Preserve existing optimizer score values and labels other than the requested ordering and Role card layout",
-        "Add or update relevant AnalysisPanel Vitest coverage for the new optimizer card order",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
+        "Update docs/pokemon-go-team-optimization.md to state that Threat Score owns the team-level quality pill and Recommended Lineups do not render quality pills.",
+        "Update components/AGENTS.md to reflect readable Threat Score lists, the threat profile pill, and no Recommended Lineups quality pill.",
+        "Update .opencode/skills/gbl-optimizer/SKILL.md to include anchor-first generation, dynamic per-meta score bands, companion ranking, specialist gating, and the revised diagnostics contract.",
+        "Documentation states raw threat score numbers are not user-facing in the Threat Score UI while backend fields may remain for sorting and diagnostics.",
+        "Documentation states fixed score thresholds such as 92, 90, 88, and 85 are Great League examples only, not global rules.",
+        "Tests pass.",
+        "Typecheck passes."
       ],
       "priority": 9,
       "passes": true,
-      "notes": "@frontend-developer update AnalysisPanel optimizer score order/layout; @ui-designer review card width consistency and side-by-side ratio placement."
-    },
-    {
-      "id": "US-010",
-      "title": "Place Replacement Risk below Pokemon name",
-      "description": "As a user, I want the Replacement Risk pill to always appear below the Pokemon name so the Per-Pokemon Contribution header layout is stable across screen sizes.",
-      "acceptanceCriteria": [
-        "Move the Replacement Risk pill below the Pokemon name in a dedicated row",
-        "The Replacement Risk pill does not sit beside the Pokemon name on wide layouts",
-        "The Replacement Risk pill no longer only moves below the name when text wrapping occurs",
-        "Existing contribution metric boxes remain visible and unchanged",
-        "Add or update relevant AnalysisPanel Vitest coverage for the new Per-Pokemon Contribution header layout",
-        "Tests pass",
-        "Typecheck passes",
-        "Verify in browser using dev-browser skill"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "@frontend-developer update Per-Pokemon Contribution markup/classes; @ui-designer verify row spacing, mobile behavior, and readability."
-    },
-    {
-      "id": "US-011",
-      "title": "Enumerate ordered PlayPokemon switch and closer assignments",
-      "description": "As a user, I want PlayPokemon recommended lineups to evaluate both switch and closer role orders so that viable rosters are not underrated when the two backline Pokemon fit different roles.",
-      "acceptanceCriteria": [
-        "Update lib/genetic/fitness/lineupEnumeration.ts so each lead evaluates every ordered switch and closer assignment from the remaining five Pokemon",
-        "A six-Pokemon PlayPokemon roster produces 120 unique ordered pick-3 lineups instead of only 60 unordered backline pairs",
-        "Preserve roster input order for lead iteration and keep validation for duplicate, empty, and delimiter-containing species ids",
-        "Update roster scoring and fitness tests that currently assume 60 PlayPokemon lineups",
-        "Update code comments or local guidance that describe PlayPokemon roster scoring as 60 lineups",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "@backend-developer update enumeration and dependent tests; @gbl-optimizer review role-ordering behavior and optimizer documentation alignment."
-    },
-    {
-      "id": "US-012",
-      "title": "Return recomputed full optimizer fitness",
-      "description": "As a user, I want Overall Fitness to match the final optimizer breakdown so that the displayed score, recommendations, and multi-team sorting describe the same final roster evaluation.",
-      "acceptanceCriteria": [
-        "Update lib/genetic/algorithm.ts so the final PlayPokemon chromosome fitness is set from rosterScore.fitness after full diagnostics are recomputed",
-        "Returned PlayPokemon fitness matches scoreBreakdown.score for the final roster evaluation",
-        "generateMultipleTeams sorts by the recomputed final fitness after diagnostics are attached",
-        "Review the GBL final recommendation path and update it only if its final recommendation score can differ from the hot-path fitness context",
-        "Add or update relevant Vitest coverage for final fitness and scoreBreakdown consistency",
-        "Tests pass",
-        "Typecheck passes"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "@backend-developer update final chromosome mapping and regression tests; @api-designer verify response contract exposes consistent fitness and scoreBreakdown values."
-    },
-    {
-      "id": "US-013",
-      "title": "Enforce PvPoke Reference-Only Optimizer Boundary",
-      "description": "As a developer, I want PvPoke-inspired concepts implemented only in repository-owned TypeScript so that the app gains better diagnostics without runtime PvPoke vendor dependencies.",
-      "acceptanceCriteria": [
-        "PvPoke Team Builder behavior is used only as a conceptual reference.",
-        "No PvPoke vendor JavaScript is imported, executed, bundled, runtime-loaded, or required by app code.",
-        "Optimizer logic is implemented in pure TypeScript within existing architecture boundaries.",
-        "Existing lineup-aware outputs remain available: recommended lineups, synergy, defensive ratio, offensive ratio, role, and per-Pokemon contributions.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 13,
-      "passes": true,
-      "notes": "@gbl-optimizer and @test-driven-development enforce runtime boundary and coverage."
-    },
-    {
-      "id": "US-014",
-      "title": "Add Lower-Is-Better Threat Score",
-      "description": "As a competitive player, I want a lower-is-better Threat Score so that I can quickly understand how vulnerable a team is to the meta.",
-      "acceptanceCriteria": [
-        "Threat Score is computed where lower values indicate fewer or less severe threats.",
-        "Threat Score output includes ranked top meta threats and overall team threats.",
-        "Threat Score data is exposed through the optimizer output contract for UI use.",
-        "Threat ordering is deterministic for equivalent inputs.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 14,
-      "passes": true,
-      "notes": "@gbl-optimizer implement threat score model; @test-driven-development cover lower-is-better ordering."
-    },
-    {
-      "id": "US-015",
-      "title": "Implement Weighted Top-Meta And Full-Meta Threat Pools",
-      "description": "As a competitive player, I want threat analysis to weight top-meta Pokemon more heavily while still accounting for broader full-meta coverage gaps.",
-      "acceptanceCriteria": [
-        "The optimizer evaluates a weighted top-meta threat pool.",
-        "The optimizer evaluates a broader full-meta threat pool.",
-        "Top-meta weighting is data-driven or configurable enough for season updates.",
-        "Full-meta threats contribute to diagnostics without overpowering top-meta threats.",
-        "Threat outputs include enough structured data for tests and UI display.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 15,
-      "passes": true,
-      "notes": "@gbl-optimizer design weighted pools; @test-driven-development cover top-meta versus full-meta behavior."
-    },
-    {
-      "id": "US-016",
-      "title": "Add Soft Matchup Scoring",
-      "description": "As a user, I want matchup quality to support intermediate scores so that diagnostics are less brittle than hard win/loss thresholds.",
-      "acceptanceCriteria": [
-        "Matchups can produce soft scores instead of only binary win/loss values.",
-        "Close matchups produce intermediate scores.",
-        "Clearly favorable, neutral, close, and clearly unfavorable matchups remain distinguishable.",
-        "Relevant optimizer diagnostics consume soft matchup scores.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 16,
-      "passes": true,
-      "notes": "@gbl-optimizer port matchup-scoring concepts; @test-driven-development add focused rating fixtures."
-    },
-    {
-      "id": "US-017",
-      "title": "Add Optimizer Caching And Precomputation Performance Safeguards",
-      "description": "As a user, I want team generation to complete in under one minute so that the app remains usable in standalone Next.js and Vercel-compatible environments.",
-      "acceptanceCriteria": [
-        "Expensive repeated matchup, threat, or scoring computations are cached or precomputed.",
-        "Cache keys are deterministic and safe for repeated generation requests.",
-        "Cache behavior does not introduce stale incorrect season data.",
-        "Representative generation completes in under one minute.",
-        "Performance validation exists for the expected generation path.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 17,
-      "passes": true,
-      "notes": "@gbl-optimizer and @test-runner add cache/precompute safeguards and performance validation."
-    },
-    {
-      "id": "US-018",
-      "title": "Add Great League Show-6 Pick-3 Calibration Fixtures",
-      "description": "As a developer, I want season-specific Great League Show-6 Pick-3 fixtures so that optimizer changes can be calibrated against realistic teams without treating fixtures as hardcoded truth.",
-      "acceptanceCriteria": [
-        "Great League Show-6 Pick-3 tournament teams are added as season-specific calibration fixtures.",
-        "Fixture naming includes season or context metadata where practical.",
-        "Fixtures are validated through existing typed loader or validation patterns.",
-        "Tests or validation can detect major scoring regressions without requiring exact hardcoded optimizer outcomes.",
-        "Fixture documentation states that examples are calibration data only.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 18,
-      "passes": true,
-      "notes": "@gbl-optimizer add calibration fixtures; @test-driven-development validate fixture handling."
-    },
-    {
-      "id": "US-019",
-      "title": "Refresh Summary Statistics Letter Grades",
-      "description": "As a user, I want Summary Statistics to show simple category-appropriate letter grades so that I can compare diagnostics without visual clutter.",
-      "acceptanceCriteria": [
-        "Summary Statistics remains an accordion.",
-        "Summary Statistics displays Synergy, Coverage, Safety, Consistency, Bulk, Role, Offensive Ratio, and Defensive Ratio.",
-        "Each Summary Statistics metric displays only A, B, C, D, or F.",
-        "No plus or minus grade modifiers are shown.",
-        "No elite, strong, neutral, or weak quality pills are shown in Summary Statistics.",
-        "Tests pass.",
-        "Typecheck passes.",
-        "Verify in browser using dev-browser skill."
-      ],
-      "priority": 19,
-      "passes": true,
-      "notes": "@feature-implementer update AnalysisPanel grade rendering; @dev-browser verify UI behavior."
-    },
-    {
-      "id": "US-020",
-      "title": "Add Threat Score Card To Summary Statistics",
-      "description": "As a user, I want threat diagnostics shown beside summary grades so that I can understand vulnerabilities from the same accordion.",
-      "acceptanceCriteria": [
-        "Summary Statistics includes a Threat Score card.",
-        "Threat Score card explains that lower is better.",
-        "Threat Score card displays top meta threats.",
-        "Threat Score card displays overall team threats.",
-        "Threat Score card does not introduce Summary Statistics quality pills.",
-        "Tests pass.",
-        "Typecheck passes.",
-        "Verify in browser using dev-browser skill."
-      ],
-      "priority": 20,
-      "passes": true,
-      "notes": "@feature-implementer add Threat Score card; @dev-browser verify accessibility and layout."
-    },
-    {
-      "id": "US-021",
-      "title": "Refresh Recommended Lineups Blue Styling",
-      "description": "As a user, I want Recommended Lineups to use blue accordion styling so that the section visually matches the rest of the diagnostics UI.",
-      "acceptanceCriteria": [
-        "Recommended Lineups switches from greenish background styling to blueish accordion styling.",
-        "Styling is consistent with existing blue accordion patterns elsewhere in the UI.",
-        "Existing lineup content remains visible and readable.",
-        "Existing lineup ordering behavior is preserved unless intentionally changed by optimizer scoring.",
-        "Tests pass.",
-        "Typecheck passes.",
-        "Verify in browser using dev-browser skill."
-      ],
-      "priority": 21,
-      "passes": true,
-      "notes": "@feature-implementer update Recommended Lineups styling; @dev-browser verify light/dark rendering."
-    },
-    {
-      "id": "US-022",
-      "title": "Add Lineup Quality Pills To Lineup Cards",
-      "description": "As a user, I want lineup cards to show quality pills so that I can quickly compare recommended lineups.",
-      "acceptanceCriteria": [
-        "Lineup cards display exactly one of: elite, strong, neutral, or weak.",
-        "Pills are based on lineup quality, not Summary Statistics grades.",
-        "Pill labels and colors are consistent across lineup cards.",
-        "Pills are not shown in Summary Statistics.",
-        "Tests pass.",
-        "Typecheck passes.",
-        "Verify in browser using dev-browser skill."
-      ],
-      "priority": 22,
-      "passes": true,
-      "notes": "@feature-implementer add lineup quality pills; @dev-browser verify placement and accessibility."
-    },
-    {
-      "id": "US-023",
-      "title": "Update GBL Optimizer Skill Prompt Guidance",
-      "description": "As a contributor, I want .opencode/skills/gbl-optimizer/SKILL.md updated so optimizer agents follow the new PvPoke-inspired boundary, scoring, fixture, and UI expectations.",
-      "acceptanceCriteria": [
-        "The skill documents the PvPoke reference-only boundary.",
-        "The skill states that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
-        "The skill covers Threat Score, weighted threat pools, soft matchup scoring, performance safeguards, and calibration fixtures.",
-        "The skill references Summary Statistics and Recommended Lineups UI expectations at a high level.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 23,
-      "passes": true,
-      "notes": "@gbl-optimizer and @prompt-engineer update skill guidance."
-    },
-    {
-      "id": "US-024",
-      "title": "Update Root Contributor Guidance",
-      "description": "As a contributor, I want root AGENTS.md updated so future optimizer and UI work follows the refreshed diagnostics contract.",
-      "acceptanceCriteria": [
-        "Root AGENTS.md references the refreshed optimizer diagnostics expectations.",
-        "Root AGENTS.md reminds contributors to use gbl-optimizer for optimizer scoring, threat analysis, fixtures, and related UI diagnostics.",
-        "Root AGENTS.md states that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
-        "Root AGENTS.md references relevant docs for Summary Statistics, Threat Score, Recommended Lineups, and calibration fixtures.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 24,
-      "passes": true,
-      "notes": "@prompt-engineer update contributor guidance; @gbl-optimizer review optimizer consistency."
-    },
-    {
-      "id": "US-025",
-      "title": "Update Optimizer And UI Documentation",
-      "description": "As a contributor, I want docs updated so optimizer behavior, UI output contracts, and calibration assumptions remain consistent.",
-      "acceptanceCriteria": [
-        "Optimizer docs under docs describe Threat Score, weighted threat pools, soft matchup scoring, caching or precomputation, and performance expectations.",
-        "Docs include a UI output contract for Summary Statistics, Threat Score, Recommended Lineups, and lineup quality pills.",
-        "Docs state that Summary Statistics uses A, B, C, D, or F only with no plus or minus grades.",
-        "Docs state that Summary Statistics must not use elite, strong, neutral, or weak quality pills.",
-        "Docs state that PvPoke vendor JS must not be imported, executed, bundled, or runtime-loaded.",
-        "Docs describe Great League Show-6 Pick-3 fixtures as calibration data only.",
-        "Tests pass.",
-        "Typecheck passes."
-      ],
-      "priority": 25,
-      "passes": true,
-      "notes": "@gbl-optimizer and @prompt-engineer update optimizer and UI docs."
+      "notes": "Recommended agents: @documentation-engineer, @gbl-optimizer. Keep docs and skill aligned with implemented behavior."
     }
   ]
 }
