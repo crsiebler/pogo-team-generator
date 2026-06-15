@@ -6,7 +6,9 @@ export interface BattleFormat {
     | 'naic2026'
     | 'bayou'
     | 'spellcraft'
+    | 'sunshine'
     | 'bfretro'
+    | 'mega'
     | 'battlefrontiermaster';
   cp: 1500 | 2500 | 10000;
 }
@@ -18,6 +20,8 @@ export type BattleFormatId =
   | 'great-league'
   | 'ultra-league'
   | 'master-league'
+  | 'mega-master-league'
+  | 'sunshine-cup'
   | 'naic-2026-championship-cup'
   | 'battle-frontier-bayou-cup'
   | 'battle-frontier-spellcraft-cup'
@@ -45,6 +49,18 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'Master League',
     cup: 'all',
     cp: 10000,
+  },
+  {
+    id: 'mega-master-league',
+    label: 'Mega Master League',
+    cup: 'mega',
+    cp: 10000,
+  },
+  {
+    id: 'sunshine-cup',
+    label: 'Sunshine Cup',
+    cup: 'sunshine',
+    cp: 1500,
   },
   {
     id: 'naic-2026-championship-cup',

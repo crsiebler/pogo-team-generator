@@ -14,6 +14,8 @@ describe('battle format catalog', () => {
       'Great League',
       'Ultra League',
       'Master League',
+      'Mega Master League',
+      'Sunshine Cup',
       'NAIC 2026 Championship Series Cup',
       'Battle Frontier (Bayou Cup)',
       'Battle Frontier (Spellcraft Cup)',
@@ -30,6 +32,8 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('great-league')).toBe(true);
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
+    expect(isBattleFormatId('mega-master-league')).toBe(true);
+    expect(isBattleFormatId('sunshine-cup')).toBe(true);
     expect(isBattleFormatId('naic-2026-championship-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-bayou-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-spellcraft-cup')).toBe(true);
@@ -58,6 +62,20 @@ describe('battle format catalog', () => {
       id: 'naic-2026-championship-cup',
       label: 'NAIC 2026 Championship Series Cup',
       cup: 'naic2026',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('mega-master-league')).toEqual({
+      id: 'mega-master-league',
+      label: 'Mega Master League',
+      cup: 'mega',
+      cp: 10000,
+    });
+
+    expect(getBattleFormatById('sunshine-cup')).toEqual({
+      id: 'sunshine-cup',
+      label: 'Sunshine Cup',
+      cup: 'sunshine',
       cp: 1500,
     });
 
@@ -108,5 +126,7 @@ describe('battle format catalog', () => {
     expect(isBattleFrontierFormatId('battle-frontier-ul-retro')).toBe(true);
     expect(isBattleFrontierFormatId('battle-frontier-master')).toBe(true);
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
+    expect(isBattleFrontierFormatId('mega-master-league')).toBe(false);
+    expect(isBattleFrontierFormatId('sunshine-cup')).toBe(false);
   });
 });

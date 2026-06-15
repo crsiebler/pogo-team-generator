@@ -23,6 +23,10 @@ describe('format-aware simulation loading', () => {
     expect(() => ensureSimulationDataAvailable('ultra-league')).not.toThrow();
     expect(() => ensureSimulationDataAvailable('master-league')).not.toThrow();
     expect(() =>
+      ensureSimulationDataAvailable('mega-master-league'),
+    ).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('sunshine-cup')).not.toThrow();
+    expect(() =>
       ensureSimulationDataAvailable('naic-2026-championship-cup'),
     ).not.toThrow();
     expect(() =>

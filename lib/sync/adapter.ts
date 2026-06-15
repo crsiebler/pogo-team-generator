@@ -24,7 +24,9 @@ const RANKING_CUPS = [
   'naic2026',
   'bayou',
   'spellcraft',
+  'sunshine',
   'bfretro',
+  'mega',
   'battlefrontiermaster',
 ] as const;
 
