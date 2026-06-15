@@ -1,6 +1,7 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
 import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { buildCandidateProfiles } from '@lib/data/candidateProfiles';
+import { getMegaMasterTeamLegality } from '@lib/data/megaMasterRules';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
 import {
   getAutomaticCandidatePokemonNames,
@@ -58,6 +59,10 @@ vi.mock('@lib/data/pokemon', () => ({
 
 vi.mock('@lib/data/battleFrontierMasterRules', () => ({
   getBattleFrontierMasterTeamLegality: vi.fn(),
+}));
+
+vi.mock('@lib/data/megaMasterRules', () => ({
+  getMegaMasterTeamLegality: vi.fn(),
 }));
 
 vi.mock('@lib/data/simulations', () => ({
@@ -682,6 +687,43 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(getBattleFrontierMasterTeamLegality).toHaveBeenCalledWith(
       illegalTeam,
     );
+  });
+
+  it('rejects illegal final Mega Master League teams before returning', async () => {
+    const illegalTeam = ['swampert_mega', 'gallade_mega', 'dragonite'];
+
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      new Set<string>(['Swampert', 'Gallade', 'Dragonite']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('swampert_mega', 'Swampert (Mega)'),
+      createPokemon('gallade_mega', 'Gallade (Mega)'),
+      createPokemon('dragonite', 'Dragonite'),
+    ]);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam(illegalTeam),
+    ]);
+    vi.mocked(getBestChromosome).mockReturnValue(
+      createChromosomeWithTeam(illegalTeam),
+    );
+    vi.mocked(getMegaMasterTeamLegality).mockReturnValue({
+      isLegal: false,
+      megaCount: 2,
+      violations: ['mega-limit'],
+    });
+
+    await expect(
+      generateTeam({
+        mode: 'GBL',
+        formatId: 'mega-master-league',
+        populationSize: 1,
+        generations: 0,
+      }),
+    ).rejects.toThrow(
+      'Final Mega Master League team is illegal. This should never happen.',
+    );
+
+    expect(getMegaMasterTeamLegality).toHaveBeenCalledWith(illegalTeam);
   });
 
   it('adds one role-ordered lineup recommendation for generated GBL teams', async () => {

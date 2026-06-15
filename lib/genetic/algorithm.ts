@@ -1,6 +1,7 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
 import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { buildCandidateProfiles } from '@lib/data/candidateProfiles';
+import { getMegaMasterTeamLegality } from '@lib/data/megaMasterRules';
 import { allMoves } from '@lib/data/moves';
 import { getRankedPokemonForFormat } from '@lib/data/pokemon';
 import {
@@ -268,6 +269,16 @@ export async function generateTeam(
     if (!legality.isLegal) {
       throw new Error(
         'Final Battle Frontier Master team is illegal. This should never happen.',
+      );
+    }
+  }
+
+  if (formatId === 'mega-master-league') {
+    const legality = getMegaMasterTeamLegality(bestOverall.team);
+
+    if (!legality.isLegal) {
+      throw new Error(
+        'Final Mega Master League team is illegal. This should never happen.',
       );
     }
   }

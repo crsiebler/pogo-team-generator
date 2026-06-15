@@ -3,11 +3,16 @@ import { getDexNumber, validateTeamUniqueness } from '@lib/data/pokemon';
 import type { Chromosome, TournamentMode } from '../types';
 import { cloneChromosome, getMutableSlots, isAnchorSlot } from './chromosome';
 import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
+import { getMegaMasterTeamLegality } from '@/lib/data/megaMasterRules';
 
 function shouldEnforceBattleFrontierMasterLegality(
   formatId?: BattleFormatId,
 ): boolean {
   return formatId === 'battle-frontier-master';
+}
+
+function shouldEnforceMegaMasterLegality(formatId?: BattleFormatId): boolean {
+  return formatId === 'mega-master-league';
 }
 
 function isLegalBattleFrontierMasterTeam(
@@ -19,6 +24,17 @@ function isLegalBattleFrontierMasterTeam(
   }
 
   return getBattleFrontierMasterTeamLegality(team).isLegal;
+}
+
+function isLegalMegaMasterTeam(
+  team: readonly string[],
+  formatId?: BattleFormatId,
+): boolean {
+  if (!shouldEnforceMegaMasterLegality(formatId)) {
+    return true;
+  }
+
+  return getMegaMasterTeamLegality(team).isLegal;
 }
 
 /**
@@ -118,6 +134,10 @@ export function crossover(
     return cloneChromosome(parent1);
   }
 
+  if (!isLegalMegaMasterTeam(child.team, formatId)) {
+    return cloneChromosome(parent1);
+  }
+
   return child;
 }
 
@@ -192,6 +212,10 @@ export function mutate(
   }
 
   if (!isLegalBattleFrontierMasterTeam(mutated.team, formatId)) {
+    return chromosome;
+  }
+
+  if (!isLegalMegaMasterTeam(mutated.team, formatId)) {
     return chromosome;
   }
 
