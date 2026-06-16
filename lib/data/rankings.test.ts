@@ -1,7 +1,8 @@
-import { speciesNameToChoosableId } from './pokemon';
+import { getRankedPokemonForFormat, speciesNameToChoosableId } from './pokemon';
 import {
   getAllRankingsForPokemon,
   getAttackersRankings,
+  getAutomaticCandidatePokemonNames,
   getChargersRankings,
   getClosersRankings,
   getConsistencyRankings,
@@ -87,6 +88,22 @@ describe('format-aware rankings loading', () => {
     expect(
       getChargersRankings('battle-frontier-bayou-cup').length,
     ).toBeGreaterThan(0);
+  });
+
+  it('includes enough non-Mega automatic candidates for legal Mega Master teams', () => {
+    const candidateNames =
+      getAutomaticCandidatePokemonNames('mega-master-league');
+    const candidates = getRankedPokemonForFormat(
+      candidateNames,
+      'mega-master-league',
+    );
+    const nonMegaDexNumbers = new Set(
+      candidates
+        .filter((pokemon) => !pokemon.tags?.includes('mega'))
+        .map((pokemon) => pokemon.dex),
+    );
+
+    expect(nonMegaDexNumbers.size).toBeGreaterThanOrEqual(5);
   });
 
   it('exposes all category scores in the aggregate ranking contract', () => {

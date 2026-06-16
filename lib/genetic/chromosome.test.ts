@@ -255,4 +255,74 @@ describe('createRandomChromosome Battle Frontier Master legality', () => {
       totalPoints: 4,
     });
   });
+
+  it('uses eligible fallback candidates when Mega Master random sampling keeps hitting illegal Megas', () => {
+    const megaMasterPool = [
+      'swampert_mega',
+      'charizard_mega_y',
+      'venusaur_mega',
+      'blastoise_mega',
+      'gyarados_mega',
+      'gengar_mega',
+      'sableye_mega',
+      'mawile_mega',
+      'manectric_mega',
+      'abomasnow_mega',
+      'altaria_mega',
+      'latios_mega',
+      'latias_mega',
+      'rayquaza_mega',
+      'mewtwo',
+      'dragonite',
+    ];
+    const megaMasterDexNumbers = new Map(
+      megaMasterPool.map((speciesId, index) => [speciesId, index + 1]),
+    );
+
+    mockPokemonBySpeciesId.mockImplementation((speciesId: string) => ({
+      dex: megaMasterDexNumbers.get(speciesId) ?? 999,
+      speciesId,
+      speciesName: speciesId,
+      baseStats: { atk: 100, def: 100, hp: 100 },
+      types: ['dragon'],
+      fastMoves: [],
+      chargedMoves: [],
+      tags: speciesId.includes('_mega') ? ['mega'] : [],
+      defaultIVs: { cp1500: [1, 1, 1, 1], cp2500: [1, 1, 1, 1] },
+      buddyDistance: 1,
+      thirdMoveCost: 10000,
+      released: true,
+    }));
+    mockDexNumber.mockImplementation((speciesId: string) =>
+      megaMasterDexNumbers.get(speciesId),
+    );
+    vi.mocked(getMegaMasterTeamLegality).mockImplementation(
+      (team: readonly string[]) => {
+        const megaCount = team.filter((speciesId) =>
+          speciesId.includes('_mega'),
+        ).length;
+        const violations = megaCount > 1 ? ['mega-limit' as const] : [];
+
+        return {
+          isLegal: violations.length === 0,
+          megaCount,
+          violations,
+        };
+      },
+    );
+    vi.spyOn(Math, 'random').mockReturnValue(0.01);
+
+    const chromosome = createRandomChromosome(
+      megaMasterPool,
+      3,
+      ['swampert_mega', 'mewtwo'],
+      'mega-master-league',
+    );
+
+    expect(chromosome.team).toEqual(['swampert_mega', 'mewtwo', 'dragonite']);
+    expect(getMegaMasterTeamLegality(chromosome.team)).toMatchObject({
+      isLegal: true,
+      megaCount: 1,
+    });
+  });
 });

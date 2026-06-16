@@ -427,41 +427,40 @@ export function createRandomChromosome(
 
     // If no good candidate found, fall back to random unique selection
     if (!selectedSpecies) {
-      let fallbackAttempts = 0;
-
-      while (!selectedSpecies) {
-        const candidate =
-          pokemonPool[Math.floor(Math.random() * pokemonPool.length)];
+      const fallbackCandidates = pokemonPool.filter((candidate) => {
         const candidateDex = getDexNumber(candidate);
-        fallbackAttempts++;
-
-        if (fallbackAttempts > 1000) {
-          throw new Error(
-            `Failed to find unique Pokemon after 1000 attempts. Pool size: ${pokemonPool.length}, Used: ${usedDexNumbers.size}`,
-          );
-        }
 
         if (!candidateDex || usedDexNumbers.has(candidateDex)) {
-          continue;
+          return false;
         }
 
-        // Only assign once we've confirmed it's valid
         if (
           enforceBattleFrontierMasterLegality &&
           !isLegalBattleFrontierMasterCandidate(team, candidate)
         ) {
-          continue;
+          return false;
         }
 
         if (
           enforceMegaMasterLegality &&
           !isLegalMegaMasterCandidate(team, candidate)
         ) {
-          continue;
+          return false;
         }
 
-        selectedSpecies = candidate;
+        return true;
+      });
+
+      if (fallbackCandidates.length === 0) {
+        throw new Error(
+          `Failed to find a legal unique Pokemon. Pool size: ${pokemonPool.length}, Used: ${usedDexNumbers.size}`,
+        );
       }
+
+      selectedSpecies =
+        fallbackCandidates[
+          Math.floor(Math.random() * fallbackCandidates.length)
+        ];
     }
 
     // At this point selectedSpecies is guaranteed to be non-null
