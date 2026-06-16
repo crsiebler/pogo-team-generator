@@ -128,11 +128,103 @@ describe('scoreOrderedLineup', () => {
 
     expect(result.coverageMetrics.coverageRate).toBe(2 / 3);
     expect(result.coveredThreats).toEqual(['threat-a', 'threat-b']);
-    expect(result.weaknesses).toEqual(['threat-c']);
+    expect(result.weaknesses).toEqual(['threat-c', 'threat-a', 'threat-b']);
     expect(result.weaknesses).not.toContain('threat-d');
     expect(result.singleAnswerRisks).toEqual(['threat-a', 'threat-b']);
     expect(result.coverageMetrics.singleAnswerThreatCount).toBe(2);
     expect(result.componentScores.coreBreakerReliability).toBeCloseTo(2 / 3);
+  });
+
+  test('reports lineup weaknesses as threats that beat a majority of the lineup', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['majority-loss', 'single-loss', 'missing-threat'],
+        topThreats: ['majority-loss', 'single-loss', 'missing-threat'],
+        fullMetaThreats: ['majority-loss', 'single-loss', 'missing-threat'],
+        matchupRatings: {
+          bulky: { 'majority-loss': 550, 'single-loss': 450 },
+          balanced: { 'majority-loss': 450, 'single-loss': 550 },
+          closer: { 'majority-loss': 450, 'single-loss': 550 },
+        },
+      }),
+    );
+
+    expect(result.coveredThreats).toEqual(['majority-loss', 'single-loss']);
+    expect(result.weaknesses).toEqual(['majority-loss']);
+    expect(result.weaknesses).not.toContain('single-loss');
+    expect(result.weaknesses).not.toContain('missing-threat');
+  });
+
+  test('sorts lineup weaknesses by average matchup rating and caps the list', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const threats = [
+      'least-severe',
+      'sixth-severe',
+      'most-severe',
+      'third-severe',
+      'fourth-severe',
+      'second-severe',
+      'fifth-severe',
+      'not-majority-loss',
+    ];
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats,
+        topThreats: threats,
+        fullMetaThreats: threats,
+        matchupRatings: {
+          bulky: {
+            'least-severe': 490,
+            'sixth-severe': 430,
+            'most-severe': 300,
+            'third-severe': 360,
+            'fourth-severe': 390,
+            'second-severe': 330,
+            'fifth-severe': 410,
+            'not-majority-loss': 520,
+          },
+          balanced: {
+            'least-severe': 510,
+            'sixth-severe': 430,
+            'most-severe': 300,
+            'third-severe': 360,
+            'fourth-severe': 390,
+            'second-severe': 330,
+            'fifth-severe': 410,
+            'not-majority-loss': 520,
+          },
+          closer: {
+            'least-severe': 490,
+            'sixth-severe': 430,
+            'most-severe': 300,
+            'third-severe': 360,
+            'fourth-severe': 390,
+            'second-severe': 330,
+            'fifth-severe': 410,
+            'not-majority-loss': 480,
+          },
+        },
+      }),
+    );
+
+    expect(result.weaknesses).toEqual([
+      'most-severe',
+      'second-severe',
+      'third-severe',
+      'fourth-severe',
+      'fifth-severe',
+    ]);
   });
 
   test('uses soft matchup quality for coverage scoring while retaining binary diagnostics', () => {
@@ -804,7 +896,7 @@ describe('scoreOrderedLineup', () => {
 
   test('bounds top-threat expected attack pools before defensive ratio scoring', () => {
     const topElectricThreats = Array.from(
-      { length: 30 },
+      { length: 50 },
       (_value, index) => `electric-top-${index}`,
     );
     const lineup: OrderedLineup = {

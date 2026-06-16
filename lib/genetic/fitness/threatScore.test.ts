@@ -137,6 +137,40 @@ describe('calculateOptimizerThreatScore', () => {
     ]);
   });
 
+  test('orders threats by their average matchup rating into the team before raw rank', () => {
+    const result = calculateOptimizerThreatScore(
+      ['alpha', 'bravo', 'charlie'],
+      createContext({
+        topThreats: ['rank-one-soft-loss', 'rank-fifty-hard-loss'],
+        fullMetaThreats: ['rank-one-soft-loss', 'rank-fifty-hard-loss'],
+        ranks: { 'rank-one-soft-loss': 1, 'rank-fifty-hard-loss': 50 },
+        ratings: {
+          alpha: {
+            'rank-one-soft-loss': 450,
+            'rank-fifty-hard-loss': 430,
+          },
+          bravo: {
+            'rank-one-soft-loss': 450,
+            'rank-fifty-hard-loss': 430,
+          },
+          charlie: {
+            'rank-one-soft-loss': 450,
+            'rank-fifty-hard-loss': 430,
+          },
+        },
+      }),
+    );
+
+    expect(result.topMetaThreats.map((entry) => entry.speciesId)).toEqual([
+      'rank-fifty-hard-loss',
+      'rank-one-soft-loss',
+    ]);
+    expect(result.overallTeamThreats.map((entry) => entry.speciesId)).toEqual([
+      'rank-fifty-hard-loss',
+      'rank-one-soft-loss',
+    ]);
+  });
+
   test('excludes threats with no matchup rows from evaluated count', () => {
     const result = calculateOptimizerThreatScore(
       ['alpha', 'bravo', 'charlie'],

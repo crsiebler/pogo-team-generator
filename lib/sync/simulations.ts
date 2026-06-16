@@ -510,6 +510,14 @@ export function generateScenarioCsvFromEngine(
 
       const cup = gm.getCupById(globalThis.__cup);
       const battle = new Battle();
+      battle.setCP(globalThis.__leagueCp);
+
+      if (cup.name != "custom") {
+        battle.setCup(cup.name);
+      } else {
+        battle.setCustomCup(cup);
+      }
+
       const ranker = RankerMaster.getInstance();
 
       const settingsA = getDefaultMultiBattleSettings();
@@ -523,7 +531,14 @@ export function generateScenarioCsvFromEngine(
       ranker.setTargets([]);
       ranker.setRecommendMoveUsage(true);
 
-      const selectedPokemon = new Pokemon(globalThis.__speciesId, 0, battle);
+      const eligiblePokemon = gm.generateFilteredPokemonList(
+        battle,
+        cup.include,
+        cup.exclude
+      );
+      const selectedPokemon =
+        eligiblePokemon.find((pokemon) => pokemon.speciesId === globalThis.__speciesId) ||
+        new Pokemon(globalThis.__speciesId, 0, battle);
       selectedPokemon.initialize(globalThis.__leagueCp);
       selectedPokemon.selectRecommendedMoveset('overall');
 

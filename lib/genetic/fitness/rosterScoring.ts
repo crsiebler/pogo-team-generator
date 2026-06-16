@@ -28,7 +28,7 @@ import type {
 const DEFAULT_VIABLE_LINEUP_SCORE = 0.55;
 const DEFAULT_TOP_LINEUP_DEPTH = 5;
 const PLAY_POKEMON_ORDERED_LINEUP_COUNT = 120;
-const MAX_TOP_THREAT_POOL_SIZE = 30;
+const MAX_TOP_THREAT_POOL_SIZE = 50;
 const MAX_FULL_META_THREAT_POOL_SIZE = 100;
 const unavailableConsistencyRankingContexts =
   new WeakSet<PlayPokemonRosterScoringContext>();

@@ -96,7 +96,7 @@ export interface LineupAwareFitnessContext {
 export function createLineupAwareFitnessContext(
   formatId?: BattleFormatId,
 ): LineupAwareFitnessContext {
-  const scoringContext = createDefaultLineupScoringContext(formatId, 30);
+  const scoringContext = createDefaultLineupScoringContext(formatId, 50);
   const lineupScoreCache = new Map<string, LineupScoreResult>();
   const fastLineupScoreCache = new Map<string, LineupScoreResult>();
   let lineupCacheHits = 0;

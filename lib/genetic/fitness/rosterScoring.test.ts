@@ -279,11 +279,11 @@ describe('scorePlayPokemonRoster', () => {
     );
 
     expect(result.scoreBreakdown.threatScore?.score).toBeCloseTo(
-      0.2833333333333334,
+      0.5666666666666667,
     );
     expect(result.scoreBreakdown.threatScore?.pools).toEqual({
       topMeta: {
-        score: expect.closeTo(0.33333333333333337),
+        score: expect.closeTo(0.6666666666666667),
         evaluatedCount: 1,
         weight: 0.85,
       },
@@ -1652,6 +1652,26 @@ describe('scorePlayPokemonRoster', () => {
       'electric-ground-a',
       'water-electric-a',
       'grass-electric-a',
+      'ground-electric-a',
+      'threat-water',
+      'threat-flying',
+      'threat-ground',
+      'threat-ground-a',
+      'threat-ground-b',
+      'threat-electric',
+      'consistent-a',
+      'consistent-b',
+      'consistent-c',
+      'volatile-a',
+      'volatile-b',
+      'volatile-c',
+      'stable-a',
+      'stable-b',
+      'stable-c',
+      'bait-a',
+      'bait-b',
+      'bait-c',
+      'bulky-a',
     ];
     const context = createTypeCoverageContext({
       threats: ['threat-steel-fairy'],
