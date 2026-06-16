@@ -90,8 +90,9 @@ const ROLE_RANKING_BY_LINEUP_ROLE: Record<
   closer: 'closers',
 };
 
-const MAX_TOP_THREAT_POOL_SIZE = 30;
+const MAX_TOP_THREAT_POOL_SIZE = 50;
 const MAX_FULL_META_THREAT_POOL_SIZE = 100;
+const MAX_RECOMMENDED_LINEUP_WEAKNESSES = 5;
 const MATCHUP_WIN_THRESHOLD = 500;
 const MATCHUP_LOSS_THRESHOLD = 500;
 
@@ -170,7 +171,7 @@ export function createDefaultLineupScoringContext(
   );
   const fullMetaThreats = getTopThreatsByRole(boundedThreatCount, formatId);
   const topThreats = getTopThreatsByRole(
-    clampInteger(threatCount, 0, 10),
+    clampInteger(threatCount, 0, MAX_TOP_THREAT_POOL_SIZE),
     formatId,
   );
 
@@ -252,7 +253,7 @@ export function scoreOrderedLineup(
       coverage.evaluatedThreatCount,
     ),
     coreBreakerReliability: calculateCoreBreakerReliability(
-      coverage.weaknesses.length,
+      coverage.noAnswerThreatCount,
       coverage.evaluatedThreatCount,
     ),
     shieldReliability: calculateShieldReliability(speciesIds, context),
@@ -673,6 +674,7 @@ interface LineupCoverageResult extends Pick<
   'coverageMetrics' | 'coveredThreats' | 'weaknesses' | 'singleAnswerRisks'
 > {
   evaluatedThreatCount: number;
+  noAnswerThreatCount: number;
   weightedPoolCoverage: number;
 }
 
@@ -704,10 +706,14 @@ function calculateCoverage(
     ...fullMetaThreats,
   ]);
   const coveredThreats: string[] = [];
-  const weaknesses: string[] = [];
+  const weaknessCandidates: Array<{
+    threat: string;
+    averageMatchupRating: number;
+  }> = [];
   const singleAnswerRisks: string[] = [];
   let dominatingMatchupCount = 0;
   let evaluatedThreatCount = 0;
+  let noAnswerThreatCount = 0;
   let overwhelmingLossCount = 0;
 
   const topThreatCoverageResult = calculateThreatPoolCoverage(
@@ -734,10 +740,18 @@ function calculateCoverage(
     overwhelmingLossCount += ratings.filter((rating) => rating < 400).length;
 
     const winningRatings = ratings.filter((rating) => rating > 500);
+    const losingRatings = ratings.filter((rating) => rating < 500);
     if (winningRatings.length > 0) {
       coveredThreats.push(threat);
     } else {
-      weaknesses.push(threat);
+      noAnswerThreatCount++;
+    }
+
+    if (losingRatings.length > ratings.length / 2) {
+      weaknessCandidates.push({
+        threat,
+        averageMatchupRating: average(ratings),
+      });
     }
 
     if (winningRatings.length === 1) {
@@ -760,9 +774,17 @@ function calculateCoverage(
   return {
     coverageMetrics,
     coveredThreats,
-    weaknesses,
+    weaknesses: weaknessCandidates
+      .toSorted(
+        (first, second) =>
+          first.averageMatchupRating - second.averageMatchupRating ||
+          first.threat.localeCompare(second.threat),
+      )
+      .slice(0, MAX_RECOMMENDED_LINEUP_WEAKNESSES)
+      .map((entry) => entry.threat),
     singleAnswerRisks,
     evaluatedThreatCount,
+    noAnswerThreatCount,
     weightedPoolCoverage: calculateWeightedPoolCoverage(
       coverageMetrics,
       topThreatCoverageResult,

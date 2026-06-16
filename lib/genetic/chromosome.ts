@@ -19,6 +19,7 @@ import {
 import { calculateEffectiveness } from '../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../types';
 import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
+import { getMegaMasterTeamLegality } from '@/lib/data/megaMasterRules';
 
 export interface AnchorFirstPopulationOptions {
   anchorPokemon?: string[];
@@ -39,6 +40,10 @@ function shouldEnforceBattleFrontierMasterLegality(
   return formatId === 'battle-frontier-master';
 }
 
+function shouldEnforceMegaMasterLegality(formatId?: BattleFormatId): boolean {
+  return formatId === 'mega-master-league';
+}
+
 function isLegalBattleFrontierMasterCandidate(
   currentTeam: string[],
   candidateSpeciesId: string,
@@ -49,6 +54,16 @@ function isLegalBattleFrontierMasterCandidate(
     ...partialTeam,
     candidateSpeciesId,
   ]).isLegal;
+}
+
+function isLegalMegaMasterCandidate(
+  currentTeam: string[],
+  candidateSpeciesId: string,
+): boolean {
+  const partialTeam = currentTeam.filter(Boolean);
+
+  return getMegaMasterTeamLegality([...partialTeam, candidateSpeciesId])
+    .isLegal;
 }
 
 /**
@@ -135,6 +150,7 @@ export function createRandomChromosome(
 ): Chromosome {
   const enforceBattleFrontierMasterLegality =
     shouldEnforceBattleFrontierMasterLegality(formatId);
+  const enforceMegaMasterLegality = shouldEnforceMegaMasterLegality(formatId);
   const team: string[] = Array(teamSize).fill('');
   const anchors: number[] = [];
   const usedDexNumbers = new Set<number>();
@@ -194,6 +210,14 @@ export function createRandomChromosome(
       if (
         enforceBattleFrontierMasterLegality &&
         !isLegalBattleFrontierMasterCandidate(team, candidateSpecies)
+      ) {
+        attempts++;
+        continue;
+      }
+
+      if (
+        enforceMegaMasterLegality &&
+        !isLegalMegaMasterCandidate(team, candidateSpecies)
       ) {
         attempts++;
         continue;
@@ -403,34 +427,40 @@ export function createRandomChromosome(
 
     // If no good candidate found, fall back to random unique selection
     if (!selectedSpecies) {
-      let fallbackAttempts = 0;
-
-      while (!selectedSpecies) {
-        const candidate =
-          pokemonPool[Math.floor(Math.random() * pokemonPool.length)];
+      const fallbackCandidates = pokemonPool.filter((candidate) => {
         const candidateDex = getDexNumber(candidate);
-        fallbackAttempts++;
-
-        if (fallbackAttempts > 1000) {
-          throw new Error(
-            `Failed to find unique Pokemon after 1000 attempts. Pool size: ${pokemonPool.length}, Used: ${usedDexNumbers.size}`,
-          );
-        }
 
         if (!candidateDex || usedDexNumbers.has(candidateDex)) {
-          continue;
+          return false;
         }
 
-        // Only assign once we've confirmed it's valid
         if (
           enforceBattleFrontierMasterLegality &&
           !isLegalBattleFrontierMasterCandidate(team, candidate)
         ) {
-          continue;
+          return false;
         }
 
-        selectedSpecies = candidate;
+        if (
+          enforceMegaMasterLegality &&
+          !isLegalMegaMasterCandidate(team, candidate)
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+
+      if (fallbackCandidates.length === 0) {
+        throw new Error(
+          `Failed to find a legal unique Pokemon. Pool size: ${pokemonPool.length}, Used: ${usedDexNumbers.size}`,
+        );
       }
+
+      selectedSpecies =
+        fallbackCandidates[
+          Math.floor(Math.random() * fallbackCandidates.length)
+        ];
     }
 
     // At this point selectedSpecies is guaranteed to be non-null
@@ -476,6 +506,16 @@ export function createRandomChromosome(
     if (!legality.isLegal) {
       throw new Error(
         `Failed to create a legal Battle Frontier Master team: ${legality.violations.join(', ')}`,
+      );
+    }
+  }
+
+  if (enforceMegaMasterLegality) {
+    const legality = getMegaMasterTeamLegality(team);
+
+    if (!legality.isLegal) {
+      throw new Error(
+        `Failed to create a legal Mega Master League team: ${legality.violations.join(', ')}`,
       );
     }
   }
@@ -628,6 +668,13 @@ function isValidAnchorFirstSeed(
   if (
     shouldEnforceBattleFrontierMasterLegality(formatId) &&
     !getBattleFrontierMasterTeamLegality([...team]).isLegal
+  ) {
+    return false;
+  }
+
+  if (
+    shouldEnforceMegaMasterLegality(formatId) &&
+    !getMegaMasterTeamLegality(team).isLegal
   ) {
     return false;
   }

@@ -541,7 +541,10 @@ export function getTopRankedPokemonNames(
 export function getAutomaticCandidatePokemonNames(
   formatId?: BattleFormatId,
 ): Set<string> {
-  const bands = getCandidateRankingBands(formatId).bands;
+  const bands = getCandidateRankingBands(
+    formatId,
+    formatId === 'mega-master-league' ? { minCandidates: 40 } : undefined,
+  ).bands;
 
   return new Set(
     [

@@ -29,9 +29,13 @@ describe('generateSimulations', () => {
           },
           loadRankingData: () => undefined,
           getCupById: (cup: string) => ({ name: cup }),
+          generateFilteredPokemonList: () => [],
         }),
       },
       Battle: function Battle(this: Record<string, unknown>) {
+        this.setCP = () => undefined;
+        this.setCup = () => undefined;
+        this.setCustomCup = () => undefined;
         return this;
       },
       RankerMaster: {
@@ -102,6 +106,86 @@ describe('generateSimulations', () => {
     expect(csvText).toContain('Decidueye ASTONISH/FRENZY_PLANT/SPIRIT_SHACKLE');
   });
 
+  it('initializes the selected Pokemon after setting the battle CP', () => {
+    let selectedBattleCpDuringInitialize: unknown;
+
+    const context = vm.createContext({
+      __flushPvpokeAjax: () => undefined,
+      GameMaster: {
+        getInstance: () => ({
+          rankings: {
+            megaoverall10000: [
+              {
+                speciesId: 'kyogre_primal',
+                moveset: ['WATERFALL', 'ORIGIN_PULSE', 'THUNDER'],
+              },
+            ],
+          },
+          loadRankingData: () => undefined,
+          getCupById: (cup: string) => ({ name: cup }),
+          generateFilteredPokemonList: () => [],
+        }),
+      },
+      Battle: function Battle(this: Record<string, unknown>) {
+        let cp = 1500;
+
+        this.setCP = (newCp: number) => {
+          cp = newCp;
+        };
+        this.getCP = () => cp;
+        this.setCup = () => undefined;
+        this.setCustomCup = () => undefined;
+        return this;
+      },
+      RankerMaster: {
+        getInstance: () => ({
+          applySettings: () => undefined,
+          setShieldMode: () => undefined,
+          setTargets: () => undefined,
+          setRecommendMoveUsage: () => undefined,
+          rank: () => ({
+            csv: 'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nKyogre (Primal),500,0,0\n',
+          }),
+        }),
+      },
+      getDefaultMultiBattleSettings: () => ({ shields: 0 }),
+      Pokemon: function Pokemon(
+        this: Record<string, unknown>,
+        speciesId: string,
+        index: number,
+        battle: { getCP: () => number },
+      ) {
+        void speciesId;
+        void index;
+        this.initialize = () => {
+          selectedBattleCpDuringInitialize = battle.getCP();
+        };
+        this.selectRecommendedMoveset = () => undefined;
+        this.selectMove = () => undefined;
+        this.resetMoves = () => undefined;
+      },
+    });
+
+    generateScenarioCsvFromEngine(
+      { context },
+      {
+        id: 'mega-master-league',
+        label: 'Mega Master League',
+        cup: 'mega',
+        cp: 10000,
+      },
+      'kyogre_primal',
+      1,
+      {
+        fastMove: 'WATERFALL',
+        chargedMove1: 'ORIGIN_PULSE',
+        chargedMove2: 'THUNDER',
+      },
+    );
+
+    expect(selectedBattleCpDuringInitialize).toBe(10000);
+  });
+
   it('generates simulations for every supported format and scenario', async () => {
     const generatedCalls: Array<{
       cup:
@@ -109,7 +193,9 @@ describe('generateSimulations', () => {
         | 'naic2026'
         | 'bayou'
         | 'spellcraft'
+        | 'sunshine'
         | 'bfretro'
+        | 'mega'
         | 'battlefrontiermaster';
       cp: 1500 | 2500 | 10000;
       speciesId: string;
@@ -160,7 +246,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(24);
+    expect(generatedCalls).toHaveLength(30);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -176,6 +262,18 @@ describe('generateSimulations', () => {
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 10000,
+      speciesId: 'bulbasaur',
+      shields: 2,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'mega',
+      cp: 10000,
+      speciesId: 'bulbasaur',
+      shields: 1,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'sunshine',
+      cp: 1500,
       speciesId: 'bulbasaur',
       shields: 2,
     });
@@ -220,6 +318,20 @@ describe('generateSimulations', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp10000', 'all', 'bulbasaur_0-0.csv'),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'simulations', 'cp10000', 'mega', 'bulbasaur_1-1.csv'),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp1500',
+        'sunshine',
+        'bulbasaur_2-2.csv',
+      ),
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(

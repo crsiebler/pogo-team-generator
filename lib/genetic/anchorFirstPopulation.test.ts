@@ -553,4 +553,37 @@ describe('initializeAnchorFirstPopulation', () => {
       ['mewtwo', 'dragonite', 'swampert_mega'],
     ]);
   });
+
+  it('rejects illegal Mega Master anchor-first seeds before random fill', () => {
+    const swampertMega = profile('swampert_mega', 'eliteAnchors', {
+      rank: 1,
+      score: 98,
+    });
+    const galladeMega = profile('gallade_mega', 'normalCompanions', {
+      rank: 2,
+      score: 96,
+    });
+    const dragonite = profile('dragonite', 'normalCompanions', {
+      rank: 3,
+      score: 95,
+    });
+
+    const population = initializeAnchorFirstPopulation(
+      1,
+      ['swampert_mega', 'gallade_mega', 'dragonite'],
+      3,
+      {
+        candidateProfiles: [swampertMega, galladeMega, dragonite],
+        formatId: 'mega-master-league',
+        randomPopulation: [
+          randomTeam(['swampert_mega', 'mewtwo', 'dragonite']),
+        ],
+        rankPairs: (anchor) => [pair(anchor, galladeMega, 0.9)],
+      },
+    );
+
+    expect(population.map((chromosome) => chromosome.team)).toEqual([
+      ['swampert_mega', 'mewtwo', 'dragonite'],
+    ]);
+  });
 });

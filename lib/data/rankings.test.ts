@@ -1,7 +1,8 @@
-import { speciesNameToChoosableId } from './pokemon';
+import { getRankedPokemonForFormat, speciesNameToChoosableId } from './pokemon';
 import {
   getAllRankingsForPokemon,
   getAttackersRankings,
+  getAutomaticCandidatePokemonNames,
   getChargersRankings,
   getClosersRankings,
   getConsistencyRankings,
@@ -39,6 +40,8 @@ describe('format-aware rankings loading', () => {
     const greatLeagueRankings = getOverallRankings('great-league');
     const ultraLeagueRankings = getOverallRankings('ultra-league');
     const masterLeagueRankings = getOverallRankings('master-league');
+    const megaMasterLeagueRankings = getOverallRankings('mega-master-league');
+    const sunshineCupRankings = getOverallRankings('sunshine-cup');
     const naic2026CupRankings = getOverallRankings(
       'naic-2026-championship-cup',
     );
@@ -54,6 +57,8 @@ describe('format-aware rankings loading', () => {
     expect(greatLeagueRankings.length).toBeGreaterThan(0);
     expect(ultraLeagueRankings.length).toBeGreaterThan(0);
     expect(masterLeagueRankings.length).toBeGreaterThan(0);
+    expect(megaMasterLeagueRankings.length).toBeGreaterThan(0);
+    expect(sunshineCupRankings.length).toBeGreaterThan(0);
     expect(naic2026CupRankings.length).toBeGreaterThan(0);
     expect(bayouCupRankings.length).toBeGreaterThan(0);
     expect(spellcraftCupRankings.length).toBeGreaterThan(0);
@@ -83,6 +88,22 @@ describe('format-aware rankings loading', () => {
     expect(
       getChargersRankings('battle-frontier-bayou-cup').length,
     ).toBeGreaterThan(0);
+  });
+
+  it('includes enough non-Mega automatic candidates for legal Mega Master teams', () => {
+    const candidateNames =
+      getAutomaticCandidatePokemonNames('mega-master-league');
+    const candidates = getRankedPokemonForFormat(
+      candidateNames,
+      'mega-master-league',
+    );
+    const nonMegaDexNumbers = new Set(
+      candidates
+        .filter((pokemon) => !pokemon.tags?.includes('mega'))
+        .map((pokemon) => pokemon.dex),
+    );
+
+    expect(nonMegaDexNumbers.size).toBeGreaterThanOrEqual(5);
   });
 
   it('exposes all category scores in the aggregate ranking contract', () => {

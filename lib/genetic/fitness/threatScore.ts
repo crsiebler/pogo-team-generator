@@ -159,8 +159,9 @@ function calculateThreatEntries(
       (total, rating) => total + scoreMatchupRating(rating),
       0,
     );
+    const averageTeamRating = average(ratings);
     const rank = Math.max(1, context.getThreatRank(threatSpeciesId));
-    const threatValue = calculateThreatValue(answerQuality, rank);
+    const threatValue = calculateThreatValue(answerQuality, averageTeamRating);
 
     return [
       {
@@ -175,12 +176,21 @@ function calculateThreatEntries(
   });
 }
 
-function calculateThreatValue(answerQuality: number, rank: number): number {
+function calculateThreatValue(
+  answerQuality: number,
+  averageTeamRating: number,
+): number {
   const answerRisk =
     answerQuality >= 2.25 ? 0 : clamp01(1 - answerQuality / 2.25);
-  const rankWeight = rank <= 10 ? 1 : rank <= 30 ? 0.75 : 0.5;
+  const averageMatchupRisk = clamp01((500 - averageTeamRating) / 75);
 
-  return clamp01(answerRisk * rankWeight);
+  return clamp01(Math.max(answerRisk, averageMatchupRisk));
+}
+
+function average(values: number[]): number {
+  return values.length > 0
+    ? values.reduce((sum, value) => sum + value, 0) / values.length
+    : 0;
 }
 
 function calculatePoolThreatScore(

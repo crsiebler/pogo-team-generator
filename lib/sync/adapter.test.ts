@@ -33,8 +33,14 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'spellcraft')).toBe(
       '/source/pvpoke/src/data/rankings/spellcraft/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 1500, 'sunshine')).toBe(
+      '/source/pvpoke/src/data/rankings/sunshine/overall/rankings-1500.json',
+    );
     expect(adapter.getRankingFilePath('overall', 2500, 'bfretro')).toBe(
       '/source/pvpoke/src/data/rankings/bfretro/overall/rankings-2500.json',
+    );
+    expect(adapter.getRankingFilePath('overall', 10000, 'mega')).toBe(
+      '/source/pvpoke/src/data/rankings/mega/overall/rankings-10000.json',
     );
     expect(
       adapter.getRankingFilePath('overall', 10000, 'battlefrontiermaster'),
@@ -138,6 +144,54 @@ describe('createPvpokeAdapter', () => {
     >('overall', 1500, 'naic2026');
 
     expect(rankings).toEqual([{ speciesName: 'Dewgong' }]);
+  });
+
+  it('reads Sunshine Cup rankings JSON files', async () => {
+    const sourcePath = '/source/pvpoke';
+    const rankingRelativePath =
+      'src/data/rankings/sunshine/overall/rankings-1500.json';
+    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== rankingAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesName":"Pidgeot"}]';
+      },
+    });
+
+    const rankings = await adapter.readRankingJson<
+      Array<{ speciesName: string }>
+    >('overall', 1500, 'sunshine');
+
+    expect(rankings).toEqual([{ speciesName: 'Pidgeot' }]);
+  });
+
+  it('reads Mega Master League rankings JSON files', async () => {
+    const sourcePath = '/source/pvpoke';
+    const rankingRelativePath =
+      'src/data/rankings/mega/overall/rankings-10000.json';
+    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== rankingAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesName":"Rayquaza (Mega)"}]';
+      },
+    });
+
+    const rankings = await adapter.readRankingJson<
+      Array<{ speciesName: string }>
+    >('overall', 10000, 'mega');
+
+    expect(rankings).toEqual([{ speciesName: 'Rayquaza (Mega)' }]);
   });
 
   it('reads gamemaster JSON via stable adapter methods', async () => {
