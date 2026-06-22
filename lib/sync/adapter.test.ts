@@ -24,28 +24,23 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/overall/rankings-1500.json',
     );
-    expect(adapter.getRankingFilePath('overall', 1500, 'naic2026')).toBe(
-      '/source/pvpoke/src/data/rankings/naic2026/overall/rankings-1500.json',
-    );
-    expect(adapter.getRankingFilePath('overall', 1500, 'bayou')).toBe(
-      '/source/pvpoke/src/data/rankings/bayou/overall/rankings-1500.json',
-    );
-    expect(adapter.getRankingFilePath('overall', 1500, 'spellcraft')).toBe(
-      '/source/pvpoke/src/data/rankings/spellcraft/overall/rankings-1500.json',
-    );
     expect(adapter.getRankingFilePath('overall', 1500, 'sunshine')).toBe(
       '/source/pvpoke/src/data/rankings/sunshine/overall/rankings-1500.json',
     );
-    expect(adapter.getRankingFilePath('overall', 2500, 'bfretro')).toBe(
-      '/source/pvpoke/src/data/rankings/bfretro/overall/rankings-2500.json',
+    expect(adapter.getRankingFilePath('overall', 1500, 'copadiluvio')).toBe(
+      '/source/pvpoke/src/data/rankings/copadiluvio/overall/rankings-1500.json',
+    );
+    expect(adapter.getRankingFilePath('overall', 1500, 'tsuki')).toBe(
+      '/source/pvpoke/src/data/rankings/tsuki/overall/rankings-1500.json',
+    );
+    expect(adapter.getRankingFilePath('overall', 2500, 'ligaultra')).toBe(
+      '/source/pvpoke/src/data/rankings/ligaultra/overall/rankings-2500.json',
     );
     expect(adapter.getRankingFilePath('overall', 10000, 'mega')).toBe(
       '/source/pvpoke/src/data/rankings/mega/overall/rankings-10000.json',
     );
-    expect(
-      adapter.getRankingFilePath('overall', 10000, 'battlefrontiermaster'),
-    ).toBe(
-      '/source/pvpoke/src/data/rankings/battlefrontiermaster/overall/rankings-10000.json',
+    expect(adapter.getRankingFilePath('overall', 10000, 'coupedusillage')).toBe(
+      '/source/pvpoke/src/data/rankings/coupedusillage/overall/rankings-10000.json',
     );
     expect(adapter.getRankingFilePath('chargers', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/chargers/rankings-1500.json',
@@ -84,7 +79,7 @@ describe('createPvpokeAdapter', () => {
   it('reads cup-specific rankings JSON files', async () => {
     const sourcePath = '/source/pvpoke';
     const rankingRelativePath =
-      'src/data/rankings/bayou/overall/rankings-1500.json';
+      'src/data/rankings/tsuki/overall/rankings-1500.json';
     const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
     const adapter = createPvpokeAdapter({
       sourcePath,
@@ -100,7 +95,7 @@ describe('createPvpokeAdapter', () => {
 
     const rankings = await adapter.readRankingJson<
       Array<{ speciesName: string }>
-    >('overall', 1500, 'bayou');
+    >('overall', 1500, 'tsuki');
 
     expect(rankings).toEqual([{ speciesName: 'Wigglytuff' }]);
   });
@@ -120,30 +115,25 @@ describe('createPvpokeAdapter', () => {
     expect(() =>
       adapter.getRankingFilePath('overall', 1500, 'jungle' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: jungle');
-  });
-
-  it('reads NAIC 2026 Championship Series Cup rankings JSON files', async () => {
-    const sourcePath = '/source/pvpoke';
-    const rankingRelativePath =
-      'src/data/rankings/naic2026/overall/rankings-1500.json';
-    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
-    const adapter = createPvpokeAdapter({
-      sourcePath,
-      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
-      readFile: async (filePath: string) => {
-        if (filePath !== rankingAbsolutePath) {
-          throw new Error('unexpected path read');
-        }
-
-        return '[{"speciesName":"Dewgong"}]';
-      },
-    });
-
-    const rankings = await adapter.readRankingJson<
-      Array<{ speciesName: string }>
-    >('overall', 1500, 'naic2026');
-
-    expect(rankings).toEqual([{ speciesName: 'Dewgong' }]);
+    expect(() =>
+      adapter.getRankingFilePath('overall', 1500, 'naic2026' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: naic2026');
+    expect(() =>
+      adapter.getRankingFilePath('overall', 1500, 'bayou' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: bayou');
+    expect(() =>
+      adapter.getRankingFilePath('overall', 1500, 'spellcraft' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: spellcraft');
+    expect(() =>
+      adapter.getRankingFilePath('overall', 2500, 'bfretro' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: bfretro');
+    expect(() =>
+      adapter.getRankingFilePath(
+        'overall',
+        10000,
+        'battlefrontiermaster' as never,
+      ),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: battlefrontiermaster');
   });
 
   it('reads Sunshine Cup rankings JSON files', async () => {
@@ -168,6 +158,30 @@ describe('createPvpokeAdapter', () => {
     >('overall', 1500, 'sunshine');
 
     expect(rankings).toEqual([{ speciesName: 'Pidgeot' }]);
+  });
+
+  it('reads new Battle Frontier rankings JSON files', async () => {
+    const sourcePath = '/source/pvpoke';
+    const rankingRelativePath =
+      'src/data/rankings/copadiluvio/overall/rankings-1500.json';
+    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== rankingAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesName":"Mantine"}]';
+      },
+    });
+
+    const rankings = await adapter.readRankingJson<
+      Array<{ speciesName: string }>
+    >('overall', 1500, 'copadiluvio');
+
+    expect(rankings).toEqual([{ speciesName: 'Mantine' }]);
   });
 
   it('reads Mega Master League rankings JSON files', async () => {

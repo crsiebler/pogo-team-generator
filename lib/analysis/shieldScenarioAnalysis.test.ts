@@ -130,14 +130,14 @@ describe('buildShieldScenarioAnalysis', () => {
     buildShieldScenarioAnalysis(
       ['lanturn'],
       threats,
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
 
     expect(getShieldScenarioMatchupResultMock).toHaveBeenCalledWith(
       'lanturn',
       'threat-1',
       0,
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
   });
 

@@ -12,7 +12,7 @@ describe('getRecommendedMovesetForPokemon', () => {
       getRecommendedMovesetForPokemon(decidueye!, 'great-league').fastMove,
     ).toBe('LEAFAGE');
     expect(
-      getRecommendedMovesetForPokemon(decidueye!, 'battle-frontier-ul-retro')
+      getRecommendedMovesetForPokemon(decidueye!, 'battle-frontier-liga-ultra')
         .fastMove,
     ).toBe('ASTONISH');
   });

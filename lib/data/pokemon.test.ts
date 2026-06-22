@@ -40,7 +40,7 @@ describe('Battle Frontier bans', () => {
   it('filters banned species from ranked Battle Frontier Pokemon pools', () => {
     const rankedPokemon = getRankedPokemonForFormat(
       new Set(['Garchomp (Mega)', 'Hydreigon']),
-      'battle-frontier-master',
+      'battle-frontier-coupe-du-sillage',
     );
 
     expect(rankedPokemon.map((pokemon) => pokemon.speciesName)).toEqual([

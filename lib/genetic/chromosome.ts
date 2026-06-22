@@ -18,7 +18,6 @@ import {
 } from '@lib/data/simulations';
 import { calculateEffectiveness } from '../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../types';
-import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
 import { getMegaMasterTeamLegality } from '@/lib/data/megaMasterRules';
 
 export interface AnchorFirstPopulationOptions {
@@ -34,26 +33,8 @@ export interface AnchorFirstPopulationOptions {
 
 const ANCHOR_FIRST_RANDOM_FRACTION = 0.25;
 
-function shouldEnforceBattleFrontierMasterLegality(
-  formatId?: BattleFormatId,
-): boolean {
-  return formatId === 'battle-frontier-master';
-}
-
 function shouldEnforceMegaMasterLegality(formatId?: BattleFormatId): boolean {
   return formatId === 'mega-master-league';
-}
-
-function isLegalBattleFrontierMasterCandidate(
-  currentTeam: string[],
-  candidateSpeciesId: string,
-): boolean {
-  const partialTeam = currentTeam.filter(Boolean);
-
-  return getBattleFrontierMasterTeamLegality([
-    ...partialTeam,
-    candidateSpeciesId,
-  ]).isLegal;
 }
 
 function isLegalMegaMasterCandidate(
@@ -148,8 +129,6 @@ export function createRandomChromosome(
   anchorPokemon?: string[],
   formatId?: BattleFormatId,
 ): Chromosome {
-  const enforceBattleFrontierMasterLegality =
-    shouldEnforceBattleFrontierMasterLegality(formatId);
   const enforceMegaMasterLegality = shouldEnforceMegaMasterLegality(formatId);
   const team: string[] = Array(teamSize).fill('');
   const anchors: number[] = [];
@@ -203,14 +182,6 @@ export function createRandomChromosome(
       // Get candidate's types
       const candidatePokemon = getPokemonBySpeciesId(candidateSpecies);
       if (!candidatePokemon) {
-        attempts++;
-        continue;
-      }
-
-      if (
-        enforceBattleFrontierMasterLegality &&
-        !isLegalBattleFrontierMasterCandidate(team, candidateSpecies)
-      ) {
         attempts++;
         continue;
       }
@@ -435,13 +406,6 @@ export function createRandomChromosome(
         }
 
         if (
-          enforceBattleFrontierMasterLegality &&
-          !isLegalBattleFrontierMasterCandidate(team, candidate)
-        ) {
-          return false;
-        }
-
-        if (
           enforceMegaMasterLegality &&
           !isLegalMegaMasterCandidate(team, candidate)
         ) {
@@ -497,16 +461,6 @@ export function createRandomChromosome(
       } else {
         console.log(`✓ Anchor ${i} preserved: ${anchorPokemon[i]}`);
       }
-    }
-  }
-
-  if (enforceBattleFrontierMasterLegality) {
-    const legality = getBattleFrontierMasterTeamLegality(team);
-
-    if (!legality.isLegal) {
-      throw new Error(
-        `Failed to create a legal Battle Frontier Master team: ${legality.violations.join(', ')}`,
-      );
     }
   }
 
@@ -662,13 +616,6 @@ function isValidAnchorFirstSeed(
   formatId: BattleFormatId | undefined,
 ): boolean {
   if (!validateTeamUniqueness([...team])) {
-    return false;
-  }
-
-  if (
-    shouldEnforceBattleFrontierMasterLegality(formatId) &&
-    !getBattleFrontierMasterTeamLegality([...team]).isLegal
-  ) {
     return false;
   }
 

@@ -33,8 +33,16 @@ const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
   golisopodsh: 'golisopod',
 };
 
+const RANKING_MOVE_ALIASES: Record<string, string> = {
+  VISE_GRIP: 'VICE_GRIP',
+};
+
 function normalizeToChoosableSpeciesId(speciesId: string): string {
   return NON_CHOOSABLE_FORM_ALIASES[speciesId] ?? speciesId;
+}
+
+function normalizeRankingMoveId(moveId: string): string {
+  return RANKING_MOVE_ALIASES[moveId] ?? moveId;
 }
 
 function normalizeRankingSourceEntries(
@@ -103,7 +111,8 @@ function getMoveByIdOrThrow(
   moveById: Map<string, MovesData>,
   speciesId: string,
 ): MovesData {
-  const move = moveById.get(moveId);
+  const normalizedMoveId = normalizeRankingMoveId(moveId);
+  const move = moveById.get(normalizedMoveId);
   if (!move) {
     throw new Error(
       `[sync-rankings] Missing move '${moveId}' for '${speciesId}'`,

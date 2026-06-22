@@ -21,7 +21,6 @@ describe('TeamGenerator', () => {
         mode="GBL"
         pokemonList={['Marowak', 'Marowak (Shadow)', 'Azumarill']}
         selectedFormatId="great-league"
-        battleFrontierMasterPointsByPokemonName={{}}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
       />,
@@ -54,56 +53,12 @@ describe('TeamGenerator', () => {
     );
   });
 
-  it('shows live Battle Frontier Master anchor point usage and updates it immediately', async () => {
-    render(
-      <TeamGenerator
-        mode="GBL"
-        pokemonList={['Palkia (Origin)', 'Palkia (Shadow)', 'Hydreigon']}
-        selectedFormatId="battle-frontier-master"
-        battleFrontierMasterPointsByPokemonName={{
-          Hydreigon: 0,
-          'Palkia (Origin)': 5,
-          'Palkia (Shadow)': 2,
-        }}
-        onAnchorsChange={() => {}}
-        onExclusionsChange={() => {}}
-      />,
-    );
-
-    expect(screen.getByText('(0 / 11 points)')).toBeInTheDocument();
-
-    const firstAnchorInput = screen.getByPlaceholderText('Pokémon 1');
-    fireEvent.change(firstAnchorInput, {
-      target: { value: 'Palkia (Origin)' },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('(5 / 11 points)')).toBeInTheDocument();
-    });
-
-    const secondAnchorInput = screen.getByPlaceholderText('Pokémon 2');
-    fireEvent.change(secondAnchorInput, {
-      target: { value: 'Palkia (Shadow)' },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText('(7 / 11 points)')).toBeInTheDocument();
-    });
-
-    fireEvent.change(firstAnchorInput, { target: { value: '' } });
-
-    await waitFor(() => {
-      expect(screen.getByText('(2 / 11 points)')).toBeInTheDocument();
-    });
-  });
-
-  it('hides the Battle Frontier Master point usage meter for other formats', () => {
+  it('does not render Battle Frontier Master point usage copy', () => {
     render(
       <TeamGenerator
         mode="GBL"
         pokemonList={['Azumarill']}
         selectedFormatId="great-league"
-        battleFrontierMasterPointsByPokemonName={{ Azumarill: 0 }}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
       />,
@@ -118,7 +73,6 @@ describe('TeamGenerator', () => {
         mode="PlayPokemon"
         pokemonList={['Azumarill']}
         selectedFormatId="great-league"
-        battleFrontierMasterPointsByPokemonName={{}}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
       />,

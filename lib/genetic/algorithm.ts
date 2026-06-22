@@ -1,5 +1,4 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
-import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { buildCandidateProfiles } from '@lib/data/candidateProfiles';
 import { getMegaMasterTeamLegality } from '@lib/data/megaMasterRules';
 import { allMoves } from '@lib/data/moves';
@@ -261,16 +260,6 @@ export async function generateTeam(
       }
     }
     console.log('✅ All anchors verified in final team');
-  }
-
-  if (formatId === 'battle-frontier-master') {
-    const legality = getBattleFrontierMasterTeamLegality(bestOverall.team);
-
-    if (!legality.isLegal) {
-      throw new Error(
-        'Final Battle Frontier Master team is illegal. This should never happen.',
-      );
-    }
   }
 
   if (formatId === 'mega-master-league') {

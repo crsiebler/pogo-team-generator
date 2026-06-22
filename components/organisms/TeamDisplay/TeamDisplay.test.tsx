@@ -32,7 +32,7 @@ describe('TeamDisplay', () => {
       <TeamDisplay
         team={['decidueye']}
         mode="PlayPokemon"
-        formatId="battle-frontier-ul-retro"
+        formatId="battle-frontier-liga-ultra"
       />,
     );
 
@@ -50,11 +50,11 @@ describe('TeamDisplay', () => {
 
     expect(JSON.parse(options.body)).toEqual({
       team: ['decidueye'],
-      formatId: 'battle-frontier-ul-retro',
+      formatId: 'battle-frontier-liga-ultra',
     });
   });
 
-  it('shows Battle Frontier Master generated team point usage in the notes', async () => {
+  it('does not show Battle Frontier Master point usage in the notes', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -75,19 +75,15 @@ describe('TeamDisplay', () => {
       <TeamDisplay
         team={['charizard_mega_y', 'garchomp']}
         mode="PlayPokemon"
-        formatId="battle-frontier-master"
-        battleFrontierMasterPointsByPokemonName={{
-          'Charizard (Mega Y)': 4,
-          Garchomp: 0,
-        }}
+        formatId="battle-frontier-coupe-du-sillage"
       />,
     );
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Current Battle Frontier Master point usage:/i),
-      ).toBeInTheDocument();
-      expect(screen.getByText(/4\s*\/\s*11 points/i)).toBeInTheDocument();
+        screen.queryByText(/Current Battle Frontier Master point usage:/i),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/4\s*\/\s*11 points/i)).not.toBeInTheDocument();
     });
   });
 

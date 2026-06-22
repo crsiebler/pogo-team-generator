@@ -4,7 +4,6 @@ import {
   isBattleFrontierFormatId,
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
-import { getBattleFrontierMasterPointsForSpecies } from '@/lib/data/battleFrontierMasterRules';
 import {
   isBattleFrontierBannedSpeciesId,
   speciesNameToChoosableId,
@@ -42,26 +41,9 @@ export async function GET(request: Request) {
       },
     );
 
-    const battleFrontierMasterPointsByPokemonName =
-      formatId === 'battle-frontier-master'
-        ? Object.fromEntries(
-            pokemonNames.map((pokemonName) => {
-              const speciesId = speciesNameToChoosableId(pokemonName);
-
-              return [
-                pokemonName,
-                speciesId
-                  ? getBattleFrontierMasterPointsForSpecies(speciesId)
-                  : 0,
-              ];
-            }),
-          )
-        : undefined;
-
     return NextResponse.json({
       pokemon: pokemonNames,
       count: pokemonNames.length,
-      battleFrontierMasterPointsByPokemonName,
     });
   } catch (error) {
     console.error('Error fetching Pokémon list:', error);

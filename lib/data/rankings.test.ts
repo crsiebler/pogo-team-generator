@@ -42,16 +42,13 @@ describe('format-aware rankings loading', () => {
     const masterLeagueRankings = getOverallRankings('master-league');
     const megaMasterLeagueRankings = getOverallRankings('mega-master-league');
     const sunshineCupRankings = getOverallRankings('sunshine-cup');
-    const naic2026CupRankings = getOverallRankings(
-      'naic-2026-championship-cup',
+    const copaDiluvioRankings = getOverallRankings(
+      'battle-frontier-copa-diluvio',
     );
-    const bayouCupRankings = getOverallRankings('battle-frontier-bayou-cup');
-    const spellcraftCupRankings = getOverallRankings(
-      'battle-frontier-spellcraft-cup',
-    );
-    const ulRetroRankings = getOverallRankings('battle-frontier-ul-retro');
-    const battleFrontierMasterRankings = getOverallRankings(
-      'battle-frontier-master',
+    const tsukiCupRankings = getOverallRankings('battle-frontier-tsuki-cup');
+    const ligaUltraRankings = getOverallRankings('battle-frontier-liga-ultra');
+    const coupeDuSillageRankings = getOverallRankings(
+      'battle-frontier-coupe-du-sillage',
     );
 
     expect(greatLeagueRankings.length).toBeGreaterThan(0);
@@ -59,11 +56,10 @@ describe('format-aware rankings loading', () => {
     expect(masterLeagueRankings.length).toBeGreaterThan(0);
     expect(megaMasterLeagueRankings.length).toBeGreaterThan(0);
     expect(sunshineCupRankings.length).toBeGreaterThan(0);
-    expect(naic2026CupRankings.length).toBeGreaterThan(0);
-    expect(bayouCupRankings.length).toBeGreaterThan(0);
-    expect(spellcraftCupRankings.length).toBeGreaterThan(0);
-    expect(ulRetroRankings.length).toBeGreaterThan(0);
-    expect(battleFrontierMasterRankings.length).toBeGreaterThan(0);
+    expect(copaDiluvioRankings.length).toBeGreaterThan(0);
+    expect(tsukiCupRankings.length).toBeGreaterThan(0);
+    expect(ligaUltraRankings.length).toBeGreaterThan(0);
+    expect(coupeDuSillageRankings.length).toBeGreaterThan(0);
   });
 
   it('keeps Great League cache stable after loading other formats', () => {
@@ -86,7 +82,7 @@ describe('format-aware rankings loading', () => {
 
   it('loads documented category rankings for non-default formats', () => {
     expect(
-      getChargersRankings('battle-frontier-bayou-cup').length,
+      getChargersRankings('battle-frontier-copa-diluvio').length,
     ).toBeGreaterThan(0);
   });
 

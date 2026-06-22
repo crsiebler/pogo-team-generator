@@ -521,39 +521,6 @@ describe('initializeAnchorFirstPopulation', () => {
     ]);
   });
 
-  it('rejects illegal Battle Frontier Master anchor-first seeds before random fill', () => {
-    const palkia = profile('palkia_origin', 'eliteAnchors', {
-      rank: 1,
-      score: 98,
-    });
-    const eternatus = profile('eternatus', 'normalCompanions', {
-      rank: 2,
-      score: 96,
-    });
-    const swampertMega = profile('swampert_mega', 'normalCompanions', {
-      rank: 3,
-      score: 95,
-    });
-
-    const population = initializeAnchorFirstPopulation(
-      1,
-      ['palkia_origin', 'eternatus', 'swampert_mega'],
-      3,
-      {
-        candidateProfiles: [palkia, eternatus, swampertMega],
-        formatId: 'battle-frontier-master',
-        randomPopulation: [
-          randomTeam(['mewtwo', 'dragonite', 'swampert_mega']),
-        ],
-        rankPairs: (anchor) => [pair(anchor, eternatus, 0.9)],
-      },
-    );
-
-    expect(population.map((chromosome) => chromosome.team)).toEqual([
-      ['mewtwo', 'dragonite', 'swampert_mega'],
-    ]);
-  });
-
   it('rejects illegal Mega Master anchor-first seeds before random fill', () => {
     const swampertMega = profile('swampert_mega', 'eliteAnchors', {
       rank: 1,

@@ -129,13 +129,13 @@ describe('lineup-aware fitness entry point', () => {
   it('scores PlayPokemon chromosomes through fast roster scoring with cached lineup scoring', () => {
     const chromosome = createChromosome(['a', 'b', 'c', 'd', 'e', 'f']);
     const context = createLineupAwareFitnessContext(
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
 
     const fitness = calculateLineupAwareFitness(
       chromosome,
       'PlayPokemon',
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
       context,
     );
 
@@ -156,38 +156,40 @@ describe('lineup-aware fitness entry point', () => {
     const lineup = { lead: 'a', switch: 'b', closer: 'c' };
 
     expect(
-      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-bayou-cup'),
+      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-tsuki-cup'),
     ).toBe(
       getLineupAwareFitnessCacheKey(
         { lead: 'a', switch: 'b', closer: 'c' },
-        'battle-frontier-bayou-cup',
+        'battle-frontier-tsuki-cup',
       ),
     );
     expect(getLineupAwareFitnessCacheKey(lineup)).not.toBe(
-      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-bayou-cup'),
+      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-tsuki-cup'),
     );
     expect(
-      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-bayou-cup'),
-    ).not.toBe(getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-master'));
+      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-tsuki-cup'),
+    ).not.toBe(
+      getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-coupe-du-sillage'),
+    );
     expect(
       getLineupAwareFitnessCacheKey(
         { lead: 'a|b', switch: 'c', closer: 'd' },
-        'battle-frontier-bayou-cup',
+        'battle-frontier-tsuki-cup',
       ),
     ).not.toBe(
       getLineupAwareFitnessCacheKey(
         { lead: 'a', switch: 'b|c', closer: 'd' },
-        'battle-frontier-bayou-cup',
+        'battle-frontier-tsuki-cup',
       ),
     );
   });
 
   it('isolates lineup caches between generation contexts', () => {
     const firstContext = createLineupAwareFitnessContext(
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
     const secondContext = createLineupAwareFitnessContext(
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
     const lineup = { lead: 'a', switch: 'b', closer: 'c' };
 
@@ -225,7 +227,7 @@ describe('lineup-aware fitness entry point', () => {
       createChromosome(['g', 'h', 'i', 'j', 'k', 'l']),
     ];
 
-    evaluatePopulation(population, 'PlayPokemon', 'battle-frontier-bayou-cup');
+    evaluatePopulation(population, 'PlayPokemon', 'battle-frontier-tsuki-cup');
 
     expect(population.map((chromosome) => chromosome.fitness)).toEqual([
       0.91, 0.91,
