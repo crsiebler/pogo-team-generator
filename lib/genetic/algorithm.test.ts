@@ -1,13 +1,16 @@
 import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
-import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { buildCandidateProfiles } from '@lib/data/candidateProfiles';
 import { getMegaMasterTeamLegality } from '@lib/data/megaMasterRules';
-import { getRankedPokemonForFormat } from '@lib/data/pokemon';
+import {
+  getPokemonBySpeciesId,
+  getRankedPokemonForFormat,
+} from '@lib/data/pokemon';
 import {
   getAutomaticCandidatePokemonNames,
   getCandidateRankingBands,
   getConsistencyRankings,
   getOverallRankings,
+  getRankedPokemonNames,
   getRoleBasedThreatSpeciesIds,
   getSwitchesRankings,
   speciesIdToRankingName,
@@ -43,6 +46,7 @@ vi.mock('@lib/data/rankings', () => ({
   getCandidateRankingBands: vi.fn(),
   getConsistencyRankings: vi.fn(),
   getOverallRankings: vi.fn(),
+  getRankedPokemonNames: vi.fn(),
   getRoleBasedThreatSpeciesIds: vi.fn(),
   getSwitchesRankings: vi.fn(),
   speciesIdToRankingName: vi.fn((speciesId: string) => speciesId),
@@ -54,11 +58,8 @@ vi.mock('@lib/data/candidateProfiles', () => ({
 }));
 
 vi.mock('@lib/data/pokemon', () => ({
+  getPokemonBySpeciesId: vi.fn(),
   getRankedPokemonForFormat: vi.fn(),
-}));
-
-vi.mock('@lib/data/battleFrontierMasterRules', () => ({
-  getBattleFrontierMasterTeamLegality: vi.fn(),
 }));
 
 vi.mock('@lib/data/megaMasterRules', () => ({
@@ -95,8 +96,12 @@ vi.mock('./operators', () => ({
 }));
 
 function createPokemon(speciesId: string, speciesName: string): Pokemon {
+  const dex = speciesId
+    .split('')
+    .reduce((total, character) => total + character.charCodeAt(0), 0);
+
   return {
-    dex: 0,
+    dex,
     speciesId,
     speciesName,
     baseStats: { atk: 0, def: 0, hp: 0 },
@@ -238,17 +243,18 @@ describe('generateTeam format-aware candidate selection', () => {
       scoreCutoffs: [],
     });
     vi.mocked(getOverallRankings).mockReturnValue([]);
+    vi.mocked(getRankedPokemonNames).mockReturnValue(new Set());
     vi.mocked(getSwitchesRankings).mockReturnValue([]);
     vi.mocked(getConsistencyRankings).mockReturnValue([]);
+    vi.mocked(getPokemonBySpeciesId).mockImplementation((speciesId) =>
+      createPokemon(speciesId, speciesId),
+    );
     vi.mocked(buildCandidateProfiles).mockReturnValue([]);
-    vi.mocked(getBattleFrontierMasterTeamLegality).mockReturnValue({
+    vi.mocked(getMegaMasterTeamLegality).mockReturnValue({
       isLegal: true,
-      totalPoints: 0,
-      fivePointPokemonCount: 0,
       megaCount: 0,
       violations: [],
     });
-
     const initialPopulation = [
       createChromosomeWithTeam(['mew', 'mewtwo', 'dragonite']),
     ];
@@ -272,20 +278,20 @@ describe('generateTeam format-aware candidate selection', () => {
 
     await generateTeam({
       mode: 'GBL',
-      formatId: 'battle-frontier-bayou-cup',
+      formatId: 'battle-frontier-tsuki-cup',
       populationSize: 1,
       generations: 0,
     });
 
     expect(getAutomaticCandidatePokemonNames).toHaveBeenCalledWith(
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
     expect(getRankedPokemonForFormat).toHaveBeenCalledWith(
       rankedNames,
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
     expect(ensureSimulationDataAvailable).toHaveBeenCalledWith(
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
     expect(buildCandidateProfiles).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -304,13 +310,13 @@ describe('generateTeam format-aware candidate selection', () => {
       3,
       expect.objectContaining({
         anchorPokemon: [],
-        formatId: 'battle-frontier-bayou-cup',
+        formatId: 'battle-frontier-tsuki-cup',
       }),
     );
     expect(evaluatePopulation).toHaveBeenCalledWith(
       expect.any(Array),
       'GBL',
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
       expect.objectContaining({
         scoringContext: { threats: ['azumarill'] },
       }),
@@ -623,6 +629,87 @@ describe('generateTeam format-aware candidate selection', () => {
     );
   });
 
+  it('expands PlayPokemon generation to the full ranked pool when bans leave automatic candidates unable to fill a legal team', async () => {
+    const automaticNames = new Set<string>([
+      'Kyogre',
+      'Lugia',
+      'Necrozma (Dusk Mane)',
+      'Blastoise (Mega)',
+      'Dragonite',
+    ]);
+    const fullRankedNames = new Set<string>([
+      ...automaticNames,
+      'Ho-Oh',
+      'Zygarde (Complete)',
+    ]);
+
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      automaticNames,
+    );
+    vi.mocked(getRankedPokemonNames).mockReturnValue(fullRankedNames);
+    vi.mocked(getRankedPokemonForFormat).mockImplementation(
+      (requestedNames) => {
+        if (requestedNames === automaticNames) {
+          return [
+            createPokemon('kyogre', 'Kyogre'),
+            createPokemon('lugia', 'Lugia'),
+            createPokemon('necrozma_dusk_mane', 'Necrozma (Dusk Mane)'),
+            createPokemon('blastoise_mega', 'Blastoise (Mega)'),
+            createPokemon('dragonite', 'Dragonite'),
+          ];
+        }
+
+        return [
+          createPokemon('kyogre', 'Kyogre'),
+          createPokemon('lugia', 'Lugia'),
+          createPokemon('necrozma_dusk_mane', 'Necrozma (Dusk Mane)'),
+          createPokemon('blastoise_mega', 'Blastoise (Mega)'),
+          createPokemon('dragonite', 'Dragonite'),
+          createPokemon('ho_oh', 'Ho-Oh'),
+          createPokemon('zygarde_complete', 'Zygarde (Complete)'),
+        ];
+      },
+    );
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam([
+        'kyogre',
+        'lugia',
+        'necrozma_dusk_mane',
+        'blastoise_mega',
+        'dragonite',
+        'ho_oh',
+      ]),
+    ]);
+
+    await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'battle-frontier-coupe-du-sillage',
+      excludedPokemon: ['giratina_altered', 'mewtwo_shadow', 'kyurem'],
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(getRankedPokemonNames).toHaveBeenCalledWith(
+      'battle-frontier-coupe-du-sillage',
+    );
+    expect(initializeAnchorFirstPopulation).toHaveBeenCalledWith(
+      1,
+      [
+        'kyogre',
+        'lugia',
+        'necrozma_dusk_mane',
+        'blastoise_mega',
+        'dragonite',
+        'ho_oh',
+        'zygarde_complete',
+      ],
+      6,
+      expect.objectContaining({
+        formatId: 'battle-frontier-coupe-du-sillage',
+      }),
+    );
+  });
+
   it('passes the selected format into next-generation operators', async () => {
     vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
@@ -633,7 +720,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     await generateTeam({
       mode: 'GBL',
-      formatId: 'battle-frontier-master',
+      formatId: 'battle-frontier-coupe-du-sillage',
       populationSize: 1,
       generations: 1,
     });
@@ -643,49 +730,8 @@ describe('generateTeam format-aware candidate selection', () => {
       ['mew'],
       'GBL',
       expect.objectContaining({
-        formatId: 'battle-frontier-master',
+        formatId: 'battle-frontier-coupe-du-sillage',
       }),
-    );
-  });
-
-  it('rejects illegal final Battle Frontier Master teams before returning', async () => {
-    const illegalTeam = ['palkia_origin', 'eternatus', 'swampert_mega'];
-
-    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
-      new Set<string>(['Palkia', 'Eternatus', 'Swampert']),
-    );
-    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
-      createPokemon('palkia_origin', 'Palkia (Origin)'),
-      createPokemon('eternatus', 'Eternatus'),
-      createPokemon('swampert_mega', 'Swampert (Mega)'),
-    ]);
-    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
-      createChromosomeWithTeam(illegalTeam),
-    ]);
-    vi.mocked(getBestChromosome).mockReturnValue(
-      createChromosomeWithTeam(illegalTeam),
-    );
-    vi.mocked(getBattleFrontierMasterTeamLegality).mockReturnValue({
-      isLegal: false,
-      totalPoints: 15,
-      fivePointPokemonCount: 2,
-      megaCount: 1,
-      violations: ['points-cap', 'five-point-limit'],
-    });
-
-    await expect(
-      generateTeam({
-        mode: 'GBL',
-        formatId: 'battle-frontier-master',
-        populationSize: 1,
-        generations: 0,
-      }),
-    ).rejects.toThrow(
-      'Final Battle Frontier Master team is illegal. This should never happen.',
-    );
-
-    expect(getBattleFrontierMasterTeamLegality).toHaveBeenCalledWith(
-      illegalTeam,
     );
   });
 
@@ -720,7 +766,44 @@ describe('generateTeam format-aware candidate selection', () => {
         generations: 0,
       }),
     ).rejects.toThrow(
-      'Final Mega Master League team is illegal. This should never happen.',
+      'Final one-Mega-limit team is illegal. This should never happen.',
+    );
+
+    expect(getMegaMasterTeamLegality).toHaveBeenCalledWith(illegalTeam);
+  });
+
+  it('rejects illegal final Battle Frontier Coupe du Sillage teams before returning', async () => {
+    const illegalTeam = ['swampert_mega', 'gallade_mega', 'dragonite'];
+
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      new Set<string>(['Swampert', 'Gallade', 'Dragonite']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('swampert_mega', 'Swampert (Mega)'),
+      createPokemon('gallade_mega', 'Gallade (Mega)'),
+      createPokemon('dragonite', 'Dragonite'),
+    ]);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam(illegalTeam),
+    ]);
+    vi.mocked(getBestChromosome).mockReturnValue(
+      createChromosomeWithTeam(illegalTeam),
+    );
+    vi.mocked(getMegaMasterTeamLegality).mockReturnValue({
+      isLegal: false,
+      megaCount: 2,
+      violations: ['mega-limit'],
+    });
+
+    await expect(
+      generateTeam({
+        mode: 'GBL',
+        formatId: 'battle-frontier-coupe-du-sillage',
+        populationSize: 1,
+        generations: 0,
+      }),
+    ).rejects.toThrow(
+      'Final one-Mega-limit team is illegal. This should never happen.',
     );
 
     expect(getMegaMasterTeamLegality).toHaveBeenCalledWith(illegalTeam);
@@ -736,13 +819,13 @@ describe('generateTeam format-aware candidate selection', () => {
 
     const result = await generateTeam({
       mode: 'GBL',
-      formatId: 'battle-frontier-bayou-cup',
+      formatId: 'battle-frontier-tsuki-cup',
       populationSize: 1,
       generations: 0,
     });
 
     expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
     );
     expect(buildGblLineupRecommendation).toHaveBeenCalledWith(
       ['mew', 'mewtwo', 'dragonite'],
@@ -782,7 +865,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     const result = await generateTeam({
       mode: 'PlayPokemon',
-      formatId: 'battle-frontier-bayou-cup',
+      formatId: 'battle-frontier-tsuki-cup',
       populationSize: 1,
       generations: 0,
     });
@@ -790,7 +873,7 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(evaluatePopulation).toHaveBeenCalledWith(
       expect.any(Array),
       'PlayPokemon',
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
       expect.objectContaining({
         scoringContext: { threats: ['azumarill'] },
       }),
@@ -850,7 +933,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     const result = await generateTeam({
       mode: 'PlayPokemon',
-      formatId: 'battle-frontier-bayou-cup',
+      formatId: 'battle-frontier-tsuki-cup',
       populationSize: 1,
       generations: 0,
     });
@@ -889,7 +972,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     const result = await generateTeam({
       mode: 'GBL',
-      formatId: 'battle-frontier-bayou-cup',
+      formatId: 'battle-frontier-tsuki-cup',
       populationSize: 1,
       generations: 0,
     });
@@ -964,7 +1047,7 @@ describe('generateTeam format-aware candidate selection', () => {
     const results = await generateMultipleTeams(
       {
         mode: 'PlayPokemon',
-        formatId: 'battle-frontier-bayou-cup',
+        formatId: 'battle-frontier-tsuki-cup',
         populationSize: 1,
         generations: 0,
       },
@@ -989,7 +1072,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     await generateTeam({
       mode: 'GBL',
-      formatId: 'battle-frontier-bayou-cup',
+      formatId: 'battle-frontier-tsuki-cup',
       populationSize: 1,
       generations: 2,
     });
@@ -1002,21 +1085,21 @@ describe('generateTeam format-aware candidate selection', () => {
       1,
       expect.any(Array),
       'GBL',
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
       sharedContext,
     );
     expect(evaluatePopulation).toHaveBeenNthCalledWith(
       2,
       expect.any(Array),
       'GBL',
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
       sharedContext,
     );
     expect(evaluatePopulation).toHaveBeenNthCalledWith(
       3,
       expect.any(Array),
       'GBL',
-      'battle-frontier-bayou-cup',
+      'battle-frontier-tsuki-cup',
       sharedContext,
     );
   });

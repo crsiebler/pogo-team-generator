@@ -21,13 +21,12 @@ const RANKING_CATEGORIES = [
 ] as const;
 const RANKING_CUPS = [
   'all',
-  'naic2026',
-  'bayou',
-  'spellcraft',
   'sunshine',
-  'bfretro',
+  'copadiluvio',
+  'tsuki',
+  'ligaultra',
   'mega',
-  'battlefrontiermaster',
+  'coupedusillage',
 ] as const;
 
 export type RankingCategory = (typeof RANKING_CATEGORIES)[number];

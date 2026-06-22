@@ -9,7 +9,6 @@ import {
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFrontierFormatId,
 } from '@/lib/data/battleFormats';
-import { getBattleFrontierMasterTeamLegality } from '@/lib/data/battleFrontierMasterRules';
 import {
   isBattleFrontierBannedSpeciesId,
   speciesIdToSpeciesName,
@@ -73,10 +72,6 @@ vi.mock('@/lib/analysis/pokemonContributionAnalysis', () => ({
   buildPokemonContributionAnalysis: vi.fn(),
 }));
 
-vi.mock('@/lib/data/battleFrontierMasterRules', () => ({
-  getBattleFrontierMasterTeamLegality: vi.fn(),
-}));
-
 describe('POST /api/generate-team', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -111,13 +106,6 @@ describe('POST /api/generate-team', () => {
     vi.mocked(getRankedSpeciesIds).mockReturnValue(
       new Set(['azumarill', 'marowak', 'marowak-shadow']),
     );
-    vi.mocked(getBattleFrontierMasterTeamLegality).mockReturnValue({
-      isLegal: true,
-      totalPoints: 0,
-      fivePointPokemonCount: 0,
-      megaCount: 0,
-      violations: [],
-    });
     vi.mocked(generateTeam).mockResolvedValue({
       team: ['azumarill'],
       fitness: 1,
@@ -246,11 +234,10 @@ describe('POST /api/generate-team', () => {
     ['great-league'],
     ['ultra-league'],
     ['master-league'],
-    ['naic-2026-championship-cup'],
-    ['battle-frontier-bayou-cup'],
-    ['battle-frontier-spellcraft-cup'],
-    ['battle-frontier-ul-retro'],
-    ['battle-frontier-master'],
+    ['battle-frontier-copa-diluvio'],
+    ['battle-frontier-tsuki-cup'],
+    ['battle-frontier-liga-ultra'],
+    ['battle-frontier-coupe-du-sillage'],
   ] as const)(
     'passes %s formatId to team generation for end-to-end requests',
     async (formatId) => {
@@ -939,7 +926,7 @@ describe('POST /api/generate-team', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         mode: 'GBL',
-        formatId: 'battle-frontier-master',
+        formatId: 'battle-frontier-coupe-du-sillage',
       }),
     });
 
@@ -995,7 +982,7 @@ describe('POST /api/generate-team', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         mode: 'PlayPokemon',
-        formatId: 'battle-frontier-master',
+        formatId: 'battle-frontier-coupe-du-sillage',
         anchorPokemon: ['Groudon (Primal)'],
       }),
     });
@@ -1005,98 +992,7 @@ describe('POST /api/generate-team', () => {
 
     expect(response.status).toBe(400);
     expect(responseBody.error).toBe(
-      'Pokémon is not eligible for battle-frontier-master: Groudon (Primal)',
-    );
-    expect(generateTeam).not.toHaveBeenCalled();
-  });
-
-  it('returns 400 when Battle Frontier Master anchors exceed the point cap', async () => {
-    vi.mocked(getBattleFrontierMasterTeamLegality).mockReturnValue({
-      isLegal: false,
-      totalPoints: 12,
-      fivePointPokemonCount: 1,
-      megaCount: 0,
-      violations: ['points-cap'],
-    });
-
-    const request = new Request('http://localhost/api/generate-team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'PlayPokemon',
-        formatId: 'battle-frontier-master',
-        anchorPokemon: ['Azumarill', 'Marowak'],
-      }),
-    });
-
-    const response = await POST(request as NextRequest);
-    const responseBody = (await response.json()) as { error: string };
-
-    expect(response.status).toBe(400);
-    expect(responseBody.error).toBe(
-      'Battle Frontier Master anchors exceed the 11-point cap.',
-    );
-    expect(getBattleFrontierMasterTeamLegality).toHaveBeenCalledWith([
-      'azumarill',
-      'marowak',
-    ]);
-    expect(generateTeam).not.toHaveBeenCalled();
-  });
-
-  it('returns 400 when Battle Frontier Master anchors include multiple 5-point Pokemon', async () => {
-    vi.mocked(getBattleFrontierMasterTeamLegality).mockReturnValue({
-      isLegal: false,
-      totalPoints: 10,
-      fivePointPokemonCount: 2,
-      megaCount: 0,
-      violations: ['five-point-limit'],
-    });
-
-    const request = new Request('http://localhost/api/generate-team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'PlayPokemon',
-        formatId: 'battle-frontier-master',
-        anchorPokemon: ['Azumarill', 'Marowak'],
-      }),
-    });
-
-    const response = await POST(request as NextRequest);
-    const responseBody = (await response.json()) as { error: string };
-
-    expect(response.status).toBe(400);
-    expect(responseBody.error).toBe(
-      'Battle Frontier Master anchors can include at most one 5-point Pokemon.',
-    );
-    expect(generateTeam).not.toHaveBeenCalled();
-  });
-
-  it('returns 400 when Battle Frontier Master anchors include multiple Mega Pokemon', async () => {
-    vi.mocked(getBattleFrontierMasterTeamLegality).mockReturnValue({
-      isLegal: false,
-      totalPoints: 8,
-      fivePointPokemonCount: 0,
-      megaCount: 2,
-      violations: ['mega-limit'],
-    });
-
-    const request = new Request('http://localhost/api/generate-team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'PlayPokemon',
-        formatId: 'battle-frontier-master',
-        anchorPokemon: ['Azumarill', 'Marowak'],
-      }),
-    });
-
-    const response = await POST(request as NextRequest);
-    const responseBody = (await response.json()) as { error: string };
-
-    expect(response.status).toBe(400);
-    expect(responseBody.error).toBe(
-      'Battle Frontier Master anchors can include at most one Mega Pokemon.',
+      'Pokémon is not eligible for battle-frontier-coupe-du-sillage: Groudon (Primal)',
     );
     expect(generateTeam).not.toHaveBeenCalled();
   });

@@ -27,19 +27,16 @@ describe('format-aware simulation loading', () => {
     ).not.toThrow();
     expect(() => ensureSimulationDataAvailable('sunshine-cup')).not.toThrow();
     expect(() =>
-      ensureSimulationDataAvailable('naic-2026-championship-cup'),
+      ensureSimulationDataAvailable('battle-frontier-copa-diluvio'),
     ).not.toThrow();
     expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-bayou-cup'),
+      ensureSimulationDataAvailable('battle-frontier-tsuki-cup'),
     ).not.toThrow();
     expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-spellcraft-cup'),
+      ensureSimulationDataAvailable('battle-frontier-liga-ultra'),
     ).not.toThrow();
     expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-ul-retro'),
-    ).not.toThrow();
-    expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-master'),
+      ensureSimulationDataAvailable('battle-frontier-coupe-du-sillage'),
     ).not.toThrow();
   }, 15000);
 

@@ -35,7 +35,6 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -66,7 +65,6 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={onFormatChange}
         mode="PlayPokemon"
@@ -89,7 +87,6 @@ describe('TeamConfigPanel', () => {
     const { rerender } = render(
       <TeamConfigPanel
         pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -109,7 +106,6 @@ describe('TeamConfigPanel', () => {
     rerender(
       <TeamConfigPanel
         pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="ultra-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -126,57 +122,10 @@ describe('TeamConfigPanel', () => {
     );
   });
 
-  it('shows Battle Frontier Master rules in the team configuration panel', () => {
-    render(
-      <TeamConfigPanel
-        pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
-        selectedFormatId="battle-frontier-master"
-        onFormatChange={vi.fn()}
-        mode="PlayPokemon"
-        onModeChange={vi.fn()}
-        onAnchorsChange={vi.fn()}
-        onExclusionsChange={vi.fn()}
-        onGenerate={vi.fn()}
-        isGenerating={false}
-      />,
-    );
-
-    expect(
-      screen.getByText(
-        /11 total points, at most one 5-point pokemon, and at most one mega pokemon/i,
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('hides Battle Frontier Master rules for other formats', () => {
-    render(
-      <TeamConfigPanel
-        pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
-        selectedFormatId="great-league"
-        onFormatChange={vi.fn()}
-        mode="PlayPokemon"
-        onModeChange={vi.fn()}
-        onAnchorsChange={vi.fn()}
-        onExclusionsChange={vi.fn()}
-        onGenerate={vi.fn()}
-        isGenerating={false}
-      />,
-    );
-
-    expect(
-      screen.queryByText(
-        /11 total points, at most one 5-point pokemon, and at most one mega pokemon/i,
-      ),
-    ).not.toBeInTheDocument();
-  });
-
   it('shows the tournament format selector for non-Battle Frontier formats', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
@@ -196,8 +145,7 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
-        selectedFormatId="battle-frontier-bayou-cup"
+        selectedFormatId="battle-frontier-tsuki-cup"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
@@ -216,7 +164,6 @@ describe('TeamConfigPanel', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
-        battleFrontierMasterPointsByPokemonName={{}}
         selectedFormatId="great-league"
         onFormatChange={vi.fn()}
         mode="PlayPokemon"

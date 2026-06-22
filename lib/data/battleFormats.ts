@@ -3,13 +3,12 @@ export interface BattleFormat {
   label: string;
   cup:
     | 'all'
-    | 'naic2026'
-    | 'bayou'
-    | 'spellcraft'
     | 'sunshine'
-    | 'bfretro'
+    | 'copadiluvio'
+    | 'tsuki'
+    | 'ligaultra'
     | 'mega'
-    | 'battlefrontiermaster';
+    | 'coupedusillage';
   cp: 1500 | 2500 | 10000;
 }
 
@@ -22,11 +21,10 @@ export type BattleFormatId =
   | 'master-league'
   | 'mega-master-league'
   | 'sunshine-cup'
-  | 'naic-2026-championship-cup'
-  | 'battle-frontier-bayou-cup'
-  | 'battle-frontier-spellcraft-cup'
-  | 'battle-frontier-ul-retro'
-  | 'battle-frontier-master';
+  | 'battle-frontier-copa-diluvio'
+  | 'battle-frontier-tsuki-cup'
+  | 'battle-frontier-liga-ultra'
+  | 'battle-frontier-coupe-du-sillage';
 
 /**
  * Catalog of supported battle formats.
@@ -63,33 +61,27 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 1500,
   },
   {
-    id: 'naic-2026-championship-cup',
-    label: 'NAIC 2026 Championship Series Cup',
-    cup: 'naic2026',
+    id: 'battle-frontier-copa-diluvio',
+    label: 'Battle Frontier (Copa Diluvio)',
+    cup: 'copadiluvio',
     cp: 1500,
   },
   {
-    id: 'battle-frontier-bayou-cup',
-    label: 'Battle Frontier (Bayou Cup)',
-    cup: 'bayou',
+    id: 'battle-frontier-tsuki-cup',
+    label: 'Battle Frontier (Tsuki Cup)',
+    cup: 'tsuki',
     cp: 1500,
   },
   {
-    id: 'battle-frontier-spellcraft-cup',
-    label: 'Battle Frontier (Spellcraft Cup)',
-    cup: 'spellcraft',
-    cp: 1500,
-  },
-  {
-    id: 'battle-frontier-ul-retro',
-    label: 'Battle Frontier (UL Retro)',
-    cup: 'bfretro',
+    id: 'battle-frontier-liga-ultra',
+    label: 'Battle Frontier (Liga Ultra)',
+    cup: 'ligaultra',
     cp: 2500,
   },
   {
-    id: 'battle-frontier-master',
-    label: 'Battle Frontier (Master)',
-    cup: 'battlefrontiermaster',
+    id: 'battle-frontier-coupe-du-sillage',
+    label: 'Battle Frontier (Coupe du Sillage)',
+    cup: 'coupedusillage',
     cp: 10000,
   },
 ];
@@ -98,6 +90,11 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
  * Default battle format id for team generation flows.
  */
 export const DEFAULT_BATTLE_FORMAT_ID: BattleFormatId = 'great-league';
+
+const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
+  'mega-master-league',
+  'battle-frontier-coupe-du-sillage',
+]);
 
 const battleFormatLookup: ReadonlyMap<BattleFormatId, BattleFormat> = new Map(
   BATTLE_FORMATS.map((format) => [format.id, format]),
@@ -115,6 +112,15 @@ export function getBattleFormats(): readonly BattleFormat[] {
  */
 export function isBattleFormatId(value: string): value is BattleFormatId {
   return battleFormatLookup.has(value as BattleFormatId);
+}
+
+/**
+ * Returns whether teams in this format are limited to one active Mega Pokemon.
+ */
+export function hasOneMegaLimitForFormat(
+  formatId: BattleFormatId | undefined,
+): boolean {
+  return formatId !== undefined && oneMegaLimitFormatIds.has(formatId);
 }
 
 /**

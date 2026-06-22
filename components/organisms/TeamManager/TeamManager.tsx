@@ -32,7 +32,6 @@ interface GeneratedTeamResult {
 
 interface PokemonListResponse {
   pokemon: string[];
-  battleFrontierMasterPointsByPokemonName?: Record<string, number>;
 }
 
 export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
@@ -49,10 +48,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
   );
   const [eligiblePokemonList, setEligiblePokemonList] =
     useState<string[]>(pokemonList);
-  const [
-    battleFrontierMasterPointsByPokemonName,
-    setBattleFrontierMasterPointsByPokemonName,
-  ] = useState<Record<string, number>>({});
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -88,9 +83,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
 
         const nextEligiblePokemonList = data.pokemon ?? [];
         setEligiblePokemonList(nextEligiblePokemonList);
-        setBattleFrontierMasterPointsByPokemonName(
-          data.battleFrontierMasterPointsByPokemonName ?? {},
-        );
 
         setAnchorPokemon((previousAnchors) =>
           previousAnchors.filter((name) =>
@@ -108,7 +100,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         }
 
         setEligiblePokemonList([]);
-        setBattleFrontierMasterPointsByPokemonName({});
 
         const message =
           error instanceof Error
@@ -272,9 +263,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-2 xl:grid-cols-3">
       <TeamConfigPanel
         pokemonList={eligiblePokemonList}
-        battleFrontierMasterPointsByPokemonName={
-          battleFrontierMasterPointsByPokemonName
-        }
         selectedFormatId={currentFormatId}
         errorMessage={generationError}
         onFormatChange={handleFormatChange}
@@ -289,9 +277,6 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         generatedTeam={generatedTeam}
         mode={currentMode}
         isGenerating={isGenerating}
-        battleFrontierMasterPointsByPokemonName={
-          battleFrontierMasterPointsByPokemonName
-        }
       />
       <AnalysisPanel
         generatedTeam={generatedTeam}

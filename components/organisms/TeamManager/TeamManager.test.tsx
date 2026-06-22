@@ -63,15 +63,15 @@ vi.mock('@/components/organisms', () => ({
         </button>
         <button
           type="button"
-          onClick={() => onFormatChange('battle-frontier-bayou-cup')}
+          onClick={() => onFormatChange('battle-frontier-tsuki-cup')}
         >
-          Set Battle Frontier Bayou
+          Set Battle Frontier Tsuki
         </button>
         <button
           type="button"
-          onClick={() => onFormatChange('battle-frontier-master')}
+          onClick={() => onFormatChange('battle-frontier-coupe-du-sillage')}
         >
-          Set Battle Frontier Master
+          Set Battle Frontier Coupe du Sillage
         </button>
         <button
           type="button"
@@ -254,22 +254,22 @@ describe('TeamManager', () => {
       expect(screen.getByText('Selected Mode: GBL')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Set Battle Frontier Master'));
+    fireEvent.click(screen.getByText('Set Battle Frontier Coupe du Sillage'));
 
     await waitFor(() => {
       expect(
-        screen.getByText('Selected Format: battle-frontier-master'),
+        screen.getByText('Selected Format: battle-frontier-coupe-du-sillage'),
       ).toBeInTheDocument();
       expect(
         screen.getByText('Selected Mode: PlayPokemon'),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Set Battle Frontier Bayou'));
+    fireEvent.click(screen.getByText('Set Battle Frontier Tsuki'));
 
     await waitFor(() => {
       expect(
-        screen.getByText('Selected Format: battle-frontier-bayou-cup'),
+        screen.getByText('Selected Format: battle-frontier-tsuki-cup'),
       ).toBeInTheDocument();
       expect(
         screen.getByText('Selected Mode: PlayPokemon'),
@@ -482,57 +482,46 @@ describe('TeamManager', () => {
     });
   });
 
-  it.each([
-    'Battle Frontier Master anchors exceed the 11-point cap.',
-    'Battle Frontier Master anchors can include at most one 5-point Pokemon.',
-    'Battle Frontier Master anchors can include at most one Mega Pokemon.',
-  ])(
-    'shows Battle Frontier Master legality failures to the user: %s',
-    async (errorMessage) => {
-      const fetchMock = vi
-        .fn()
-        .mockImplementation((input: RequestInfo | URL) => {
-          if (
-            typeof input === 'string' &&
-            input.startsWith('/api/pokemon-list')
-          ) {
-            return Promise.resolve(pokemonListResponse);
-          }
+  it('shows generation API failures to the user for Battle Frontier formats', async () => {
+    const errorMessage = 'Battle Frontier format data is unavailable.';
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (typeof input === 'string' && input.startsWith('/api/pokemon-list')) {
+        return Promise.resolve(pokemonListResponse);
+      }
 
-          return Promise.resolve({
-            ok: false,
-            json: vi.fn().mockResolvedValue({ error: errorMessage }),
-          });
-        });
-
-      vi.stubGlobal('fetch', fetchMock);
-
-      render(<TeamManager />);
-
-      await waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          '/api/pokemon-list?formatId=great-league',
-          expect.objectContaining({ signal: expect.any(AbortSignal) }),
-        );
+      return Promise.resolve({
+        ok: false,
+        json: vi.fn().mockResolvedValue({ error: errorMessage }),
       });
+    });
 
-      fireEvent.click(screen.getByText('Set Battle Frontier Master'));
+    vi.stubGlobal('fetch', fetchMock);
 
-      await waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          '/api/pokemon-list?formatId=battle-frontier-master',
-          expect.objectContaining({ signal: expect.any(AbortSignal) }),
-        );
-      });
+    render(<TeamManager />);
 
-      fireEvent.click(screen.getByText('Generate Team'));
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=great-league',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
 
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(errorMessage);
-      });
+    fireEvent.click(screen.getByText('Set Battle Frontier Coupe du Sillage'));
 
-      expect(showToastMock).toHaveBeenCalledWith(errorMessage, 'error');
-      expect(screen.getByText('Analysis none missing')).toBeInTheDocument();
-    },
-  );
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/pokemon-list?formatId=battle-frontier-coupe-du-sillage',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(errorMessage);
+    });
+
+    expect(showToastMock).toHaveBeenCalledWith(errorMessage, 'error');
+    expect(screen.getByText('Analysis none missing')).toBeInTheDocument();
+  });
 });

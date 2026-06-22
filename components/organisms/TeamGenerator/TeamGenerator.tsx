@@ -11,7 +11,6 @@ interface TeamGeneratorProps {
   mode: TournamentMode;
   pokemonList: string[];
   selectedFormatId: BattleFormatId;
-  battleFrontierMasterPointsByPokemonName: Record<string, number>;
   onAnchorsChange: (anchors: string[]) => void;
   onExclusionsChange: (exclusions: string[]) => void;
 }
@@ -19,8 +18,6 @@ interface TeamGeneratorProps {
 export function TeamGenerator({
   mode,
   pokemonList,
-  selectedFormatId,
-  battleFrontierMasterPointsByPokemonName,
   onAnchorsChange,
   onExclusionsChange,
 }: TeamGeneratorProps) {
@@ -116,16 +113,6 @@ export function TeamGenerator({
     setExcludedPokemon(excludedPokemon.filter((p) => p !== pokemon));
   };
 
-  const battleFrontierMasterAnchorPoints = anchorInputs.reduce(
-    (totalPoints, pokemonName) => {
-      return (
-        totalPoints +
-        (battleFrontierMasterPointsByPokemonName[pokemonName] ?? 0)
-      );
-    },
-    0,
-  );
-
   return (
     <div className="mb-6 sm:mb-8">
       <h3
@@ -136,16 +123,6 @@ export function TeamGenerator({
       >
         Anchor Pokémon (Optional)
       </h3>
-      {selectedFormatId === 'battle-frontier-master' ? (
-        <p
-          className={clsx(
-            'mb-2 text-xs font-semibold sm:text-sm',
-            'text-amber-800 dark:text-amber-200',
-          )}
-        >
-          ({battleFrontierMasterAnchorPoints} / 11 points)
-        </p>
-      ) : null}
       <p
         className={clsx(
           'mb-4 text-xs sm:text-sm',

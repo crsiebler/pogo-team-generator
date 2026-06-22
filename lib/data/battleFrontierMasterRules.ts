@@ -1,15 +1,18 @@
 import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
 import {
+  getAvailablePokemon,
   getPokemonBySpeciesId,
   isShadow,
   normalizeToChoosableSpeciesId,
 } from '@/lib/data/pokemon';
-import { getRankedSpeciesIds } from '@/lib/data/rankings';
 
 export const BATTLE_FRONTIER_MASTER_MAX_POINTS = 11;
 export const BATTLE_FRONTIER_MASTER_MAX_FIVE_POINT_POKEMON = 1;
 export const BATTLE_FRONTIER_MASTER_MAX_MEGAS = 1;
+
+// Dormant support for prior Battle Frontier Master point-system cycles. Current
+// Battle Frontier metas use the active PvPoke ranking cup restrictions instead.
 
 export type BattleFrontierMasterLegalityViolation =
   | 'points-cap'
@@ -70,25 +73,19 @@ function getBattleFrontierMasterRulesData(): BattleFrontierMasterRulesData {
     pointsBySpeciesId.set(record.speciesId, points);
   }
 
-  const rankedSpeciesIds = getRankedSpeciesIds('battle-frontier-master');
   const inheritingShadowSpeciesIds = new Set<string>();
 
-  for (const speciesId of rankedSpeciesIds) {
-    if (!isShadow(speciesId)) {
+  for (const pokemon of getAvailablePokemon()) {
+    if (!isShadow(pokemon.speciesId)) {
       continue;
     }
 
-    const shadowPokemon = getPokemonBySpeciesId(speciesId);
-    if (!shadowPokemon) {
-      continue;
-    }
-
-    const baseSpeciesId = speciesId.replace(/_shadow$/, '');
+    const baseSpeciesId = pokemon.speciesId.replace(/_shadow$/, '');
     if (!pointsBySpeciesId.has(baseSpeciesId)) {
       continue;
     }
 
-    inheritingShadowSpeciesIds.add(speciesId);
+    inheritingShadowSpeciesIds.add(pokemon.speciesId);
   }
 
   cachedRulesData = {

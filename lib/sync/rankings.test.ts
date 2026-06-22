@@ -22,13 +22,12 @@ describe('rankings local sync', () => {
           leagueCp: number,
           cup:
             | 'all'
-            | 'naic2026'
-            | 'bayou'
-            | 'spellcraft'
             | 'sunshine'
-            | 'bfretro'
+            | 'copadiluvio'
+            | 'tsuki'
+            | 'ligaultra'
             | 'mega'
-            | 'battlefrontiermaster'
+            | 'coupedusillage'
             | undefined,
         ) => Promise<
           Array<{
@@ -44,13 +43,12 @@ describe('rankings local sync', () => {
         expect([1500, 2500, 10000]).toContain(leagueCp);
         expect(
           cup === 'all' ||
-            cup === 'naic2026' ||
-            cup === 'bayou' ||
-            cup === 'spellcraft' ||
             cup === 'sunshine' ||
-            cup === 'bfretro' ||
+            cup === 'copadiluvio' ||
+            cup === 'tsuki' ||
+            cup === 'ligaultra' ||
             cup === 'mega' ||
-            cup === 'battlefrontiermaster',
+            cup === 'coupedusillage',
         ).toBe(true);
         expect(categories).toContain(category);
 
@@ -145,8 +143,8 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(70);
-    expect(rankings).toHaveLength(70);
+    expect(readRankingJson).toHaveBeenCalledTimes(63);
+    expect(rankings).toHaveLength(63);
     expect(rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
@@ -162,7 +160,7 @@ describe('rankings local sync', () => {
       'Charged Move Cost': 10000,
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(70);
+    expect(writeFile).toHaveBeenCalledTimes(63);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -180,30 +178,6 @@ describe('rankings local sync', () => {
         'data',
         'rankings',
         'cp1500',
-        'naic2026',
-        'switches_rankings.csv',
-      ),
-      expect.stringContaining('Bulbasaur'),
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'rankings', 'cp1500', 'bayou', 'overall_rankings.csv'),
-      expect.stringContaining('Bulbasaur'),
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'rankings',
-        'cp1500',
-        'spellcraft',
-        'leads_rankings.csv',
-      ),
-      expect.stringContaining('Bulbasaur'),
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'rankings',
-        'cp1500',
         'sunshine',
         'overall_rankings.csv',
       ),
@@ -213,14 +187,24 @@ describe('rankings local sync', () => {
       path.join(
         'data',
         'rankings',
-        'cp2500',
-        'bfretro',
-        'switches_rankings.csv',
+        'cp1500',
+        'copadiluvio',
+        'overall_rankings.csv',
       ),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'rankings', 'cp10000', 'mega', 'leads_rankings.csv'),
+      path.join('data', 'rankings', 'cp1500', 'tsuki', 'leads_rankings.csv'),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'rankings',
+        'cp2500',
+        'ligaultra',
+        'switches_rankings.csv',
+      ),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
@@ -228,9 +212,13 @@ describe('rankings local sync', () => {
         'data',
         'rankings',
         'cp10000',
-        'battlefrontiermaster',
+        'coupedusillage',
         'closers_rankings.csv',
       ),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'rankings', 'cp10000', 'mega', 'leads_rankings.csv'),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
@@ -426,10 +414,10 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(rankings).toHaveLength(70);
+    expect(rankings).toHaveLength(63);
     expect(rankings.every((entry) => entry.Pokemon === 'Bulbasaur')).toBe(true);
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'rankings', 'cp1500', 'bayou', 'overall_rankings.csv'),
+      path.join('data', 'rankings', 'cp1500', 'tsuki', 'overall_rankings.csv'),
       expect.not.stringContaining('Kingler (Shadow)'),
     );
   });

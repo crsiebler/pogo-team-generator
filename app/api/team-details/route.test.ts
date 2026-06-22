@@ -45,7 +45,7 @@ describe('POST /api/team-details format-aware movesets', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         team: ['decidueye'],
-        formatId: 'battle-frontier-ul-retro',
+        formatId: 'battle-frontier-liga-ultra',
       }),
     });
 
@@ -54,7 +54,7 @@ describe('POST /api/team-details format-aware movesets', () => {
     expect(response.status).toBe(200);
     expect(getRecommendedMovesetForPokemon).toHaveBeenCalledWith(
       expect.objectContaining({ speciesId: 'decidueye' }),
-      'battle-frontier-ul-retro',
+      'battle-frontier-liga-ultra',
     );
   });
 
