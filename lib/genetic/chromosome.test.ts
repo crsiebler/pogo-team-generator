@@ -130,6 +130,27 @@ describe('createRandomChromosome legality checks', () => {
     });
   });
 
+  it('keeps random Battle Frontier Coupe du Sillage teams to one Mega Pokemon', () => {
+    mockRandomSequence([0, 0.26, 0.26, 0.26, 0, 0.51, 0.51, 0.51]);
+
+    const chromosome = createRandomChromosome(
+      ['eternatus', 'mewtwo', 'swampert_mega', 'dragonite'],
+      3,
+      ['charizard_mega_y'],
+      'battle-frontier-coupe-du-sillage',
+    );
+
+    expect(chromosome.team).toEqual([
+      'charizard_mega_y',
+      'eternatus',
+      'dragonite',
+    ]);
+    expect(getMegaMasterTeamLegality(chromosome.team)).toMatchObject({
+      isLegal: true,
+      megaCount: 1,
+    });
+  });
+
   it('keeps existing initialization behavior for non-Mega Master formats', () => {
     mockRandomSequence([0, 0.26, 0.26, 0.26, 0, 0.51, 0.51, 0.51]);
 

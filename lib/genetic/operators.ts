@@ -1,18 +1,15 @@
 import type { BattleFormatId } from '@lib/data/battleFormats';
+import { hasOneMegaLimitForFormat } from '@lib/data/battleFormats';
 import { getDexNumber, validateTeamUniqueness } from '@lib/data/pokemon';
 import type { Chromosome, TournamentMode } from '../types';
 import { cloneChromosome, getMutableSlots, isAnchorSlot } from './chromosome';
 import { getMegaMasterTeamLegality } from '@/lib/data/megaMasterRules';
 
-function shouldEnforceMegaMasterLegality(formatId?: BattleFormatId): boolean {
-  return formatId === 'mega-master-league';
-}
-
 function isLegalMegaMasterTeam(
   team: readonly string[],
   formatId?: BattleFormatId,
 ): boolean {
-  if (!shouldEnforceMegaMasterLegality(formatId)) {
+  if (!hasOneMegaLimitForFormat(formatId)) {
     return true;
   }
 

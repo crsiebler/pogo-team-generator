@@ -3,6 +3,7 @@ import {
   DEFAULT_BATTLE_FORMAT_ID,
   getBattleFormatById,
   getBattleFormats,
+  hasOneMegaLimitForFormat,
   isBattleFrontierFormatId,
   isBattleFormatId,
   type BattleFormatId,
@@ -126,5 +127,15 @@ describe('battle format catalog', () => {
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
     expect(isBattleFrontierFormatId('mega-master-league')).toBe(false);
     expect(isBattleFrontierFormatId('sunshine-cup')).toBe(false);
+  });
+
+  it('identifies formats with a one-Mega team limit', () => {
+    expect(hasOneMegaLimitForFormat('mega-master-league')).toBe(true);
+    expect(hasOneMegaLimitForFormat('battle-frontier-coupe-du-sillage')).toBe(
+      true,
+    );
+    expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
+    expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
+    expect(hasOneMegaLimitForFormat(undefined)).toBe(false);
   });
 });

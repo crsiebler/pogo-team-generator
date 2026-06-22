@@ -1,4 +1,7 @@
-import type { BattleFormatId } from '@lib/data/battleFormats';
+import {
+  hasOneMegaLimitForFormat,
+  type BattleFormatId,
+} from '@lib/data/battleFormats';
 import type { CandidateProfile } from '@lib/data/candidateProfiles';
 import { rankAnchorCompanionPairs } from '@lib/data/companionPairRanking';
 import type { RankedAnchorCompanionPair } from '@lib/data/companionPairRanking';
@@ -32,10 +35,6 @@ export interface AnchorFirstPopulationOptions {
 }
 
 const ANCHOR_FIRST_RANDOM_FRACTION = 0.25;
-
-function shouldEnforceMegaMasterLegality(formatId?: BattleFormatId): boolean {
-  return formatId === 'mega-master-league';
-}
 
 function isLegalMegaMasterCandidate(
   currentTeam: string[],
@@ -129,7 +128,7 @@ export function createRandomChromosome(
   anchorPokemon?: string[],
   formatId?: BattleFormatId,
 ): Chromosome {
-  const enforceMegaMasterLegality = shouldEnforceMegaMasterLegality(formatId);
+  const enforceOneMegaLimit = hasOneMegaLimitForFormat(formatId);
   const team: string[] = Array(teamSize).fill('');
   const anchors: number[] = [];
   const usedDexNumbers = new Set<number>();
@@ -187,7 +186,7 @@ export function createRandomChromosome(
       }
 
       if (
-        enforceMegaMasterLegality &&
+        enforceOneMegaLimit &&
         !isLegalMegaMasterCandidate(team, candidateSpecies)
       ) {
         attempts++;
@@ -406,7 +405,7 @@ export function createRandomChromosome(
         }
 
         if (
-          enforceMegaMasterLegality &&
+          enforceOneMegaLimit &&
           !isLegalMegaMasterCandidate(team, candidate)
         ) {
           return false;
@@ -464,12 +463,12 @@ export function createRandomChromosome(
     }
   }
 
-  if (enforceMegaMasterLegality) {
+  if (enforceOneMegaLimit) {
     const legality = getMegaMasterTeamLegality(team);
 
     if (!legality.isLegal) {
       throw new Error(
-        `Failed to create a legal Mega Master League team: ${legality.violations.join(', ')}`,
+        `Failed to create a legal one-Mega-limit team: ${legality.violations.join(', ')}`,
       );
     }
   }
@@ -620,7 +619,7 @@ function isValidAnchorFirstSeed(
   }
 
   if (
-    shouldEnforceMegaMasterLegality(formatId) &&
+    hasOneMegaLimitForFormat(formatId) &&
     !getMegaMasterTeamLegality(team).isLegal
   ) {
     return false;

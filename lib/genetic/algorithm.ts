@@ -1,13 +1,21 @@
-import { DEFAULT_BATTLE_FORMAT_ID } from '@lib/data/battleFormats';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  hasOneMegaLimitForFormat,
+  type BattleFormatId,
+} from '@lib/data/battleFormats';
 import { buildCandidateProfiles } from '@lib/data/candidateProfiles';
 import { getMegaMasterTeamLegality } from '@lib/data/megaMasterRules';
 import { allMoves } from '@lib/data/moves';
-import { getRankedPokemonForFormat } from '@lib/data/pokemon';
+import {
+  getPokemonBySpeciesId,
+  getRankedPokemonForFormat,
+} from '@lib/data/pokemon';
 import {
   getAutomaticCandidatePokemonNames,
   getCandidateRankingBands,
   getConsistencyRankings,
   getOverallRankings,
+  getRankedPokemonNames,
   getRoleBasedThreatSpeciesIds,
   getSwitchesRankings,
   MissingRankingDataError,
@@ -42,6 +50,75 @@ import {
 } from './fitness';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
+function canBuildLegalUniqueTeam(
+  pokemonPool: readonly Pokemon[],
+  anchorPokemon: readonly string[],
+  teamSize: number,
+  formatId: BattleFormatId,
+): boolean {
+  const usedDexNumbers = new Set<number>();
+  const currentTeam = anchorPokemon.slice(0, teamSize);
+
+  for (const anchorSpeciesId of currentTeam) {
+    const anchor = getPokemonBySpeciesId(anchorSpeciesId);
+
+    if (anchor) {
+      if (usedDexNumbers.has(anchor.dex)) {
+        return false;
+      }
+
+      usedDexNumbers.add(anchor.dex);
+    }
+  }
+
+  if (hasOneMegaLimitForFormat(formatId)) {
+    const currentLegality = getMegaMasterTeamLegality(currentTeam);
+
+    if (!currentLegality.isLegal) {
+      return false;
+    }
+  }
+
+  let legalNonMegaCount = 0;
+  let hasLegalMega = false;
+
+  for (const candidate of pokemonPool) {
+    if (usedDexNumbers.has(candidate.dex)) {
+      continue;
+    }
+
+    if (!hasOneMegaLimitForFormat(formatId)) {
+      usedDexNumbers.add(candidate.dex);
+      legalNonMegaCount++;
+      continue;
+    }
+
+    const candidateLegality = getMegaMasterTeamLegality([
+      ...currentTeam,
+      candidate.speciesId,
+    ]);
+
+    if (!candidateLegality.isLegal) {
+      continue;
+    }
+
+    const singleLegality = getMegaMasterTeamLegality([candidate.speciesId]);
+
+    if (singleLegality.megaCount > 0) {
+      hasLegalMega = true;
+    } else {
+      legalNonMegaCount++;
+    }
+
+    usedDexNumbers.add(candidate.dex);
+  }
+
+  const legalCapacity =
+    currentTeam.length + legalNonMegaCount + (hasLegalMega ? 1 : 0);
+
+  return legalCapacity >= teamSize;
+}
+
 /**
  * Main genetic algorithm
  * @param options Generation options
@@ -64,8 +141,36 @@ export async function generateTeam(
 
   ensureSimulationDataAvailable(formatId);
 
-  const candidateNames = getAutomaticCandidatePokemonNames(formatId);
-  const availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);
+  let candidateNames = getAutomaticCandidatePokemonNames(formatId);
+  let availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);
+  let filteredPokemon = availablePokemon.filter(
+    (p) => !excludedPokemon.includes(p.speciesId),
+  );
+
+  if (
+    teamSize === 6 &&
+    !canBuildLegalUniqueTeam(filteredPokemon, anchorPokemon, teamSize, formatId)
+  ) {
+    candidateNames = getRankedPokemonNames(formatId);
+    availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);
+    filteredPokemon = availablePokemon.filter(
+      (p) => !excludedPokemon.includes(p.speciesId),
+    );
+
+    if (
+      !canBuildLegalUniqueTeam(
+        filteredPokemon,
+        anchorPokemon,
+        teamSize,
+        formatId,
+      )
+    ) {
+      throw new Error(
+        `Not enough legal unique Pokemon are available to generate a team of ${teamSize}.`,
+      );
+    }
+  }
+
   const profileCandidateNames = new Set(candidateNames);
   const anchorRankingNames: string[] = [];
 
@@ -80,10 +185,6 @@ export async function generateTeam(
     formatId,
   );
 
-  // Filter out excluded Pokemon
-  const filteredPokemon = availablePokemon.filter(
-    (p) => !excludedPokemon.includes(p.speciesId),
-  );
   const filteredProfilePokemon = profilePokemon.filter(
     (p) =>
       !excludedPokemon.includes(p.speciesId) ||
@@ -262,12 +363,12 @@ export async function generateTeam(
     console.log('✅ All anchors verified in final team');
   }
 
-  if (formatId === 'mega-master-league') {
+  if (hasOneMegaLimitForFormat(formatId)) {
     const legality = getMegaMasterTeamLegality(bestOverall.team);
 
     if (!legality.isLegal) {
       throw new Error(
-        'Final Mega Master League team is illegal. This should never happen.',
+        'Final one-Mega-limit team is illegal. This should never happen.',
       );
     }
   }

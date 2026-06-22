@@ -91,6 +91,11 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
  */
 export const DEFAULT_BATTLE_FORMAT_ID: BattleFormatId = 'great-league';
 
+const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
+  'mega-master-league',
+  'battle-frontier-coupe-du-sillage',
+]);
+
 const battleFormatLookup: ReadonlyMap<BattleFormatId, BattleFormat> = new Map(
   BATTLE_FORMATS.map((format) => [format.id, format]),
 );
@@ -107,6 +112,15 @@ export function getBattleFormats(): readonly BattleFormat[] {
  */
 export function isBattleFormatId(value: string): value is BattleFormatId {
   return battleFormatLookup.has(value as BattleFormatId);
+}
+
+/**
+ * Returns whether teams in this format are limited to one active Mega Pokemon.
+ */
+export function hasOneMegaLimitForFormat(
+  formatId: BattleFormatId | undefined,
+): boolean {
+  return formatId !== undefined && oneMegaLimitFormatIds.has(formatId);
 }
 
 /**

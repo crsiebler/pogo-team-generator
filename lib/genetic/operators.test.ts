@@ -98,6 +98,35 @@ describe('genetic operators legality checks', () => {
     ]);
   });
 
+  it('rejects illegal Battle Frontier Coupe du Sillage crossover children', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.1);
+
+    const parent1 = {
+      team: ['swampert_mega', 'mewtwo', 'dragonite'],
+      anchors: [0],
+      fitness: 1,
+    };
+    const parent2 = {
+      team: ['swampert_mega', 'giratina_altered', 'palkia_origin'],
+      anchors: [0],
+      fitness: 1,
+    };
+
+    const child = crossover(
+      parent1,
+      parent2,
+      'GBL',
+      'battle-frontier-coupe-du-sillage',
+    );
+
+    expect(child).toEqual(parent1);
+    expect(getMegaMasterTeamLegality).toHaveBeenCalledWith([
+      'swampert_mega',
+      'giratina_altered',
+      'palkia_origin',
+    ]);
+  });
+
   it('rejects illegal Mega Master mutations', () => {
     vi.spyOn(Math, 'random')
       .mockReturnValueOnce(0)
