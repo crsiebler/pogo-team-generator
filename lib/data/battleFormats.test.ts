@@ -16,7 +16,7 @@ describe('battle format catalog', () => {
       'Ultra League',
       'Master League',
       'Mega Master League',
-      'Sunshine Cup',
+      'Summer Cup',
       'Battle Frontier (Copa Diluvio)',
       'Battle Frontier (Tsuki Cup)',
       'Battle Frontier (Liga Ultra)',
@@ -33,7 +33,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
     expect(isBattleFormatId('mega-master-league')).toBe(true);
-    expect(isBattleFormatId('sunshine-cup')).toBe(true);
+    expect(isBattleFormatId('summer-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-copa-diluvio')).toBe(true);
     expect(isBattleFormatId('battle-frontier-tsuki-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-liga-ultra')).toBe(true);
@@ -64,10 +64,10 @@ describe('battle format catalog', () => {
       cp: 10000,
     });
 
-    expect(getBattleFormatById('sunshine-cup')).toEqual({
-      id: 'sunshine-cup',
-      label: 'Sunshine Cup',
-      cup: 'sunshine',
+    expect(getBattleFormatById('summer-cup')).toEqual({
+      id: 'summer-cup',
+      label: 'Summer Cup',
+      cup: 'summer',
       cp: 1500,
     });
 
@@ -126,7 +126,7 @@ describe('battle format catalog', () => {
     );
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
     expect(isBattleFrontierFormatId('mega-master-league')).toBe(false);
-    expect(isBattleFrontierFormatId('sunshine-cup')).toBe(false);
+    expect(isBattleFrontierFormatId('summer-cup')).toBe(false);
   });
 
   it('identifies formats with a one-Mega team limit', () => {

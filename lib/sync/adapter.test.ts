@@ -24,8 +24,8 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/overall/rankings-1500.json',
     );
-    expect(adapter.getRankingFilePath('overall', 1500, 'sunshine')).toBe(
-      '/source/pvpoke/src/data/rankings/sunshine/overall/rankings-1500.json',
+    expect(adapter.getRankingFilePath('overall', 1500, 'summer')).toBe(
+      '/source/pvpoke/src/data/rankings/summer/overall/rankings-1500.json',
     );
     expect(adapter.getRankingFilePath('overall', 1500, 'copadiluvio')).toBe(
       '/source/pvpoke/src/data/rankings/copadiluvio/overall/rankings-1500.json',
@@ -136,10 +136,10 @@ describe('createPvpokeAdapter', () => {
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: battlefrontiermaster');
   });
 
-  it('reads Sunshine Cup rankings JSON files', async () => {
+  it('reads Summer Cup rankings JSON files', async () => {
     const sourcePath = '/source/pvpoke';
     const rankingRelativePath =
-      'src/data/rankings/sunshine/overall/rankings-1500.json';
+      'src/data/rankings/summer/overall/rankings-1500.json';
     const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
     const adapter = createPvpokeAdapter({
       sourcePath,
@@ -155,7 +155,7 @@ describe('createPvpokeAdapter', () => {
 
     const rankings = await adapter.readRankingJson<
       Array<{ speciesName: string }>
-    >('overall', 1500, 'sunshine');
+    >('overall', 1500, 'summer');
 
     expect(rankings).toEqual([{ speciesName: 'Pidgeot' }]);
   });

@@ -25,7 +25,7 @@ describe('format-aware simulation loading', () => {
     expect(() =>
       ensureSimulationDataAvailable('mega-master-league'),
     ).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('sunshine-cup')).not.toThrow();
+    expect(() => ensureSimulationDataAvailable('summer-cup')).not.toThrow();
     expect(() =>
       ensureSimulationDataAvailable('battle-frontier-copa-diluvio'),
     ).not.toThrow();
@@ -51,13 +51,13 @@ describe('format-aware simulation loading', () => {
   it('returns the requested shield scenario battle rating', () => {
     expect(
       getShieldScenarioMatchupResult('abomasnow', 'absol', 0, 'ultra-league'),
-    ).toBe(306);
+    ).toBe(461);
     expect(
       getShieldScenarioMatchupResult('abomasnow', 'absol', 1, 'ultra-league'),
-    ).toBe(373);
+    ).toBe(461);
     expect(
       getShieldScenarioMatchupResult('abomasnow', 'absol', 2, 'ultra-league'),
-    ).toBe(302);
+    ).toBe(352);
   });
 
   it('returns null when shield scenario matchup data is missing', () => {

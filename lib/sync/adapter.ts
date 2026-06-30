@@ -21,7 +21,7 @@ const RANKING_CATEGORIES = [
 ] as const;
 const RANKING_CUPS = [
   'all',
-  'sunshine',
+  'summer',
   'copadiluvio',
   'tsuki',
   'ligaultra',

@@ -190,7 +190,7 @@ describe('generateSimulations', () => {
     const generatedCalls: Array<{
       cup:
         | 'all'
-        | 'sunshine'
+        | 'summer'
         | 'copadiluvio'
         | 'tsuki'
         | 'ligaultra'
@@ -271,7 +271,7 @@ describe('generateSimulations', () => {
       shields: 1,
     });
     expect(generatedCalls).toContainEqual({
-      cup: 'sunshine',
+      cup: 'summer',
       cp: 1500,
       speciesId: 'bulbasaur',
       shields: 2,
@@ -318,13 +318,7 @@ describe('generateSimulations', () => {
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'simulations',
-        'cp1500',
-        'sunshine',
-        'bulbasaur_2-2.csv',
-      ),
+      path.join('data', 'simulations', 'cp1500', 'summer', 'bulbasaur_2-2.csv'),
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(
