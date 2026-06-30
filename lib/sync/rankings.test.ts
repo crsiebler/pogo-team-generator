@@ -22,7 +22,7 @@ describe('rankings local sync', () => {
           leagueCp: number,
           cup:
             | 'all'
-            | 'sunshine'
+            | 'summer'
             | 'copadiluvio'
             | 'tsuki'
             | 'ligaultra'
@@ -43,7 +43,7 @@ describe('rankings local sync', () => {
         expect([1500, 2500, 10000]).toContain(leagueCp);
         expect(
           cup === 'all' ||
-            cup === 'sunshine' ||
+            cup === 'summer' ||
             cup === 'copadiluvio' ||
             cup === 'tsuki' ||
             cup === 'ligaultra' ||
@@ -174,13 +174,7 @@ describe('rankings local sync', () => {
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'rankings',
-        'cp1500',
-        'sunshine',
-        'overall_rankings.csv',
-      ),
+      path.join('data', 'rankings', 'cp1500', 'summer', 'overall_rankings.csv'),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(

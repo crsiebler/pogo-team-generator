@@ -3,7 +3,7 @@ export interface BattleFormat {
   label: string;
   cup:
     | 'all'
-    | 'sunshine'
+    | 'summer'
     | 'copadiluvio'
     | 'tsuki'
     | 'ligaultra'
@@ -20,7 +20,7 @@ export type BattleFormatId =
   | 'ultra-league'
   | 'master-league'
   | 'mega-master-league'
-  | 'sunshine-cup'
+  | 'summer-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
@@ -55,9 +55,9 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 10000,
   },
   {
-    id: 'sunshine-cup',
-    label: 'Sunshine Cup',
-    cup: 'sunshine',
+    id: 'summer-cup',
+    label: 'Summer Cup',
+    cup: 'summer',
     cp: 1500,
   },
   {

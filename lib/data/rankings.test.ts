@@ -41,7 +41,7 @@ describe('format-aware rankings loading', () => {
     const ultraLeagueRankings = getOverallRankings('ultra-league');
     const masterLeagueRankings = getOverallRankings('master-league');
     const megaMasterLeagueRankings = getOverallRankings('mega-master-league');
-    const sunshineCupRankings = getOverallRankings('sunshine-cup');
+    const summerCupRankings = getOverallRankings('summer-cup');
     const copaDiluvioRankings = getOverallRankings(
       'battle-frontier-copa-diluvio',
     );
@@ -55,7 +55,7 @@ describe('format-aware rankings loading', () => {
     expect(ultraLeagueRankings.length).toBeGreaterThan(0);
     expect(masterLeagueRankings.length).toBeGreaterThan(0);
     expect(megaMasterLeagueRankings.length).toBeGreaterThan(0);
-    expect(sunshineCupRankings.length).toBeGreaterThan(0);
+    expect(summerCupRankings.length).toBeGreaterThan(0);
     expect(copaDiluvioRankings.length).toBeGreaterThan(0);
     expect(tsukiCupRankings.length).toBeGreaterThan(0);
     expect(ligaUltraRankings.length).toBeGreaterThan(0);
