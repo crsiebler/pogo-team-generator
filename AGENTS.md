@@ -111,6 +111,15 @@ All code must be built, linted, and tested with full compliance to these steps:
 - Type effectiveness implementation guidance is in `docs/team-optimization/type-effectiveness.md`, and the Pokemon GO type chart source data is `data/type-effectiveness.json`.
 - Ralph iterations that touch optimizer behavior or data inputs must record the optimizer docs and skills read in `progress.txt`.
 
+### 2.8 Adding or Removing Cup/Meta Support
+
+- Treat `lib/data/battleFormats.ts` as the single source of truth for supported formats. Add or remove the `BattleFormatId` union entry and the matching `BATTLE_FORMATS` catalog item with the PvPoke ranking `cup` folder name and CP cap.
+- Keep sync support aligned with the catalog. If a new `cup` string is introduced, add it to `lib/sync/adapter.ts` and update sync tests so rankings resolve to `src/data/rankings/{cup}/{category}/rankings-{cp}.json`.
+- A format is runtime-ready only when both checked-in datasets exist: `data/rankings/cp{cp}/{cup}/{category}_rankings.csv` for all ranking categories and `data/simulations/cp{cp}/{cup}/{speciesId}_{scenario}.csv` for simulations. Do not reuse another league or cup's data to make a format appear supported.
+- Run `npm run sync` against a local PvPoke source that contains the matching cup and CP ranking exports, or generate the missing PvPoke source exports first. If PvPoke does not provide the requested cup/CP ranking JSON yet, leave the format documented as sync-ready and let `MissingRankingDataError`/`MissingSimulationDataError` surface actionable failures rather than fabricating data.
+- Update `lib/data/battleFormats.test.ts`, `lib/sync/adapter.test.ts`, `lib/sync/rankings.test.ts`, and `lib/sync/simulations.test.ts` whenever format support changes. Update runtime data-loading tests only after the corresponding `data/` files are present.
+- When removing a format, remove its catalog entry, sync cup support if unused by other formats, tests, and any checked-in `data/rankings/cp{cp}/{cup}` or `data/simulations/cp{cp}/{cup}` directories only with explicit confirmation if deletion is involved.
+
 ---
 
 ## 3. Copilot/AI Developer Rules

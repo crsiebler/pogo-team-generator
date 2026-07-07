@@ -16,6 +16,7 @@ describe('battle format catalog', () => {
       'Ultra League',
       'Master League',
       'Mega Master League',
+      'Fantasy Cup',
       'Summer Cup',
       'Battle Frontier (Copa Diluvio)',
       'Battle Frontier (Tsuki Cup)',
@@ -33,6 +34,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
     expect(isBattleFormatId('mega-master-league')).toBe(true);
+    expect(isBattleFormatId('fantasy-cup')).toBe(true);
     expect(isBattleFormatId('summer-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-copa-diluvio')).toBe(true);
     expect(isBattleFormatId('battle-frontier-tsuki-cup')).toBe(true);
@@ -44,7 +46,6 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('little-cup')).toBe(false);
     expect(isBattleFormatId('kanto-cup')).toBe(false);
     expect(isBattleFormatId('spring-cup')).toBe(false);
-    expect(isBattleFormatId('fantasy-cup')).toBe(false);
     expect(isBattleFormatId('jungle-cup')).toBe(false);
     expect(isBattleFormatId('')).toBe(false);
   });
@@ -69,6 +70,13 @@ describe('battle format catalog', () => {
       label: 'Summer Cup',
       cup: 'summer',
       cp: 1500,
+    });
+
+    expect(getBattleFormatById('fantasy-cup')).toEqual({
+      id: 'fantasy-cup',
+      label: 'Fantasy Cup',
+      cup: 'fantasy',
+      cp: 2500,
     });
 
     expect(getBattleFormatById('battle-frontier-copa-diluvio')).toEqual({
@@ -102,7 +110,6 @@ describe('battle format catalog', () => {
     expect(getBattleFormatById('little-cup')).toBeUndefined();
     expect(getBattleFormatById('kanto-cup')).toBeUndefined();
     expect(getBattleFormatById('spring-cup')).toBeUndefined();
-    expect(getBattleFormatById('fantasy-cup')).toBeUndefined();
     expect(getBattleFormatById('jungle-cup')).toBeUndefined();
     expect(getBattleFormatById('naic-2026-championship-cup')).toBeUndefined();
     expect(getBattleFormatById('battle-frontier-bayou-cup')).toBeUndefined();
@@ -126,6 +133,7 @@ describe('battle format catalog', () => {
     );
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
     expect(isBattleFrontierFormatId('mega-master-league')).toBe(false);
+    expect(isBattleFrontierFormatId('fantasy-cup')).toBe(false);
     expect(isBattleFrontierFormatId('summer-cup')).toBe(false);
   });
 

@@ -27,6 +27,9 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'summer')).toBe(
       '/source/pvpoke/src/data/rankings/summer/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 2500, 'fantasy')).toBe(
+      '/source/pvpoke/src/data/rankings/fantasy/overall/rankings-2500.json',
+    );
     expect(adapter.getRankingFilePath('overall', 1500, 'copadiluvio')).toBe(
       '/source/pvpoke/src/data/rankings/copadiluvio/overall/rankings-1500.json',
     );
@@ -109,9 +112,6 @@ describe('createPvpokeAdapter', () => {
     expect(() =>
       adapter.getRankingFilePath('overall', 1500, 'spring' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: spring');
-    expect(() =>
-      adapter.getRankingFilePath('overall', 1500, 'fantasy' as never),
-    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: fantasy');
     expect(() =>
       adapter.getRankingFilePath('overall', 1500, 'jungle' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: jungle');

@@ -7,10 +7,15 @@ A Next.js app that builds competitive Pokemon GO PvP teams with a format-aware g
 - Great League
 - Ultra League
 - Master League
-- Kanto Cup
-- Spring Cup
+- Mega Master League
+- Fantasy Cup
+- Summer Cup
+- Battle Frontier (Copa Diluvio)
+- Battle Frontier (Tsuki Cup)
+- Battle Frontier (Liga Ultra)
+- Battle Frontier (Coupe du Sillage)
 
-Each format uses its own ranking CSVs, simulation data, and eligible Pokemon pool.
+Each runtime-ready format uses its own ranking CSVs, simulation data, and eligible Pokemon pool.
 
 ## What It Does
 
@@ -142,19 +147,19 @@ data/
 ├── rankings/
 │   ├── cp1500/
 │   │   ├── all/
-│   │   ├── kanto/
-│   │   └── spring/
+│   │   └── summer/
 │   ├── cp2500/
-│   │   └── all/
+│   │   ├── all/
+│   │   └── fantasy/
 │   └── cp10000/
 │       └── all/
 └── simulations/
     ├── cp1500/
     │   ├── all/
-    │   ├── kanto/
-    │   └── spring/
+    │   └── summer/
     ├── cp2500/
-    │   └── all/
+    │   ├── all/
+    │   └── fantasy/
     └── cp10000/
         └── all/
 ```
@@ -170,12 +175,14 @@ data/rankings/cp{cp}/{cup}/{category}_rankings.csv
 Examples:
 
 - `data/rankings/cp1500/all/overall_rankings.csv`
-- `data/rankings/cp1500/kanto/leads_rankings.csv`
+- `data/rankings/cp2500/fantasy/leads_rankings.csv`
 - `data/rankings/cp2500/all/switches_rankings.csv`
 
 When source files exist, sync exports seven PvPoke categories for each supported format: Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency.
 
 `lib/data/rankings.ts` caches parsed rankings per format and throws `MissingRankingDataError` when a selected format has not been synced.
+
+Supported formats are declared in `lib/data/battleFormats.ts`. Adding a new cup or meta requires a catalog entry plus matching PvPoke ranking exports and generated simulation data under the derived `cp{cp}/{cup}` paths; do not substitute data from another cup or CP cap.
 
 ### Simulations
 
@@ -188,7 +195,7 @@ data/simulations/cp{cp}/{cup}/{speciesId}_{scenario}.csv
 Examples:
 
 - `data/simulations/cp1500/all/azumarill_1-1.csv`
-- `data/simulations/cp1500/spring/feraligatr_shadow_2-2.csv`
+- `data/simulations/cp2500/fantasy/feraligatr_shadow_2-2.csv`
 - `data/simulations/cp10000/all/dialga_0-0.csv`
 
 `lib/data/simulations.ts` loads matchup matrices per format and throws `MissingSimulationDataError` when data is unavailable.
@@ -242,7 +249,7 @@ Request body:
 
 ```json
 {
-  "formatId": "kanto-cup",
+  "formatId": "summer-cup",
   "mode": "GBL",
   "anchorPokemon": ["Mew"],
   "excludedPokemon": ["Hypno"]
