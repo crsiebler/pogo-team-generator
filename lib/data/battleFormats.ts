@@ -8,6 +8,7 @@ export interface BattleFormat {
     | 'tsuki'
     | 'ligaultra'
     | 'mega'
+    | 'fantasy'
     | 'coupedusillage';
   cp: 1500 | 2500 | 10000;
 }
@@ -20,6 +21,7 @@ export type BattleFormatId =
   | 'ultra-league'
   | 'master-league'
   | 'mega-master-league'
+  | 'fantasy-cup'
   | 'summer-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
@@ -53,6 +55,12 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'Mega Master League',
     cup: 'mega',
     cp: 10000,
+  },
+  {
+    id: 'fantasy-cup',
+    label: 'Fantasy Cup',
+    cup: 'fantasy',
+    cp: 2500,
   },
   {
     id: 'summer-cup',
