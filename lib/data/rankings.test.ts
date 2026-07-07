@@ -1,3 +1,4 @@
+import { getBattleFormats } from './battleFormats';
 import { getRankedPokemonForFormat, speciesNameToChoosableId } from './pokemon';
 import {
   getAllRankingsForPokemon,
@@ -37,29 +38,9 @@ describe('format-aware rankings loading', () => {
   });
 
   it('loads overall rankings for all supported battle formats', () => {
-    const greatLeagueRankings = getOverallRankings('great-league');
-    const ultraLeagueRankings = getOverallRankings('ultra-league');
-    const masterLeagueRankings = getOverallRankings('master-league');
-    const megaMasterLeagueRankings = getOverallRankings('mega-master-league');
-    const summerCupRankings = getOverallRankings('summer-cup');
-    const copaDiluvioRankings = getOverallRankings(
-      'battle-frontier-copa-diluvio',
-    );
-    const tsukiCupRankings = getOverallRankings('battle-frontier-tsuki-cup');
-    const ligaUltraRankings = getOverallRankings('battle-frontier-liga-ultra');
-    const coupeDuSillageRankings = getOverallRankings(
-      'battle-frontier-coupe-du-sillage',
-    );
-
-    expect(greatLeagueRankings.length).toBeGreaterThan(0);
-    expect(ultraLeagueRankings.length).toBeGreaterThan(0);
-    expect(masterLeagueRankings.length).toBeGreaterThan(0);
-    expect(megaMasterLeagueRankings.length).toBeGreaterThan(0);
-    expect(summerCupRankings.length).toBeGreaterThan(0);
-    expect(copaDiluvioRankings.length).toBeGreaterThan(0);
-    expect(tsukiCupRankings.length).toBeGreaterThan(0);
-    expect(ligaUltraRankings.length).toBeGreaterThan(0);
-    expect(coupeDuSillageRankings.length).toBeGreaterThan(0);
+    for (const format of getBattleFormats()) {
+      expect(getOverallRankings(format.id).length).toBeGreaterThan(0);
+    }
   });
 
   it('keeps Great League cache stable after loading other formats', () => {

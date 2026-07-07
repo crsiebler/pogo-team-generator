@@ -1,3 +1,4 @@
+import { getBattleFormats } from './battleFormats';
 import {
   ensureSimulationDataAvailable,
   getMatchupMatrix,
@@ -19,25 +20,9 @@ describe('format-aware simulation loading', () => {
   });
 
   it('ensures simulation data exists for all supported battle formats', () => {
-    expect(() => ensureSimulationDataAvailable('great-league')).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('ultra-league')).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('master-league')).not.toThrow();
-    expect(() =>
-      ensureSimulationDataAvailable('mega-master-league'),
-    ).not.toThrow();
-    expect(() => ensureSimulationDataAvailable('summer-cup')).not.toThrow();
-    expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-copa-diluvio'),
-    ).not.toThrow();
-    expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-tsuki-cup'),
-    ).not.toThrow();
-    expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-liga-ultra'),
-    ).not.toThrow();
-    expect(() =>
-      ensureSimulationDataAvailable('battle-frontier-coupe-du-sillage'),
-    ).not.toThrow();
+    for (const format of getBattleFormats()) {
+      expect(() => ensureSimulationDataAvailable(format.id)).not.toThrow();
+    }
   }, 15000);
 
   it('keeps Great League cache stable after loading other formats', () => {
