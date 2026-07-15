@@ -23,6 +23,7 @@ describe('rankings local sync', () => {
           cup:
             | 'all'
             | 'summer'
+            | 'retro'
             | 'copadiluvio'
             | 'tsuki'
             | 'ligaultra'
@@ -45,6 +46,7 @@ describe('rankings local sync', () => {
         expect(
           cup === 'all' ||
             cup === 'summer' ||
+            cup === 'retro' ||
             cup === 'copadiluvio' ||
             cup === 'tsuki' ||
             cup === 'ligaultra' ||
@@ -145,8 +147,8 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(70);
-    expect(rankings).toHaveLength(70);
+    expect(readRankingJson).toHaveBeenCalledTimes(77);
+    expect(rankings).toHaveLength(77);
     expect(rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
@@ -162,7 +164,7 @@ describe('rankings local sync', () => {
       'Charged Move Cost': 10000,
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(70);
+    expect(writeFile).toHaveBeenCalledTimes(77);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -177,6 +179,10 @@ describe('rankings local sync', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'summer', 'overall_rankings.csv'),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'rankings', 'cp1500', 'retro', 'overall_rankings.csv'),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
@@ -420,7 +426,7 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(rankings).toHaveLength(70);
+    expect(rankings).toHaveLength(77);
     expect(rankings.every((entry) => entry.Pokemon === 'Bulbasaur')).toBe(true);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'tsuki', 'overall_rankings.csv'),

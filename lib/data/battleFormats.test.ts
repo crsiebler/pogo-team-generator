@@ -16,8 +16,9 @@ describe('battle format catalog', () => {
       'Ultra League',
       'Master League',
       'Mega Master League',
-      'Fantasy Cup',
+      'Fantasy Cup (Ultra League)',
       'Summer Cup',
+      'Retro Cup',
       'Battle Frontier (Copa Diluvio)',
       'Battle Frontier (Tsuki Cup)',
       'Battle Frontier (Liga Ultra)',
@@ -36,6 +37,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('mega-master-league')).toBe(true);
     expect(isBattleFormatId('fantasy-cup')).toBe(true);
     expect(isBattleFormatId('summer-cup')).toBe(true);
+    expect(isBattleFormatId('retro-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-copa-diluvio')).toBe(true);
     expect(isBattleFormatId('battle-frontier-tsuki-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-liga-ultra')).toBe(true);
@@ -74,9 +76,16 @@ describe('battle format catalog', () => {
 
     expect(getBattleFormatById('fantasy-cup')).toEqual({
       id: 'fantasy-cup',
-      label: 'Fantasy Cup',
+      label: 'Fantasy Cup (Ultra League)',
       cup: 'fantasy',
       cp: 2500,
+    });
+
+    expect(getBattleFormatById('retro-cup')).toEqual({
+      id: 'retro-cup',
+      label: 'Retro Cup',
+      cup: 'retro',
+      cp: 1500,
     });
 
     expect(getBattleFormatById('battle-frontier-copa-diluvio')).toEqual({

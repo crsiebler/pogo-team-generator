@@ -4,6 +4,7 @@ export interface BattleFormat {
   cup:
     | 'all'
     | 'summer'
+    | 'retro'
     | 'copadiluvio'
     | 'tsuki'
     | 'ligaultra'
@@ -23,6 +24,7 @@ export type BattleFormatId =
   | 'mega-master-league'
   | 'fantasy-cup'
   | 'summer-cup'
+  | 'retro-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
@@ -58,7 +60,7 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
   },
   {
     id: 'fantasy-cup',
-    label: 'Fantasy Cup',
+    label: 'Fantasy Cup (Ultra League)',
     cup: 'fantasy',
     cp: 2500,
   },
@@ -66,6 +68,12 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     id: 'summer-cup',
     label: 'Summer Cup',
     cup: 'summer',
+    cp: 1500,
+  },
+  {
+    id: 'retro-cup',
+    label: 'Retro Cup',
+    cup: 'retro',
     cp: 1500,
   },
   {
