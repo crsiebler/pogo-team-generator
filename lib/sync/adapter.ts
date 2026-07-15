@@ -22,6 +22,7 @@ const RANKING_CATEGORIES = [
 const RANKING_CUPS = [
   'all',
   'summer',
+  'retro',
   'copadiluvio',
   'tsuki',
   'ligaultra',
