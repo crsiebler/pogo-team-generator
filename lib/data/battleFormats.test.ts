@@ -15,6 +15,7 @@ describe('battle format catalog', () => {
       'Great League',
       'Ultra League',
       'Master League',
+      'Master Premier Cup',
       'Mega Master League',
       'Fantasy Cup (Ultra League)',
       'Summer Cup',
@@ -34,6 +35,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('great-league')).toBe(true);
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
+    expect(isBattleFormatId('master-premier-cup')).toBe(true);
     expect(isBattleFormatId('mega-master-league')).toBe(true);
     expect(isBattleFormatId('fantasy-cup')).toBe(true);
     expect(isBattleFormatId('summer-cup')).toBe(true);
@@ -64,6 +66,13 @@ describe('battle format catalog', () => {
       id: 'mega-master-league',
       label: 'Mega Master League',
       cup: 'mega',
+      cp: 10000,
+    });
+
+    expect(getBattleFormatById('master-premier-cup')).toEqual({
+      id: 'master-premier-cup',
+      label: 'Master Premier Cup',
+      cup: 'premier',
       cp: 10000,
     });
 
@@ -152,6 +161,7 @@ describe('battle format catalog', () => {
       true,
     );
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
+    expect(hasOneMegaLimitForFormat('master-premier-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat(undefined)).toBe(false);
   });

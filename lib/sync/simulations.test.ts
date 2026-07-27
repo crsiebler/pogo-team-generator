@@ -186,6 +186,162 @@ describe('generateSimulations', () => {
     expect(selectedBattleCpDuringInitialize).toBe(10000);
   });
 
+  it('resolves ranking move names against each canonical starting form', async () => {
+    const recommendedMovesBySpecies = new Map<
+      string,
+      {
+        fastMove: string;
+        chargedMove1: string;
+        chargedMove2: string | null;
+      }
+    >();
+
+    await generateSimulations(
+      { sourcePath: '/source/pvpoke' },
+      {
+        getRuntime: () => ({ context: {} as never }),
+        fileExists: isOverallRankingPath,
+        readFile: async (filePath: string) => {
+          if (isOverallRankingPath(filePath)) {
+            return [
+              'Pokemon,Fast Move,Charged Move 1,Charged Move 2',
+              "Tapu Fini,Water Gun,Surf,Nature's Madness",
+              'Morpeko (Full Belly),Thunder Shock,Aura Wheel,Psychic Fangs',
+              'Aegislash (Shield),Psycho Cut,Shadow Ball,Gyro Ball',
+              'Noctowl,Wing Attack,Sky Attack,Return',
+            ].join('\n');
+          }
+
+          if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
+            return JSON.stringify([
+              {
+                speciesId: 'tapu_fini',
+                speciesName: 'Tapu Fini',
+                fastMoves: ['WATER_GUN'],
+                chargedMoves: ['SURF', 'NATURES_MADNESS'],
+                released: true,
+              },
+              {
+                speciesId: 'morpeko_full_belly',
+                speciesName: 'Morpeko (Full Belly)',
+                fastMoves: ['THUNDER_SHOCK'],
+                chargedMoves: ['AURA_WHEEL_ELECTRIC', 'PSYCHIC_FANGS'],
+                released: true,
+              },
+              {
+                speciesId: 'morpeko_hangry',
+                speciesName: 'Morpeko (Hangry)',
+                fastMoves: ['THUNDER_SHOCK'],
+                chargedMoves: ['AURA_WHEEL_DARK', 'PSYCHIC_FANGS'],
+                released: true,
+              },
+              {
+                speciesId: 'aegislash_shield',
+                speciesName: 'Aegislash (Shield)',
+                fastMoves: ['AEGISLASH_CHARGE_PSYCHO_CUT'],
+                chargedMoves: ['SHADOW_BALL', 'GYRO_BALL'],
+                released: true,
+              },
+              {
+                speciesId: 'noctowl',
+                speciesName: 'Noctowl',
+                fastMoves: ['WING_ATTACK'],
+                chargedMoves: ['SKY_ATTACK'],
+                released: true,
+              },
+            ]);
+          }
+
+          if (filePath.endsWith(path.join('data', 'moves.json'))) {
+            return JSON.stringify([
+              { moveId: 'WATER_GUN', name: 'Water Gun', energyGain: 6 },
+              { moveId: 'SURF', name: 'Surf', energyGain: 0 },
+              {
+                moveId: 'NATURES_MADNESS',
+                name: "Nature's Madness",
+                energyGain: 0,
+              },
+              {
+                moveId: 'THUNDER_SHOCK',
+                name: 'Thunder Shock',
+                energyGain: 9,
+              },
+              {
+                moveId: 'AURA_WHEEL_ELECTRIC',
+                name: 'Aura Wheel',
+                energyGain: 0,
+              },
+              {
+                moveId: 'AURA_WHEEL_DARK',
+                name: 'Aura Wheel',
+                energyGain: 0,
+              },
+              {
+                moveId: 'PSYCHIC_FANGS',
+                name: 'Psychic Fangs',
+                energyGain: 0,
+              },
+              {
+                moveId: 'AEGISLASH_CHARGE_PSYCHO_CUT',
+                name: 'Psycho Cut',
+                energyGain: 6,
+              },
+              {
+                moveId: 'SHADOW_BALL',
+                name: 'Shadow Ball',
+                energyGain: 0,
+              },
+              { moveId: 'GYRO_BALL', name: 'Gyro Ball', energyGain: 0 },
+              { moveId: 'WING_ATTACK', name: 'Wing Attack', energyGain: 8 },
+              { moveId: 'SKY_ATTACK', name: 'Sky Attack', energyGain: 0 },
+              { moveId: 'RETURN', name: 'Return', energyGain: 0 },
+            ]);
+          }
+
+          throw new Error(`unexpected file read: ${filePath}`);
+        },
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+        generateScenarioCsv: (
+          runtime,
+          format,
+          speciesId,
+          shields,
+          recommendedMoves,
+        ): string => {
+          void runtime;
+          void format;
+          void shields;
+          if (recommendedMoves && !recommendedMovesBySpecies.has(speciesId)) {
+            recommendedMovesBySpecies.set(speciesId, recommendedMoves);
+          }
+          return VALID_SIMULATION_CSV;
+        },
+      },
+    );
+
+    expect(recommendedMovesBySpecies.get('tapu_fini')).toEqual({
+      fastMove: 'WATER_GUN',
+      chargedMove1: 'SURF',
+      chargedMove2: 'NATURES_MADNESS',
+    });
+    expect(recommendedMovesBySpecies.get('morpeko_full_belly')).toEqual({
+      fastMove: 'THUNDER_SHOCK',
+      chargedMove1: 'AURA_WHEEL_ELECTRIC',
+      chargedMove2: 'PSYCHIC_FANGS',
+    });
+    expect(recommendedMovesBySpecies.get('aegislash_shield')).toEqual({
+      fastMove: 'AEGISLASH_CHARGE_PSYCHO_CUT',
+      chargedMove1: 'SHADOW_BALL',
+      chargedMove2: 'GYRO_BALL',
+    });
+    expect(recommendedMovesBySpecies.get('noctowl')).toEqual({
+      fastMove: 'WING_ATTACK',
+      chargedMove1: 'SKY_ATTACK',
+      chargedMove2: 'RETURN',
+    });
+  });
+
   it('generates simulations for every supported format and scenario', async () => {
     const generatedCalls: Array<{
       cup:
@@ -196,6 +352,7 @@ describe('generateSimulations', () => {
         | 'tsuki'
         | 'ligaultra'
         | 'mega'
+        | 'premier'
         | 'fantasy'
         | 'coupedusillage';
       cp: 1500 | 2500 | 10000;
@@ -230,6 +387,10 @@ describe('generateSimulations', () => {
             ]);
           }
 
+          if (filePath.endsWith(path.join('data', 'moves.json'))) {
+            return '[]';
+          }
+
           throw new Error(`unexpected file read: ${filePath}`);
         },
         mkdir: vi.fn().mockResolvedValue(undefined),
@@ -247,7 +408,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(33);
+    expect(generatedCalls).toHaveLength(36);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -271,6 +432,12 @@ describe('generateSimulations', () => {
       cp: 10000,
       speciesId: 'bulbasaur',
       shields: 1,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'premier',
+      cp: 10000,
+      speciesId: 'bulbasaur',
+      shields: 2,
     });
     expect(generatedCalls).toContainEqual({
       cup: 'summer',
@@ -329,6 +496,16 @@ describe('generateSimulations', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp10000', 'mega', 'bulbasaur_1-1.csv'),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp10000',
+        'premier',
+        'bulbasaur_2-2.csv',
+      ),
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(
@@ -399,6 +576,10 @@ describe('generateSimulations', () => {
             released: true,
           },
         ]);
+      }
+
+      if (filePath.endsWith(path.join('data', 'moves.json'))) {
+        return '[]';
       }
 
       if (

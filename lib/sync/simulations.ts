@@ -22,6 +22,22 @@ interface RecommendedMoveIds {
   chargedMove2: string | null;
 }
 
+interface SimulationPokemonData {
+  speciesId: string;
+  speciesName: string;
+  fastMoves: string[];
+  chargedMoves: string[];
+  eliteMoves?: string[];
+  legacyMoves?: string[];
+  released: boolean;
+}
+
+interface SimulationMoveData {
+  moveId: string;
+  name: string;
+  energyGain: number;
+}
+
 interface PvpokeVmRuntime {
   context: vm.Context & Record<string, unknown>;
 }
@@ -50,7 +66,6 @@ const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
 };
 
 const MOVE_ID_ALIASES: Record<string, string> = {
-  NATURE_S_MADNESS: 'NATURES_MADNESS',
   SUPERPOWER: 'SUPER_POWER',
   VISE_GRIP: 'VICE_GRIP',
 };
@@ -96,10 +111,12 @@ function moveNameToMoveId(moveName: string): string {
     const normalizedBase = match[1]
       .trim()
       .toUpperCase()
+      .replace(/'/g, '')
       .replace(/[\s-]+/g, '_');
     const normalizedType = match[2]
       .trim()
       .toUpperCase()
+      .replace(/'/g, '')
       .replace(/[\s-]+/g, '_');
     const moveId = `${normalizedBase}_${normalizedType}`;
 
@@ -109,9 +126,59 @@ function moveNameToMoveId(moveName: string): string {
   const moveId = moveName
     .trim()
     .toUpperCase()
+    .replace(/'/g, '')
     .replace(/[\s-]+/g, '_');
 
   return MOVE_ID_ALIASES[moveId] ?? moveId;
+}
+
+function resolveMoveId(
+  moveName: string,
+  slot: 'fast' | 'charged',
+  pokemon: SimulationPokemonData,
+  moveById: ReadonlyMap<string, SimulationMoveData>,
+): string {
+  const supplementalMoveIds = [
+    ...(pokemon.eliteMoves ?? []),
+    ...(pokemon.legacyMoves ?? []),
+  ].filter((moveId) => {
+    const move = moveById.get(moveId);
+    return (
+      move && (slot === 'fast' ? move.energyGain > 0 : move.energyGain <= 0)
+    );
+  });
+  const moveIds = [
+    ...(slot === 'fast' ? pokemon.fastMoves : pokemon.chargedMoves),
+    ...supplementalMoveIds,
+  ];
+  const matchingMoveIds = [...new Set(moveIds)].filter(
+    (moveId) => moveById.get(moveId)?.name === moveName,
+  );
+
+  if (matchingMoveIds.length === 1) {
+    return matchingMoveIds[0];
+  }
+
+  if (matchingMoveIds.length > 1) {
+    throw new Error(
+      `[sync-simulations] Ambiguous ${slot} move '${moveName}' for '${pokemon.speciesId}': ${matchingMoveIds.join(', ')}`,
+    );
+  }
+
+  const normalizedMoveId = moveNameToMoveId(moveName);
+  const normalizedMove = moveById.get(normalizedMoveId);
+  if (
+    normalizedMove &&
+    (slot === 'fast'
+      ? normalizedMove.energyGain > 0
+      : normalizedMove.energyGain <= 0)
+  ) {
+    return normalizedMoveId;
+  }
+
+  throw new Error(
+    `[sync-simulations] ${slot} move '${moveName}' does not resolve for '${pokemon.speciesId}'`,
+  );
 }
 
 /**
@@ -119,16 +186,23 @@ function moveNameToMoveId(moveName: string): string {
  */
 function getRecommendedMoveIds(
   ranking: RankingsCsvEntry,
+  pokemon: SimulationPokemonData,
+  moveById: ReadonlyMap<string, SimulationMoveData>,
 ): RecommendedMoveIds | undefined {
   if (!ranking['Fast Move'] || !ranking['Charged Move 1']) {
     return undefined;
   }
 
   return {
-    fastMove: moveNameToMoveId(ranking['Fast Move']),
-    chargedMove1: moveNameToMoveId(ranking['Charged Move 1']),
+    fastMove: resolveMoveId(ranking['Fast Move'], 'fast', pokemon, moveById),
+    chargedMove1: resolveMoveId(
+      ranking['Charged Move 1'],
+      'charged',
+      pokemon,
+      moveById,
+    ),
     chargedMove2: ranking['Charged Move 2']
-      ? moveNameToMoveId(ranking['Charged Move 2'])
+      ? resolveMoveId(ranking['Charged Move 2'], 'charged', pokemon, moveById)
       : null,
   };
 }
@@ -652,18 +726,27 @@ export async function generateSimulations(
       );
     }
 
-    const pokemonJsonText = await resolvedDependencies.readFile(
-      path.join(syncConfig.outputDir, 'pokemon.json'),
-    );
+    const [pokemonJsonText, movesJsonText] = await Promise.all([
+      resolvedDependencies.readFile(
+        path.join(syncConfig.outputDir, 'pokemon.json'),
+      ),
+      resolvedDependencies.readFile(
+        path.join(syncConfig.outputDir, 'moves.json'),
+      ),
+    ]);
 
-    const pokemonData = JSON.parse(pokemonJsonText) as Array<{
-      speciesId: string;
-      speciesName: string;
-      released: boolean;
-    }>;
+    const pokemonData = JSON.parse(pokemonJsonText) as SimulationPokemonData[];
+    const movesData = JSON.parse(movesJsonText) as SimulationMoveData[];
 
     const speciesByNormalizedName = new Map<string, string>();
     const speciesNameById = new Map<string, string>();
+    const pokemonBySpeciesId = new Map<string, SimulationPokemonData>();
+    const moveById = new Map(
+      movesData.map((move): [string, SimulationMoveData] => [
+        move.moveId,
+        move,
+      ]),
+    );
 
     pokemonData.forEach((pokemon) => {
       const canonicalSpeciesId = normalizeToChoosableSpeciesId(
@@ -673,6 +756,13 @@ export async function generateSimulations(
         normalizeSpeciesName(pokemon.speciesName),
         canonicalSpeciesId,
       );
+
+      if (
+        !pokemonBySpeciesId.has(canonicalSpeciesId) ||
+        pokemon.speciesId === canonicalSpeciesId
+      ) {
+        pokemonBySpeciesId.set(canonicalSpeciesId, pokemon);
+      }
 
       if (!speciesNameById.has(canonicalSpeciesId) && pokemon.released) {
         speciesNameById.set(canonicalSpeciesId, pokemon.speciesName);
@@ -745,8 +835,14 @@ export async function generateSimulations(
             }
           }
 
+          const pokemon = pokemonBySpeciesId.get(speciesId);
+          if (!pokemon) {
+            throw new Error(
+              `[sync-simulations] Missing canonical Pokemon data for '${speciesId}'`,
+            );
+          }
           const recommendedMoves = ranking
-            ? getRecommendedMoveIds(ranking)
+            ? getRecommendedMoveIds(ranking, pokemon, moveById)
             : undefined;
           const csvText = resolvedDependencies.generateScenarioCsv(
             runtime,

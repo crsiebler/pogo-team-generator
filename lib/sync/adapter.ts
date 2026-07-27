@@ -27,6 +27,7 @@ const RANKING_CUPS = [
   'tsuki',
   'ligaultra',
   'mega',
+  'premier',
   'fantasy',
   'coupedusillage',
 ] as const;
