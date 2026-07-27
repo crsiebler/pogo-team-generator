@@ -28,6 +28,7 @@ describe('rankings local sync', () => {
             | 'tsuki'
             | 'ligaultra'
             | 'mega'
+            | 'premier'
             | 'fantasy'
             | 'coupedusillage'
             | undefined,
@@ -51,6 +52,7 @@ describe('rankings local sync', () => {
             cup === 'tsuki' ||
             cup === 'ligaultra' ||
             cup === 'mega' ||
+            cup === 'premier' ||
             cup === 'fantasy' ||
             cup === 'coupedusillage',
         ).toBe(true);
@@ -147,8 +149,8 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(77);
-    expect(rankings).toHaveLength(77);
+    expect(readRankingJson).toHaveBeenCalledTimes(84);
+    expect(rankings).toHaveLength(84);
     expect(rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
@@ -164,7 +166,7 @@ describe('rankings local sync', () => {
       'Charged Move Cost': 10000,
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(77);
+    expect(writeFile).toHaveBeenCalledTimes(84);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -231,6 +233,16 @@ describe('rankings local sync', () => {
     );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp10000', 'mega', 'leads_rankings.csv'),
+      expect.stringContaining('Bulbasaur'),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'rankings',
+        'cp10000',
+        'premier',
+        'overall_rankings.csv',
+      ),
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
@@ -426,7 +438,7 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(rankings).toHaveLength(77);
+    expect(rankings).toHaveLength(84);
     expect(rankings.every((entry) => entry.Pokemon === 'Bulbasaur')).toBe(true);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'tsuki', 'overall_rankings.csv'),
