@@ -3,14 +3,10 @@ export interface BattleFormat {
   label: string;
   cup:
     | 'all'
-    | 'summer'
-    | 'retro'
+    | 'weather'
     | 'copadiluvio'
     | 'tsuki'
     | 'ligaultra'
-    | 'mega'
-    | 'premier'
-    | 'fantasy'
     | 'coupedusillage';
   cp: 1500 | 2500 | 10000;
 }
@@ -22,11 +18,7 @@ export type BattleFormatId =
   | 'great-league'
   | 'ultra-league'
   | 'master-league'
-  | 'master-premier-cup'
-  | 'mega-master-league'
-  | 'fantasy-cup'
-  | 'summer-cup'
-  | 'retro-cup'
+  | 'weather-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
@@ -55,33 +47,9 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 10000,
   },
   {
-    id: 'master-premier-cup',
-    label: 'Master Premier Cup',
-    cup: 'premier',
-    cp: 10000,
-  },
-  {
-    id: 'mega-master-league',
-    label: 'Mega Master League',
-    cup: 'mega',
-    cp: 10000,
-  },
-  {
-    id: 'fantasy-cup',
-    label: 'Fantasy Cup (Ultra League)',
-    cup: 'fantasy',
-    cp: 2500,
-  },
-  {
-    id: 'summer-cup',
-    label: 'Summer Cup',
-    cup: 'summer',
-    cp: 1500,
-  },
-  {
-    id: 'retro-cup',
-    label: 'Retro Cup',
-    cup: 'retro',
+    id: 'weather-cup',
+    label: 'Weather Cup',
+    cup: 'weather',
     cp: 1500,
   },
   {
@@ -116,7 +84,6 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
 export const DEFAULT_BATTLE_FORMAT_ID: BattleFormatId = 'great-league';
 
 const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
-  'mega-master-league',
   'battle-frontier-coupe-du-sillage',
 ]);
 

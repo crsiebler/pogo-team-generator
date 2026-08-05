@@ -74,30 +74,6 @@ describe('genetic operators legality checks', () => {
     expect(getMegaMasterTeamLegality).not.toHaveBeenCalled();
   });
 
-  it('rejects illegal Mega Master crossover children', () => {
-    vi.spyOn(Math, 'random').mockReturnValue(0.1);
-
-    const parent1 = {
-      team: ['swampert_mega', 'mewtwo', 'dragonite'],
-      anchors: [0],
-      fitness: 1,
-    };
-    const parent2 = {
-      team: ['swampert_mega', 'giratina_altered', 'palkia_origin'],
-      anchors: [0],
-      fitness: 1,
-    };
-
-    const child = crossover(parent1, parent2, 'GBL', 'mega-master-league');
-
-    expect(child).toEqual(parent1);
-    expect(getMegaMasterTeamLegality).toHaveBeenCalledWith([
-      'swampert_mega',
-      'giratina_altered',
-      'palkia_origin',
-    ]);
-  });
-
   it('rejects illegal Battle Frontier Coupe du Sillage crossover children', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.1);
 
@@ -127,7 +103,7 @@ describe('genetic operators legality checks', () => {
     ]);
   });
 
-  it('rejects illegal Mega Master mutations', () => {
+  it('rejects illegal one-Mega-limit mutations', () => {
     vi.spyOn(Math, 'random')
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(0.8)
@@ -144,7 +120,7 @@ describe('genetic operators legality checks', () => {
       ['eternatus', 'giratina_altered', 'palkia_origin'],
       1,
       'GBL',
-      'mega-master-league',
+      'battle-frontier-coupe-du-sillage',
     );
 
     expect(mutated).toEqual(chromosome);
