@@ -24,14 +24,8 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/overall/rankings-1500.json',
     );
-    expect(adapter.getRankingFilePath('overall', 1500, 'summer')).toBe(
-      '/source/pvpoke/src/data/rankings/summer/overall/rankings-1500.json',
-    );
-    expect(adapter.getRankingFilePath('overall', 1500, 'retro')).toBe(
-      '/source/pvpoke/src/data/rankings/retro/overall/rankings-1500.json',
-    );
-    expect(adapter.getRankingFilePath('overall', 2500, 'fantasy')).toBe(
-      '/source/pvpoke/src/data/rankings/fantasy/overall/rankings-2500.json',
+    expect(adapter.getRankingFilePath('overall', 1500, 'weather')).toBe(
+      '/source/pvpoke/src/data/rankings/weather/overall/rankings-1500.json',
     );
     expect(adapter.getRankingFilePath('overall', 1500, 'copadiluvio')).toBe(
       '/source/pvpoke/src/data/rankings/copadiluvio/overall/rankings-1500.json',
@@ -41,12 +35,6 @@ describe('createPvpokeAdapter', () => {
     );
     expect(adapter.getRankingFilePath('overall', 2500, 'ligaultra')).toBe(
       '/source/pvpoke/src/data/rankings/ligaultra/overall/rankings-2500.json',
-    );
-    expect(adapter.getRankingFilePath('overall', 10000, 'mega')).toBe(
-      '/source/pvpoke/src/data/rankings/mega/overall/rankings-10000.json',
-    );
-    expect(adapter.getRankingFilePath('overall', 10000, 'premier')).toBe(
-      '/source/pvpoke/src/data/rankings/premier/overall/rankings-10000.json',
     );
     expect(adapter.getRankingFilePath('overall', 10000, 'coupedusillage')).toBe(
       '/source/pvpoke/src/data/rankings/coupedusillage/overall/rankings-10000.json',
@@ -122,6 +110,21 @@ describe('createPvpokeAdapter', () => {
       adapter.getRankingFilePath('overall', 1500, 'jungle' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: jungle');
     expect(() =>
+      adapter.getRankingFilePath('overall', 1500, 'retro' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: retro');
+    expect(() =>
+      adapter.getRankingFilePath('overall', 10000, 'premier' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: premier');
+    expect(() =>
+      adapter.getRankingFilePath('overall', 10000, 'mega' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: mega');
+    expect(() =>
+      adapter.getRankingFilePath('overall', 2500, 'fantasy' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: fantasy');
+    expect(() =>
+      adapter.getRankingFilePath('overall', 1500, 'summer' as never),
+    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: summer');
+    expect(() =>
       adapter.getRankingFilePath('overall', 1500, 'naic2026' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: naic2026');
     expect(() =>
@@ -142,34 +145,10 @@ describe('createPvpokeAdapter', () => {
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: battlefrontiermaster');
   });
 
-  it('reads Summer Cup rankings JSON files', async () => {
+  it('reads Weather Cup rankings JSON files', async () => {
     const sourcePath = '/source/pvpoke';
     const rankingRelativePath =
-      'src/data/rankings/summer/overall/rankings-1500.json';
-    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
-    const adapter = createPvpokeAdapter({
-      sourcePath,
-      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
-      readFile: async (filePath: string) => {
-        if (filePath !== rankingAbsolutePath) {
-          throw new Error('unexpected path read');
-        }
-
-        return '[{"speciesName":"Pidgeot"}]';
-      },
-    });
-
-    const rankings = await adapter.readRankingJson<
-      Array<{ speciesName: string }>
-    >('overall', 1500, 'summer');
-
-    expect(rankings).toEqual([{ speciesName: 'Pidgeot' }]);
-  });
-
-  it('reads Retro Cup rankings JSON files', async () => {
-    const sourcePath = '/source/pvpoke';
-    const rankingRelativePath =
-      'src/data/rankings/retro/overall/rankings-1500.json';
+      'src/data/rankings/weather/overall/rankings-1500.json';
     const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
     const adapter = createPvpokeAdapter({
       sourcePath,
@@ -185,7 +164,7 @@ describe('createPvpokeAdapter', () => {
 
     const rankings = await adapter.readRankingJson<
       Array<{ speciesName: string }>
-    >('overall', 1500, 'retro');
+    >('overall', 1500, 'weather');
 
     expect(rankings).toEqual([{ speciesName: 'Feraligatr' }]);
   });
@@ -212,54 +191,6 @@ describe('createPvpokeAdapter', () => {
     >('overall', 1500, 'copadiluvio');
 
     expect(rankings).toEqual([{ speciesName: 'Mantine' }]);
-  });
-
-  it('reads Mega Master League rankings JSON files', async () => {
-    const sourcePath = '/source/pvpoke';
-    const rankingRelativePath =
-      'src/data/rankings/mega/overall/rankings-10000.json';
-    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
-    const adapter = createPvpokeAdapter({
-      sourcePath,
-      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
-      readFile: async (filePath: string) => {
-        if (filePath !== rankingAbsolutePath) {
-          throw new Error('unexpected path read');
-        }
-
-        return '[{"speciesName":"Rayquaza (Mega)"}]';
-      },
-    });
-
-    const rankings = await adapter.readRankingJson<
-      Array<{ speciesName: string }>
-    >('overall', 10000, 'mega');
-
-    expect(rankings).toEqual([{ speciesName: 'Rayquaza (Mega)' }]);
-  });
-
-  it('reads Master Premier Cup rankings JSON files', async () => {
-    const sourcePath = '/source/pvpoke';
-    const rankingRelativePath =
-      'src/data/rankings/premier/overall/rankings-10000.json';
-    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
-    const adapter = createPvpokeAdapter({
-      sourcePath,
-      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
-      readFile: async (filePath: string) => {
-        if (filePath !== rankingAbsolutePath) {
-          throw new Error('unexpected path read');
-        }
-
-        return '[{"speciesName":"Florges"}]';
-      },
-    });
-
-    const rankings = await adapter.readRankingJson<
-      Array<{ speciesName: string }>
-    >('overall', 10000, 'premier');
-
-    expect(rankings).toEqual([{ speciesName: 'Florges' }]);
   });
 
   it('reads gamemaster JSON via stable adapter methods', async () => {

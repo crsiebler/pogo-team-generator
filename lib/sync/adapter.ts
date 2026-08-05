@@ -21,14 +21,10 @@ const RANKING_CATEGORIES = [
 ] as const;
 const RANKING_CUPS = [
   'all',
-  'summer',
-  'retro',
+  'weather',
   'copadiluvio',
   'tsuki',
   'ligaultra',
-  'mega',
-  'premier',
-  'fantasy',
   'coupedusillage',
 ] as const;
 

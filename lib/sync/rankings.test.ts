@@ -22,14 +22,10 @@ describe('rankings local sync', () => {
           leagueCp: number,
           cup:
             | 'all'
-            | 'summer'
-            | 'retro'
+            | 'weather'
             | 'copadiluvio'
             | 'tsuki'
             | 'ligaultra'
-            | 'mega'
-            | 'premier'
-            | 'fantasy'
             | 'coupedusillage'
             | undefined,
         ) => Promise<
@@ -46,14 +42,10 @@ describe('rankings local sync', () => {
         expect([1500, 2500, 10000]).toContain(leagueCp);
         expect(
           cup === 'all' ||
-            cup === 'summer' ||
-            cup === 'retro' ||
+            cup === 'weather' ||
             cup === 'copadiluvio' ||
             cup === 'tsuki' ||
             cup === 'ligaultra' ||
-            cup === 'mega' ||
-            cup === 'premier' ||
-            cup === 'fantasy' ||
             cup === 'coupedusillage',
         ).toBe(true);
         expect(categories).toContain(category);
@@ -149,8 +141,8 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(84);
-    expect(rankings).toHaveLength(84);
+    expect(readRankingJson).toHaveBeenCalledTimes(56);
+    expect(rankings).toHaveLength(56);
     expect(rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
@@ -166,7 +158,7 @@ describe('rankings local sync', () => {
       'Charged Move Cost': 10000,
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(84);
+    expect(writeFile).toHaveBeenCalledTimes(56);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -180,19 +172,11 @@ describe('rankings local sync', () => {
       expect.stringContaining('Bulbasaur'),
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'rankings', 'cp1500', 'summer', 'overall_rankings.csv'),
-      expect.stringContaining('Bulbasaur'),
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'rankings', 'cp1500', 'retro', 'overall_rankings.csv'),
-      expect.stringContaining('Bulbasaur'),
-    );
-    expect(writeFile).toHaveBeenCalledWith(
       path.join(
         'data',
         'rankings',
-        'cp2500',
-        'fantasy',
+        'cp1500',
+        'weather',
         'overall_rankings.csv',
       ),
       expect.stringContaining('Bulbasaur'),
@@ -228,20 +212,6 @@ describe('rankings local sync', () => {
         'cp10000',
         'coupedusillage',
         'closers_rankings.csv',
-      ),
-      expect.stringContaining('Bulbasaur'),
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'rankings', 'cp10000', 'mega', 'leads_rankings.csv'),
-      expect.stringContaining('Bulbasaur'),
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'rankings',
-        'cp10000',
-        'premier',
-        'overall_rankings.csv',
       ),
       expect.stringContaining('Bulbasaur'),
     );
@@ -438,7 +408,7 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(rankings).toHaveLength(84);
+    expect(rankings).toHaveLength(56);
     expect(rankings.every((entry) => entry.Pokemon === 'Bulbasaur')).toBe(true);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'tsuki', 'overall_rankings.csv'),

@@ -735,43 +735,6 @@ describe('generateTeam format-aware candidate selection', () => {
     );
   });
 
-  it('rejects illegal final Mega Master League teams before returning', async () => {
-    const illegalTeam = ['swampert_mega', 'gallade_mega', 'dragonite'];
-
-    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
-      new Set<string>(['Swampert', 'Gallade', 'Dragonite']),
-    );
-    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
-      createPokemon('swampert_mega', 'Swampert (Mega)'),
-      createPokemon('gallade_mega', 'Gallade (Mega)'),
-      createPokemon('dragonite', 'Dragonite'),
-    ]);
-    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
-      createChromosomeWithTeam(illegalTeam),
-    ]);
-    vi.mocked(getBestChromosome).mockReturnValue(
-      createChromosomeWithTeam(illegalTeam),
-    );
-    vi.mocked(getMegaMasterTeamLegality).mockReturnValue({
-      isLegal: false,
-      megaCount: 2,
-      violations: ['mega-limit'],
-    });
-
-    await expect(
-      generateTeam({
-        mode: 'GBL',
-        formatId: 'mega-master-league',
-        populationSize: 1,
-        generations: 0,
-      }),
-    ).rejects.toThrow(
-      'Final one-Mega-limit team is illegal. This should never happen.',
-    );
-
-    expect(getMegaMasterTeamLegality).toHaveBeenCalledWith(illegalTeam);
-  });
-
   it('rejects illegal final Battle Frontier Coupe du Sillage teams before returning', async () => {
     const illegalTeam = ['swampert_mega', 'gallade_mega', 'dragonite'];
 

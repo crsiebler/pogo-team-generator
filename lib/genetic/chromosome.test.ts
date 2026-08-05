@@ -92,7 +92,7 @@ describe('createRandomChromosome legality checks', () => {
     );
   });
 
-  it('keeps existing initialization behavior for non-Mega Master formats', () => {
+  it('keeps existing initialization behavior without a one-Mega limit', () => {
     mockRandomSequence([0, 0.26, 0.26, 0.26, 0, 0.51, 0.51, 0.51]);
 
     const chromosome = createRandomChromosome(
@@ -107,27 +107,6 @@ describe('createRandomChromosome legality checks', () => {
       'eternatus',
       'swampert_mega',
     ]);
-  });
-
-  it('keeps random Mega Master League teams to one Mega Pokemon', () => {
-    mockRandomSequence([0, 0.26, 0.26, 0.26, 0, 0.51, 0.51, 0.51]);
-
-    const chromosome = createRandomChromosome(
-      ['eternatus', 'mewtwo', 'swampert_mega', 'dragonite'],
-      3,
-      ['charizard_mega_y'],
-      'mega-master-league',
-    );
-
-    expect(chromosome.team).toEqual([
-      'charizard_mega_y',
-      'eternatus',
-      'dragonite',
-    ]);
-    expect(getMegaMasterTeamLegality(chromosome.team)).toMatchObject({
-      isLegal: true,
-      megaCount: 1,
-    });
   });
 
   it('keeps random Battle Frontier Coupe du Sillage teams to one Mega Pokemon', () => {
@@ -151,7 +130,7 @@ describe('createRandomChromosome legality checks', () => {
     });
   });
 
-  it('keeps existing initialization behavior for non-Mega Master formats', () => {
+  it('allows multiple Megas in formats without a one-Mega limit', () => {
     mockRandomSequence([0, 0.26, 0.26, 0.26, 0, 0.51, 0.51, 0.51]);
 
     const chromosome = createRandomChromosome(
@@ -168,8 +147,8 @@ describe('createRandomChromosome legality checks', () => {
     ]);
   });
 
-  it('uses eligible fallback candidates when Mega Master random sampling keeps hitting illegal Megas', () => {
-    const megaMasterPool = [
+  it('uses eligible fallback candidates when one-Mega-limit sampling keeps hitting illegal Megas', () => {
+    const oneMegaLimitPool = [
       'swampert_mega',
       'charizard_mega_y',
       'venusaur_mega',
@@ -187,12 +166,12 @@ describe('createRandomChromosome legality checks', () => {
       'mewtwo',
       'dragonite',
     ];
-    const megaMasterDexNumbers = new Map(
-      megaMasterPool.map((speciesId, index) => [speciesId, index + 1]),
+    const oneMegaLimitDexNumbers = new Map(
+      oneMegaLimitPool.map((speciesId, index) => [speciesId, index + 1]),
     );
 
     mockPokemonBySpeciesId.mockImplementation((speciesId: string) => ({
-      dex: megaMasterDexNumbers.get(speciesId) ?? 999,
+      dex: oneMegaLimitDexNumbers.get(speciesId) ?? 999,
       speciesId,
       speciesName: speciesId,
       baseStats: { atk: 100, def: 100, hp: 100 },
@@ -206,7 +185,7 @@ describe('createRandomChromosome legality checks', () => {
       released: true,
     }));
     mockDexNumber.mockImplementation((speciesId: string) =>
-      megaMasterDexNumbers.get(speciesId),
+      oneMegaLimitDexNumbers.get(speciesId),
     );
     vi.mocked(getMegaMasterTeamLegality).mockImplementation(
       (team: readonly string[]) => {
@@ -225,10 +204,10 @@ describe('createRandomChromosome legality checks', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.01);
 
     const chromosome = createRandomChromosome(
-      megaMasterPool,
+      oneMegaLimitPool,
       3,
       ['swampert_mega', 'mewtwo'],
-      'mega-master-league',
+      'battle-frontier-coupe-du-sillage',
     );
 
     expect(chromosome.team).toEqual(['swampert_mega', 'mewtwo', 'dragonite']);

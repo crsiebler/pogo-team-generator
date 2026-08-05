@@ -114,7 +114,7 @@ describe('generateSimulations', () => {
       GameMaster: {
         getInstance: () => ({
           rankings: {
-            megaoverall10000: [
+            alloverall10000: [
               {
                 speciesId: 'kyogre_primal',
                 moveset: ['WATERFALL', 'ORIGIN_PULSE', 'THUNDER'],
@@ -169,9 +169,9 @@ describe('generateSimulations', () => {
     generateScenarioCsvFromEngine(
       { context },
       {
-        id: 'mega-master-league',
-        label: 'Mega Master League',
-        cup: 'mega',
+        id: 'master-league',
+        label: 'Master League',
+        cup: 'all',
         cp: 10000,
       },
       'kyogre_primal',
@@ -346,14 +346,10 @@ describe('generateSimulations', () => {
     const generatedCalls: Array<{
       cup:
         | 'all'
-        | 'summer'
-        | 'retro'
+        | 'weather'
         | 'copadiluvio'
         | 'tsuki'
         | 'ligaultra'
-        | 'mega'
-        | 'premier'
-        | 'fantasy'
         | 'coupedusillage';
       cp: 1500 | 2500 | 10000;
       speciesId: string;
@@ -408,7 +404,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(36);
+    expect(generatedCalls).toHaveLength(24);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -428,34 +424,10 @@ describe('generateSimulations', () => {
       shields: 2,
     });
     expect(generatedCalls).toContainEqual({
-      cup: 'mega',
-      cp: 10000,
-      speciesId: 'bulbasaur',
-      shields: 1,
-    });
-    expect(generatedCalls).toContainEqual({
-      cup: 'premier',
-      cp: 10000,
-      speciesId: 'bulbasaur',
-      shields: 2,
-    });
-    expect(generatedCalls).toContainEqual({
-      cup: 'summer',
-      cp: 1500,
-      speciesId: 'bulbasaur',
-      shields: 2,
-    });
-    expect(generatedCalls).toContainEqual({
-      cup: 'retro',
+      cup: 'weather',
       cp: 1500,
       speciesId: 'bulbasaur',
       shields: 1,
-    });
-    expect(generatedCalls).toContainEqual({
-      cup: 'fantasy',
-      cp: 2500,
-      speciesId: 'bulbasaur',
-      shields: 0,
     });
     expect(generatedCalls).toContainEqual({
       cup: 'copadiluvio',
@@ -495,34 +467,12 @@ describe('generateSimulations', () => {
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp10000', 'mega', 'bulbasaur_1-1.csv'),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
       path.join(
         'data',
         'simulations',
-        'cp10000',
-        'premier',
-        'bulbasaur_2-2.csv',
-      ),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp1500', 'summer', 'bulbasaur_2-2.csv'),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp1500', 'retro', 'bulbasaur_1-1.csv'),
-      VALID_SIMULATION_CSV,
-    );
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'simulations',
-        'cp2500',
-        'fantasy',
-        'bulbasaur_0-0.csv',
+        'cp1500',
+        'weather',
+        'bulbasaur_1-1.csv',
       ),
       VALID_SIMULATION_CSV,
     );
