@@ -1,9 +1,11 @@
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import { speciesIdToRankingName } from '@/lib/data/rankings';
-import { winsMatchup } from '@/lib/data/simulations';
+import { getMatchupResult } from '@/lib/data/simulations';
+import { getAssignedMovesetVariantId } from '@/lib/genetic/moveset';
 import type {
   PokemonContributionAnalysis,
   PokemonContributionRiskTier,
+  RosterMovesetAssignment,
   ThreatAnalysisEntry,
 } from '@/lib/types';
 
@@ -17,6 +19,7 @@ export function buildPokemonContributionAnalysis(
   team: string[],
   threatEntries: ThreatAnalysisEntry[],
   formatId?: BattleFormatId,
+  movesetAssignment?: RosterMovesetAssignment,
 ): PokemonContributionAnalysis {
   const entries = team.map((speciesId) => {
     const pokemon = speciesIdToRankingName(speciesId);
@@ -25,7 +28,13 @@ export function buildPokemonContributionAnalysis(
     let highSeverityRelief = 0;
 
     for (const threat of threatEntries) {
-      const handlesThreat = winsMatchup(speciesId, threat.speciesId, formatId);
+      const rating = getMatchupResult(
+        speciesId,
+        threat.speciesId,
+        formatId,
+        getAssignedMovesetVariantId(movesetAssignment, speciesId),
+      );
+      const handlesThreat = rating !== null && rating > 500;
 
       if (!handlesThreat) {
         continue;

@@ -364,6 +364,41 @@ describe('scoreOrderedLineup', () => {
     ]);
   });
 
+  test('uses assigned variants for every threat score matchup read', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const assignment = createLineupAssignment(lineup);
+    const matchupReads: Array<[string, MovesetVariantId | undefined]> = [];
+
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        movesetAssignment: assignment,
+        getMatchupRating: (speciesId, _threatId, variantId) => {
+          matchupReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 600
+            : 400;
+        },
+      }),
+    );
+
+    expect(matchupReads.length).toBeGreaterThan(0);
+    expect(
+      matchupReads.every(
+        ([speciesId, variantId]) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id,
+      ),
+    ).toBe(true);
+    expect(result.scoreBreakdown.threatScore?.score).toBe(0);
+  });
+
   test('can omit display-only threat score diagnostics for hot-path scoring', () => {
     const result = scoreOrderedLineup(
       { lead: 'bulky', switch: 'balanced', closer: 'closer' },
@@ -1324,7 +1359,6 @@ describe('scoreOrderedLineup', () => {
           return { type: 'normal' };
         },
       }),
-      { includeThreatScore: false },
     );
 
     expect(aggregateVariants).not.toHaveLength(0);

@@ -1,6 +1,11 @@
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import { getShieldScenarioMatchupResult } from '@/lib/data/simulations';
-import type { ShieldScenarioAnalysis, ThreatAnalysisEntry } from '@/lib/types';
+import { getAssignedMovesetVariantId } from '@/lib/genetic/moveset';
+import type {
+  RosterMovesetAssignment,
+  ShieldScenarioAnalysis,
+  ThreatAnalysisEntry,
+} from '@/lib/types';
 
 const SHIELD_SCENARIOS = [0, 1, 2] as const;
 
@@ -11,6 +16,7 @@ export function buildShieldScenarioAnalysis(
   team: string[],
   threats: ThreatAnalysisEntry[],
   formatId?: BattleFormatId,
+  movesetAssignment?: RosterMovesetAssignment,
 ): ShieldScenarioAnalysis {
   const summaries = SHIELD_SCENARIOS.map((shieldCount) => {
     let evaluatedThreats = 0;
@@ -26,6 +32,7 @@ export function buildShieldScenarioAnalysis(
           threat.speciesId,
           shieldCount,
           formatId,
+          getAssignedMovesetVariantId(movesetAssignment, teamMember),
         );
 
         if (rating === null) {

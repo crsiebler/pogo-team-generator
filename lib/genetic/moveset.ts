@@ -304,6 +304,24 @@ export function resolveRosterMovesetAssignment(
   });
 }
 
+/** Return the simulation qualifier for one member of a fixed assignment. */
+export function getAssignedMovesetVariantId(
+  assignment: RosterMovesetAssignment | undefined,
+  speciesId: string,
+): MovesetVariantId | undefined {
+  if (!assignment) {
+    return undefined;
+  }
+  const variant = assignment.variantsBySpeciesId[speciesId];
+  if (!variant) {
+    throw new Error(`Bound roster moveset assignment is missing ${speciesId}.`);
+  }
+
+  return assignment.policyIdentity.source === 'manifest'
+    ? variant.id
+    : undefined;
+}
+
 /**
  * Analyze team's defensive weaknesses
  * Returns map of type -> count of Pokemon weak to it

@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
       generations: 75,
     });
 
-    const threats = buildThreatAnalysis(result.team, resolvedFormatId);
+    const threats = buildThreatAnalysis(result.scoreBreakdown?.threatScore);
 
     const analysis: GenerationAnalysis = {
       mode,
@@ -175,11 +175,13 @@ export async function POST(request: NextRequest) {
         result.team,
         threats.entries,
         resolvedFormatId,
+        result.movesetAssignment,
       ),
       pokemonContributions: buildPokemonContributionAnalysis(
         result.team,
         threats.entries,
         resolvedFormatId,
+        result.movesetAssignment,
       ),
     };
 

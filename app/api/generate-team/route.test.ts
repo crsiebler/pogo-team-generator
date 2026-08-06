@@ -21,6 +21,18 @@ import {
 } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
+import type { RosterMovesetAssignment } from '@/lib/types';
+
+const movesetAssignment: RosterMovesetAssignment = {
+  formatId: 'great-league',
+  policyIdentity: {
+    source: 'manifest',
+    schemaVersion: 1,
+    policyVersion: 'ranking-evidence-v1',
+  },
+  fingerprint: 'route-assignment',
+  variantsBySpeciesId: {},
+};
 
 vi.mock('@/lib/data/battleFormats', async () => {
   const actual = await vi.importActual('@/lib/data/battleFormats');
@@ -152,6 +164,7 @@ describe('POST /api/generate-team', () => {
         },
         score: 0.74,
       },
+      movesetAssignment,
     });
     vi.mocked(buildThreatAnalysis).mockReturnValue({
       evaluatedCount: 50,
@@ -403,6 +416,7 @@ describe('POST /api/generate-team', () => {
           },
         },
       },
+      movesetAssignment,
     });
 
     const request = new Request('http://localhost/api/generate-team', {
@@ -679,8 +693,11 @@ describe('POST /api/generate-team', () => {
     expect(typeof payload.analysis.generatedAt).toBe('string');
     expect(payload.analysis.generatedAt.length).toBeGreaterThan(0);
     expect(buildThreatAnalysis).toHaveBeenCalledWith(
-      ['lanturn', 'dewgong', 'annihilape'],
-      'great-league',
+      expect.objectContaining({
+        overallTeamThreats: [
+          expect.objectContaining({ speciesId: 'venusaur' }),
+        ],
+      }),
     );
     expect(buildCoreBreakerAnalysis).toHaveBeenCalledWith(3, [
       {
@@ -703,6 +720,7 @@ describe('POST /api/generate-team', () => {
         },
       ],
       'great-league',
+      movesetAssignment,
     );
     expect(buildPokemonContributionAnalysis).toHaveBeenCalledWith(
       ['lanturn', 'dewgong', 'annihilape'],
@@ -716,7 +734,9 @@ describe('POST /api/generate-team', () => {
         },
       ],
       'great-league',
+      movesetAssignment,
     );
+    expect(payload).not.toHaveProperty('movesetAssignment');
   });
 
   it('passes no algorithm into canonical team generation', async () => {

@@ -405,6 +405,7 @@ export async function generateTeam(
     bestOverall = {
       ...bestOverall,
       fitness: rosterScore.fitness,
+      movesetAssignment,
       scoreBreakdown: rosterScore.scoreBreakdown,
       recommendedLineups: recommendations.recommendedLineups,
     };

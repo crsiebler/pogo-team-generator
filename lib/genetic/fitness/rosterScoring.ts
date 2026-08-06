@@ -730,7 +730,8 @@ function createThreatScoreContext(
     getThreatName: (speciesId) =>
       context.getPokemon(speciesId)?.speciesName ?? speciesId,
     getThreatRank: (speciesId) => ranks.get(speciesId) ?? ranks.size + 1,
-    getMatchupRating: context.getMatchupRating,
+    getMatchupRating: (speciesId, threatSpeciesId) =>
+      getAssignedMatchupRating(speciesId, threatSpeciesId, context),
   };
 }
 

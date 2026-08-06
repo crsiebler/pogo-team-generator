@@ -35,6 +35,7 @@ import {
   calculateOffensiveTypeRatio,
 } from '@/lib/genetic/fitness/typeEffectivenessRatios';
 import {
+  getAssignedMovesetVariantId,
   getRecommendedMovesetForPokemon,
   getSimulationBackedMovesetForTeam,
 } from '@/lib/genetic/moveset';
@@ -404,7 +405,8 @@ function createThreatScoreContext(
     getThreatName: (speciesId) =>
       context.getPokemon(speciesId)?.speciesName ?? speciesId,
     getThreatRank: (speciesId) => ranks.get(speciesId) ?? ranks.size + 1,
-    getMatchupRating: context.getMatchupRating,
+    getMatchupRating: (speciesId, threatSpeciesId) =>
+      getAssignedMatchupRating(speciesId, threatSpeciesId, context),
   };
 }
 
@@ -1263,7 +1265,7 @@ export function getAssignedMatchupRating(
   return context.getMatchupRating(
     speciesId,
     threatSpeciesId,
-    getAssignedMovesetVariantId(speciesId, context),
+    getAssignedMovesetVariantId(context.movesetAssignment, speciesId),
   );
 }
 
@@ -1282,7 +1284,7 @@ export function getAssignedShieldScenarioMatchupRating(
     speciesId,
     threatSpeciesId,
     shields,
-    getAssignedMovesetVariantId(speciesId, context),
+    getAssignedMovesetVariantId(context.movesetAssignment, speciesId),
   );
 }
 
@@ -1293,26 +1295,8 @@ export function getAssignedMatchupQualityScore(
 ): number | undefined {
   return context.getMatchupQualityScore?.(
     speciesId,
-    getAssignedMovesetVariantId(speciesId, context),
+    getAssignedMovesetVariantId(context.movesetAssignment, speciesId),
   );
-}
-
-function getAssignedMovesetVariantId(
-  speciesId: string,
-  context: LineupScoringContext,
-): MovesetVariantId | undefined {
-  const assignment = context.movesetAssignment;
-  if (!assignment) {
-    return undefined;
-  }
-  const variant = assignment.variantsBySpeciesId[speciesId];
-  if (!variant) {
-    throw new Error(`Bound roster moveset assignment is missing ${speciesId}.`);
-  }
-
-  return assignment.policyIdentity.source === 'manifest'
-    ? variant.id
-    : undefined;
 }
 
 function sharesType(first: Pokemon, second: Pokemon): boolean {

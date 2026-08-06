@@ -26,6 +26,7 @@
 - Runtime variant availability comes only from each format manifest's active candidates and exact scenario storage keys; validate declared completeness, finite CSV rows, and candidate/default opponent parity before caching, never scan variant filenames, and never substitute default rows for an unavailable alternate.
 - Resolve one deeply immutable roster moveset assignment against the complete bring-six roster before lineup enumeration; bind it into scoring contexts, normalize omitted scoring formats to the default before validation, and include its format, manifest policy identity, and canonical variants in every assignment-dependent cache fingerprint.
 - Route every roster-member aggregate matchup, shield scenario, matchup-quality, and move-typing read through the bound assignment's variant ID; ranked-default transition assignments remain unqualified, and missing shield rows remain unevaluated rather than synthetic neutral results.
+- Final threat analysis reuses the assignment-aware `scoreBreakdown.threatScore`; retain the exact final roster assignment for shield-scenario and Pokemon-contribution diagnostics rather than resolving or selecting movesets in analysis modules.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1065,4 +1066,42 @@
   - Add direct manifest-backed matchup-quality production wiring coverage after US-024 checks in the required manifest fixtures; current injected-context and explicit-variant loader tests cover the story behavior.
 - Next iteration start:
   - US-019 - Make roster diagnostics and analysis variant-aware.
+---
+
+## 2026-08-06 16:13:25 MST - US-019
+- Implemented assignment-aware lineup and roster Threat Score reads; retained the exact final PlayPokemon roster assignment for downstream diagnostics; derived threat analysis from the existing final Threat Score; and qualified shield-scenario and Pokemon-contribution matrix reads with the same assignment while preserving ranked-default fallback and missing-row behavior.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/genetic/moveset.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/analysis/threatAnalysis.ts`, `lib/analysis/threatAnalysis.test.ts`, `lib/analysis/shieldScenarioAnalysis.ts`, `lib/analysis/shieldScenarioAnalysis.test.ts`, `lib/analysis/pokemonContributionAnalysis.ts`, `lib/analysis/pokemonContributionAnalysis.test.ts`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-019 - Make roster diagnostics and analysis variant-aware`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/analysis/threatAnalysis.test.ts lib/analysis/shieldScenarioAnalysis.test.ts lib/analysis/pokemonContributionAnalysis.test.ts lib/genetic/algorithm.test.ts app/api/generate-team/route.test.ts` before implementation (fail as expected: 12 tests exposed unqualified Threat Score and analysis reads, discarded assignment identity, and missing API propagation)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/analysis/threatAnalysis.test.ts lib/analysis/shieldScenarioAnalysis.test.ts lib/analysis/pokemonContributionAnalysis.test.ts lib/genetic/algorithm.test.ts app/api/generate-team/route.test.ts` (pass, 142 tests)
+  - `npx prettier --write "app/api/generate-team/route.ts" "app/api/generate-team/route.test.ts" "lib/types.ts" "lib/genetic/moveset.ts" "lib/genetic/algorithm.ts" "lib/genetic/algorithm.test.ts" "lib/genetic/fitness/lineupScoring.ts" "lib/genetic/fitness/lineupScoring.test.ts" "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts" "lib/analysis/threatAnalysis.ts" "lib/analysis/threatAnalysis.test.ts" "lib/analysis/shieldScenarioAnalysis.ts" "lib/analysis/shieldScenarioAnalysis.test.ts" "lib/analysis/pokemonContributionAnalysis.ts" "lib/analysis/pokemonContributionAnalysis.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 751 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/analysis/shieldScenarioAnalysis.test.ts lib/analysis/pokemonContributionAnalysis.test.ts` after review fixes (pass, 104 tests)
+  - `npx tsc --noEmit`, `npm run lint`, `npm test`, and staged/unstaged diff checks after review fixes (pass, 754 tests)
+- Implementation agents:
+  - Recommended: `performance-engineer`, `test-automator`
+  - Used: `performance-engineer`, `test-automator`; both fit the standard-mode complex-story budget and provided non-overlapping final-diagnostic data-flow and regression-test guidance
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: code review found none; fixed two medium QA findings by covering ranked-default fallback across every new diagnostic consumer and directly proving Threat Score diagnostics do not alter weighted components or fitness; targeted QA re-review found none
+- Decisions (why):
+  - Derived `ThreatAnalysis` from the existing final `OptimizerThreatScore` so the API does not repeat the roster-by-threat aggregate simulation pass and cannot drift from the assignment used for scoring.
+  - Retained the exact immutable assignment on the internal final chromosome but did not expose it in the HTTP response because structured API assignment propagation belongs to US-022.
+  - Centralized manifest-versus-ranked-default simulation qualification in `getAssignedMovesetVariantId(...)` so scoring and analysis use one policy without selecting moves in diagnostic modules.
+  - Left top-meta/full-meta Threat Score weights and normalized weighted fitness unchanged; assignment changes diagnostic matchup inputs only, and fast/GA scoring still omits Threat Score.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Final full PlayPokemon scoring is the first point that simultaneously owns the selected assignment and complete roster Threat Score, so downstream analyses should consume that output rather than reconstruct policy.
+  - Assignment qualification tests must assert lookup collections are non-empty before `every(...)` checks and make wrong or missing qualifiers produce opposite matchup outcomes.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-019.
+  - US-022 must expose the retained assignment through generation and team-details API contracts; this story keeps it internal while synchronizing existing analysis output.
+- Next iteration start:
+  - US-020 - Retain a deterministic top-ten GA finalist set.
 ---

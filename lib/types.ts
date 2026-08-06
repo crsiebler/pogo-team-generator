@@ -277,6 +277,7 @@ export interface Chromosome {
   team: string[];
   anchors?: number[];
   fitness: number;
+  movesetAssignment?: RosterMovesetAssignment;
   scoreBreakdown?: OptimizerScoreBreakdown;
   recommendedLineups?: RecommendedLineup[];
 }

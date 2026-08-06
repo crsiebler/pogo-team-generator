@@ -877,6 +877,9 @@ describe('generateTeam format-aware candidate selection', () => {
         lineup: { lead: 'mew', switch: 'mewtwo', closer: 'dragonite' },
       }),
     ]);
+    expect(result.movesetAssignment).toBe(
+      fitnessContext.resolveMovesetAssignment.mock.results[0].value,
+    );
     expect(result).not.toHaveProperty('rosterMetrics');
     expect(result).not.toHaveProperty('benchUtility');
   });
