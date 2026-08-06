@@ -1065,6 +1065,33 @@ describe('scoreOrderedLineup', () => {
     );
   });
 
+  test('provides lineup context when selecting recommended movesets', () => {
+    const requestedTeams: string[][] = [];
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+
+    scoreOrderedLineup(
+      lineup,
+      createContext({
+        getRecommendedMoveset: (speciesId, teamSpeciesIds) => {
+          if (speciesId === 'bulky' && teamSpeciesIds) {
+            requestedTeams.push([...teamSpeciesIds]);
+          }
+          return {
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+          };
+        },
+      }),
+    );
+
+    expect(requestedTeams).toContainEqual(['bulky', 'balanced', 'closer']);
+  });
+
   test('computes balanced, shield-spend, and shield-save resource path metrics from shield-specific matchups', () => {
     const lineup: OrderedLineup = {
       lead: 'bulky',

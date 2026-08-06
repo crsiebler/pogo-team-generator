@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
-import { getRecommendedMovesetForPokemon } from '@/lib/genetic/moveset';
+import { getSimulationBackedMovesetForTeam } from '@/lib/genetic/moveset';
 
 vi.mock('@/lib/data/pokemon', () => ({
   getPokemonBySpeciesId: vi.fn(),
 }));
 
 vi.mock('@/lib/genetic/moveset', () => ({
-  getRecommendedMovesetForPokemon: vi.fn(),
+  getSimulationBackedMovesetForTeam: vi.fn(),
 }));
 
 describe('POST /api/team-details format-aware movesets', () => {
@@ -32,7 +32,7 @@ describe('POST /api/team-details format-aware movesets', () => {
       released: true,
     });
 
-    vi.mocked(getRecommendedMovesetForPokemon).mockReturnValue({
+    vi.mocked(getSimulationBackedMovesetForTeam).mockReturnValue({
       fastMove: 'ASTONISH',
       chargedMove1: 'FRENZY_PLANT',
       chargedMove2: 'SPIRIT_SHACKLE',
@@ -52,8 +52,9 @@ describe('POST /api/team-details format-aware movesets', () => {
     const response = await POST(request as NextRequest);
 
     expect(response.status).toBe(200);
-    expect(getRecommendedMovesetForPokemon).toHaveBeenCalledWith(
+    expect(getSimulationBackedMovesetForTeam).toHaveBeenCalledWith(
       expect.objectContaining({ speciesId: 'decidueye' }),
+      ['decidueye'],
       'battle-frontier-liga-ultra',
     );
   });
@@ -68,8 +69,9 @@ describe('POST /api/team-details format-aware movesets', () => {
     const response = await POST(request as NextRequest);
 
     expect(response.status).toBe(200);
-    expect(getRecommendedMovesetForPokemon).toHaveBeenCalledWith(
+    expect(getSimulationBackedMovesetForTeam).toHaveBeenCalledWith(
       expect.objectContaining({ speciesId: 'decidueye' }),
+      ['decidueye'],
       DEFAULT_BATTLE_FORMAT_ID,
     );
   });

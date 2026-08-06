@@ -512,6 +512,102 @@ describe('generateSimulations', () => {
     );
   });
 
+  it('generates configured alternate moveset simulations under canonical species ids', async () => {
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+    const generatedMovesets: Array<{
+      speciesId: string;
+      recommendedMoves:
+        | {
+            fastMove: string;
+            chargedMove1: string;
+            chargedMove2: string | null;
+          }
+        | undefined;
+    }> = [];
+
+    await generateSimulations(
+      { sourcePath: '/source/pvpoke' },
+      {
+        getRuntime: () => ({ context: {} as never }),
+        fileExists: (filePath: string) => isOverallRankingPath(filePath),
+        readFile: async (filePath: string) => {
+          if (isOverallRankingPath(filePath)) {
+            return [
+              'Pokemon,Fast Move,Charged Move 1,Charged Move 2',
+              'Golisopod,Fury Cutter,X-Scissor,Aqua Jet',
+              '',
+            ].join('\n');
+          }
+
+          if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
+            return JSON.stringify([
+              {
+                speciesId: 'golisopod',
+                speciesName: 'Golisopod',
+                fastMoves: ['FURY_CUTTER', 'SHADOW_CLAW'],
+                chargedMoves: ['X_SCISSOR', 'AQUA_JET'],
+                released: true,
+              },
+            ]);
+          }
+
+          if (filePath.endsWith(path.join('data', 'moves.json'))) {
+            return JSON.stringify([
+              {
+                moveId: 'FURY_CUTTER',
+                name: 'Fury Cutter',
+                energyGain: 4,
+              },
+              {
+                moveId: 'SHADOW_CLAW',
+                name: 'Shadow Claw',
+                energyGain: 8,
+              },
+              { moveId: 'X_SCISSOR', name: 'X-Scissor', energyGain: 0 },
+              { moveId: 'AQUA_JET', name: 'Aqua Jet', energyGain: 0 },
+            ]);
+          }
+
+          throw new Error(`unexpected file read: ${filePath}`);
+        },
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile,
+        generateScenarioCsv: (
+          runtime,
+          format,
+          speciesId,
+          shields,
+          recommendedMoves,
+        ): string => {
+          void runtime;
+          void format;
+          void shields;
+          generatedMovesets.push({ speciesId, recommendedMoves });
+          return VALID_SIMULATION_CSV;
+        },
+      },
+    );
+
+    expect(generatedMovesets).toContainEqual({
+      speciesId: 'golisopod',
+      recommendedMoves: {
+        fastMove: 'SHADOW_CLAW',
+        chargedMove1: 'X_SCISSOR',
+        chargedMove2: 'AQUA_JET',
+      },
+    });
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp10000',
+        'coupedusillage',
+        'golisopod--shadow_claw--x_scissor--aqua_jet_1-1.csv',
+      ),
+      VALID_SIMULATION_CSV,
+    );
+  });
+
   it('in resume mode reuses only valid format-specific files', async () => {
     const readFile = vi.fn(async (filePath: string) => {
       if (isOverallRankingPath(filePath)) {

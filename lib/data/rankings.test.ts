@@ -8,6 +8,7 @@ import {
   getConsistencyRankings,
   getLeadsRankings,
   getMetaThreats,
+  getOptimalMoveset,
   getOverallRankings,
   getRankingScore,
   getRoleBasedThreatSpeciesIds,
@@ -156,5 +157,17 @@ describe('getRoleBasedThreatSpeciesIds', () => {
     for (const speciesId of roleSpecificThreats) {
       expect(threats).toContain(speciesId);
     }
+  });
+});
+
+describe('getOptimalMoveset', () => {
+  it('converts punctuation in ranking move names to PvPoke move ids', () => {
+    expect(
+      getOptimalMoveset('Golisopod', 'battle-frontier-coupe-du-sillage'),
+    ).toEqual({
+      fastMove: 'FURY_CUTTER',
+      chargedMove1: 'X_SCISSOR',
+      chargedMove2: 'AQUA_JET',
+    });
   });
 });

@@ -244,6 +244,12 @@ export function getRankedPokemonForFormat(
   }
 
   return filterPokemon((pokemon) => {
+    if (
+      normalizeToChoosableSpeciesId(pokemon.speciesId) !== pokemon.speciesId
+    ) {
+      return false;
+    }
+
     if (!pokemon.released || !rankedNames.has(pokemon.speciesName)) {
       return false;
     }

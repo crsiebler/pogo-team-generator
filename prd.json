@@ -1,169 +1,451 @@
 {
   "project": "pogo-team-generator",
-  "branchName": "ralph/human-readable-threat-diagnostics",
-  "description": "Make Threat Score diagnostics human-readable and revise team generation to use dynamic meta-specific ranking bands, elite anchors, ranked companions, and specialist gating.",
+  "branchName": "ralph/deterministic-moveset-variants",
+  "description": "Derive bounded, legal moveset variants from PvPoke ranking evidence, publish authoritative simulation manifests, and use one fixed simulation-backed moveset assignment throughout finalist scoring, diagnostics, API output, and export.",
   "userStories": [
     {
       "id": "US-001",
-      "title": "Derive dynamic candidate ranking bands per format",
-      "description": "As a competitive user, I want the generator to understand each meta's ranking score distribution so that limited cups and open formats both use appropriate anchor and companion pools.",
+      "title": "Define shared moveset contracts and canonical variant IDs",
+      "description": "As a developer, I want one shared moveset identity contract so sync, runtime loading, scoring, and API output represent variants consistently.",
       "acceptanceCriteria": [
-        "Add a pure helper for deriving candidate quality bands from the selected format's overall ranking export instead of fixed global score cutoffs.",
-        "Band derivation considers PvPoke Score, rank percentile, score density, meaningful score dropoffs, and bounded minimum and maximum candidate counts.",
-        "The helper exposes band labels for elite anchors, preferred anchors, normal companions, flexible companions, and specialists.",
-        "Tests cover a dense open Great League-style score curve and a smaller steeper naic2026-style limited-meta score curve.",
-        "Tests assert fixed score thresholds such as 92, 90, 88, and 85 are not hardcoded as global band rules.",
+        "Add shared types for Moveset, MovesetVariant, MovesetVariantId, MoveAvailability, and RosterMovesetAssignment.",
+        "Add eliteMoves and legacyMoves to the typed Pokemon data contract.",
+        "Canonical variant identity treats the charged-move pair as order-independent while retaining preferred source order separately.",
+        "Exported symbols have explicit parameter and return types and TSDoc.",
+        "Tests cover stable identity, charged-move order normalization, and preferred display order.",
         "Tests pass.",
         "Typecheck passes."
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Read optimizer docs before changing ranking or generation logic."
+      "passes": false,
+      "notes": "Recommended agents: @typescript-pro, @refactoring-specialist. Implementation notes: preserve existing Golisopod behavior while replacing duplicate local moveset shapes with shared contracts. Read the gbl-optimizer skill and required optimizer docs before editing."
     },
     {
       "id": "US-002",
-      "title": "Build ranked anchor and companion candidate profiles",
-      "description": "As a competitive user, I want candidate profiles to combine ranking quality, role data, safety, consistency, bulk, typing, and simulations so companion selection reflects team fit instead of raw rank alone.",
+      "title": "Centralize species and move alias normalization",
+      "description": "As a developer, I want ranking, simulation, and runtime paths to use the same aliases so canonical species and move IDs cannot drift.",
       "acceptanceCriteria": [
-        "Add a pure candidate profile builder that uses the dynamic bands from US-001 for the selected format.",
-        "Candidate profiles include PvPoke rank, PvPoke Score, dynamic band, safety or switch ranking signal where available, consistency ranking signal where available, bulk or stat product, offensive typing, defensive typing, and simulation coverage inputs available through existing loaders or injected contexts.",
-        "Candidate profile code does not read ranking files directly from scoring functions and uses existing data loader boundaries.",
-        "Tests cover profile creation for open Great League and naic2026 ranking data or representative fixtures.",
-        "Tests cover missing optional role or consistency data without silent failure or invalid numeric output.",
+        "Create shared pure helpers for existing species aliases and move spelling aliases.",
+        "Ranking sync, simulation sync, and runtime Pokemon loading use the shared helpers.",
+        "Pseudo-form provenance can be retained before canonical species deduplication.",
+        "Existing non-choosable aliases remain excluded from candidate Pokemon pools.",
+        "Tests cover every existing alias and deterministic normalization.",
         "Tests pass.",
         "Typecheck passes."
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Keep profiles pure and format-scoped."
+      "passes": false,
+      "notes": "Recommended agents: @typescript-pro, @refactoring-specialist. Implementation notes: do not treat stateful Morpeko or Aegislash form moves as ordinary canonical-species alternates without explicit provenance."
     },
     {
       "id": "US-003",
-      "title": "Rank anchor plus companion pairs",
-      "description": "As a competitive user, I want the generator to evaluate high-quality anchors with synergistic companions before building full teams so that generated teams start from viable meta cores.",
+      "title": "Implement regular, Elite, purified, and Frustration availability rules",
+      "description": "As a competitive player, I want generated movesets to obey acquisition rules so recommendations remain buildable and intentionally released.",
       "acceptanceCriteria": [
-        "Add a pure pair-ranking module that evaluates anchor plus companion candidates before full team expansion.",
-        "Pair ranking rewards companions that cover the anchor's important meta losses without creating severe shared weaknesses.",
-        "Pair ranking considers PvPoke rank, PvPoke Score, simulation matchup coverage, safety rank, consistency rank, bulk, offensive typing, and defensive typing from candidate profiles.",
-        "Pair ranking treats rank and score as search priors, not as a strict tier-list override.",
-        "Tests show a high-ranked synergistic companion outranks a low-ranked niche pick unless the niche pick provides unique measurable coverage.",
-        "Tests show severe shared weakness is penalized for an anchor plus companion pair.",
+        "Regular and Elite moves are eligible without a battle-scoring penalty.",
+        "Frustration is rejected unconditionally even when source data selects it.",
+        "Return is eligible only for a non-shadow Pokemon whose canonical base has a checked-in shadow variation.",
+        "Return variants carry a purified acquisition requirement.",
+        "Return is rejected for _shadow species and when the purified level-25 CP floor exceeds the format cap.",
+        "Tests cover regular, Elite, purified, Frustration, shadow, and CP-floor cases.",
         "Tests pass.",
         "Typecheck passes."
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Prefer injected scoring dependencies and deterministic tie-breaks."
+      "passes": false,
+      "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: use checked-in Pokemon data for shadow eligibility and do not synthesize unavailable shadow forms."
     },
     {
       "id": "US-004",
-      "title": "Gate specialist candidates behind unique coverage",
-      "description": "As a competitive user, I want lower-ranked niche Pokemon to appear only when they solve a real team problem so that core-breakers do not crowd out safer top-ranked picks.",
+      "title": "Implement species-scoped legacy move policy",
+      "description": "As a competitive player, I want intended signature and approved legacy moves included while accidental historical moves remain excluded.",
       "acceptanceCriteria": [
-        "Candidates below the dynamically derived flexible companion pool are treated as specialists.",
-        "Specialists are not selected as automatic anchors.",
-        "Specialists can enter pair or team expansion only when they provide unique measurable coverage against unresolved top-meta threats or a known core weakness.",
-        "Specialist admission uses simulation matchup coverage before type-only coverage.",
-        "Specialist admission rejects or penalizes candidates that create severe shared weakness, reduce viable lineup count, or merely duplicate a stronger generalist's role.",
-        "Tests show a low-ranked specialist is rejected when it only beats an isolated threat.",
-        "Tests show a low-ranked specialist can be admitted when it uniquely patches an otherwise unresolved high-priority weakness.",
+        "Allow Counter for Mewtwo, Mega Mewtwo X, and Mega Mewtwo Y.",
+        "Allow Roar of Time, Spacial Rend, Freeze Shock, Ice Burn, Behemoth Blade, and Behemoth Bash only for their approved species forms.",
+        "Reject Acid for Grimer, Muk, Koffing, and Weezing.",
+        "Reject Quick Attack for Staryu, Starmie, Porygon, Pichu, and Delibird.",
+        "Reject Psybeam for Chansey and Draining Kiss for Kirlia.",
+        "Every checked-in legacyMoves species-move pair has an explicit test expectation.",
         "Tests pass.",
         "Typecheck passes."
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Keep specialist rules bounded so niche picks remain rare."
+      "passes": false,
+      "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: key exceptions by species-move pair, not by move ID alone."
     },
     {
       "id": "US-005",
-      "title": "Seed the genetic algorithm with anchor-first teams",
-      "description": "As a competitive user, I want generated teams to start from elite anchors, ranked pairs, and companion expansion so outputs look like viable meta teams instead of random collections of core-breakers.",
+      "title": "Preserve PvPoke ranking moveset evidence during sync",
+      "description": "As a developer, I want sync tooling to retain category movesets, move usage, and overrides so variant derivation remains data-driven without runtime vendor access.",
       "acceptanceCriteria": [
-        "The genetic algorithm seeds its initial population from dynamically selected elite or preferred anchors before random full-team construction.",
-        "The generator expands ranked anchor plus companion pairs into complete teams by repeatedly evaluating remaining team weaknesses, playable lineup quality, and broad meta coverage.",
-        "The anchor-first initializer supports GBL teams and PlayPokemon roster sizes without bypassing final canonical lineup or roster scoring.",
-        "A bounded portion of the population preserves diversity so the search does not become a strict top-ranked tier list.",
-        "Fixed-seed tests demonstrate deterministic anchor-first population output.",
-        "Regression tests keep examples like Lickilicky / Altaria / Empoleon and Feraligatr / Quagsire / Altaria plausible for open Great League when supported by current data.",
-        "Tests pass.",
+        "Ranking source types retain moveset and fastMoves and chargedMoves usage entries.",
+        "Sync reads Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency evidence for each supported format.",
+        "Add an adapter method for explicit PvPoke moveset overrides instead of hardcoding source paths outside lib/sync/adapter.ts.",
+        "Alias and pseudo-form provenance survives until candidate evidence is collected.",
+        "Runtime modules do not import or load PvPoke source assets.",
+        "Sync and architecture boundary tests pass.",
         "Typecheck passes."
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Preserve final fitness and scoreBreakdown synchronization."
+      "passes": false,
+      "notes": "Recommended agents: @data-engineer, @typescript-pro. Implementation notes: all PvPoke source-layout knowledge stays behind the sync adapter."
     },
     {
       "id": "US-006",
-      "title": "Display Threat Score lists as readable weaknesses",
-      "description": "As a user, I want threat lists to show only Pokemon names so that I can quickly understand which Pokemon threaten my team.",
+      "title": "Normalize and aggregate category move usage evidence",
+      "description": "As a developer, I want comparable move-usage evidence across ranking categories so source file size does not distort candidate preference.",
       "acceptanceCriteria": [
-        "Threat list items in AnalysisPanel render only the readable Pokemon name from threat.pokemon.",
-        "Threat list items do not show rank, answer count, risk score, threat value, or raw threat metadata.",
-        "The old display pattern like Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49) no longer appears.",
-        "Threat list caps remain unchanged and Showing top 5 of N summaries remain visible when applicable.",
-        "AnalysisPanel tests assert the new readable threat list contract.",
+        "Normalize move uses within each ranking entry before aggregating categories.",
+        "Apply category weights Overall 3; Leads, Switches, and Closers 2; Chargers, Attackers, and Consistency 1.",
+        "Record category occurrence count, weighted normalized use, and exact Overall use for deterministic tie-breaking.",
+        "Observed exact-format movesets and overrides rank ahead of usage-only speculation.",
+        "Shuffled ranking input produces identical aggregated evidence.",
         "Tests pass.",
-        "Typecheck passes.",
-        "Verify in browser using dev-browser skill."
+        "Typecheck passes."
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. Keep the UI display-only."
+      "passes": false,
+      "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: do not compare raw use totals across categories or formats."
     },
     {
       "id": "US-007",
-      "title": "Replace raw Threat Score numbers with a profile pill",
-      "description": "As a user, I want the Threat Score card to summarize overall threat strength in simple human terms so that I know whether my team is weak, neutral, strong, or elite against threats.",
+      "title": "Rank viable moves using battle mechanics",
+      "description": "As a developer, I want move mechanics to filter weak speculative moves without discarding strategically useful observed options.",
       "acceptanceCriteria": [
-        "The Threat Score card no longer displays raw score boxes for Overall, Top Meta, or Full Meta.",
-        "The Threat Score card displays exactly one team-level quality pill with one of elite, strong, neutral, or weak.",
-        "The pill text and accessible label communicate the semantic meaning, such as Team threat profile: strong.",
-        "The display-only lower-is-better thresholds are covered by tests: <= 0.15 elite, <= 0.30 strong, <= 0.45 neutral, and > 0.45 weak.",
-        "The threshold helper does not change backend threat scoring or optimizer fitness behavior.",
-        "AnalysisPanel tests cover all four threat profile labels.",
+        "Fast-move evidence includes DPT, EPT, turns, STAB, typing, and coverage.",
+        "Charged-move evidence includes DPE, energy, fast-move pacing, STAB, typing, coverage, and expected status effects.",
+        "Strictly dominated speculative moves are rejected.",
+        "Observed bait, buff, debuff, and distinct coverage moves are not rejected solely for lower raw DPT or DPE.",
+        "Status-effect fields in checked-in move data are represented by explicit types.",
+        "Tests cover domination, bait, debuff, and distinct-type coverage examples.",
         "Tests pass.",
-        "Typecheck passes.",
-        "Verify in browser using dev-browser skill."
+        "Typecheck passes."
       ],
       "priority": 7,
-      "passes": true,
-      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. This is a display-only mapping from lower-is-better diagnostics."
+      "passes": false,
+      "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: mechanics filter simulation candidates; they do not replace matchup simulation."
     },
     {
       "id": "US-008",
-      "title": "Remove quality pills from Recommended Lineups",
-      "description": "As a user, I want Recommended Lineups to focus on lead, switch, closer, and weaknesses without duplicate or confusing quality labels.",
+      "title": "Derive bounded deterministic moveset candidates",
+      "description": "As a developer, I want a bounded candidate derivation function so sync simulates plausible sets instead of the full legal movepool Cartesian product.",
       "acceptanceCriteria": [
-        "Recommended Lineup cards no longer render lineup-quality-pill elements.",
-        "Recommended Lineup cards do not display weak, neutral, strong, or elite quality pills.",
-        "Recommended Lineup cards continue to display Lead, Switch, Closer, and semantic weakness lists.",
-        "Recommended Lineup cards continue to omit numeric lineup scores.",
-        "Recommended Lineup cards retain blue diagnostic styling and existing accordion behavior.",
-        "AnalysisPanel tests assert Recommended Lineups render zero lineup quality pills.",
+        "Seed candidates from eligible Overall, role-category, and override movesets.",
+        "Retain at most two fast moves and four charged moves for expansion.",
+        "Generate only evidence-backed single-fast or single-charged substitutions around observed sets.",
+        "Emit no more than eight candidates per species, form, and format.",
+        "Default preference and lexical variant ID provide stable final tie-breaks.",
+        "Requested representative species produce candidates when current evidence supports alternatives.",
+        "Shuffled source inputs produce byte-identical candidate output.",
         "Tests pass.",
-        "Typecheck passes.",
-        "Verify in browser using dev-browser skill."
+        "Typecheck passes."
       ],
       "priority": 8,
-      "passes": true,
-      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. Do not remove internal lineup score metadata unless proven unused."
+      "passes": false,
+      "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: preserve the ranked default first when eligible and never generate a full combination product."
     },
     {
       "id": "US-009",
-      "title": "Update optimizer and UI documentation contracts",
-      "description": "As a developer, I need documentation to match the new diagnostics and generation contracts so future optimizer and UI changes preserve the intended behavior.",
+      "title": "Replace invalid PvPoke ranked defaults",
+      "description": "As a competitive player, I want species with invalid ranked moves to receive an eligible replacement instead of being excluded or recommended illegally.",
       "acceptanceCriteria": [
-        "Update docs/pokemon-go-team-optimization.md to state that Threat Score owns the team-level quality pill and Recommended Lineups do not render quality pills.",
-        "Update components/AGENTS.md to reflect readable Threat Score lists, the threat profile pill, and no Recommended Lineups quality pill.",
-        "Update .opencode/skills/gbl-optimizer/SKILL.md to include anchor-first generation, dynamic per-meta score bands, companion ranking, specialist gating, and the revised diagnostics contract.",
-        "Documentation states raw threat score numbers are not user-facing in the Threat Score UI while backend fields may remain for sorting and diagnostics.",
-        "Documentation states fixed score thresholds such as 92, 90, 88, and 85 are Great League examples only, not global rules.",
+        "Reject a ranked default containing any unavailable move before simulation.",
+        "Record the source moveset, excluded move, and rejection reason.",
+        "Select the strongest eligible candidate by deterministic ranking evidence as the simulation default.",
+        "Retain the original PvPoke score only as a candidate-quality prior.",
+        "Muk with Acid and Starmie with Quick Attack are regression fixtures.",
+        "Runtime selection never returns the rejected source moveset.",
         "Tests pass.",
         "Typecheck passes."
       ],
       "priority": 9,
-      "passes": true,
-      "notes": "Recommended agents: @documentation-engineer, @gbl-optimizer. Keep docs and skill aligned with implemented behavior."
+      "passes": false,
+      "notes": "Recommended agents: @debugger, @test-automator. Implementation notes: replacement changes the simulated moveset, not the checked-in source ranking score."
+    },
+    {
+      "id": "US-010",
+      "title": "Add deterministic simulation projection reporting",
+      "description": "As a maintainer, I want a dry projection of variant output so simulation growth and stale files are visible before data is written.",
+      "acceptanceCriteria": [
+        "Projection reports candidate species, candidate variants, and shield-scenario CSV totals by format.",
+        "Only species with multiple evidence-backed candidates project alternate files.",
+        "Projection includes per-species caps and stale recognized variant files.",
+        "Projection mode writes no manifests or simulation files and deletes nothing.",
+        "Identical inputs produce identical report ordering and totals.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "Recommended agents: @tooling-engineer, @data-engineer. Implementation notes: choose a non-interactive CLI option consistent with the current sync command."
+    },
+    {
+      "id": "US-011",
+      "title": "Define and validate the moveset variant manifest schema",
+      "description": "As a runtime developer, I want a versioned typed manifest schema so generated variant data can be validated before use.",
+      "acceptanceCriteria": [
+        "Define a schema for data/simulations/cp{cp}/{cup}/moveset-variants.json.",
+        "Manifest metadata includes schema version, policy version, format ID, cup, CP, source digests, and derivation settings.",
+        "Species records include default, candidates, evidence, acquisition requirements, storage keys, completeness, evaluation counts, and active status.",
+        "Validation rejects duplicate IDs, more than eight candidates, more than three active variants, and inconsistent defaults.",
+        "Serialization is deterministic.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "Recommended agents: @typescript-pro, @architect-reviewer. Implementation notes: keep schema parsing in lib/data and generated manifest construction in lib/sync."
+    },
+    {
+      "id": "US-012",
+      "title": "Generate candidate variant simulation files",
+      "description": "As a maintainer, I want sync to simulate every bounded candidate consistently so active alternatives are selected from complete comparable data.",
+      "acceptanceCriteria": [
+        "Simulation sync uses derived candidates instead of the hardcoded Golisopod alternate map.",
+        "Every candidate forces its exact fast move and two charged moves in the isolated PvPoke engine.",
+        "Variant output paths are deterministic and format scoped.",
+        "Completeness requires valid 0-0, 1-1, and 2-2 scenario files.",
+        "Resume mode reuses only valid files matching the same format and variant identity.",
+        "The default species matrix remains separate from alternate variant files.",
+        "Sync tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: local PvPoke execution remains inside sync tooling and the Node VM boundary."
+    },
+    {
+      "id": "US-013",
+      "title": "Select active simulation-backed alternatives",
+      "description": "As a competitive player, I want only complete and complementary simulated alternatives activated so recommendations remain focused.",
+      "acceptanceCriteria": [
+        "Compare every candidate to the default over the same evaluated opponent intersection.",
+        "Incomplete or sparse candidates cannot displace the default.",
+        "Top-meta improvement receives more weight than full-meta improvement.",
+        "The primary alternate requires positive weighted improvement over default.",
+        "The second alternate requires positive marginal coverage beyond the primary.",
+        "Ties and insufficient evidence preserve the default.",
+        "At most one default and two alternatives are active.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: use scoreMatchupRating for continuous comparisons and stable deterministic tie-breakers."
+    },
+    {
+      "id": "US-014",
+      "title": "Publish complete manifests atomically",
+      "description": "As a runtime developer, I want manifests published only after their simulations are complete so interrupted sync cannot advertise partial variants.",
+      "acceptanceCriteria": [
+        "Sync constructs one manifest for every supported format.",
+        "No candidate is marked complete unless every required scenario file validates.",
+        "The manifest is written last through an atomic replacement strategy.",
+        "A failed simulation leaves the prior manifest intact.",
+        "Repeated generation from identical inputs produces a byte-identical manifest.",
+        "Failure-path and deterministic-output tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: the manifest is the runtime availability authority, not a cache of directory discovery."
+    },
+    {
+      "id": "US-015",
+      "title": "Delete stale generated variant files after successful sync",
+      "description": "As a maintainer, I want successful sync runs to remove stale variant CSVs so checked-in data remains aligned with its manifest.",
+      "acceptanceCriteria": [
+        "After manifest publication, delete recognized variant CSVs in that format directory that are not declared by the new manifest.",
+        "Cleanup never deletes default species simulation files.",
+        "Cleanup never deletes files outside the active format directory.",
+        "Cleanup does not run after failed or incomplete generation.",
+        "Projection mode reports stale files without deleting them.",
+        "Sync output lists each deleted relative path.",
+        "Boundary and failure-path tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "Recommended agents: @tooling-engineer, @test-automator. Implementation notes: delete only filenames accepted by the strict variant filename parser after a successful atomic manifest publication."
+    },
+    {
+      "id": "US-016",
+      "title": "Load runtime variants exclusively from manifests",
+      "description": "As a runtime developer, I want typed manifest-backed lookups so stale and partial files cannot become active accidentally.",
+      "acceptanceCriteria": [
+        "Runtime loads only manifest-declared active variants.",
+        "Aggregate and shield-scenario lookup accept an explicit variant identity.",
+        "Default and alternate matrices remain format scoped.",
+        "Alternate lookup never silently substitutes default rows.",
+        "Missing, incompatible, malformed, and incomplete manifests produce actionable typed errors.",
+        "Filename scanning is no longer the source of variant availability.",
+        "Runtime boundary and loader tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "Recommended agents: @backend-developer, @architect-reviewer. Implementation notes: runtime may read repository-owned JSON and CSV only; vendor JavaScript remains forbidden."
+    },
+    {
+      "id": "US-017",
+      "title": "Create immutable roster moveset assignments",
+      "description": "As a competitive player, I want each roster Pokemon to use one moveset across every pick-three lineup so the bring-six recommendation is legal and consistent.",
+      "acceptanceCriteria": [
+        "Create one immutable RosterMovesetAssignment before ordered lineup enumeration.",
+        "A species uses the same variant in all 120 lineups for that roster.",
+        "Lineup scoring consumes the assignment and does not derive movesets independently.",
+        "Assignment fingerprints are deterministic and include format and manifest policy identity.",
+        "Different assignments cannot collide in lineup or roster caches.",
+        "Tests cover fixed assignment and cache isolation behavior.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "Recommended agents: @architect-reviewer, @typescript-pro. Implementation notes: resolve assignments outside scoreOrderedLineup and bind them into the scoring context."
+    },
+    {
+      "id": "US-018",
+      "title": "Make ordered lineup scoring variant-aware",
+      "description": "As a competitive player, I want lineup coverage and battle-plan scores to use the assigned movesets so move typing and matchup matrices agree.",
+      "acceptanceCriteria": [
+        "Coverage and soft matchup quality use assigned-variant matrices.",
+        "Safety and overwhelming-loss checks use assigned variants.",
+        "Shield and resource-path calculations use assigned variants.",
+        "Consistency and shield stability use assigned variants.",
+        "Offensive move typing and matchup data refer to the same assignment.",
+        "Categorical labels continue using explicit rating thresholds.",
+        "Controlled lineup, ABC, ABB, ABA, and shield-path tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: preserve scoreMatchupRating for continuous values and keep missing shield rows unevaluated."
+    },
+    {
+      "id": "US-019",
+      "title": "Make roster diagnostics and analysis variant-aware",
+      "description": "As a competitive player, I want roster diagnostics to describe the assigned movesets so Threat Score and analyses cannot contradict recommendations.",
+      "acceptanceCriteria": [
+        "Roster threat-pool coverage and shield stability use assigned variants.",
+        "Threat Score uses assigned variants and remains lower-is-better and outside weighted fitness.",
+        "Threat, shield-scenario, and Pokemon-contribution analyses consume the assignment.",
+        "No analysis function independently selects a moveset.",
+        "Top-meta and full-meta weighting semantics remain unchanged.",
+        "Roster and analysis regression tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: derive analyses from existing scored outputs where possible and keep diagnostic-only work out of GA hot paths."
+    },
+    {
+      "id": "US-020",
+      "title": "Retain a deterministic top-ten GA finalist set",
+      "description": "As a user, I want multiple strong default-scored rosters retained so variant-aware reranking can select a better final roster.",
+      "acceptanceCriteria": [
+        "Default-only scoring remains in the GA hot path.",
+        "Evolution retains a canonicalized, deduplicated top-10 finalist set.",
+        "Finalist ordering is deterministic for fixed seeds.",
+        "Canonical roster identity deduplicates reordered copies of the same flexible roster.",
+        "Existing best-overall behavior remains available until reranking runs.",
+        "Algorithm and deterministic-seed tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: collect finalists without performing variant-aware full scoring during evolution."
+    },
+    {
+      "id": "US-021",
+      "title": "Prefilter assignments and rerank roster finalists",
+      "description": "As a user, I want alternate movesets to affect final roster selection without making generation unbounded.",
+      "acceptanceCriteria": [
+        "Evaluate no more than 3^6 or 729 assignments per finalist using a lightweight matrix objective.",
+        "Fully score no more than the top 12 assignments per finalist across all 120 ordered lineups.",
+        "Final selection uses variant-aware full fitness.",
+        "Ties use variant-aware score, default-only score, and canonical roster key in that order.",
+        "A lower default-scored finalist can win after variant-aware reranking.",
+        "Returned chromosome fitness equals its final score breakdown.",
+        "Representative generation remains under one minute and cache counters stay bounded.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 21,
+      "passes": false,
+      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: document the lightweight assignment objective in code and keep all tie-breakers deterministic."
+    },
+    {
+      "id": "US-022",
+      "title": "Propagate scored assignments through generation and team details APIs",
+      "description": "As a user, I want API movesets and analyses to match the assignment used for optimizer scoring so recommendations remain trustworthy.",
+      "acceptanceCriteria": [
+        "Generation output includes the selected RosterMovesetAssignment.",
+        "Team details consume the generated assignment instead of independently recomputing movesets.",
+        "API output exposes structured regular, elite, eventExclusive, and purified acquisition metadata.",
+        "API move IDs exactly match the assignment used for scoring.",
+        "Analysis output remains synchronized with the same assignment.",
+        "Generate-team and team-details API tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 22,
+      "passes": false,
+      "notes": "Recommended agents: @fullstack-developer, @test-automator. Implementation notes: keep API routes thin and avoid recomputing scoring or assignment policy in adapters."
+    },
+    {
+      "id": "US-023",
+      "title": "Export assigned movesets and acquisition requirements",
+      "description": "As a user, I want exported team text to identify the exact scored movesets and special acquisition requirements so I can build the recommendation.",
+      "acceptanceCriteria": [
+        "Export consumes the generated roster assignment without selecting movesets again.",
+        "Exported move IDs exactly match the assignment used for scoring.",
+        "Export text includes concise Elite, event-exclusive, and purified requirements when applicable.",
+        "Regular movesets do not receive unnecessary acquisition text.",
+        "No new visual UI component is added.",
+        "Export and clipboard tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 23,
+      "passes": false,
+      "notes": "Recommended agents: @fullstack-developer, @test-automator. Implementation notes: acquisition metadata is informational and must not alter battle scoring."
+    },
+    {
+      "id": "US-024",
+      "title": "Regenerate and validate variant data for all supported formats",
+      "description": "As a maintainer, I want complete checked-in manifests and simulations for every format so generalized variants are consistently available.",
+      "acceptanceCriteria": [
+        "Every format in lib/data/battleFormats.ts has a valid moveset variant manifest.",
+        "Every active variant has valid 0-0, 1-1, and 2-2 simulation files.",
+        "Frustration and excluded legacy pairs appear in no candidate or active manifest entry.",
+        "Approved legacy exceptions and eligible Elite defaults remain available.",
+        "Golisopod, Quagsire, Forretress, Feraligatr, Empoleon, Furret, Sableye, Florges, and Blastoise receive evidence-backed variants where supported by data.",
+        "Furret and Florges shadow forms are not synthesized.",
+        "A second sync with unchanged inputs produces no manifest or CSV diff.",
+        "Full tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 24,
+      "passes": false,
+      "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: run projection first, then generation; stale variant cleanup is authorized only through the tested sync path from US-015."
+    },
+    {
+      "id": "US-025",
+      "title": "Document moveset variant generation and runtime semantics",
+      "description": "As a future contributor, I want availability, manifests, assignments, and sync commands documented so behavior remains deterministic.",
+      "acceptanceCriteria": [
+        "Optimizer docs explain regular, Elite, event-exclusive, purified, excluded legacy, and Frustration policy.",
+        "Docs list the approved species-scoped legacy exceptions.",
+        "Docs explain ranking evidence, move-stat filtering, candidate caps, and invalid-default replacement.",
+        "Docs explain manifest authority, atomic publication, and stale-file deletion.",
+        "Docs explain fixed roster assignments and bounded top-ten finalist reranking.",
+        "Docs include projection, generation, and validation commands.",
+        "Docs reiterate that PvPoke JavaScript is sync/tooling-only.",
+        "Documentation formatting passes.",
+        "Typecheck passes."
+      ],
+      "priority": 25,
+      "passes": false,
+      "notes": "Recommended agents: @documentation-engineer. Implementation notes: update existing optimizer and data-input documentation rather than creating duplicate guidance."
     }
   ]
 }

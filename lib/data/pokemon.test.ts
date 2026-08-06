@@ -47,4 +47,15 @@ describe('Battle Frontier bans', () => {
       'Hydreigon',
     ]);
   });
+
+  it('excludes non-choosable moveset aliases from ranked candidate pools', () => {
+    const rankedPokemon = getRankedPokemonForFormat(
+      new Set(['Golisopod']),
+      'battle-frontier-coupe-du-sillage',
+    );
+
+    expect(rankedPokemon.map((pokemon) => pokemon.speciesId)).toEqual([
+      'golisopod',
+    ]);
+  });
 });

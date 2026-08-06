@@ -1,0 +1,169 @@
+{
+  "project": "pogo-team-generator",
+  "branchName": "ralph/human-readable-threat-diagnostics",
+  "description": "Make Threat Score diagnostics human-readable and revise team generation to use dynamic meta-specific ranking bands, elite anchors, ranked companions, and specialist gating.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Derive dynamic candidate ranking bands per format",
+      "description": "As a competitive user, I want the generator to understand each meta's ranking score distribution so that limited cups and open formats both use appropriate anchor and companion pools.",
+      "acceptanceCriteria": [
+        "Add a pure helper for deriving candidate quality bands from the selected format's overall ranking export instead of fixed global score cutoffs.",
+        "Band derivation considers PvPoke Score, rank percentile, score density, meaningful score dropoffs, and bounded minimum and maximum candidate counts.",
+        "The helper exposes band labels for elite anchors, preferred anchors, normal companions, flexible companions, and specialists.",
+        "Tests cover a dense open Great League-style score curve and a smaller steeper naic2026-style limited-meta score curve.",
+        "Tests assert fixed score thresholds such as 92, 90, 88, and 85 are not hardcoded as global band rules.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Read optimizer docs before changing ranking or generation logic."
+    },
+    {
+      "id": "US-002",
+      "title": "Build ranked anchor and companion candidate profiles",
+      "description": "As a competitive user, I want candidate profiles to combine ranking quality, role data, safety, consistency, bulk, typing, and simulations so companion selection reflects team fit instead of raw rank alone.",
+      "acceptanceCriteria": [
+        "Add a pure candidate profile builder that uses the dynamic bands from US-001 for the selected format.",
+        "Candidate profiles include PvPoke rank, PvPoke Score, dynamic band, safety or switch ranking signal where available, consistency ranking signal where available, bulk or stat product, offensive typing, defensive typing, and simulation coverage inputs available through existing loaders or injected contexts.",
+        "Candidate profile code does not read ranking files directly from scoring functions and uses existing data loader boundaries.",
+        "Tests cover profile creation for open Great League and naic2026 ranking data or representative fixtures.",
+        "Tests cover missing optional role or consistency data without silent failure or invalid numeric output.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Keep profiles pure and format-scoped."
+    },
+    {
+      "id": "US-003",
+      "title": "Rank anchor plus companion pairs",
+      "description": "As a competitive user, I want the generator to evaluate high-quality anchors with synergistic companions before building full teams so that generated teams start from viable meta cores.",
+      "acceptanceCriteria": [
+        "Add a pure pair-ranking module that evaluates anchor plus companion candidates before full team expansion.",
+        "Pair ranking rewards companions that cover the anchor's important meta losses without creating severe shared weaknesses.",
+        "Pair ranking considers PvPoke rank, PvPoke Score, simulation matchup coverage, safety rank, consistency rank, bulk, offensive typing, and defensive typing from candidate profiles.",
+        "Pair ranking treats rank and score as search priors, not as a strict tier-list override.",
+        "Tests show a high-ranked synergistic companion outranks a low-ranked niche pick unless the niche pick provides unique measurable coverage.",
+        "Tests show severe shared weakness is penalized for an anchor plus companion pair.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Prefer injected scoring dependencies and deterministic tie-breaks."
+    },
+    {
+      "id": "US-004",
+      "title": "Gate specialist candidates behind unique coverage",
+      "description": "As a competitive user, I want lower-ranked niche Pokemon to appear only when they solve a real team problem so that core-breakers do not crowd out safer top-ranked picks.",
+      "acceptanceCriteria": [
+        "Candidates below the dynamically derived flexible companion pool are treated as specialists.",
+        "Specialists are not selected as automatic anchors.",
+        "Specialists can enter pair or team expansion only when they provide unique measurable coverage against unresolved top-meta threats or a known core weakness.",
+        "Specialist admission uses simulation matchup coverage before type-only coverage.",
+        "Specialist admission rejects or penalizes candidates that create severe shared weakness, reduce viable lineup count, or merely duplicate a stronger generalist's role.",
+        "Tests show a low-ranked specialist is rejected when it only beats an isolated threat.",
+        "Tests show a low-ranked specialist can be admitted when it uniquely patches an otherwise unresolved high-priority weakness.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Keep specialist rules bounded so niche picks remain rare."
+    },
+    {
+      "id": "US-005",
+      "title": "Seed the genetic algorithm with anchor-first teams",
+      "description": "As a competitive user, I want generated teams to start from elite anchors, ranked pairs, and companion expansion so outputs look like viable meta teams instead of random collections of core-breakers.",
+      "acceptanceCriteria": [
+        "The genetic algorithm seeds its initial population from dynamically selected elite or preferred anchors before random full-team construction.",
+        "The generator expands ranked anchor plus companion pairs into complete teams by repeatedly evaluating remaining team weaknesses, playable lineup quality, and broad meta coverage.",
+        "The anchor-first initializer supports GBL teams and PlayPokemon roster sizes without bypassing final canonical lineup or roster scoring.",
+        "A bounded portion of the population preserves diversity so the search does not become a strict top-ranked tier list.",
+        "Fixed-seed tests demonstrate deterministic anchor-first population output.",
+        "Regression tests keep examples like Lickilicky / Altaria / Empoleon and Feraligatr / Quagsire / Altaria plausible for open Great League when supported by current data.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Recommended agents: @gbl-optimizer, @backend-developer, @test-driven-development. Preserve final fitness and scoreBreakdown synchronization."
+    },
+    {
+      "id": "US-006",
+      "title": "Display Threat Score lists as readable weaknesses",
+      "description": "As a user, I want threat lists to show only Pokemon names so that I can quickly understand which Pokemon threaten my team.",
+      "acceptanceCriteria": [
+        "Threat list items in AnalysisPanel render only the readable Pokemon name from threat.pokemon.",
+        "Threat list items do not show rank, answer count, risk score, threat value, or raw threat metadata.",
+        "The old display pattern like Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49) no longer appears.",
+        "Threat list caps remain unchanged and Showing top 5 of N summaries remain visible when applicable.",
+        "AnalysisPanel tests assert the new readable threat list contract.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. Keep the UI display-only."
+    },
+    {
+      "id": "US-007",
+      "title": "Replace raw Threat Score numbers with a profile pill",
+      "description": "As a user, I want the Threat Score card to summarize overall threat strength in simple human terms so that I know whether my team is weak, neutral, strong, or elite against threats.",
+      "acceptanceCriteria": [
+        "The Threat Score card no longer displays raw score boxes for Overall, Top Meta, or Full Meta.",
+        "The Threat Score card displays exactly one team-level quality pill with one of elite, strong, neutral, or weak.",
+        "The pill text and accessible label communicate the semantic meaning, such as Team threat profile: strong.",
+        "The display-only lower-is-better thresholds are covered by tests: <= 0.15 elite, <= 0.30 strong, <= 0.45 neutral, and > 0.45 weak.",
+        "The threshold helper does not change backend threat scoring or optimizer fitness behavior.",
+        "AnalysisPanel tests cover all four threat profile labels.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. This is a display-only mapping from lower-is-better diagnostics."
+    },
+    {
+      "id": "US-008",
+      "title": "Remove quality pills from Recommended Lineups",
+      "description": "As a user, I want Recommended Lineups to focus on lead, switch, closer, and weaknesses without duplicate or confusing quality labels.",
+      "acceptanceCriteria": [
+        "Recommended Lineup cards no longer render lineup-quality-pill elements.",
+        "Recommended Lineup cards do not display weak, neutral, strong, or elite quality pills.",
+        "Recommended Lineup cards continue to display Lead, Switch, Closer, and semantic weakness lists.",
+        "Recommended Lineup cards continue to omit numeric lineup scores.",
+        "Recommended Lineup cards retain blue diagnostic styling and existing accordion behavior.",
+        "AnalysisPanel tests assert Recommended Lineups render zero lineup quality pills.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill."
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Recommended agents: @frontend-developer, @ui-designer, @test-driven-development. Do not remove internal lineup score metadata unless proven unused."
+    },
+    {
+      "id": "US-009",
+      "title": "Update optimizer and UI documentation contracts",
+      "description": "As a developer, I need documentation to match the new diagnostics and generation contracts so future optimizer and UI changes preserve the intended behavior.",
+      "acceptanceCriteria": [
+        "Update docs/pokemon-go-team-optimization.md to state that Threat Score owns the team-level quality pill and Recommended Lineups do not render quality pills.",
+        "Update components/AGENTS.md to reflect readable Threat Score lists, the threat profile pill, and no Recommended Lineups quality pill.",
+        "Update .opencode/skills/gbl-optimizer/SKILL.md to include anchor-first generation, dynamic per-meta score bands, companion ranking, specialist gating, and the revised diagnostics contract.",
+        "Documentation states raw threat score numbers are not user-facing in the Threat Score UI while backend fields may remain for sorting and diagnostics.",
+        "Documentation states fixed score thresholds such as 92, 90, 88, and 85 are Great League examples only, not global rules.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Recommended agents: @documentation-engineer, @gbl-optimizer. Keep docs and skill aligned with implemented behavior."
+    }
+  ]
+}

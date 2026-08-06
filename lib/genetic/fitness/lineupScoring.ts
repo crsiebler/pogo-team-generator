@@ -1,5 +1,8 @@
 import { calculateEffectiveness } from '@/lib/coverage/typeChart';
-import type { BattleFormatId } from '@/lib/data/battleFormats';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  type BattleFormatId,
+} from '@/lib/data/battleFormats';
 import { getMoveByMoveId, calculatePressureScore } from '@/lib/data/moves';
 import {
   getPokemonBySpeciesId,
@@ -31,7 +34,10 @@ import {
   calculateDefensiveTypeRatio,
   calculateOffensiveTypeRatio,
 } from '@/lib/genetic/fitness/typeEffectivenessRatios';
-import { getRecommendedMovesetForPokemon } from '@/lib/genetic/moveset';
+import {
+  getRecommendedMovesetForPokemon,
+  getSimulationBackedMovesetForTeam,
+} from '@/lib/genetic/moveset';
 import type {
   LineupCoverageMetrics,
   LineupPatternLabel,
@@ -120,7 +126,10 @@ export interface LineupScoringContext {
   ) => number | null;
   getMatchupQualityScore?: (speciesId: string) => number;
   getMove?: (moveId: string) => LineupMoveData | undefined;
-  getRecommendedMoveset?: (speciesId: string) => LineupMoveset | undefined;
+  getRecommendedMoveset?: (
+    speciesId: string,
+    teamSpeciesIds?: readonly string[],
+  ) => LineupMoveset | undefined;
   getPressureScore?: (fastMoveId: string, chargedMoveId: string) => number;
   threatScorePoolWeights?: Partial<OptimizerThreatScorePoolWeights>;
 }
@@ -164,6 +173,7 @@ export function createDefaultLineupScoringContext(
   formatId?: BattleFormatId,
   threatCount: number = 100,
 ): LineupScoringContext {
+  const recommendedMovesetCache = new Map<string, LineupMoveset>();
   const boundedThreatCount = clampInteger(
     threatCount,
     0,
@@ -207,11 +217,25 @@ export function createDefaultLineupScoringContext(
     getMatchupQualityScore: (speciesId) =>
       getMatchupQualityScore(speciesId, formatId),
     getMove: getMoveByMoveId,
-    getRecommendedMoveset: (speciesId) => {
+    getRecommendedMoveset: (speciesId, teamSpeciesIds) => {
       const pokemon = getPokemonBySpeciesId(speciesId);
-      return pokemon
-        ? getRecommendedMovesetForPokemon(pokemon, formatId)
-        : undefined;
+      if (!pokemon) {
+        return undefined;
+      }
+      const cacheKey = `${speciesId}:${teamSpeciesIds ? [...teamSpeciesIds].sort().join(',') : 'default'}`;
+      const cachedMoveset = recommendedMovesetCache.get(cacheKey);
+      if (cachedMoveset) {
+        return cachedMoveset;
+      }
+      const moveset = teamSpeciesIds
+        ? getSimulationBackedMovesetForTeam(
+            pokemon,
+            teamSpeciesIds,
+            formatId ?? DEFAULT_BATTLE_FORMAT_ID,
+          )
+        : getRecommendedMovesetForPokemon(pokemon, formatId);
+      recommendedMovesetCache.set(cacheKey, moveset);
+      return moveset;
     },
     getPressureScore: calculatePressureScore,
   };
@@ -442,8 +466,9 @@ function calculateLineupTypeRatios(
     return { offensive: 0.5, defensive: 0.5 };
   }
 
+  const teamSpeciesIds = pokemon.map((entry) => entry.speciesId);
   const attackingMoveTypes = pokemon.flatMap((entry) =>
-    getLineupAttackingTypes(entry, context),
+    getLineupAttackingTypes(entry, context, teamSpeciesIds),
   );
   const offensive = calculateWeightedTypePoolScore(
     calculateOffensiveTypeRatio({
@@ -538,8 +563,9 @@ function getExpectedThreatAttackTypes(
 function getLineupAttackingTypes(
   pokemon: Pokemon,
   context: LineupScoringContext,
+  teamSpeciesIds: readonly string[],
 ): string[] {
-  const moveset = getContextMoveset(pokemon, context);
+  const moveset = getContextMoveset(pokemon, context, teamSpeciesIds);
   const moveIds = [
     moveset.fastMove,
     moveset.chargedMove1,
@@ -980,9 +1006,10 @@ function calculateMoveCoverage(
     return 0;
   }
 
+  const teamSpeciesIds = pokemon.map((entry) => entry.speciesId);
   return average(
     pokemon.map((entry) => {
-      const recommended = getContextMoveset(entry, context);
+      const recommended = getContextMoveset(entry, context, teamSpeciesIds);
       const chargedMoves = [recommended.chargedMove1, recommended.chargedMove2]
         .filter((moveId): moveId is string => moveId !== null)
         .map((moveId) => getContextMove(moveId, context))
@@ -1005,9 +1032,10 @@ function calculateEnergyPressure(
     return 0;
   }
 
+  const teamSpeciesIds = pokemon.map((entry) => entry.speciesId);
   return average(
     pokemon.map((entry) => {
-      const recommended = getContextMoveset(entry, context);
+      const recommended = getContextMoveset(entry, context, teamSpeciesIds);
       if (!recommended.fastMove || !recommended.chargedMove1) {
         return 0.5;
       }
@@ -1026,10 +1054,11 @@ function calculateEnergyPressure(
 function getContextMoveset(
   pokemon: Pokemon,
   context: LineupScoringContext,
+  teamSpeciesIds?: readonly string[],
 ): LineupMoveset {
   if (context.getRecommendedMoveset) {
     return (
-      context.getRecommendedMoveset(pokemon.speciesId) ?? {
+      context.getRecommendedMoveset(pokemon.speciesId, teamSpeciesIds) ?? {
         fastMove: null,
         chargedMove1: null,
         chargedMove2: null,

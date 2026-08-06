@@ -2,11 +2,25 @@ import { getBattleFormats } from './battleFormats';
 import {
   ensureSimulationDataAvailable,
   getMatchupMatrix,
+  getMovesetVariantShieldScenarioMatchupResult,
   getShieldScenarioMatchupResult,
   getTopThreatsByRole,
+  parseSimulationFilename,
 } from './simulations';
 
 describe('format-aware simulation loading', () => {
+  it('parses moveset-specific simulation filenames separately from species ids', () => {
+    expect(
+      parseSimulationFilename(
+        'golisopod--shadow_claw--x_scissor--aqua_jet_1-1.csv',
+      ),
+    ).toEqual({
+      speciesId: 'golisopod',
+      movesetVariantId: 'shadow_claw--x_scissor--aqua_jet',
+      shieldCount: 1,
+    });
+  });
+
   it('supports default and explicit Great League lookups', () => {
     const defaultMatrix = getMatchupMatrix();
     const explicitMatrix = getMatchupMatrix('great-league');
@@ -43,6 +57,26 @@ describe('format-aware simulation loading', () => {
     expect(
       getShieldScenarioMatchupResult('abomasnow', 'absol', 2, 'ultra-league'),
     ).toBe(352);
+  });
+
+  it('loads moveset-specific matchup ratings without replacing the default', () => {
+    expect(
+      getMovesetVariantShieldScenarioMatchupResult(
+        'golisopod',
+        'shadow_claw--x_scissor--aqua_jet',
+        'mewtwo',
+        1,
+        'battle-frontier-coupe-du-sillage',
+      ),
+    ).toBe(533);
+    expect(
+      getShieldScenarioMatchupResult(
+        'golisopod',
+        'mewtwo',
+        1,
+        'battle-frontier-coupe-du-sillage',
+      ),
+    ).toBe(564);
   });
 
   it('returns null when shield scenario matchup data is missing', () => {
