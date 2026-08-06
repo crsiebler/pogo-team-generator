@@ -4,7 +4,12 @@ import {
   scoreOrderedLineup,
   type LineupScoringContext,
 } from './lineupScoring';
-import type { OrderedLineup, Pokemon } from '@/lib/types';
+import type {
+  OrderedLineup,
+  Pokemon,
+  RosterMovesetAssignment,
+  MovesetVariant,
+} from '@/lib/types';
 
 const pokemonById: Record<string, Pokemon> = {
   bulky: makePokemon('bulky', ['water'], { atk: 100, def: 180, hp: 170 }),
@@ -1090,6 +1095,90 @@ describe('scoreOrderedLineup', () => {
     );
 
     expect(requestedTeams).toContainEqual(['bulky', 'balanced', 'closer']);
+  });
+
+  test('uses a bound roster assignment without deriving lineup movesets', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const variantsBySpeciesId: Record<string, MovesetVariant> =
+      Object.fromEntries(
+        Object.values(lineup).map((speciesId): [string, MovesetVariant] => [
+          speciesId,
+          {
+            id: `fast--charged_b--charged_a`,
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+            isDefault: true,
+          },
+        ]),
+      );
+    const assignment: RosterMovesetAssignment = {
+      formatId: 'great-league',
+      policyIdentity: {
+        source: 'manifest',
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      },
+      fingerprint: 'assignment-fingerprint',
+      variantsBySpeciesId,
+    };
+    const requestedTeams: string[][] = [];
+
+    scoreOrderedLineup(
+      lineup,
+      createContext({
+        movesetAssignment: assignment,
+        getRecommendedMoveset: (_speciesId, teamSpeciesIds) => {
+          if (teamSpeciesIds) {
+            requestedTeams.push([...teamSpeciesIds]);
+          }
+          return {
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+          };
+        },
+      }),
+    );
+
+    expect(requestedTeams).toEqual([]);
+  });
+
+  test('rejects a bound assignment that omits a lineup species', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const context = createContext({
+      formatId: 'great-league',
+      movesetAssignment: {
+        formatId: 'great-league',
+        policyIdentity: {
+          source: 'manifest',
+          schemaVersion: 1,
+          policyVersion: 'ranking-evidence-v1',
+        },
+        fingerprint: 'incomplete-assignment',
+        variantsBySpeciesId: {
+          bulky: {
+            id: 'fast--charged_b--charged_a',
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+            isDefault: true,
+          },
+        },
+      },
+    });
+
+    expect(() => scoreOrderedLineup(lineup, context)).toThrow(
+      'Bound roster moveset assignment is missing balanced.',
+    );
   });
 
   test('computes balanced, shield-spend, and shield-save resource path metrics from shield-specific matchups', () => {

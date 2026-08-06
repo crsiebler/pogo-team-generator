@@ -53,6 +53,10 @@ export interface MovesetVariantSimulationLoaderDependencies {
 
 /** Manifest-authoritative runtime moveset and simulation lookups. */
 export interface MovesetVariantSimulationLoader {
+  getManifestPolicyIdentity(formatId: BattleFormatId): Readonly<{
+    schemaVersion: number;
+    policyVersion: string;
+  }>;
   getActiveVariants(
     speciesId: string,
     formatId: BattleFormatId,
@@ -444,6 +448,12 @@ export function createMovesetVariantSimulationLoader(
   }
 
   return {
+    getManifestPolicyIdentity: (
+      formatId: BattleFormatId,
+    ): Readonly<{ schemaVersion: number; policyVersion: string }> => {
+      const { schemaVersion, policyVersion } = loadManifest(formatId).metadata;
+      return Object.freeze({ schemaVersion, policyVersion });
+    },
     getActiveVariants: (
       speciesId: string,
       formatId: BattleFormatId,

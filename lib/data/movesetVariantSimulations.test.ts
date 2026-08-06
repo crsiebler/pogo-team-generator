@@ -200,6 +200,15 @@ function createLoader(
 }
 
 describe('manifest-backed moveset variant simulation loading', () => {
+  it('exposes the manifest policy identity for assignment fingerprints', () => {
+    const loader = createLoader(createFiles());
+
+    expect(loader.getManifestPolicyIdentity('great-league')).toEqual({
+      schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+      policyVersion: 'ranking-evidence-v1',
+    });
+  });
+
   it('loads only active manifest candidates and their declared storage keys', () => {
     const files = createFiles();
     files.set(

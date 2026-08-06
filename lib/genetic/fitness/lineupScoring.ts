@@ -46,6 +46,7 @@ import type {
   LineupRole,
   OrderedLineup,
   Pokemon,
+  RosterMovesetAssignment,
 } from '@/lib/types';
 
 interface LineupMoveset {
@@ -108,6 +109,7 @@ export interface LineupScoringContext {
   topThreats?: string[];
   fullMetaThreats?: string[];
   formatId?: BattleFormatId;
+  movesetAssignment?: RosterMovesetAssignment;
   getPokemon: (speciesId: string) => Pokemon | undefined;
   getRankingScore: (speciesId: string) => number;
   getRoleScore: (speciesId: string, role: LineupRole) => number;
@@ -1056,6 +1058,18 @@ function getContextMoveset(
   context: LineupScoringContext,
   teamSpeciesIds?: readonly string[],
 ): LineupMoveset {
+  if (teamSpeciesIds) {
+    const assigned =
+      context.movesetAssignment?.variantsBySpeciesId[pokemon.speciesId];
+    if (assigned) {
+      return assigned;
+    }
+    if (context.movesetAssignment) {
+      throw new Error(
+        `Bound roster moveset assignment is missing ${pokemon.speciesId}.`,
+      );
+    }
+  }
   if (context.getRecommendedMoveset) {
     return (
       context.getRecommendedMoveset(pokemon.speciesId, teamSpeciesIds) ?? {

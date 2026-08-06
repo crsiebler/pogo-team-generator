@@ -24,8 +24,20 @@ export interface MovesetVariant extends Moveset {
   readonly isDefault: boolean;
 }
 
-/** Fixed moveset variants keyed by roster species id. */
-export type RosterMovesetAssignment = Readonly<Record<string, MovesetVariant>>;
+/** Policy authority used to resolve one fixed roster moveset assignment. */
+export interface MovesetAssignmentPolicyIdentity {
+  readonly source: 'manifest' | 'ranked-default-fallback';
+  readonly schemaVersion: number;
+  readonly policyVersion: string;
+}
+
+/** Fixed moveset variants and deterministic identity for one roster. */
+export interface RosterMovesetAssignment {
+  readonly formatId: BattleFormatId;
+  readonly policyIdentity: MovesetAssignmentPolicyIdentity;
+  readonly variantsBySpeciesId: Readonly<Record<string, MovesetVariant>>;
+  readonly fingerprint: string;
+}
 
 /** Attack and defense stage changes applied by a move. */
 export type MoveStatStages = readonly [attack: number, defense: number];

@@ -24,6 +24,7 @@
 - Prepare every supported format manifest in memory after simulation and cross-validation succeed; production simulation generation returns validated deferred CSVs, and one rollback-capable batch stages all files, replaces manifests last, and restores every prior CSV and manifest target on failure.
 - Stale simulation cleanup runs only after successful generation publication, requires physical directories to match workspace catalog paths before enumeration and each unlink, deletes only regular strict-parser variant files omitted by all manifest candidate storage keys, and reports each successful deletion immediately; default matrices and declared inactive candidates remain untouched.
 - Runtime variant availability comes only from each format manifest's active candidates and exact scenario storage keys; validate declared completeness, finite CSV rows, and candidate/default opponent parity before caching, never scan variant filenames, and never substitute default rows for an unavailable alternate.
+- Resolve one deeply immutable roster moveset assignment against the complete bring-six roster before lineup enumeration; bind it into scoring contexts, normalize omitted scoring formats to the default before validation, and include its format, manifest policy identity, and canonical variants in every assignment-dependent cache fingerprint.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -909,4 +910,81 @@
   - No manifests are checked in yet; US-024 must regenerate them for every format, after which runtime selection will consume active manifest candidates instead of the temporary ranked-default transition path.
 - Next iteration start:
   - US-017 - Create immutable roster moveset assignments
+---
+
+## 2026-08-06 14:44:29 MST - US-017
+- Implemented deeply immutable roster moveset assignments resolved once against the complete bring-six roster; preserved selected variant IDs; bound assignments into fast and full scoring before all 120 ordered lineups; exposed narrow manifest policy identity metadata; and isolated full and fast lineup caches with deterministic format-, policy-, and variant-sensitive fingerprints.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/data/movesetVariantSimulations.ts`, `lib/data/movesetVariantSimulations.test.ts`, `lib/data/simulations.ts`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `progress.txt`
+- Commit message: `feat: US-017 - Create immutable roster moveset assignments`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/genetic/moveset.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/index.test.ts` (fail as expected before implementation: 8 tests exposed missing policy identity, assignment creation/resolution, assignment binding, and cache isolation)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/genetic/moveset.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` (pass, 123 tests)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/algorithm.test.ts` after initial review regressions (fail as expected: 3 tests exposed incomplete-assignment fallback, incomplete fingerprint identity, and eager ranked fallback behavior)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` after review fixes (pass, 115 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail before import-order correction; pass after correction)
+  - `npm test` after review fixes (pass, 735 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `architect-reviewer`, `typescript-pro`
+  - Used: `architect-reviewer`; skipped `typescript-pro` because one architecture-focused advisor covered assignment identity, context binding, transition policy, cache isolation, and the US-018 boundary within the standard-mode complex-story budget
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer` and `qa-expert` passes
+  - Findings: fixed five deduplicated initial medium findings by rejecting incomplete and cross-format assignments before enumeration, making ranked fallback lookup lazy, fingerprinting default status, observing species-specific assigned moves across all 120 lineups, and asserting final diagnostics bind the resolved assignment; targeted code review found none, but targeted QA found one remaining medium resolver-level fallback injection blocker
+- Decisions (why):
+  - Evolved the previously unused assignment map alias into a structured immutable value carrying format, policy authority, canonical variants, and fingerprint so later API propagation cannot detach moves from their scoring identity.
+  - Fingerprinted canonical JSON containing format, manifest schema/policy, sorted species, variant IDs, and exact move slots rather than delimiter concatenation, preventing ambiguous cache identities without adding a hashing dependency.
+  - Resolved the entire roster under either manifest authority or the explicit ranked-default transition policy; only a missing manifest activates fallback, while malformed, incompatible, incomplete, and unavailable authority continues to fail closed.
+  - Bound assignments to scoring contexts while leaving opponent default-moveset lookup intact and deferred assigned-variant matchup matrices, shield paths, and threat diagnostics to US-018.
+  - Failed closed when a bound assignment is incomplete, contains non-roster species, or belongs to another format so cache fingerprints always describe the exact moves consumed by scoring.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Manifest policy identity can be exposed narrowly as schema version plus policy version without leaking the full manifest into optimizer code.
+  - Assignment-sensitive cache isolation requires the assignment fingerprint in both fast and full lineup namespaces even when ordered species IDs are unchanged.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-017.
+  - Commit blocked after the one allowed targeted re-review: add an injected ranked-default boundary to `RosterMovesetAssignmentDependencies`, use it only when manifest policy lookup returns `manifest-missing`, and add resolver-level lazy-success and injected-fallback regressions before starting a fresh review stabilization loop.
+  - US-018 must route aggregate and shield-scenario matchup reads through each assigned variant while preserving missing rows as unevaluated.
+- Next iteration start:
+  - Resume US-017 by injecting resolver-level ranked fallback, rerunning checks, and completing a fresh staged review loop before marking the story passed.
+---
+
+## 2026-08-06 15:05:30 MST - US-017
+- Resumed the immutable roster assignment candidate by injecting ranked-default resolution at the roster resolver boundary, keeping it lazy while manifest authority is available, and using it for every species only when policy lookup reports a missing manifest.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/data/movesetVariantSimulations.ts`, `lib/data/movesetVariantSimulations.test.ts`, `lib/data/simulations.ts`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `progress.txt`
+- Commit message: `feat: US-017 - Create immutable roster moveset assignments`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/moveset.test.ts` before resolver fix (fail as expected: injected resolver fallback was ignored)
+  - `npx vitest run lib/genetic/moveset.test.ts` after resolver fix (pass, 12 tests)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/genetic/moveset.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` (pass, 129 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 736 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` (pass)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/fitness/index.test.ts lib/genetic/fitness/rosterScoring.test.ts` after initial review regressions (fail as expected: omitted scoring formats bypassed two cross-format assignment guards)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/genetic/moveset.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` after review fixes (pass, 135 tests)
+  - Final `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, and diff checks after review fixes (pass, 742 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `architect-reviewer`, `typescript-pro`
+  - Used: no new implementation agent; the prior `architect-reviewer` guidance was already incorporated, and the remaining explicit dependency-injection blocker did not justify overlapping advice
+- Specialist review:
+  - Agents used: fresh initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: initial code review found none; fixed two medium QA findings by normalizing omitted scoring formats before assignment validation and covering every typed non-missing resolver failure without ranked fallback; targeted QA re-review found none
+- Decisions (why):
+  - Added ranked fallback to `RosterMovesetAssignmentDependencies` rather than calling ranking data directly so resolver behavior is deterministic and testable without module patching.
+  - Selected the manifest policy before resolving any roster member, then invoked exactly one assignment strategy for the complete roster so a roster cannot mix manifest-backed and transition-fallback identities.
+  - Kept the fallback lazy and limited to the typed `manifest-missing` case; malformed, incompatible, incomplete, and unavailable manifest authority still fails closed.
+  - Normalized absent scoring-context formats to `DEFAULT_BATTLE_FORMAT_ID` at both binding and direct roster-scoring validation boundaries so optional format syntax cannot weaken cache or assignment isolation.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Transition fallbacks must be injected at every orchestration boundary that invokes them, not only at lower-level selectors, so tests can prove both lazy success and exact fallback behavior.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-017.
+  - US-018 must route aggregate and shield-scenario matchup reads through each assigned variant while preserving missing rows as unevaluated.
+- Next iteration start:
+  - US-018 - Make ordered lineup scoring variant-aware.
 ---

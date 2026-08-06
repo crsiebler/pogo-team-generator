@@ -14,6 +14,7 @@ import {
   calculateDefensiveTypeRatio,
   calculateOffensiveTypeRatio,
 } from './typeEffectivenessRatios';
+import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
 import { normalizeToChoosableSpeciesId } from '@/lib/data/pokemon';
 import { MissingRankingDataError } from '@/lib/data/rankings';
 import { calculateOptimizerThreatScore } from '@/lib/genetic/fitness/threatScore';
@@ -88,6 +89,7 @@ export function scorePlayPokemonRoster(
   context: PlayPokemonRosterScoringContext,
   config: LineupAwareFitnessConfig,
 ): PlayPokemonRosterScoreResult {
+  validateRosterMovesetAssignment(roster, context);
   const scoredLineups = enumeratePlayPokemonLineups(roster)
     .map((lineup) => scoreRosterLineup(lineup, context, config))
     .toSorted((first, second) => second.score - first.score);
@@ -114,6 +116,36 @@ export function scorePlayPokemonRoster(
     lineupScores:
       diagnosticLimit > 0 ? scoredLineups.slice(0, diagnosticLimit) : undefined,
   };
+}
+
+function validateRosterMovesetAssignment(
+  roster: readonly string[],
+  context: PlayPokemonRosterScoringContext,
+): void {
+  const assignment = context.movesetAssignment;
+  if (!assignment) {
+    return;
+  }
+  const scoringFormatId = context.formatId ?? DEFAULT_BATTLE_FORMAT_ID;
+  if (assignment.formatId !== scoringFormatId) {
+    throw new Error(
+      `Cannot score ${assignment.formatId} movesets in ${scoringFormatId}.`,
+    );
+  }
+
+  const rosterSpeciesIds = new Set(roster);
+  for (const speciesId of rosterSpeciesIds) {
+    if (!assignment.variantsBySpeciesId[speciesId]) {
+      throw new Error(`Roster moveset assignment is missing ${speciesId}.`);
+    }
+  }
+  for (const speciesId of Object.keys(assignment.variantsBySpeciesId)) {
+    if (!rosterSpeciesIds.has(speciesId)) {
+      throw new Error(
+        `Roster moveset assignment contains non-roster species ${speciesId}.`,
+      );
+    }
+  }
 }
 
 function scoreRosterLineup(
@@ -852,7 +884,7 @@ function calculateMoveConsistency(
   context: PlayPokemonRosterScoringContext,
 ): number {
   const pokemon = context.getPokemon(speciesId);
-  const moveset = context.getRecommendedMoveset?.(speciesId);
+  const moveset = getAssignedRosterMoveset(speciesId, context);
   if (!pokemon || !moveset) {
     return 0.5;
   }
@@ -1223,7 +1255,7 @@ function getRosterAttackingTypes(
   >,
   context: PlayPokemonRosterScoringContext,
 ): string[] {
-  const moveset = context.getRecommendedMoveset?.(pokemon.speciesId);
+  const moveset = getAssignedRosterMoveset(pokemon.speciesId, context);
   if (!moveset) {
     return pokemon.types;
   }
@@ -1244,6 +1276,16 @@ function getRosterAttackingTypes(
   return moveTypes.length === moveIds.length
     ? uniqueSorted(moveTypes)
     : uniqueSorted([...moveTypes, ...pokemon.types]);
+}
+
+function getAssignedRosterMoveset(
+  speciesId: string,
+  context: PlayPokemonRosterScoringContext,
+): ReturnType<NonNullable<LineupScoringContext['getRecommendedMoveset']>> {
+  return (
+    context.movesetAssignment?.variantsBySpeciesId[speciesId] ??
+    context.getRecommendedMoveset?.(speciesId)
+  );
 }
 
 function calculatePrimaryRedundancyPenalty(

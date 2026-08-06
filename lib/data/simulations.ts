@@ -267,6 +267,15 @@ export function getActiveMovesetVariants(
   );
 }
 
+/** Return the schema and policy identity governing one format manifest. */
+export function getMovesetVariantManifestPolicyIdentity(
+  formatId?: BattleFormatId,
+): Readonly<{ schemaVersion: number; policyVersion: string }> {
+  return movesetVariantSimulationLoader.getManifestPolicyIdentity(
+    resolveFormatId(formatId),
+  );
+}
+
 /**
  * Get the matchup matrix (lazy loaded).
  */

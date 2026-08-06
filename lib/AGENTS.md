@@ -107,6 +107,8 @@ For GA evaluation in `lib/genetic/fitness/index.ts`, call `evaluatePopulation(po
 
 Lineup-aware fitness caches in `lib/genetic/fitness/index.ts` are per-run context caches; keep cache keys versioned and format-scoped, and use `cacheStats` counters in tests when validating cache behavior instead of timing-only assertions.
 
+Resolve one immutable `RosterMovesetAssignment` against the complete bring-six roster before ordered lineup enumeration. Bind that assignment into lineup and roster scoring contexts, and include its format- and manifest-policy-sensitive fingerprint in every assignment-dependent cache key; do not select movesets independently inside `scoreOrderedLineup(...)`.
+
 In `lib/genetic/algorithm.ts`, keep returned `Chromosome.fitness` synchronized with the final diagnostics attached to the chromosome. PlayPokemon finalists should use recomputed full `scorePlayPokemonRoster(...).fitness`; GBL finalists should use the final lineup recommendation score so `fitness` matches `scoreBreakdown.score` before `generateMultipleTeams(...)` sorts results.
 
 For optimizer weighted scoring, import the canonical score contract from `lib/genetic/fitness/scoreBreakdown.ts`; keep components normalized to 0..1 before aggregation and treat only validity or legality as hard constraints.

@@ -4,11 +4,16 @@ import { buildGblLineupRecommendation } from './recommendations';
 import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
 import {
   calculateLineupAwareFitness,
+  bindRosterMovesetAssignment,
   createLineupAwareFitnessContext,
   getLineupAwareFitnessCacheKey,
   evaluatePopulation,
 } from './index';
-import type { Chromosome, OrderedLineup } from '@/lib/types';
+import type {
+  Chromosome,
+  OrderedLineup,
+  RosterMovesetAssignment,
+} from '@/lib/types';
 
 vi.mock('./lineupScoring', () => ({
   createDefaultLineupScoringContext: vi.fn(() => ({
@@ -121,6 +126,19 @@ function createChromosome(team: string[]): Chromosome {
   return { team, fitness: 0 };
 }
 
+function createAssignment(fingerprint: string): RosterMovesetAssignment {
+  return {
+    formatId: 'battle-frontier-tsuki-cup',
+    policyIdentity: {
+      source: 'manifest',
+      schemaVersion: 1,
+      policyVersion: 'ranking-evidence-v1',
+    },
+    variantsBySpeciesId: {},
+    fingerprint,
+  };
+}
+
 describe('lineup-aware fitness entry point', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -128,8 +146,11 @@ describe('lineup-aware fitness entry point', () => {
 
   it('scores PlayPokemon chromosomes through fast roster scoring with cached lineup scoring', () => {
     const chromosome = createChromosome(['a', 'b', 'c', 'd', 'e', 'f']);
+    const assignment = createAssignment('assignment-a');
+    const resolveMovesetAssignment = vi.fn(() => assignment);
     const context = createLineupAwareFitnessContext(
       'battle-frontier-tsuki-cup',
+      { resolveMovesetAssignment },
     );
 
     const fitness = calculateLineupAwareFitness(
@@ -140,9 +161,14 @@ describe('lineup-aware fitness entry point', () => {
     );
 
     expect(fitness).toBe(0.91);
+    expect(resolveMovesetAssignment).toHaveBeenCalledOnce();
+    expect(resolveMovesetAssignment).toHaveBeenCalledWith(chromosome.team);
     expect(scorePlayPokemonRoster).toHaveBeenCalledWith(
       chromosome.team,
-      expect.objectContaining({ scoreLineup: expect.any(Function) }),
+      expect.objectContaining({
+        movesetAssignment: assignment,
+        scoreLineup: expect.any(Function),
+      }),
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
     expect(scoreFastRosterLineup).toHaveBeenCalledTimes(1);
@@ -181,6 +207,78 @@ describe('lineup-aware fitness entry point', () => {
         { lead: 'a', switch: 'b|c', closer: 'd' },
         'battle-frontier-tsuki-cup',
       ),
+    );
+    expect(
+      getLineupAwareFitnessCacheKey(
+        lineup,
+        'battle-frontier-tsuki-cup',
+        'assignment-a',
+      ),
+    ).not.toBe(
+      getLineupAwareFitnessCacheKey(
+        lineup,
+        'battle-frontier-tsuki-cup',
+        'assignment-b',
+      ),
+    );
+  });
+
+  it('isolates fast and full lineup caches by roster assignment', () => {
+    const context = createLineupAwareFitnessContext(
+      'battle-frontier-tsuki-cup',
+    );
+    const lineup = { lead: 'a', switch: 'b', closer: 'c' };
+    const firstAssignment = createAssignment('assignment-a');
+    const secondAssignment = createAssignment('assignment-b');
+
+    context.scoreLineup(lineup, firstAssignment);
+    context.scoreLineup(lineup, secondAssignment);
+    context.scoreFastLineup(lineup, firstAssignment);
+    context.scoreFastLineup(lineup, secondAssignment);
+
+    expect(context.cacheStats.lineup).toEqual({ hits: 0, misses: 2, size: 2 });
+    expect(context.cacheStats.fastLineup).toEqual({
+      hits: 0,
+      misses: 2,
+      size: 2,
+    });
+  });
+
+  it('rejects binding an assignment from another format', () => {
+    expect(() =>
+      bindRosterMovesetAssignment(
+        {
+          threats: [],
+          formatId: 'great-league',
+          getPokemon: () => undefined,
+          getRankingScore: () => 0,
+          getRoleScore: () => 0,
+          getMatchupRating: () => null,
+        },
+        {
+          ...createAssignment('assignment-a'),
+          formatId: 'battle-frontier-tsuki-cup',
+        },
+      ),
+    ).toThrow(
+      'Cannot bind battle-frontier-tsuki-cup movesets to great-league scoring.',
+    );
+  });
+
+  it('treats an omitted scoring format as the default when binding assignments', () => {
+    expect(() =>
+      bindRosterMovesetAssignment(
+        {
+          threats: [],
+          getPokemon: () => undefined,
+          getRankingScore: () => 0,
+          getRoleScore: () => 0,
+          getMatchupRating: () => null,
+        },
+        createAssignment('assignment-a'),
+      ),
+    ).toThrow(
+      'Cannot bind battle-frontier-tsuki-cup movesets to great-league scoring.',
     );
   });
 
@@ -227,7 +325,19 @@ describe('lineup-aware fitness entry point', () => {
       createChromosome(['g', 'h', 'i', 'j', 'k', 'l']),
     ];
 
-    evaluatePopulation(population, 'PlayPokemon', 'battle-frontier-tsuki-cup');
+    const context = createLineupAwareFitnessContext(
+      'battle-frontier-tsuki-cup',
+      {
+        resolveMovesetAssignment: () => createAssignment('assignment-a'),
+      },
+    );
+
+    evaluatePopulation(
+      population,
+      'PlayPokemon',
+      'battle-frontier-tsuki-cup',
+      context,
+    );
 
     expect(population.map((chromosome) => chromosome.fitness)).toEqual([
       0.91, 0.91,

@@ -7,6 +7,7 @@ import {
 } from './rosterScoring';
 import { MissingRankingDataError } from '@/lib/data/rankings';
 import { createNormalizedScoreBreakdown } from '@/lib/genetic/fitness/scoreBreakdown';
+import { createRosterMovesetAssignment } from '@/lib/genetic/moveset';
 import type { OrderedLineup, Pokemon } from '@/lib/types';
 
 const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
@@ -26,6 +27,140 @@ describe('scorePlayPokemonRoster', () => {
     expect(scoreLineup).toHaveBeenCalledTimes(120);
     expect(result.evaluatedLineupCount).toBe(120);
     expect(result.metrics.viableLineupCount).toBe(120);
+  });
+
+  test('uses one fixed assignment throughout all 120 ordered lineups', () => {
+    const requestedLineupTeams: string[][] = [];
+    const assignedMoveReads = new Map<string, number>();
+    const movesetAssignment = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      policyIdentity: {
+        source: 'manifest',
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      },
+      variantsBySpeciesId: Object.fromEntries(
+        roster.map((speciesId) => [
+          speciesId,
+          {
+            id: `${speciesId}_fast--${speciesId}_charged_b--${speciesId}_charged_a`,
+            fastMove: `${speciesId}_FAST`,
+            chargedMove1: `${speciesId}_CHARGED_A`,
+            chargedMove2: `${speciesId}_CHARGED_B`,
+            isDefault: true,
+          },
+        ]),
+      ),
+    });
+
+    const result = scorePlayPokemonRoster(
+      roster,
+      createContext({
+        movesetAssignment,
+        getRecommendedMoveset: (_speciesId, teamSpeciesIds) => {
+          if (teamSpeciesIds) {
+            requestedLineupTeams.push([...teamSpeciesIds]);
+          }
+          return {
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+          };
+        },
+        getMove: (moveId) => {
+          assignedMoveReads.set(
+            moveId,
+            (assignedMoveReads.get(moveId) ?? 0) + 1,
+          );
+          return { type: 'normal', power: 50, energy: 40 };
+        },
+      }),
+      { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
+    );
+
+    expect(result.evaluatedLineupCount).toBe(120);
+    expect(requestedLineupTeams).toEqual([]);
+    for (const speciesId of roster) {
+      expect(assignedMoveReads.get(`${speciesId}_FAST`)).toBeGreaterThanOrEqual(
+        60,
+      );
+      expect(
+        assignedMoveReads.get(`${speciesId}_CHARGED_A`),
+      ).toBeGreaterThanOrEqual(60);
+      expect(
+        assignedMoveReads.get(`${speciesId}_CHARGED_B`),
+      ).toBeGreaterThanOrEqual(60);
+    }
+  });
+
+  test('rejects an incomplete assignment before enumerating roster lineups', () => {
+    const scoreLineup = vi.fn((lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.6 }),
+    );
+    const movesetAssignment = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      policyIdentity: {
+        source: 'manifest',
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      },
+      variantsBySpeciesId: Object.fromEntries(
+        roster.slice(0, 5).map((speciesId) => [
+          speciesId,
+          {
+            id: 'fast--charged_b--charged_a',
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+            isDefault: true,
+          },
+        ]),
+      ),
+    });
+
+    expect(() =>
+      scorePlayPokemonRoster(
+        roster,
+        createContext({ movesetAssignment, scoreLineup }),
+        { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+      ),
+    ).toThrow('Roster moveset assignment is missing foxtrot.');
+    expect(scoreLineup).not.toHaveBeenCalled();
+  });
+
+  test('treats an omitted scoring format as the default before enumeration', () => {
+    const scoreLineup = vi.fn((lineup: OrderedLineup) =>
+      makeLineupResult(lineup, { score: 0.6 }),
+    );
+    const movesetAssignment = createRosterMovesetAssignment({
+      formatId: 'ultra-league',
+      policyIdentity: {
+        source: 'manifest',
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      },
+      variantsBySpeciesId: Object.fromEntries(
+        roster.map((speciesId) => [
+          speciesId,
+          {
+            id: 'fast--charged_b--charged_a',
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+            isDefault: true,
+          },
+        ]),
+      ),
+    });
+
+    expect(() =>
+      scorePlayPokemonRoster(
+        roster,
+        createContext({ movesetAssignment, scoreLineup }),
+        { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+      ),
+    ).toThrow('Cannot score ultra-league movesets in great-league.');
+    expect(scoreLineup).not.toHaveBeenCalled();
   });
 
   test('scores a representative PlayPokemon roster under one minute', () => {

@@ -43,6 +43,7 @@ import {
 import {
   buildGblLineupRecommendation,
   buildPlayPokemonRosterRecommendations,
+  bindRosterMovesetAssignment,
   createDefaultLineupScoringContext,
   createLineupAwareFitnessContext,
   evaluatePopulation,
@@ -388,9 +389,12 @@ export async function generateTeam(
       recommendedLineups: [recommendedLineup],
     };
   } else {
+    const movesetAssignment = fitnessContext.resolveMovesetAssignment(
+      bestOverall.team,
+    );
     const rosterScore = scorePlayPokemonRoster(
       bestOverall.team,
-      lineupContext,
+      bindRosterMovesetAssignment(lineupContext, movesetAssignment),
       { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
     );
     const recommendations = buildPlayPokemonRosterRecommendations(

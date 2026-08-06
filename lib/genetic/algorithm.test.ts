@@ -84,6 +84,10 @@ vi.mock('./chromosome', () => ({
 vi.mock('./fitness', () => ({
   buildGblLineupRecommendation: vi.fn(),
   buildPlayPokemonRosterRecommendations: vi.fn(),
+  bindRosterMovesetAssignment: vi.fn((context, movesetAssignment) => ({
+    ...context,
+    movesetAssignment,
+  })),
   createDefaultLineupScoringContext: vi.fn(),
   createLineupAwareFitnessContext: vi.fn(),
   evaluatePopulation: vi.fn(),
@@ -170,6 +174,16 @@ describe('generateTeam format-aware candidate selection', () => {
     } as never);
     vi.mocked(createLineupAwareFitnessContext).mockReturnValue({
       scoringContext: { threats: ['azumarill'] },
+      resolveMovesetAssignment: vi.fn(() => ({
+        formatId: 'great-league',
+        policyIdentity: {
+          source: 'ranked-default-fallback',
+          schemaVersion: 0,
+          policyVersion: 'ranked-default-v1',
+        },
+        variantsBySpeciesId: {},
+        fingerprint: 'test-assignment',
+      })),
       scoreLineup: vi.fn(),
       scoreFastLineup: vi.fn(),
     } as never);
@@ -841,9 +855,18 @@ describe('generateTeam format-aware candidate selection', () => {
         scoringContext: { threats: ['azumarill'] },
       }),
     );
+    const fitnessContext = vi.mocked(createLineupAwareFitnessContext).mock
+      .results[0].value;
+    expect(fitnessContext.resolveMovesetAssignment).toHaveBeenCalledWith(
+      result.team,
+    );
     expect(scorePlayPokemonRoster).toHaveBeenCalledWith(
       result.team,
-      expect.any(Object),
+      expect.objectContaining({
+        movesetAssignment: expect.objectContaining({
+          fingerprint: 'test-assignment',
+        }),
+      }),
       { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
     );
     expect(buildPlayPokemonRosterRecommendations).toHaveBeenCalledWith([], {
