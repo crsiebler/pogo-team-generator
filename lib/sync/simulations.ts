@@ -8,6 +8,7 @@ import { SyncRunOptions, SimulationData, SimulationsCsv } from './types';
 import { logError } from './utils';
 import { logValidationErrors, validateSimulationsCsv } from './validation';
 import { BattleFormat, getBattleFormats } from '@/lib/data/battleFormats';
+import { getMovesetVariants } from '@/lib/data/movesetVariants';
 
 interface RankingsCsvEntry {
   Pokemon: string;
@@ -259,14 +260,18 @@ function getSimulationOutputPath(
   format: BattleFormat,
   speciesId: string,
   scenario: string,
+  movesetVariantId?: string,
 ): string {
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  const filenamePrefix = movesetVariantId
+    ? `${canonicalSpeciesId}--${movesetVariantId}`
+    : canonicalSpeciesId;
   return path.join(
     syncConfig.outputDir,
     'simulations',
     `cp${format.cp}`,
     format.cup,
-    `${canonicalSpeciesId}_${scenario}.csv`,
+    `${filenamePrefix}_${scenario}.csv`,
   );
 }
 
@@ -806,6 +811,16 @@ export async function generateSimulations(
           `[sync-simulations] Processing ${displayName} for ${format.label} (${i + 1}/${topPokemonNames.length})`,
         );
 
+        const pokemon = pokemonBySpeciesId.get(speciesId);
+        if (!pokemon) {
+          throw new Error(
+            `[sync-simulations] Missing canonical Pokemon data for '${speciesId}'`,
+          );
+        }
+        const recommendedMoves = ranking
+          ? getRecommendedMoveIds(ranking, pokemon, moveById)
+          : undefined;
+
         for (const scenario of SIMULATION_SCENARIOS) {
           const outputPath = getSimulationOutputPath(
             format,
@@ -835,15 +850,6 @@ export async function generateSimulations(
             }
           }
 
-          const pokemon = pokemonBySpeciesId.get(speciesId);
-          if (!pokemon) {
-            throw new Error(
-              `[sync-simulations] Missing canonical Pokemon data for '${speciesId}'`,
-            );
-          }
-          const recommendedMoves = ranking
-            ? getRecommendedMoveIds(ranking, pokemon, moveById)
-            : undefined;
           const csvText = resolvedDependencies.generateScenarioCsv(
             runtime,
             format,
@@ -869,6 +875,76 @@ export async function generateSimulations(
           allSimulations.push(
             ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
           );
+        }
+
+        if (!recommendedMoves?.chargedMove2) {
+          continue;
+        }
+
+        const alternateVariants = getMovesetVariants(speciesId, {
+          fastMove: recommendedMoves.fastMove,
+          chargedMove1: recommendedMoves.chargedMove1,
+          chargedMove2: recommendedMoves.chargedMove2,
+        }).filter((variant) => !variant.isDefault);
+
+        for (const variant of alternateVariants) {
+          if (!pokemon.fastMoves.includes(variant.fastMove)) {
+            continue;
+          }
+
+          for (const scenario of SIMULATION_SCENARIOS) {
+            const outputPath = getSimulationOutputPath(
+              format,
+              speciesId,
+              scenario.scenario,
+              variant.id,
+            );
+
+            if (options.resume && resolvedDependencies.fileExists(outputPath)) {
+              const existingCsv =
+                await resolvedDependencies.readFile(outputPath);
+              const existingValidation = validateSimulationsCsv(existingCsv);
+              if (existingValidation.valid) {
+                allSimulations.push(
+                  ...parseSimulationsCsv(
+                    existingCsv,
+                    displayName,
+                    scenario.scenario,
+                  ),
+                );
+                continue;
+              }
+            }
+
+            const csvText = resolvedDependencies.generateScenarioCsv(
+              runtime,
+              format,
+              speciesId,
+              scenario.shields,
+              {
+                fastMove: variant.fastMove,
+                chargedMove1: variant.chargedMove1,
+                chargedMove2: variant.chargedMove2,
+              },
+            );
+            const validation = validateSimulationsCsv(csvText);
+            logValidationErrors(
+              `${displayName} ${variant.id} ${scenario.scenario} ${format.label} simulations CSV`,
+              validation.errors,
+            );
+
+            if (!validation.valid) {
+              throw new Error(
+                `[sync-simulations] ${displayName} ${variant.id} ${scenario.scenario} ${format.label} validation failed: ${validation.errors.join(', ')}`,
+              );
+            }
+
+            await resolvedDependencies.mkdir(path.dirname(outputPath));
+            await resolvedDependencies.writeFile(outputPath, csvText);
+            allSimulations.push(
+              ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
+            );
+          }
         }
       }
     }

@@ -4,7 +4,7 @@ import {
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
-import { getRecommendedMovesetForPokemon } from '@/lib/genetic/moveset';
+import { getSimulationBackedMovesetForTeam } from '@/lib/genetic/moveset';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,8 +38,9 @@ export async function POST(request: NextRequest) {
           return null;
         }
 
-        const moveset = getRecommendedMovesetForPokemon(
+        const moveset = getSimulationBackedMovesetForTeam(
           pokemon,
+          team,
           resolvedFormatId,
         );
 

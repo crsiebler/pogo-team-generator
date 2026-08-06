@@ -441,13 +441,22 @@ function moveNameToMoveId(moveName: string): string {
     const baseName = match[1].trim();
     const type = match[2].trim();
     // Convert both parts to uppercase and join with underscore
-    const baseId = baseName.toUpperCase().replace(/\s+/g, '_');
-    const typeId = type.toUpperCase().replace(/\s+/g, '_');
+    const baseId = baseName
+      .toUpperCase()
+      .replace(/'/g, '')
+      .replace(/[\s-]+/g, '_');
+    const typeId = type
+      .toUpperCase()
+      .replace(/'/g, '')
+      .replace(/[\s-]+/g, '_');
     return `${baseId}_${typeId}`;
   }
 
   // No type suffix, just convert to uppercase and replace spaces
-  return moveName.toUpperCase().replace(/\s+/g, '_');
+  return moveName
+    .toUpperCase()
+    .replace(/'/g, '')
+    .replace(/[\s-]+/g, '_');
 }
 
 /**

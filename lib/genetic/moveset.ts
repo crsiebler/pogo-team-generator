@@ -1,7 +1,18 @@
 import type { BattleFormatId } from '@lib/data/battleFormats';
 import { getMoveByMoveId } from '@lib/data/moves';
+import {
+  getMovesetVariants,
+  selectBestMovesetVariant,
+} from '@lib/data/movesetVariants';
 import { getPokemonBySpeciesId } from '@lib/data/pokemon';
-import { getOptimalMoveset } from '@lib/data/rankings';
+import {
+  getOptimalMoveset,
+  getRoleBasedThreatSpeciesIds,
+} from '@lib/data/rankings';
+import {
+  getMatchupResult,
+  getMovesetVariantShieldScenarioMatchupResult,
+} from '@lib/data/simulations';
 import { calculateEffectiveness } from '../coverage/typeChart';
 import type { Pokemon } from '../types';
 
@@ -36,6 +47,123 @@ export function getRecommendedMovesetForPokemon(
       rankedMoves.chargedMove2 ||
       pokemon.chargedMoves[1] ||
       pokemon.chargedMoves[0],
+  };
+}
+
+interface SimulationBackedMovesetDependencies {
+  getThreats: (formatId: BattleFormatId) => string[];
+  getDefaultMatchupRating: (
+    speciesId: string,
+    opponentSpeciesId: string,
+  ) => number | null;
+  getVariantMatchupRating: (
+    speciesId: string,
+    movesetVariantId: string,
+    opponentSpeciesId: string,
+  ) => number | null;
+}
+
+/** Select a legal moveset using simulations against threats unresolved by teammates. */
+export function getSimulationBackedMovesetForTeam(
+  pokemon: Pokemon,
+  team: readonly string[],
+  formatId: BattleFormatId,
+  dependencies?: SimulationBackedMovesetDependencies,
+): {
+  fastMove: string;
+  chargedMove1: string;
+  chargedMove2: string;
+} {
+  const rankedDefault = getRecommendedMovesetForPokemon(pokemon, formatId);
+  const variants = getMovesetVariants(pokemon.speciesId, rankedDefault);
+  if (variants.length === 1) {
+    return rankedDefault;
+  }
+
+  const resolvedDependencies: SimulationBackedMovesetDependencies =
+    dependencies ?? {
+      getThreats: (selectedFormatId) =>
+        getRoleBasedThreatSpeciesIds(50, selectedFormatId),
+      getDefaultMatchupRating: (speciesId, opponentSpeciesId) =>
+        getMatchupResult(speciesId, opponentSpeciesId, formatId),
+      getVariantMatchupRating: (
+        speciesId,
+        movesetVariantId,
+        opponentSpeciesId,
+      ) => {
+        const scenarios = [
+          { shields: 0 as const, weight: 0.3 },
+          { shields: 1 as const, weight: 0.5 },
+          { shields: 2 as const, weight: 0.2 },
+        ];
+        const evaluated = scenarios
+          .map(({ shields, weight }) => ({
+            rating: getMovesetVariantShieldScenarioMatchupResult(
+              speciesId,
+              movesetVariantId,
+              opponentSpeciesId,
+              shields,
+              formatId,
+            ),
+            weight,
+          }))
+          .filter(
+            (entry): entry is { rating: number; weight: number } =>
+              entry.rating !== null,
+          );
+        const totalWeight = evaluated.reduce(
+          (sum, entry) => sum + entry.weight,
+          0,
+        );
+        if (totalWeight === 0) {
+          return null;
+        }
+        return (
+          evaluated.reduce(
+            (sum, entry) => sum + entry.rating * entry.weight,
+            0,
+          ) / totalWeight
+        );
+      },
+    };
+  const teammates = team.filter((speciesId) => speciesId !== pokemon.speciesId);
+  const unresolvedThreats = resolvedDependencies
+    .getThreats(formatId)
+    .filter((threat) => {
+      return !teammates.some((speciesId) => {
+        const rating = resolvedDependencies.getDefaultMatchupRating(
+          speciesId,
+          threat,
+        );
+        return rating !== null && rating >= 500;
+      });
+    });
+
+  if (unresolvedThreats.length === 0) {
+    return rankedDefault;
+  }
+
+  const selected = selectBestMovesetVariant(
+    variants,
+    unresolvedThreats,
+    (variant, opponentSpeciesId) => {
+      return variant.isDefault
+        ? resolvedDependencies.getDefaultMatchupRating(
+            pokemon.speciesId,
+            opponentSpeciesId,
+          )
+        : resolvedDependencies.getVariantMatchupRating(
+            pokemon.speciesId,
+            variant.id,
+            opponentSpeciesId,
+          );
+    },
+  );
+
+  return {
+    fastMove: selected.fastMove,
+    chargedMove1: selected.chargedMove1,
+    chargedMove2: selected.chargedMove2,
   };
 }
 
