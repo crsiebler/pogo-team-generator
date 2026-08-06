@@ -41,6 +41,7 @@ export interface Pokemon {
   chargedMoves: string[];
   eliteMoves?: string[];
   legacyMoves?: string[];
+  level25CP?: number;
   tags: string[];
   defaultIVs: {
     cp1500?: number[];

@@ -6,6 +6,7 @@
 - Preserve unrelated worktree changes and do not remove generated files outside the tested stale-variant cleanup boundary.
 - Initialize `vendor/pvpoke` with `git submodule update --init vendor/pvpoke` before running tests that validate bundled PvPoke source data.
 - Keep species ID, species display-name, and move spelling aliases in `lib/data/aliases.ts`; distinguish battle-state aliases from moveset variants and retain source provenance until canonical ranking deduplication finishes.
+- Purified Return eligibility requires an exact checked-in shadow counterpart for the canonical choosable form and the non-shadow form's finite `level25CP` at or below the format cap; never infer shadow forms from tags, family, or Dex identity.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -124,4 +125,45 @@
   - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-002.
 - Next iteration start:
   - US-003 - Implement regular, Elite, purified, and Frustration availability rules
+---
+
+## 2026-08-05 19:45:40 MST - US-003
+- Implemented deterministic move availability classification for regular, Elite, purified, excluded legacy, and unavailable moves; rejected Frustration unconditionally; required exact checked-in shadow counterparts and valid purified level-25 CP floors for Return; and exposed per-slot moveset acquisition requirements without changing battle scores.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/data/moveAvailability.ts`, `lib/data/moveAvailability.test.ts`, `progress.txt`
+- Commit message: `feat: US-003 - Implement regular, Elite, purified, and Frustration availability rules`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/moveAvailability.test.ts` (fail as expected before implementation: six availability classifications returned the excluded placeholder)
+  - `npx vitest run lib/data/moveAvailability.test.ts` (pass, 10 tests)
+  - `npx vitest run lib/data/moveAvailability.test.ts lib/data/pokemon.test.ts` (pass, 18 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` before import-order fix (fail: one `import/order` error in `lib/data/moveAvailability.ts`)
+  - `npm run lint` after import-order fix (pass)
+  - `npm test` (pass, 574 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/data/moveAvailability.test.ts` after review fix (pass, 11 tests)
+  - `npx tsc --noEmit` after review fix (pass)
+  - `npm run lint` after review fix (pass)
+  - `git diff --check` after review fix (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `test-automator`
+  - Used: `typescript-pro`; skipped `test-automator` because the standard-mode one-agent budget and focused pure-function test matrix made a second overlapping implementation advisor unnecessary
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: `code-reviewer` found none; fixed one medium QA finding by covering the legal exact-cap purified CP boundary; targeted re-review found none
+- Decisions (why):
+  - Classified Elite moves before ordinary movepool membership and unapproved legacy moves before regular moves because checked-in supplemental moves can also appear in general move arrays.
+  - Required an exact `${canonicalSpeciesId}_shadow` record rather than tags, family, or Dex matching so regional, Mega, and unavailable shadow forms cannot be synthesized.
+  - Left species-scoped legacy moves excluded for US-004 rather than introducing that story's allowlist or denylist early.
+  - Added optional `level25CP` to the runtime Pokemon contract and failed Return eligibility closed when it is absent or invalid because not every checked-in Pokemon record has a purified CP floor.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - `eliteMoves` and `legacyMoves` can overlap `fastMoves` or `chargedMoves`, so availability rule order is part of the domain policy.
+  - Purified CP eligibility uses the canonical non-shadow Pokemon's `level25CP`; the shadow record proves availability but does not supply the floor.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-003.
+  - US-004 must replace the provisional legacy exclusion branch with explicit species-move-pair policy.
+- Next iteration start:
+  - US-004 - Implement species-scoped legacy move policy
 ---
