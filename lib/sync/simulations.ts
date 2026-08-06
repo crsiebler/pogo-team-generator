@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import { promises as fsAsync } from 'fs';
 import * as path from 'path';
@@ -59,6 +60,7 @@ export interface SimulationSyncOptions extends SyncRunOptions {
     BattleFormatId,
     readonly string[]
   >;
+  readonly deferPublication?: boolean;
 }
 
 interface SimulationPokemonData {
@@ -111,6 +113,14 @@ export interface SimulationVariantSelection extends ActiveMovesetVariantSelectio
 export interface SimulationSyncResult {
   readonly simulations: SimulationsCsv;
   readonly variantSelections: readonly SimulationVariantSelection[];
+  readonly preparedCsvFiles: readonly PreparedSimulationCsv[];
+}
+
+/** One validated simulation CSV ready for transactional publication. */
+export interface PreparedSimulationCsv {
+  readonly formatId: BattleFormatId;
+  readonly targetPath: string;
+  readonly contents: string;
 }
 
 function getCandidateSetKey(
@@ -933,6 +943,23 @@ interface SimulationSyncDependencies {
   ) => string;
 }
 
+async function writeFileAtomically(
+  filePath: string,
+  content: string,
+): Promise<void> {
+  const temporaryPath = `${filePath}.tmp-${process.pid}-${randomUUID()}`;
+  try {
+    await fsAsync.writeFile(temporaryPath, content, {
+      encoding: 'utf8',
+      flag: 'wx',
+    });
+    await fsAsync.rename(temporaryPath, filePath);
+  } catch (error) {
+    await fsAsync.unlink(temporaryPath).catch(() => undefined);
+    throw error;
+  }
+}
+
 const defaultDependencies: SimulationSyncDependencies = {
   getRuntime: (sourcePath: string) => getPvpokeVmRuntime(sourcePath),
   fileExists: (filePath: string) => fs.existsSync(filePath),
@@ -944,7 +971,7 @@ const defaultDependencies: SimulationSyncDependencies = {
     await fsAsync.rm(directoryPath, { recursive: true, force: true });
   },
   writeFile: async (filePath: string, content: string) => {
-    await fsAsync.writeFile(filePath, content, 'utf8');
+    await writeFileAtomically(filePath, content);
   },
   generateScenarioCsv: (
     runtime: PvpokeVmRuntime,
@@ -1069,18 +1096,13 @@ export async function generateSimulations(
 
     const allSimulations: SimulationsCsv = [];
     const variantSelections: SimulationVariantSelection[] = [];
+    const pendingWrites: Array<{
+      readonly formatId: BattleFormatId;
+      readonly outputPath: string;
+      readonly csvText: string;
+    }> = [];
 
     for (const format of battleFormats) {
-      if (options.resume && options.forceRegenerateFormatIds?.has(format.id)) {
-        await resolvedDependencies.removeDirectory(
-          path.join(
-            syncConfig.outputDir,
-            'simulations',
-            `cp${format.cp}`,
-            format.cup,
-          ),
-        );
-      }
       const overallCsvPath = getOverallRankingsPath(format);
       const overallCsvText =
         await resolvedDependencies.readFile(overallCsvPath);
@@ -1253,8 +1275,7 @@ export async function generateSimulations(
             getSimulationOpponentKeys(csvText),
           );
 
-          await resolvedDependencies.mkdir(path.dirname(outputPath));
-          await resolvedDependencies.writeFile(outputPath, csvText);
+          pendingWrites.push({ formatId: format.id, outputPath, csvText });
 
           allSimulations.push(
             ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
@@ -1346,8 +1367,7 @@ export async function generateSimulations(
               );
             }
 
-            await resolvedDependencies.mkdir(path.dirname(outputPath));
-            await resolvedDependencies.writeFile(outputPath, csvText);
+            pendingWrites.push({ formatId: format.id, outputPath, csvText });
             allSimulations.push(
               ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
             );
@@ -1391,10 +1411,27 @@ export async function generateSimulations(
       }
     }
 
+    if (!options.deferPublication) {
+      for (const { outputPath, csvText } of pendingWrites) {
+        await resolvedDependencies.mkdir(path.dirname(outputPath));
+        await resolvedDependencies.writeFile(outputPath, csvText);
+      }
+    }
+
     console.log(
       `[sync-simulations] Successfully generated and validated ${allSimulations.length} total simulation entries`,
     );
-    return { simulations: allSimulations, variantSelections };
+    return {
+      simulations: allSimulations,
+      variantSelections,
+      preparedCsvFiles: pendingWrites.map(
+        ({ formatId, outputPath, csvText }): PreparedSimulationCsv => ({
+          formatId,
+          targetPath: outputPath,
+          contents: csvText,
+        }),
+      ),
+    };
   } catch (error) {
     logError(error as Error, 'sync-simulations');
     throw error;

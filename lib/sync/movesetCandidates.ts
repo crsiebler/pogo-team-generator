@@ -11,7 +11,10 @@ import type {
   RankingMovesetEvidence,
 } from './rankings';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import { MAX_MOVESET_CANDIDATES } from '@/lib/data/movesetVariantManifest';
+import {
+  MAX_MOVESET_CANDIDATES,
+  type MovesetVariantCandidateEvidence,
+} from '@/lib/data/movesetVariantManifest';
 import { getMovesetVariantId } from '@/lib/data/movesetVariants';
 import type {
   Move,
@@ -44,6 +47,11 @@ export interface DeriveMovesetCandidatesInput {
 }
 
 /** Deterministic candidates and the bounded move pools used for expansion. */
+export interface DerivedMovesetCandidate extends MovesetVariant {
+  readonly evidence?: MovesetVariantCandidateEvidence;
+}
+
+/** Deterministic candidates and the bounded move pools used for expansion. */
 export interface DerivedMovesetCandidateSet {
   readonly formatId: BattleFormatId;
   readonly cup: AggregatedRankingMoveEvidence['cup'];
@@ -53,7 +61,7 @@ export interface DerivedMovesetCandidateSet {
   readonly retainedFastMoves: readonly string[];
   readonly retainedChargedMoves: readonly string[];
   readonly rejections: readonly RankedMovesetRejection[];
-  readonly candidates: readonly MovesetVariant[];
+  readonly candidates: readonly DerivedMovesetCandidate[];
 }
 
 /** One unavailable move that caused a preferred ranked moveset rejection. */
@@ -67,6 +75,7 @@ type CandidateKind = 'default' | 'exact' | 'substitution';
 
 interface RankedCandidate {
   readonly variant: MovesetVariant;
+  readonly evidence: MovesetVariantCandidateEvidence;
   readonly kind: CandidateKind;
   readonly evidenceWeight: number;
   readonly sourceRank: number;
@@ -292,9 +301,17 @@ function createRankedCandidate(
   sourceRank: number,
   moveRank: number,
   stableSourceKey: string,
+  evidence: Omit<MovesetVariantCandidateEvidence, 'sourceVariantIds'> & {
+    readonly sourceVariantIds?: readonly MovesetVariant['id'][];
+  },
 ): RankedCandidate {
+  const variant = createVariant(moveset, kind === 'default');
   return {
-    variant: createVariant(moveset, kind === 'default'),
+    variant,
+    evidence: {
+      ...evidence,
+      sourceVariantIds: evidence.sourceVariantIds ?? [variant.id],
+    },
     kind,
     evidenceWeight,
     sourceRank,
@@ -363,6 +380,10 @@ function createObservedCandidate(
     1,
     0,
     JSON.stringify(source),
+    {
+      kind: isDefault ? 'preferred' : 'observed',
+      sourceCategories: [source.category],
+    },
   );
 }
 
@@ -399,6 +420,10 @@ function createOverrideCandidate(
     0,
     0,
     JSON.stringify(source),
+    {
+      kind: 'override',
+      sourceCategories: [],
+    },
   );
 }
 
@@ -425,6 +450,11 @@ function addSingleMoveSubstitutions(
         anchor.sourceRank,
         moveRank,
         `${anchor.variant.id}|fast|${fastMove}`,
+        {
+          kind: 'substitution',
+          sourceCategories: anchor.evidence.sourceCategories,
+          sourceVariantIds: [anchor.variant.id],
+        },
       ),
     );
   });
@@ -446,6 +476,11 @@ function addSingleMoveSubstitutions(
           anchor.sourceRank,
           moveRank,
           `${anchor.variant.id}|charged1|${chargedMove}`,
+          {
+            kind: 'substitution',
+            sourceCategories: anchor.evidence.sourceCategories,
+            sourceVariantIds: [anchor.variant.id],
+          },
         ),
       );
       candidates.push(
@@ -460,6 +495,11 @@ function addSingleMoveSubstitutions(
           anchor.sourceRank,
           moveRank,
           `${anchor.variant.id}|charged2|${chargedMove}`,
+          {
+            kind: 'substitution',
+            sourceCategories: anchor.evidence.sourceCategories,
+            sourceVariantIds: [anchor.variant.id],
+          },
         ),
       );
     }
@@ -590,9 +630,10 @@ export function deriveMovesetCandidates(
     retainedFastMoves,
     retainedChargedMoves,
     rejections,
-    candidates: rankedCandidates.map(({ variant }) => ({
+    candidates: rankedCandidates.map(({ variant, evidence }) => ({
       ...variant,
       isDefault: variant.id === defaultVariantId,
+      evidence,
     })),
   };
 }

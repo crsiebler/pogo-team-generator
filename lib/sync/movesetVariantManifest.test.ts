@@ -1,14 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import path from 'path';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildMovesetVariantManifest,
   createMovesetVariantSourceDigest,
+  prepareMovesetVariantManifests,
+  publishSimulationGeneration,
+  publishMovesetVariantManifests,
   selectActiveMovesetVariants,
   serializeBuiltMovesetVariantManifest,
   type MovesetVariantSimulationEvidence,
 } from './movesetVariantManifest';
+import { getBattleFormats } from '@/lib/data/battleFormats';
 import {
   MAX_ACTIVE_MOVESET_VARIANTS,
   MAX_MOVESET_CANDIDATES,
+  parseMovesetVariantManifestJson,
   type MovesetVariantManifestSpecies,
 } from '@/lib/data/movesetVariantManifest';
 import type { ShieldScenarioKey } from '@/lib/types';
@@ -545,5 +551,350 @@ describe('moveset variant manifest construction', () => {
         'acee1f69696bd1841fca07cdd839658651e5a6b616d69e099a949521af1d2d3e',
     });
     expect(species).toEqual(before);
+  });
+});
+
+describe('moveset variant manifest publication', () => {
+  const defaultId = 'vine_whip--sludge_bomb--power_whip' as const;
+  const alternateId = 'tackle--sludge_bomb--power_whip' as const;
+  const candidateSet = {
+    formatId: 'great-league' as const,
+    cup: 'all' as const,
+    cp: 1500,
+    speciesId: 'bulbasaur',
+    pvpokeScorePrior: 90,
+    retainedFastMoves: ['VINE_WHIP', 'TACKLE'],
+    retainedChargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+    rejections: [],
+    candidates: [
+      {
+        id: defaultId,
+        fastMove: 'VINE_WHIP',
+        chargedMove1: 'POWER_WHIP',
+        chargedMove2: 'SLUDGE_BOMB',
+        isDefault: true,
+        evidence: {
+          kind: 'preferred' as const,
+          sourceCategories: ['overall' as const],
+          sourceVariantIds: [defaultId],
+        },
+      },
+      {
+        id: alternateId,
+        fastMove: 'TACKLE',
+        chargedMove1: 'POWER_WHIP',
+        chargedMove2: 'SLUDGE_BOMB',
+        isDefault: false,
+        evidence: {
+          kind: 'substitution' as const,
+          sourceCategories: ['overall' as const],
+          sourceVariantIds: [defaultId],
+        },
+      },
+    ],
+  };
+  const variantSelection = {
+    formatId: 'great-league' as const,
+    speciesId: 'bulbasaur',
+    activeVariantIds: [defaultId],
+    candidates: [
+      {
+        id: defaultId,
+        isDefault: true,
+        completeness: { '0-0': true, '1-1': true, '2-2': true },
+        evaluationCounts: { '0-0': 100, '1-1': 100, '2-2': 100 },
+        eligible: true,
+        weightedImprovement: null,
+        topMetaImprovement: null,
+        fullMetaImprovement: null,
+        marginalImprovement: null,
+        active: true,
+      },
+      {
+        id: alternateId,
+        isDefault: false,
+        completeness: { '0-0': true, '1-1': false, '2-2': true },
+        evaluationCounts: { '0-0': 100, '1-1': 0, '2-2': 100 },
+        eligible: false,
+        weightedImprovement: null,
+        topMetaImprovement: null,
+        fullMetaImprovement: null,
+        marginalImprovement: null,
+        active: false,
+      },
+    ],
+  };
+
+  it('prepares one deterministic manifest for every supported format', () => {
+    const input = {
+      pokemonSource: 'pokemon bytes',
+      movesSource: 'move bytes',
+      candidateSets: [candidateSet],
+      variantSelections: [variantSelection],
+      getMoveAvailability: () => ({ kind: 'regular' as const }),
+    };
+
+    const ordered = prepareMovesetVariantManifests(input);
+    const shuffled = prepareMovesetVariantManifests({
+      ...input,
+      candidateSets: [
+        {
+          ...candidateSet,
+          candidates: [...candidateSet.candidates].reverse(),
+        },
+      ],
+      variantSelections: [
+        {
+          ...variantSelection,
+          activeVariantIds: [...variantSelection.activeVariantIds].reverse(),
+          candidates: [...variantSelection.candidates].reverse(),
+        },
+      ],
+    });
+
+    expect(ordered).toHaveLength(getBattleFormats().length);
+    expect(shuffled).toEqual(ordered);
+    expect(ordered.map(({ formatId }) => formatId)).toEqual(
+      getBattleFormats().map(({ id }) => id),
+    );
+
+    const prepared = ordered.find(
+      ({ formatId }) => formatId === 'great-league',
+    );
+    expect(prepared?.targetPath).toBe(
+      'data/simulations/cp1500/all/moveset-variants.json',
+    );
+    const manifest = parseMovesetVariantManifestJson(prepared?.contents ?? '');
+    expect(manifest.species).toEqual([
+      expect.objectContaining({
+        speciesId: 'bulbasaur',
+        defaultVariantId: defaultId,
+        candidates: [
+          expect.objectContaining({
+            id: defaultId,
+            completeness: { '0-0': true, '1-1': true, '2-2': true },
+            active: true,
+          }),
+          expect.objectContaining({
+            id: alternateId,
+            completeness: { '0-0': true, '1-1': false, '2-2': true },
+            active: false,
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it('writes a same-directory temporary file before atomic replacement', async () => {
+    const targetPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const temporaryPath = `${targetPath}.tmp-test`;
+    const mkdir = vi.fn().mockResolvedValue(undefined);
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+    const rename = vi.fn().mockResolvedValue(undefined);
+    const unlink = vi.fn().mockResolvedValue(undefined);
+
+    await publishMovesetVariantManifests(
+      [{ formatId: 'great-league', targetPath, contents: '{}\n' }],
+      {
+        mkdir,
+        writeFile,
+        rename,
+        unlink,
+        createTemporaryPath: () => temporaryPath,
+      },
+    );
+
+    expect(mkdir).toHaveBeenCalledWith(path.dirname(targetPath));
+    expect(writeFile).toHaveBeenCalledWith(temporaryPath, '{}\n');
+    expect(rename).toHaveBeenCalledWith(temporaryPath, targetPath);
+    expect(writeFile).not.toHaveBeenCalledWith(targetPath, expect.anything());
+    expect(unlink).not.toHaveBeenCalled();
+    expect(writeFile.mock.invocationCallOrder[0]).toBeLessThan(
+      rename.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('leaves the prior target untouched and cleans up after rename failure', async () => {
+    const targetPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const temporaryPath = `${targetPath}.tmp-test`;
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+    const rename = vi.fn().mockRejectedValue(new Error('rename failed'));
+    const unlink = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      publishMovesetVariantManifests(
+        [{ formatId: 'great-league', targetPath, contents: '{}\n' }],
+        {
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile,
+          rename,
+          unlink,
+          createTemporaryPath: () => temporaryPath,
+        },
+      ),
+    ).rejects.toThrow('rename failed');
+
+    expect(writeFile).not.toHaveBeenCalledWith(targetPath, expect.anything());
+    expect(unlink).toHaveBeenCalledWith(temporaryPath);
+    expect(unlink).not.toHaveBeenCalledWith(targetPath);
+  });
+
+  it('cleans up a partially written temporary file after write failure', async () => {
+    const targetPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const temporaryPath = `${targetPath}.tmp-test`;
+    const unlink = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      publishMovesetVariantManifests(
+        [{ formatId: 'great-league', targetPath, contents: '{}\n' }],
+        {
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile: vi.fn().mockRejectedValue(new Error('write failed')),
+          rename: vi.fn().mockResolvedValue(undefined),
+          unlink,
+          createTemporaryPath: () => temporaryPath,
+        },
+      ),
+    ).rejects.toThrow('write failed');
+
+    expect(unlink).toHaveBeenCalledWith(temporaryPath);
+    expect(unlink).not.toHaveBeenCalledWith(targetPath);
+  });
+
+  it('rejects publication targets outside the canonical format path', async () => {
+    const writeFile = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      publishMovesetVariantManifests(
+        [
+          {
+            formatId: 'great-league',
+            targetPath: '../moveset-variants.json',
+            contents: '{}\n',
+          },
+        ],
+        {
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile,
+          rename: vi.fn().mockResolvedValue(undefined),
+          unlink: vi.fn().mockResolvedValue(undefined),
+          createTemporaryPath: (targetPath) => `${targetPath}.tmp-test`,
+        },
+      ),
+    ).rejects.toThrow('Manifest target must match great-league');
+
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
+  it('restores prior CSVs and manifests after a late publication failure', async () => {
+    const csvPath = 'data/simulations/cp1500/all/bulbasaur_1-1.csv';
+    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const files = new Map<string, string>([
+      [csvPath, 'prior simulation bytes'],
+      [manifestPath, 'prior manifest bytes'],
+    ]);
+    const writeFile = vi.fn(async (filePath: string, contents: string) => {
+      if (files.has(filePath)) {
+        throw new Error(`duplicate file: ${filePath}`);
+      }
+      files.set(filePath, contents);
+    });
+    const rename = vi.fn(async (sourcePath: string, targetPath: string) => {
+      if (sourcePath === `${manifestPath}.tmp-test`) {
+        throw new Error('manifest rename failed');
+      }
+      const contents = files.get(sourcePath);
+      if (contents === undefined) {
+        throw new Error(`missing source: ${sourcePath}`);
+      }
+      files.set(targetPath, contents);
+      files.delete(sourcePath);
+    });
+    const unlink = vi.fn(async (filePath: string) => {
+      files.delete(filePath);
+    });
+
+    await expect(
+      publishSimulationGeneration(
+        [
+          {
+            formatId: 'great-league',
+            targetPath: csvPath,
+            contents: 'new simulation bytes',
+          },
+        ],
+        [
+          {
+            formatId: 'great-league',
+            targetPath: manifestPath,
+            contents: 'new manifest bytes',
+          },
+        ],
+        {
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile,
+          rename,
+          unlink,
+          fileExists: async (filePath) => files.has(filePath),
+          createTemporaryPath: (targetPath) => `${targetPath}.tmp-test`,
+          createBackupPath: (targetPath) => `${targetPath}.backup-test`,
+        },
+      ),
+    ).rejects.toThrow('manifest rename failed');
+
+    expect(files.get(csvPath)).toBe('prior simulation bytes');
+    expect(files.get(manifestPath)).toBe('prior manifest bytes');
+    expect([...files.keys()]).toEqual([csvPath, manifestPath]);
+  });
+
+  it('does not replace prior targets when staging a later CSV fails', async () => {
+    const firstCsvPath = 'data/simulations/cp1500/all/bulbasaur_0-0.csv';
+    const secondCsvPath = 'data/simulations/cp1500/all/bulbasaur_1-1.csv';
+    const files = new Map<string, string>([
+      [firstCsvPath, 'prior zero-shield bytes'],
+      [secondCsvPath, 'prior one-shield bytes'],
+    ]);
+    const writeFile = vi.fn(async (filePath: string, contents: string) => {
+      if (filePath === `${secondCsvPath}.tmp-test`) {
+        throw new Error('second CSV staging failed');
+      }
+      files.set(filePath, contents);
+    });
+
+    await expect(
+      publishSimulationGeneration(
+        [
+          {
+            formatId: 'great-league',
+            targetPath: firstCsvPath,
+            contents: 'new zero-shield bytes',
+          },
+          {
+            formatId: 'great-league',
+            targetPath: secondCsvPath,
+            contents: 'new one-shield bytes',
+          },
+        ],
+        [],
+        {
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile,
+          rename: vi.fn().mockResolvedValue(undefined),
+          unlink: vi.fn(async (filePath: string) => {
+            files.delete(filePath);
+          }),
+          fileExists: async (filePath: string) => files.has(filePath),
+          createTemporaryPath: (targetPath: string) => `${targetPath}.tmp-test`,
+          createBackupPath: (targetPath: string) => `${targetPath}.backup-test`,
+        },
+      ),
+    ).rejects.toThrow('second CSV staging failed');
+
+    expect(files).toEqual(
+      new Map([
+        [firstCsvPath, 'prior zero-shield bytes'],
+        [secondCsvPath, 'prior one-shield bytes'],
+      ]),
+    );
   });
 });

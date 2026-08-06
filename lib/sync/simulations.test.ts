@@ -962,6 +962,7 @@ describe('generateSimulations', () => {
       ),
       expect.anything(),
     );
+    expect(generatedMismatchWriteFile).not.toHaveBeenCalled();
   });
 
   it('rejects duplicate canonical identities before simulating candidates', async () => {
@@ -1142,7 +1143,7 @@ describe('generateSimulations', () => {
     expect(generateScenarioCsv).not.toHaveBeenCalled();
   });
 
-  it('in resume mode reuses only valid unchanged format-specific files', async () => {
+  it('preserves manifests while reusing only valid unchanged files', async () => {
     const readFile = vi.fn(async (filePath: string) => {
       if (isOverallRankingPath(filePath)) {
         return 'Pokemon\nBulbasaur\n';
@@ -1254,9 +1255,7 @@ describe('generateSimulations', () => {
     expect(readFile).not.toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp1500', 'all', 'bulbasaur_1-1.csv'),
     );
-    expect(removeDirectory).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp1500', 'all'),
-    );
+    expect(removeDirectory).not.toHaveBeenCalled();
     expect(readFile).toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp2500', 'all', 'bulbasaur_1-1.csv'),
     );

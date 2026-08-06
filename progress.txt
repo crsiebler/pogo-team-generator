@@ -21,6 +21,7 @@
 - Active moveset selection compares complete finite candidate/default cells across all required scenarios and explicit top/full opponent pools using soft matchup scores; top-meta uses 70% weight, the primary must improve beyond a numerical epsilon, and every remaining complete candidate can compete for the secondary through positive marginal coverage beyond both default and primary.
 - Epsilon-sensitive deterministic rankings quantize each metric independently before comparison; pairwise tolerance comparators are non-transitive and can make shuffled input change the winner.
 - Parse TeamRanker opponent cells with `extractSpeciesNameFromSimulationCell(...)` before canonical lookup or opponent-set comparison because PvPoke appends compact moveset tokens after species and form names.
+- Prepare every supported format manifest in memory after simulation and cross-validation succeed; production simulation generation returns validated deferred CSVs, and one rollback-capable batch stages all files, replaces manifests last, and restores every prior CSV and manifest target on failure.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -777,4 +778,54 @@
   - US-014 must construct and atomically publish one complete manifest per format from candidate metadata and the manifest-ready simulation selections returned here.
 - Next iteration start:
   - US-014 - Publish complete manifests atomically
+---
+
+## 2026-08-06 13:08:59 MST - US-014
+- Implemented all-format moveset manifest preparation from ranking-derived candidate provenance and validated simulation selections; retained acquisition requirements and deterministic source digests; deferred production CSV publication until manifests prepare; and published CSVs plus manifests through a rollback-capable transaction that preserves the prior generation after validation, simulation, staging, CSV replacement, or manifest replacement failure.
+- Files changed: `lib/AGENTS.md`, `lib/sync/index.ts`, `lib/sync/index.test.ts`, `lib/sync/movesetCandidates.ts`, `lib/sync/movesetCandidates.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `lib/sync/simulations.ts`, `lib/sync/simulations.test.ts`, `progress.txt`
+- Commit message: `feat: US-014 - Publish complete manifests atomically`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` (fail as expected before implementation: publication APIs were missing and forced regeneration deleted the format directory)
+  - `npx vitest run lib/sync/movesetVariantManifest.test.ts` after determinism regression (fail as expected: equivalent candidate ordering changed the format source digest)
+  - `npx vitest run lib/sync/movesetVariantManifest.test.ts` after temporary-write regression (fail as expected: a partially written temporary file was not cleaned up)
+  - `npx vitest run lib/sync/simulations.test.ts -t "generates ranking-derived alternate movesets"` after initial review regression (fail as expected: default CSVs were written before a later alternate simulation failed)
+  - `npx vitest run lib/sync/movesetCandidates.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` (pass, 35 tests)
+  - `npx vitest run lib/sync/index.test.ts lib/sync/movesetCandidates.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` after review fixes (pass, 38 tests)
+  - `npx prettier --write "lib/sync/index.ts" "lib/sync/movesetCandidates.ts" "lib/sync/movesetCandidates.test.ts" "lib/sync/movesetVariantManifest.ts" "lib/sync/movesetVariantManifest.test.ts" "lib/sync/simulations.ts" "lib/sync/simulations.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` after review fixes (pass, 697 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/sync/index.test.ts lib/sync/movesetVariantManifest.test.ts` after targeted review regressions (fail as expected: production publication did not receive deferred CSVs and no rollback-capable generation publisher existed)
+  - `npx vitest run lib/sync/index.test.ts lib/sync/movesetCandidates.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` after targeted review fixes (pass, 42 tests)
+  - `npx tsc --noEmit` after targeted review fixes (pass)
+  - `npm run lint` after targeted review fixes (pass)
+  - `npm test` after targeted review fixes (pass, 701 tests)
+  - `npm run build` after targeted review fixes (pass; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `data-engineer`, `test-automator`
+  - Used: `data-engineer`; skipped `test-automator` because one architecture-focused advisor plus test-first manifest, publication, determinism, cleanup, and simulation-preservation coverage fit the standard-mode complex-story budget
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer`, `qa-expert`, and `security-engineer` passes
+  - Findings: fixed one initial high and three medium findings by delaying every generated CSV write until all simulations validate, using exclusive same-directory atomic CSV replacement, testing validation/simulation failures at the publication orchestration boundary, and constraining manifest targets to exact catalog-derived paths; also fixed one low contradictory AGENTS instruction. The targeted code and security re-review found one deduplicated high batch-integrity gap: a later CSV or manifest failure could leave an old manifest over mixed CSV generations. Fixed it by deferring production writes through manifest preparation, staging every CSV and manifest before replacement, backing up prior targets, replacing manifests last, and rolling back the complete batch on any failure; QA found no additional issues.
+- Decisions (why):
+  - Prepared and validated every format manifest before staging any temporary files so simulation, cross-validation, or construction failure cannot publish a partial authority set.
+  - Preserved existing simulation directories in both non-resume and forced-regeneration flows because deleting a format directory removes the prior manifest before replacement and stale recognized variants belong to post-publication cleanup in US-015.
+  - Buffered generated CSV contents in memory and persisted them only after all formats validate so a late simulation failure cannot replace files declared by the prior manifest; production writes use exclusive temporary files and same-directory rename to avoid truncated live CSVs.
+  - Kept direct `generateSimulations(...)` publication behavior for existing tooling while making the production orchestrator request deferred files, which minimizes API disruption and gives manifest preparation and batch publication one explicit authority boundary.
+  - Staged all new bytes before moving any live target, retained same-directory backups until every manifest replacement succeeded, and restored prior files in reverse generation order when publication failed so handled filesystem errors cannot leave a mixed authoritative generation.
+  - Retained preferred, observed, override, and substitution provenance directly on derived candidates so publication does not reconstruct or invent ranking evidence after simulation.
+  - Derived format source digests from canonical manifest species content plus exact Pokemon and move source bytes so equivalent candidate ordering produces byte-identical manifest output.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Atomic manifest replacement requires the temporary file to share the target directory; write and rename failures clean only temporary files and never unlink the prior target.
+  - Simulation regeneration must bypass reuse for changed formats without deleting the directory, and generated CSV writes must remain buffered until the complete simulation pass validates so the prior manifest generation stays intact on failure.
+  - Per-file atomic rename is insufficient when stable storage keys are shared across generations; production publication must treat the generated CSV set and manifests as one recoverable batch, with manifests ordered last and prior targets retained until the whole batch commits.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-014.
+  - US-015 must remove only strictly recognized stale variant CSVs after successful manifest publication and must not delete default matrices or files outside the active format directory.
+- Next iteration start:
+  - US-015 - Delete stale generated variant files after successful sync
 ---

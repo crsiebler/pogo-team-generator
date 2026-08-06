@@ -152,6 +152,17 @@ describe('deriveMovesetCandidates', () => {
       fastMove: 'FAST_A',
       chargedMove1: 'CHARGED_A',
       chargedMove2: 'CHARGED_B',
+      evidence: {
+        kind: 'preferred',
+        sourceCategories: ['overall'],
+        sourceVariantIds: [
+          getMovesetVariantId({
+            fastMove: 'FAST_A',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+          }),
+        ],
+      },
     });
     expect(result.candidates).toEqual(
       expect.arrayContaining([
@@ -159,11 +170,19 @@ describe('deriveMovesetCandidates', () => {
           fastMove: 'FAST_B',
           chargedMove1: 'CHARGED_A',
           chargedMove2: 'CHARGED_C',
+          evidence: expect.objectContaining({
+            kind: 'observed',
+            sourceCategories: ['leads'],
+          }),
         }),
         expect.objectContaining({
           fastMove: 'FAST_C',
           chargedMove1: 'CHARGED_D',
           chargedMove2: 'CHARGED_B',
+          evidence: expect.objectContaining({
+            kind: 'override',
+            sourceCategories: [],
+          }),
         }),
       ]),
     );

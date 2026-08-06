@@ -2,10 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { syncConfig } from './config';
 import { fetchPokemonData, fetchMovesData } from './gamemaster';
-import { scrapeRankings } from './rankings';
-import { generateSimulations } from './simulations';
+import {
+  prepareMovesetVariantManifests,
+  publishSimulationGeneration,
+} from './movesetVariantManifest';
+import { scrapeRankings, type RankingSyncResult } from './rankings';
+import { generateSimulations, type SimulationSyncResult } from './simulations';
 import { resolvePvpokeSourcePath, validatePhase1SourceFiles } from './source';
-import { SyncRunOptions } from './types';
+import { type PokemonData, SyncRunOptions } from './types';
 import { logError } from './utils';
 import {
   crossValidateRankingsVsPokemon,
@@ -15,6 +19,89 @@ import {
   type BattleFormatId,
   getBattleFormats,
 } from '@/lib/data/battleFormats';
+import { createMoveAvailabilityResolver } from '@/lib/data/moveAvailability';
+
+/** Inputs for the validation, simulation, and manifest publication phases. */
+export interface CompleteSimulationManifestSyncInput {
+  readonly options: SyncRunOptions;
+  readonly sourcePath: string;
+  readonly rankingSyncResult: Pick<
+    RankingSyncResult,
+    | 'rankings'
+    | 'candidateSets'
+    | 'simulationSpeciesIdsByFormatId'
+    | 'formatsWithChangedOverallRankings'
+  >;
+  readonly pokemonData: PokemonData[];
+  readonly pokemonSource: string | Uint8Array;
+  readonly movesSource: string | Uint8Array;
+}
+
+interface CompleteSimulationManifestSyncDependencies {
+  readonly crossValidate: typeof crossValidateRankingsVsPokemon;
+  readonly generate: typeof generateSimulations;
+  readonly prepare: typeof prepareMovesetVariantManifests;
+  readonly publish: typeof publishSimulationGeneration;
+}
+
+const defaultCompleteSimulationManifestSyncDependencies: CompleteSimulationManifestSyncDependencies =
+  {
+    crossValidate: crossValidateRankingsVsPokemon,
+    generate: generateSimulations,
+    prepare: prepareMovesetVariantManifests,
+    publish: publishSimulationGeneration,
+  };
+
+/**
+ * Validate synchronized inputs, complete every simulation, then publish CSVs
+ * and manifests as one recoverable batch with manifests replaced last.
+ */
+export async function completeSimulationManifestSync(
+  input: CompleteSimulationManifestSyncInput,
+  dependencies: Partial<CompleteSimulationManifestSyncDependencies> = {},
+): Promise<SimulationSyncResult> {
+  const resolvedDependencies = {
+    ...defaultCompleteSimulationManifestSyncDependencies,
+    ...dependencies,
+  };
+  const crossValidation = resolvedDependencies.crossValidate(
+    input.rankingSyncResult.rankings,
+    input.pokemonData,
+  );
+  logValidationErrors(
+    'Cross-validation (Rankings vs Pokemon)',
+    crossValidation.errors,
+  );
+  if (!crossValidation.valid) {
+    throw new Error(
+      `Cross-validation failed: ${crossValidation.errors.join(', ')}`,
+    );
+  }
+
+  const simulationResult = await resolvedDependencies.generate({
+    ...input.options,
+    sourcePath: input.sourcePath,
+    forceRegenerateFormatIds: new Set(
+      input.rankingSyncResult.formatsWithChangedOverallRankings,
+    ),
+    candidateSets: input.rankingSyncResult.candidateSets,
+    simulationSpeciesIdsByFormatId:
+      input.rankingSyncResult.simulationSpeciesIdsByFormatId,
+    deferPublication: true,
+  });
+  const preparedManifests = resolvedDependencies.prepare({
+    pokemonSource: input.pokemonSource,
+    movesSource: input.movesSource,
+    candidateSets: input.rankingSyncResult.candidateSets,
+    variantSelections: simulationResult.variantSelections,
+    getMoveAvailability: createMoveAvailabilityResolver(input.pokemonData),
+  });
+  await resolvedDependencies.publish(
+    simulationResult.preparedCsvFiles,
+    preparedManifests,
+  );
+  return simulationResult;
+}
 
 /**
  * Persist successful sync metadata for UI freshness indicators.
@@ -86,13 +173,12 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
       console.log('[sync] Deleted existing rankings directory');
     }
 
-    // Wipe existing simulations CSV files unless running in resume mode
-    const simDir = path.join(syncConfig.outputDir, 'simulations');
     if (options.resume) {
       console.log('[sync] Resume mode: keeping existing simulation CSV files');
-    } else if (fs.existsSync(simDir)) {
-      fs.rmSync(simDir, { recursive: true, force: true });
-      console.log('[sync] Deleted existing simulations directory');
+    } else {
+      console.log(
+        '[sync] Keeping existing simulation files until replacement data validates',
+      );
     }
 
     // Sync gamemaster JSON data
@@ -108,35 +194,24 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
       ...(options.resume ? { previousOverallRankingsByFormatId } : {}),
     });
 
-    // Generate simulations
-    console.log('[sync] Phase 3: Generating simulation data');
-    const simulationResult = await generateSimulations({
-      ...options,
+    console.log(
+      '[sync] Phase 3: Cross-validating and generating simulation data',
+    );
+    const simulationResult = await completeSimulationManifestSync({
+      options,
       sourcePath: sourceResolution.sourcePath,
-      forceRegenerateFormatIds: new Set(
-        rankingSyncResult.formatsWithChangedOverallRankings,
-      ),
-      candidateSets: rankingSyncResult.candidateSets,
-      simulationSpeciesIdsByFormatId:
-        rankingSyncResult.simulationSpeciesIdsByFormatId,
-    });
-
-    // Cross-validate data consistency
-    console.log('[sync] Phase 4: Cross-validating data consistency');
-    const crossValidation = crossValidateRankingsVsPokemon(
-      rankingSyncResult.rankings,
+      rankingSyncResult,
       pokemonData,
+      pokemonSource: fs.readFileSync(
+        path.join(syncConfig.outputDir, 'pokemon.json'),
+      ),
+      movesSource: fs.readFileSync(
+        path.join(syncConfig.outputDir, 'moves.json'),
+      ),
+    });
+    console.log(
+      `[sync] Atomically published ${getBattleFormats().length} moveset variant manifests`,
     );
-    logValidationErrors(
-      'Cross-validation (Rankings vs Pokemon)',
-      crossValidation.errors,
-    );
-
-    if (!crossValidation.valid) {
-      throw new Error(
-        `Cross-validation failed: ${crossValidation.errors.join(', ')}`,
-      );
-    }
 
     writeSyncMetadata();
     console.log('[sync] Wrote sync-metadata.json');
