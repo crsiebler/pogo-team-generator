@@ -11,6 +11,7 @@
 - Ranking sync validates and returns `RankingSyncResult` with unaggregated source movesets, nullable fast/charged usage, per-source alias provenance, and one optional override set per supported format; keep override path knowledge and missing-file handling inside `lib/sync/adapter.ts`.
 - Normalize ranking move usage per species entry and fast/charged slot before category weighting; retain exact observed movesets and overrides above usage-only evidence, then sort weighted evidence by category occurrence, exact Overall use, and move ID.
 - Move-mechanics filtering may reject only strictly dominated usage-only speculation; observed and override moves remain eligible, and status effects or distinct type coverage keep moves strategically incomparable until simulation.
+- Moveset derivation preserves the eligible preferred Overall set first, retains exact observed and override sets, limits expansion to two fast and four charged moves, generates only single-move substitutions around observed anchors, and emits at most eight canonical variants using the current sync Pokemon snapshot for availability.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -375,4 +376,55 @@
   - US-008 should map aggregated exact movesets and overrides to protected mechanics candidates, then use viable usage moves only for bounded substitutions.
 - Next iteration start:
   - US-008 - Derive bounded deterministic moveset candidates
+---
+
+## 2026-08-05 21:29:43 MST - US-008
+- Implemented deterministic format/species moveset candidate derivation from eligible Overall, role-category, override, and normalized usage evidence; added preferred-source provenance, mechanics-filtered two-fast/four-charged expansion pools, exact-seed retention, non-recursive single-move substitutions, canonical deduplication, and an eight-candidate cap; exposed candidate sets from ranking sync using availability bound to the freshly loaded Pokemon snapshot.
+- Files changed: `lib/AGENTS.md`, `lib/data/moveAvailability.ts`, `lib/data/moveAvailability.test.ts`, `lib/sync/movesetCandidates.ts`, `lib/sync/movesetCandidates.test.ts`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `progress.txt`
+- Commit message: `feat: US-008 - Derive bounded deterministic moveset candidates`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/movesetCandidates.test.ts` (fail as expected before implementation: candidate derivation module missing)
+  - `npx vitest run lib/sync/rankings.test.ts` (fail as expected before integration: `candidateSets` missing from ranking sync output)
+  - `npx vitest run lib/data/moveAvailability.test.ts` (fail as expected before snapshot support: resolver factory missing)
+  - `npx vitest run lib/data/moveAvailability.test.ts lib/sync/movesetCandidates.test.ts lib/sync/rankings.test.ts lib/sync/moveMechanics.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 65 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` before import-order fix (fail: 5 `import/order` errors in the new candidate files)
+  - `npm run lint` after import-order fix (pass)
+  - `npm test` (pass, 627 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/sync/movesetCandidates.test.ts lib/sync/rankings.test.ts` after review fixes (pass, 21 tests)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 629 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` after review fixes (pass)
+  - `npx vitest run lib/sync/movesetCandidates.test.ts lib/sync/rankings.test.ts` after targeted review fixture fixes (pass, 21 tests)
+  - `npx tsc --noEmit` after targeted review fixture fixes (pass)
+  - `npm run lint` after targeted review fixture fixes (pass)
+  - `npm test` after targeted review fixture fixes (pass, 629 tests)
+  - `npm run build` after targeted review fixture fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` after targeted review fixture fixes (pass)
+- Implementation agents:
+  - Recommended: `data-engineer`, `test-automator`
+  - Used: `data-engineer`; skipped `test-automator` because one domain advisor plus the focused test-first matrix covered the complex sync transformation without overlapping guidance
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `code-reviewer` and `qa-expert` re-review
+  - Findings: fixed four initial medium findings by rejecting oversized source shapes, strengthening cap/dedup/lexical assertions, exercising Golisopod alias evidence through ranking sync, and covering partial overrides; also replaced one low brittle serialized-substring assertion with structural checks. Targeted code re-review found no issues; targeted QA found one medium alias-fixture false-positive risk and one low partial-override isolation risk, both fixed by making alias usage exclusive and asserting exact-seed ordering before substitutions.
+- Decisions (why):
+  - Marked the preferred source entry explicitly during category aggregation because category name and alias provenance alone cannot identify the ranked Overall default deterministically.
+  - Retained every eligible exact observed and override set even when one of its moves falls outside the bounded expansion pool because direct exact-format evidence is stronger than usage-only speculation.
+  - Expanded only observed anchors by one fast or one charged move and never recursively expanded generated candidates, preventing a full legal movepool Cartesian product.
+  - Bound move availability policy to the Pokemon array read by ranking sync so a same-process gamemaster refresh cannot derive candidates against stale statically imported data.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - `rankViableMoves(...)` filters candidates but preserves caller order, so derivation must sort provenance and usage evidence before mechanics filtering and apply caps afterward.
+  - Exact charged-move display order remains source-preferred while `getMovesetVariantId(...)` deduplicates the charged pair order-independently.
+  - Partial overrides apply only to the deterministic preferred Overall baseline; generated substitutions never become new expansion anchors.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-008.
+  - US-009 must record and replace ranked defaults rejected by availability policy; US-008 intentionally leaves such candidate sets without a default rather than promoting one early.
+- Next iteration start:
+  - US-009 - Replace invalid PvPoke ranked defaults
 ---

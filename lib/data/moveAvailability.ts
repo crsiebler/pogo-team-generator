@@ -5,6 +5,27 @@ import type { MoveAvailability, Moveset } from '@/lib/types';
 
 type LegacyMovePair = readonly [speciesId: string, moveId: string];
 
+/** Pokemon fields required to classify move acquisition availability. */
+export interface MoveAvailabilityPokemon {
+  readonly speciesId: string;
+  readonly fastMoves: readonly string[];
+  readonly chargedMoves: readonly string[];
+  readonly eliteMoves?: readonly string[];
+  readonly legacyMoves?: readonly string[];
+  readonly level25CP?: number;
+}
+
+/** Availability lookup bound to one Pokemon data snapshot. */
+export type MoveAvailabilityLookup = (
+  speciesId: string,
+  moveId: string,
+  formatId: BattleFormatId,
+) => MoveAvailability;
+
+type PokemonAvailabilityLookup = (
+  speciesId: string,
+) => MoveAvailabilityPokemon | undefined;
+
 const APPROVED_LEGACY_MOVE_PAIRS = [
   ['mewtwo', 'COUNTER'],
   ['mewtwo_mega_x', 'COUNTER'],
@@ -33,11 +54,11 @@ export type MovesetAvailability = Readonly<{
   [Slot in keyof Moveset]: MoveAvailability;
 }>;
 
-/** Classify one move's acquisition availability for a species and format. */
-export function getMoveAvailability(
+function classifyMoveAvailability(
   speciesId: string,
   moveId: string,
   formatId: BattleFormatId,
+  getPokemon: PokemonAvailabilityLookup,
 ): MoveAvailability {
   const canonicalMoveId = normalizeMoveId(moveId.toUpperCase());
 
@@ -49,7 +70,7 @@ export function getMoveAvailability(
   }
 
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
-  const pokemon = getPokemonBySpeciesId(canonicalSpeciesId);
+  const pokemon = getPokemon(canonicalSpeciesId);
 
   if (canonicalMoveId === 'RETURN') {
     if (
@@ -69,7 +90,7 @@ export function getMoveAvailability(
       };
     }
 
-    if (!getPokemonBySpeciesId(`${canonicalSpeciesId}_shadow`)) {
+    if (!getPokemon(`${canonicalSpeciesId}_shadow`)) {
       return {
         kind: 'excluded',
         reason: `Return requires a checked-in shadow variation for ${canonicalSpeciesId}.`,
@@ -139,6 +160,36 @@ export function getMoveAvailability(
     kind: 'excluded',
     reason: `${canonicalMoveId} is unavailable for ${canonicalSpeciesId}.`,
   };
+}
+
+/** Classify one move's acquisition availability for a species and format. */
+export function getMoveAvailability(
+  speciesId: string,
+  moveId: string,
+  formatId: BattleFormatId,
+): MoveAvailability {
+  return classifyMoveAvailability(
+    speciesId,
+    moveId,
+    formatId,
+    getPokemonBySpeciesId,
+  );
+}
+
+/** Bind move availability policy to a deterministic Pokemon data snapshot. */
+export function createMoveAvailabilityResolver(
+  pokemonData: readonly MoveAvailabilityPokemon[],
+): MoveAvailabilityLookup {
+  const pokemonBySpeciesId = new Map(
+    pokemonData.map((pokemon) => [pokemon.speciesId, pokemon]),
+  );
+  return (speciesId, moveId, formatId) =>
+    classifyMoveAvailability(
+      speciesId,
+      moveId,
+      formatId,
+      (candidateSpeciesId) => pokemonBySpeciesId.get(candidateSpeciesId),
+    );
 }
 
 /** Classify every move slot in a complete moveset. */

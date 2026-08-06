@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  createMoveAvailabilityResolver,
   getMoveAvailability,
   getMovesetAvailability,
   isApprovedLegacyMove,
@@ -30,6 +31,29 @@ const LEGACY_MOVE_EXPECTATIONS = [
 ] as const;
 
 describe('getMoveAvailability', () => {
+  it('can classify moves against a freshly loaded Pokemon snapshot', () => {
+    const resolveAvailability = createMoveAvailabilityResolver([
+      {
+        speciesId: 'freshmon',
+        fastMoves: ['FRESH_FAST'],
+        chargedMoves: ['FRESH_CHARGED'],
+        level25CP: 1200,
+      },
+      {
+        speciesId: 'freshmon_shadow',
+        fastMoves: ['FRESH_FAST'],
+        chargedMoves: ['FRUSTRATION'],
+      },
+    ]);
+
+    expect(
+      resolveAvailability('freshmon', 'FRESH_FAST', 'great-league'),
+    ).toEqual({ kind: 'regular' });
+    expect(resolveAvailability('freshmon', 'RETURN', 'great-league')).toEqual({
+      kind: 'purified',
+    });
+  });
+
   it('allows regular moves without an acquisition requirement', () => {
     expect(
       getMoveAvailability('cradily', 'BULLET_SEED', 'great-league'),

@@ -29,6 +29,8 @@ Normalize ranking move usage within each species entry and fast/charged slot bef
 
 For move-mechanics candidate filtering, retain observed and override moves unconditionally and reject only usage-only speculation that is strictly dominated across the relevant DPT/EPT/turn or DPE/energy/pacing dimensions. Treat STAB, status-effect signatures, and distinct type coverage as separate strategic evidence rather than raw-damage penalties; matchup simulation remains authoritative.
 
+For moveset candidate derivation, preserve the eligible preferred Overall set first, retain exact observed and override sets, bound expansion to two fast and four charged moves, generate only one-move substitutions around observed anchors, and cap output at eight canonical variants. Bind move availability to the Pokemon snapshot loaded by the sync run so a same-process gamemaster refresh cannot use stale checked-in data.
+
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 
 Simulation sync must iterate every format from `getBattleFormats()`, loading rankings from `data/rankings/cp<cp>/<cup>/overall_rankings.csv`, and write deterministic outputs as `data/simulations/cp<cp>/<cup>/<speciesId>_<scenario>.csv`; in resume mode only reuse existing files at that exact format-specific path.

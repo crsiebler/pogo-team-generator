@@ -257,6 +257,7 @@ describe('ranking move evidence aggregation', () => {
         categoryWeight: 3,
         sourceSpeciesId: 'golisopodsh',
         speciesAliasKind: 'moveset-variant',
+        isPreferred: true,
         moveset: ['SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET'],
       },
     ]);
@@ -499,6 +500,37 @@ describe('rankings local sync', () => {
             },
             stats: { atk: 102.1, def: 99.5, hp: 122 },
           },
+          {
+            speciesId: 'golisopod',
+            speciesName: 'Golisopod',
+            score: 89,
+            moveset: ['FURY_CUTTER', 'X_SCISSOR', 'AQUA_JET'],
+            moves: {
+              fastMoves: [{ moveId: 'FURY_CUTTER', uses: 100 }],
+              chargedMoves: [
+                { moveId: 'X_SCISSOR', uses: 60 },
+                { moveId: 'AQUA_JET', uses: 40 },
+              ],
+            },
+            stats: { atk: 110, def: 120, hp: 130 },
+          },
+          {
+            speciesId: 'golisopodsh',
+            speciesName: 'Golisopod',
+            score: 88,
+            moveset: ['SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET'],
+            moves: {
+              fastMoves: [
+                { moveId: 'SHADOW_CLAW', uses: 70 },
+                { moveId: 'FURY_CUTTER', uses: 30 },
+              ],
+              chargedMoves: [
+                { moveId: 'X_SCISSOR', uses: 60 },
+                { moveId: 'AQUA_JET', uses: 40 },
+              ],
+            },
+            stats: { atk: 110, def: 120, hp: 130 },
+          },
         ];
       });
 
@@ -547,6 +579,24 @@ describe('rankings local sync', () => {
                 released: true,
                 family: { id: 'FAMILY_BULBASAUR' },
               },
+              {
+                dex: 768,
+                speciesName: 'Golisopod',
+                speciesId: 'golisopod',
+                baseStats: { atk: 218, def: 226, hp: 181 },
+                types: ['bug', 'water'],
+                fastMoves: ['FURY_CUTTER', 'SHADOW_CLAW'],
+                chargedMoves: ['X_SCISSOR', 'AQUA_JET'],
+                defaultIVs: {
+                  cp500: [6, 6, 15, 14],
+                  cp1500: [17.5, 4, 15, 13],
+                  cp2500: [29, 5, 13, 15],
+                },
+                buddyDistance: 1,
+                thirdMoveCost: 10000,
+                released: true,
+                family: { id: 'FAMILY_WIMPOD' },
+              },
             ]);
           }
 
@@ -588,6 +638,50 @@ describe('rankings local sync', () => {
                 archetype: 'Charged',
                 turns: 0,
               },
+              {
+                moveId: 'FURY_CUTTER',
+                name: 'Fury Cutter',
+                type: 'bug',
+                power: 2,
+                energy: 0,
+                energyGain: 4,
+                cooldown: 500,
+                archetype: 'Fast',
+                turns: 1,
+              },
+              {
+                moveId: 'SHADOW_CLAW',
+                name: 'Shadow Claw',
+                type: 'ghost',
+                power: 6,
+                energy: 0,
+                energyGain: 8,
+                cooldown: 500,
+                archetype: 'Fast',
+                turns: 2,
+              },
+              {
+                moveId: 'X_SCISSOR',
+                name: 'X-Scissor',
+                type: 'bug',
+                power: 45,
+                energy: 35,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
+              {
+                moveId: 'AQUA_JET',
+                name: 'Aqua Jet',
+                type: 'water',
+                power: 45,
+                energy: 45,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
             ]);
           }
 
@@ -600,10 +694,28 @@ describe('rankings local sync', () => {
 
     expect(readRankingJson).toHaveBeenCalledTimes(56);
     expect(readMovesetOverridesJson).toHaveBeenCalledTimes(8);
-    expect(result.rankings).toHaveLength(56);
+    expect(result.rankings).toHaveLength(112);
     expect(result.categoryEvidence).toHaveLength(56);
     expect(result.overrideEvidence).toHaveLength(8);
-    expect(result.aggregatedEvidence).toHaveLength(8);
+    expect(result.aggregatedEvidence).toHaveLength(16);
+    expect(result.candidateSets).toHaveLength(16);
+    expect(result.candidateSets[0]?.candidates[0]).toMatchObject({
+      fastMove: 'VINE_WHIP',
+      chargedMove1: 'POWER_WHIP',
+      chargedMove2: 'SLUDGE_BOMB',
+      isDefault: true,
+    });
+    expect(
+      result.candidateSets.find(
+        ({ formatId, speciesId }) =>
+          formatId === 'great-league' && speciesId === 'golisopod',
+      )?.candidates,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fastMove: 'FURY_CUTTER', isDefault: true }),
+        expect.objectContaining({ fastMove: 'SHADOW_CLAW', isDefault: false }),
+      ]),
+    );
     expect(
       result.categoryEvidence
         .filter(({ formatId }) => formatId === 'great-league')
@@ -645,7 +757,7 @@ describe('rankings local sync', () => {
           cp: 1500,
           cup: 'all',
           category: 'overall',
-          entries: [
+          entries: expect.arrayContaining([
             expect.objectContaining({
               speciesId: 'bulbasaur',
               moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
@@ -657,7 +769,7 @@ describe('rankings local sync', () => {
                 ],
               },
             }),
-          ],
+          ]),
         }),
       ]),
     );
@@ -1199,6 +1311,39 @@ describe('ranking source validation', () => {
     ).toBeNull();
   });
 
+  it('retains incomplete source sets but rejects oversized observed sets', () => {
+    expect(
+      parseRankingSourceEntries(
+        [
+          {
+            speciesId: 'smeargle',
+            speciesName: 'Smeargle',
+            score: 50,
+            moveset: ['TACKLE', 'STRUGGLE'],
+            moves: { fastMoves: [], chargedMoves: [] },
+          },
+        ],
+        'overall',
+      )[0].moveset,
+    ).toEqual(['TACKLE', 'STRUGGLE']);
+    expect(() =>
+      parseRankingSourceEntries(
+        [
+          {
+            speciesId: 'bulbasaur',
+            speciesName: 'Bulbasaur',
+            score: 90,
+            moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB', 'SEED_BOMB'],
+            moves: { fastMoves: [], chargedMoves: [] },
+          },
+        ],
+        'overall',
+      ),
+    ).toThrowError(
+      '[sync-rankings] Invalid overall ranking source entry 0: moveset must contain at most three strings',
+    );
+  });
+
   it('rejects malformed ranking move evidence', () => {
     expect(() =>
       parseRankingSourceEntries(
@@ -1247,6 +1392,19 @@ describe('ranking source validation', () => {
       ),
     ).toThrowError(
       '[sync-rankings] Invalid cp1500 all moveset override 0: chargedMoves must contain strings',
+    );
+    expect(() =>
+      parseMovesetOverrides(
+        [
+          {
+            speciesId: 'bulbasaur',
+            chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB', 'SEED_BOMB'],
+          },
+        ],
+        'cp1500 all',
+      ),
+    ).toThrowError(
+      '[sync-rankings] Invalid cp1500 all moveset override 0: chargedMoves must contain exactly two strings',
     );
   });
 });

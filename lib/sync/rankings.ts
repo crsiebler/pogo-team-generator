@@ -3,6 +3,10 @@ import path from 'path';
 import { createPvpokeAdapter, RankingCategory, RankingCup } from './adapter';
 import { syncConfig } from './config';
 import {
+  deriveMovesetCandidates,
+  type DerivedMovesetCandidateSet,
+} from './movesetCandidates';
+import {
   MovesData,
   PokemonData,
   RankingEntry,
@@ -20,6 +24,7 @@ import {
   getBattleFormats,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
+import { createMoveAvailabilityResolver } from '@/lib/data/moveAvailability';
 
 /** One move-usage value retained from a PvPoke ranking entry. */
 export interface RankingMoveUsageEntry {
@@ -116,6 +121,7 @@ export interface ObservedRankingMovesetEvidence {
   readonly categoryWeight: number;
   readonly sourceSpeciesId: string;
   readonly speciesAliasKind: SpeciesAliasKind | null;
+  readonly isPreferred: boolean;
   readonly moveset: readonly string[];
 }
 
@@ -151,6 +157,7 @@ export interface RankingSyncResult {
   categoryEvidence: readonly RankingCategoryEvidence[];
   overrideEvidence: readonly RankingOverrideEvidence[];
   aggregatedEvidence: readonly AggregatedRankingMoveEvidence[];
+  candidateSets: readonly DerivedMovesetCandidateSet[];
 }
 
 interface NormalizedMoveUsage {
@@ -379,7 +386,7 @@ export function aggregateRankingMoveEvidence(
         'charged',
       );
 
-      for (const sourceEntry of entry.sourceEntries) {
+      for (const [sourceIndex, sourceEntry] of entry.sourceEntries.entries()) {
         group.movesetEvidence.push({
           source: 'observed',
           evidencePriority: 0,
@@ -387,6 +394,7 @@ export function aggregateRankingMoveEvidence(
           categoryWeight: RANKING_CATEGORY_WEIGHTS[evidence.category],
           sourceSpeciesId: sourceEntry.sourceSpeciesId,
           speciesAliasKind: sourceEntry.speciesAliasKind,
+          isPreferred: sourceIndex === 0,
           moveset: sourceEntry.moveset.map(normalizeMoveId),
         });
       }
@@ -530,6 +538,11 @@ export function parseRankingSourceEntries(
         `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moveset must contain strings`,
       );
     }
+    if (entry.moveset.length > 3) {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moveset must contain at most three strings`,
+      );
+    }
     if (!isRecord(entry.moves)) {
       throw new Error(
         `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves must be an object`,
@@ -586,6 +599,14 @@ export function parseMovesetOverrides(
         override.chargedMoves.some((moveId) => typeof moveId !== 'string'))
     ) {
       throw new Error(`${prefix}: chargedMoves must contain strings`);
+    }
+    if (
+      override.chargedMoves !== undefined &&
+      override.chargedMoves.length !== 2
+    ) {
+      throw new Error(
+        `${prefix}: chargedMoves must contain exactly two strings`,
+      );
     }
     if (
       override.weight !== undefined &&
@@ -1068,11 +1089,26 @@ export async function scrapeRankings(
       categoryEvidence,
       overrideEvidence,
     );
+    const getMoveAvailability = createMoveAvailabilityResolver(pokemonData);
+    const candidateSets = aggregatedEvidence.flatMap((evidence) => {
+      const pokemon = pokemonBySpeciesId.get(evidence.speciesId);
+      return pokemon
+        ? [
+            deriveMovesetCandidates({
+              evidence,
+              pokemonTypes: pokemon.types,
+              moves: movesData,
+              getMoveAvailability,
+            }),
+          ]
+        : [];
+    });
     return {
       rankings: allRankings,
       categoryEvidence,
       overrideEvidence,
       aggregatedEvidence,
+      candidateSets,
     };
   } catch (error) {
     logError(error as Error, 'sync-rankings', {
