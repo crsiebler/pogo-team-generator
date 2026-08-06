@@ -12,6 +12,8 @@
 - Normalize ranking move usage per species entry and fast/charged slot before category weighting; retain exact observed movesets and overrides above usage-only evidence, then sort weighted evidence by category occurrence, exact Overall use, and move ID.
 - Move-mechanics filtering may reject only strictly dominated usage-only speculation; observed and override moves remain eligible, and status effects or distinct type coverage keep moves strategically incomparable until simulation.
 - Moveset derivation preserves the eligible preferred Overall set first, retains exact observed and override sets, limits expansion to two fast and four charged moves, generates only single-move substitutions around observed anchors, and emits at most eight canonical variants using the current sync Pokemon snapshot for availability.
+- Invalid preferred Overall sets retain rejection evidence and the original PvPoke score prior; ranking sync derives replacements before CSV conversion, changes only Overall move columns, and omits an Overall row only when no complete eligible candidate exists.
+- Emitted Overall rankings are the authoritative TeamRanker opponent pool; resume sync fingerprints each format, prunes changed format caches, and initializes canonical deduplicated targets with sanitized defaults before simulation.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -427,4 +429,50 @@
   - US-009 must record and replace ranked defaults rejected by availability policy; US-008 intentionally leaves such candidate sets without a default rather than promoting one early.
 - Next iteration start:
   - US-009 - Replace invalid PvPoke ranked defaults
+---
+
+## 2026-08-05 22:04:38 MST - US-009
+- Implemented deterministic rejection metadata and replacement selection for unavailable or incomplete preferred Overall movesets; retained the original PvPoke score as a candidate-quality prior; delayed ranking CSV conversion until candidate derivation; and retained source evidence while omitting species that cannot form a complete eligible set. Simulation sync now uses emitted Overall rows as the exact canonical opponent pool, initializes every target with sanitized defaults, fingerprints all Overall output for resume invalidation, and prunes changed format caches before regeneration.
+- Files changed: `lib/AGENTS.md`, `lib/data/rankings.test.ts`, `lib/sync/index.ts`, `lib/sync/movesetCandidates.ts`, `lib/sync/movesetCandidates.test.ts`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `lib/sync/simulations.ts`, `lib/sync/simulations.test.ts`, six `data/rankings/**/overall_rankings.csv` files, 2,682 regenerated `data/simulations/**/*.csv` files, `prd.json`, `progress.txt`
+- Commit message: `feat(sync): US-009 replace invalid PvPoke ranked defaults`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/movesetCandidates.test.ts lib/sync/rankings.test.ts` (fail as expected before implementation: missing score prior and rejection metadata)
+  - `npx vitest run lib/data/rankings.test.ts -t "never returns a rejected ranked default moveset"` (fail as expected before data replacement: Muk returned Acid)
+  - `npx vitest run lib/sync/rankings.test.ts -t "converts local ranking JSON into validated CSV outputs"` (fail as expected before incomplete-set handling: Shadow Wobbuffet had no complete eligible replacement)
+  - `bun -e "import { scrapeRankings } from './lib/sync/rankings.ts'; await scrapeRankings({ sourcePath: './vendor/pvpoke' });"` (pass; replaced or omitted invalid Overall sets and preserved source scores)
+  - runtime availability scan across every supported Overall ranking (pass; no excluded moves remain)
+  - `npx vitest run lib/sync/movesetCandidates.test.ts lib/sync/rankings.test.ts lib/data/rankings.test.ts` (pass, 37 tests)
+  - `npx vitest run lib/sync/movesetCandidates.test.ts lib/sync/rankings.test.ts lib/sync/simulations.test.ts lib/data/rankings.test.ts` after simulation and review fixes (pass, 45 tests)
+  - generated Overall/simulation invariant across six affected formats (pass; all 2,682 files have unique opponent sets exactly matching emitted Overall rows)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 635 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `debugger`, `test-automator`
+  - Used: `debugger`; skipped `test-automator` because one domain advisor plus the focused test-first candidate, sync, and runtime regressions covered the standard-mode implementation budget
+- Specialist review:
+  - Agents used: targeted `code-reviewer` and `qa-expert` re-review
+  - Findings: fixed battle-state-only usage leaking into canonical substitutions, arbitrary Overall changes bypassing resume invalidation, orphaned changed-format cache files, unresolved/incomplete repository invariant gaps, and missing unchanged-format cache reuse coverage. Battle-state Overall source output remains intentionally handled by the existing contextual alias normalization path rather than ordinary availability rejection.
+- Decisions (why):
+  - Preserved invalid preferred sets as non-emitted substitution anchors so one evidence-backed move replacement can repair Muk, Starmie, and similar defaults without generating a full movepool product.
+  - Promoted the first deterministically ranked eligible candidate only after canonical deduplication so exactly one default exists and the rejected set can never regain priority through its original score.
+  - Changed only Overall move columns and charge counts while preserving the source ranking score, rank order, and full category evidence because the score is a candidate prior rather than a replacement simulation result.
+  - Omitted Shadow Wobbuffet and two Liga Ultra Mewtwo records from Overall output because their checked-in data cannot form any complete eligible two-charged-move set; source evidence and rejection details remain available, while runtime and simulations fail closed.
+  - Exempted battle-state pseudo-form evidence from ordinary availability rejection so Morpeko and Aegislash state-specific move names remain handled by the existing contextual normalization path.
+  - Compared byte-identical pre-sync and emitted Overall CSVs for every format because any moveset, species, or ordering change can invalidate every matchup file in that format, not only explicitly repaired defaults.
+  - Constructed explicit TeamRanker targets from sanitized Overall rankings rather than the generic PvPoke cup filter because emitted rankings include valid entries such as Camerupt (Mega) and Hoopa (Confined) that the generic filter omits.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Ranking CSV conversion must happen after format-wide evidence aggregation and candidate derivation when derived legality can change the published Overall moveset.
+  - The bundled source currently contains some preferred sets that cannot form a complete legal two-charged-move variant; retaining source evidence while omitting their Overall rows prevents illegal runtime or simulation defaults.
+  - A repository-wide runtime loader test now validates every checked-in Overall move against the same availability policy used by sync.
+  - Changed-format resume regeneration must prune the format directory first so species leaving the top 150 and removed moveset variants cannot survive as stale files.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-009.
+  - Role-category CSVs intentionally retain raw source moveset evidence; only Overall output is the runtime and default-simulation authority changed by this story.
+- Next iteration start:
+  - US-010 - Add deterministic simulation projection reporting
 ---

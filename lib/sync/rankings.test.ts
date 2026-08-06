@@ -10,6 +10,7 @@ import {
   type RankingSourceEntry,
   scrapeRankings,
 } from './rankings';
+import { getBattleFormats } from '@/lib/data/battleFormats';
 
 function createRankingSourceEntry(
   speciesId: string,
@@ -112,6 +113,7 @@ describe('ranking move evidence aggregation', () => {
         evidencePriority: 1,
       },
     ]);
+    expect(evidence.pvpokeScorePrior).toBe(90);
   });
 
   it('normalizes species independently of category size and entry order', () => {
@@ -531,6 +533,62 @@ describe('rankings local sync', () => {
             },
             stats: { atk: 110, def: 120, hp: 130 },
           },
+          {
+            speciesId: 'muk',
+            speciesName: 'Muk',
+            score: 77,
+            moveset:
+              category === 'overall'
+                ? ['ACID', 'THUNDER_PUNCH', 'DARK_PULSE']
+                : ['POISON_JAB', 'THUNDER_PUNCH', 'DARK_PULSE'],
+            moves: {
+              fastMoves:
+                category === 'overall'
+                  ? [
+                      { moveId: 'ACID', uses: 60 },
+                      { moveId: 'POISON_JAB', uses: 40 },
+                    ]
+                  : [{ moveId: 'POISON_JAB', uses: 100 }],
+              chargedMoves: [
+                { moveId: 'THUNDER_PUNCH', uses: 60 },
+                { moveId: 'DARK_PULSE', uses: 40 },
+              ],
+            },
+            stats: { atk: 120, def: 115, hp: 140 },
+          },
+          ...(leagueCp === 1500 && cup === 'all'
+            ? [
+                {
+                  speciesId: 'wobbuffet_shadow',
+                  speciesName: 'Wobbuffet (Shadow)',
+                  score: 63.9,
+                  moveset: ['COUNTER', 'MIRROR_COAT', 'FRUSTRATION'],
+                  moves: {
+                    fastMoves: [{ moveId: 'COUNTER', uses: 100 }],
+                    chargedMoves: [
+                      { moveId: 'MIRROR_COAT', uses: 80 },
+                      { moveId: 'FRUSTRATION', uses: 20 },
+                    ],
+                  },
+                  stats: { atk: 63, def: 101.6, hp: 333 },
+                },
+              ]
+            : []),
+          ...(leagueCp === 1500 && cup === 'all' && category === 'overall'
+            ? [
+                {
+                  speciesId: 'unown',
+                  speciesName: 'Unown',
+                  score: 27,
+                  moveset: ['HIDDEN_POWER_PSYCHIC', 'STRUGGLE'],
+                  moves: {
+                    fastMoves: [{ moveId: 'HIDDEN_POWER_PSYCHIC', uses: 100 }],
+                    chargedMoves: [{ moveId: 'STRUGGLE', uses: 100 }],
+                  },
+                  stats: { atk: 100, def: 100, hp: 100 },
+                },
+              ]
+            : []),
         ];
       });
 
@@ -552,7 +610,12 @@ describe('rankings local sync', () => {
       });
 
     const result = await scrapeRankings(
-      { sourcePath: '/source/pvpoke' },
+      {
+        sourcePath: '/source/pvpoke',
+        previousOverallRankingsByFormatId: new Map(
+          getBattleFormats().map(({ id }) => [id, 'previous\n']),
+        ),
+      },
       {
         createAdapter: () => ({
           readRankingJson,
@@ -596,6 +659,61 @@ describe('rankings local sync', () => {
                 thirdMoveCost: 10000,
                 released: true,
                 family: { id: 'FAMILY_WIMPOD' },
+              },
+              {
+                dex: 89,
+                speciesName: 'Muk',
+                speciesId: 'muk',
+                baseStats: { atk: 190, def: 172, hp: 233 },
+                types: ['poison'],
+                fastMoves: ['ACID', 'POISON_JAB'],
+                chargedMoves: ['THUNDER_PUNCH', 'DARK_PULSE'],
+                legacyMoves: ['ACID'],
+                defaultIVs: {
+                  cp500: [6, 6, 15, 14],
+                  cp1500: [20, 0, 15, 15],
+                  cp2500: [37, 0, 15, 15],
+                },
+                buddyDistance: 3,
+                thirdMoveCost: 50000,
+                released: true,
+                family: { id: 'FAMILY_GRIMER' },
+              },
+              {
+                dex: 202,
+                speciesName: 'Wobbuffet (Shadow)',
+                speciesId: 'wobbuffet_shadow',
+                baseStats: { atk: 60, def: 106, hp: 382 },
+                types: ['psychic'],
+                fastMoves: ['COUNTER'],
+                chargedMoves: ['MIRROR_COAT'],
+                defaultIVs: {
+                  cp500: [20, 4, 15, 14],
+                  cp1500: [50, 15, 15, 15],
+                  cp2500: [50, 15, 15, 15],
+                },
+                buddyDistance: 3,
+                thirdMoveCost: 50000,
+                released: true,
+                family: { id: 'FAMILY_WOBBUFFET' },
+              },
+              {
+                dex: 201,
+                speciesName: 'Unown',
+                speciesId: 'unown',
+                baseStats: { atk: 136, def: 91, hp: 134 },
+                types: ['psychic'],
+                fastMoves: ['HIDDEN_POWER_PSYCHIC'],
+                chargedMoves: ['STRUGGLE'],
+                defaultIVs: {
+                  cp500: [20, 15, 15, 15],
+                  cp1500: [50, 15, 15, 15],
+                  cp2500: [50, 15, 15, 15],
+                },
+                buddyDistance: 5,
+                thirdMoveCost: 10000,
+                released: true,
+                family: { id: 'FAMILY_UNOWN' },
               },
             ]);
           }
@@ -682,6 +800,105 @@ describe('rankings local sync', () => {
                 archetype: 'Charged',
                 turns: 0,
               },
+              {
+                moveId: 'ACID',
+                name: 'Acid',
+                type: 'poison',
+                power: 6,
+                energy: 0,
+                energyGain: 5,
+                cooldown: 500,
+                archetype: 'Fast',
+                turns: 2,
+              },
+              {
+                moveId: 'POISON_JAB',
+                name: 'Poison Jab',
+                type: 'poison',
+                power: 7,
+                energy: 0,
+                energyGain: 7,
+                cooldown: 500,
+                archetype: 'Fast',
+                turns: 2,
+              },
+              {
+                moveId: 'THUNDER_PUNCH',
+                name: 'Thunder Punch',
+                type: 'electric',
+                power: 60,
+                energy: 40,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
+              {
+                moveId: 'DARK_PULSE',
+                name: 'Dark Pulse',
+                type: 'dark',
+                power: 80,
+                energy: 50,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
+              {
+                moveId: 'COUNTER',
+                name: 'Counter',
+                type: 'fighting',
+                power: 8,
+                energy: 0,
+                energyGain: 7,
+                cooldown: 500,
+                archetype: 'Fast',
+                turns: 2,
+              },
+              {
+                moveId: 'MIRROR_COAT',
+                name: 'Mirror Coat',
+                type: 'psychic',
+                power: 60,
+                energy: 55,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
+              {
+                moveId: 'FRUSTRATION',
+                name: 'Frustration',
+                type: 'normal',
+                power: 10,
+                energy: 70,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
+              {
+                moveId: 'HIDDEN_POWER_PSYCHIC',
+                name: 'Hidden Power (Psychic)',
+                type: 'psychic',
+                power: 9,
+                energy: 0,
+                energyGain: 8,
+                cooldown: 1500,
+                archetype: 'Fast',
+                turns: 3,
+              },
+              {
+                moveId: 'STRUGGLE',
+                name: 'Struggle',
+                type: 'normal',
+                power: 35,
+                energy: 100,
+                energyGain: 0,
+                cooldown: 0,
+                archetype: 'Charged',
+                turns: 0,
+              },
             ]);
           }
 
@@ -694,11 +911,11 @@ describe('rankings local sync', () => {
 
     expect(readRankingJson).toHaveBeenCalledTimes(56);
     expect(readMovesetOverridesJson).toHaveBeenCalledTimes(8);
-    expect(result.rankings).toHaveLength(112);
+    expect(result.rankings).toHaveLength(174);
     expect(result.categoryEvidence).toHaveLength(56);
     expect(result.overrideEvidence).toHaveLength(8);
-    expect(result.aggregatedEvidence).toHaveLength(16);
-    expect(result.candidateSets).toHaveLength(16);
+    expect(result.aggregatedEvidence).toHaveLength(26);
+    expect(result.candidateSets).toHaveLength(26);
     expect(result.candidateSets[0]?.candidates[0]).toMatchObject({
       fastMove: 'VINE_WHIP',
       chargedMove1: 'POWER_WHIP',
@@ -715,6 +932,69 @@ describe('rankings local sync', () => {
         expect.objectContaining({ fastMove: 'FURY_CUTTER', isDefault: true }),
         expect.objectContaining({ fastMove: 'SHADOW_CLAW', isDefault: false }),
       ]),
+    );
+    const masterMukCandidates = result.candidateSets.find(
+      ({ formatId, speciesId }) =>
+        formatId === 'master-league' && speciesId === 'muk',
+    );
+    expect(masterMukCandidates?.pvpokeScorePrior).toBe(77);
+    expect(masterMukCandidates?.rejections).toEqual([
+      expect.objectContaining({
+        excludedMove: 'ACID',
+        reason: 'ACID does not have an approved legacy policy for muk.',
+      }),
+    ]);
+    expect(masterMukCandidates?.candidates[0]).toMatchObject({
+      fastMove: 'POISON_JAB',
+      chargedMove1: 'THUNDER_PUNCH',
+      chargedMove2: 'DARK_PULSE',
+      isDefault: true,
+    });
+    expect(
+      result.rankings.find(({ Pokemon }) => Pokemon === 'Muk'),
+    ).toMatchObject({
+      Pokemon: 'Muk',
+      Score: 77,
+      'Fast Move': 'Poison Jab',
+      'Charged Move 1': 'Thunder Punch',
+      'Charged Move 2': 'Dark Pulse',
+    });
+    const masterOverallWrite = writeFile.mock.calls.find(([filePath]) =>
+      String(filePath).endsWith(
+        path.join('rankings', 'cp10000', 'all', 'overall_rankings.csv'),
+      ),
+    );
+    expect(masterOverallWrite?.[1]).toContain('\nMuk,77,89,poison,none,');
+    expect(masterOverallWrite?.[1]).toContain(
+      ',Poison Jab,Thunder Punch,Dark Pulse,',
+    );
+    const wobbuffetCandidates = result.candidateSets.find(
+      ({ formatId, speciesId }) =>
+        formatId === 'great-league' && speciesId === 'wobbuffet_shadow',
+    );
+    expect(wobbuffetCandidates?.rejections).toEqual([
+      expect.objectContaining({ excludedMove: 'FRUSTRATION' }),
+    ]);
+    expect(wobbuffetCandidates?.candidates).toEqual([]);
+    expect(
+      result.categoryEvidence.some(({ entries }) =>
+        entries.some(({ speciesId }) => speciesId === 'wobbuffet_shadow'),
+      ),
+    ).toBe(true);
+    expect(
+      result.rankings.filter(({ Pokemon }) => Pokemon === 'Wobbuffet (Shadow)'),
+    ).toHaveLength(6);
+    const greatOverallWrite = writeFile.mock.calls.find(([filePath]) =>
+      String(filePath).endsWith(
+        path.join('rankings', 'cp1500', 'all', 'overall_rankings.csv'),
+      ),
+    );
+    expect(greatOverallWrite?.[1]).not.toContain('Wobbuffet (Shadow)');
+    expect(greatOverallWrite?.[1]).not.toContain('\nUnown,');
+    expect(result.formatsWithChangedOverallRankings).toEqual(
+      getBattleFormats()
+        .map(({ id }) => id)
+        .sort(),
     );
     expect(
       result.categoryEvidence

@@ -106,6 +106,146 @@ describe('generateSimulations', () => {
     expect(csvText).toContain('Decidueye ASTONISH/FRENZY_PLANT/SPIRIT_SHACKLE');
   });
 
+  it('forces sanitized defaults onto every ranked opponent', () => {
+    const rankings = [
+      {
+        speciesId: 'decidueye',
+        moveset: ['LEAFAGE', 'FRENZY_PLANT', 'SPIRIT_SHACKLE'],
+      },
+      {
+        speciesId: 'muk',
+        moveset: ['ACID', 'THUNDER_PUNCH', 'DARK_PULSE'],
+      },
+      {
+        speciesId: 'golisopodsh',
+        moveset: ['SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET'],
+      },
+      {
+        speciesId: 'golisopod',
+        moveset: ['FURY_CUTTER', 'X_SCISSOR', 'AQUA_JET'],
+      },
+      {
+        speciesId: 'unown',
+        moveset: ['HIDDEN_POWER_PSYCHIC', 'STRUGGLE'],
+      },
+      {
+        speciesId: 'camerupt_mega',
+        moveset: ['EMBER', 'EARTH_POWER', 'OVERHEAT'],
+      },
+    ];
+    const gameMaster = {
+      rankings: { alloverall1500: rankings },
+      loadRankingData: () => undefined,
+      getCupById: (cup: string) => ({ name: cup }),
+      generateFilteredPokemonList: () =>
+        rankings
+          .filter(({ speciesId }) => speciesId !== 'camerupt_mega')
+          .map((ranking) => ({
+            speciesId: ranking.speciesId,
+            moveset: [...ranking.moveset],
+            initialize: () => undefined,
+            selectRecommendedMoveset: () => undefined,
+            selectMove(
+              moveType: 'fast' | 'charged',
+              moveId: string,
+              index = 0,
+            ): void {
+              this.moveset[moveType === 'fast' ? 0 : index + 1] = moveId;
+            },
+            resetMoves: () => undefined,
+          })),
+    };
+    let targets: Array<{ speciesId: string; moveset: string[] }> = [];
+    const context = vm.createContext({
+      __flushPvpokeAjax: () => undefined,
+      GameMaster: {
+        getInstance: () => gameMaster,
+      },
+      Battle: function Battle(this: Record<string, unknown>) {
+        this.setCP = () => undefined;
+        this.setCup = () => undefined;
+        this.setCustomCup = () => undefined;
+        return this;
+      },
+      RankerMaster: {
+        getInstance: () => ({
+          applySettings: () => undefined,
+          setShieldMode: () => undefined,
+          setTargets: (
+            nextTargets: Array<{ speciesId: string; moveset: string[] }>,
+          ) => {
+            targets = nextTargets;
+          },
+          setRecommendMoveUsage: () => undefined,
+          rank: () => ({
+            csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\n${targets.map((target) => `${target.speciesId} ${target.moveset.join('/')},500,0,0`).join('\n')}\n`,
+          }),
+        }),
+      },
+      getDefaultMultiBattleSettings: () => ({ shields: 0 }),
+      Pokemon: function Pokemon(
+        this: Record<string, unknown>,
+        speciesId: string,
+      ) {
+        this.speciesId = speciesId;
+        this.moveset = [undefined, undefined, undefined];
+        this.initialize = () => undefined;
+        this.selectRecommendedMoveset = () => undefined;
+        this.selectMove = (
+          moveType: 'fast' | 'charged',
+          moveId: string,
+          index = 0,
+        ) => {
+          (this.moveset as Array<string | undefined>)[
+            moveType === 'fast' ? 0 : index + 1
+          ] = moveId;
+        };
+        this.resetMoves = () => undefined;
+      },
+    });
+
+    const csvText = generateScenarioCsvFromEngine(
+      { context },
+      {
+        id: 'great-league',
+        label: 'Great League',
+        cup: 'all',
+        cp: 1500,
+      },
+      'decidueye',
+      1,
+      undefined,
+      {
+        decidueye: {
+          fastMove: 'LEAFAGE',
+          chargedMove1: 'FRENZY_PLANT',
+          chargedMove2: 'SPIRIT_SHACKLE',
+        },
+        muk: {
+          fastMove: 'POISON_JAB',
+          chargedMove1: 'THUNDER_PUNCH',
+          chargedMove2: 'DARK_PULSE',
+        },
+        golisopod: {
+          fastMove: 'FURY_CUTTER',
+          chargedMove1: 'X_SCISSOR',
+          chargedMove2: 'AQUA_JET',
+        },
+        camerupt_mega: {
+          fastMove: 'EMBER',
+          chargedMove1: 'EARTH_POWER',
+          chargedMove2: 'OVERHEAT',
+        },
+      },
+    );
+
+    expect(csvText).toContain('muk POISON_JAB/THUNDER_PUNCH/DARK_PULSE');
+    expect(csvText).toContain('golisopod FURY_CUTTER/X_SCISSOR/AQUA_JET');
+    expect(csvText).toContain('camerupt_mega EMBER/EARTH_POWER/OVERHEAT');
+    expect(csvText).not.toContain('golisopodsh');
+    expect(csvText).not.toContain('unown');
+  });
+
   it('initializes the selected Pokemon after setting the battle CP', () => {
     let selectedBattleCpDuringInitialize: unknown;
 
@@ -608,7 +748,7 @@ describe('generateSimulations', () => {
     );
   });
 
-  it('in resume mode reuses only valid format-specific files', async () => {
+  it('in resume mode reuses only valid unchanged format-specific files', async () => {
     const readFile = vi.fn(async (filePath: string) => {
       if (isOverallRankingPath(filePath)) {
         return 'Pokemon\nBulbasaur\n';
@@ -653,16 +793,21 @@ describe('generateSimulations', () => {
           ),
         )
       ) {
-        return 'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nBad,not-a-number,0,0\n';
+        return VALID_SIMULATION_CSV;
       }
 
       throw new Error(`unexpected file read: ${filePath}`);
     });
 
     const generateScenarioCsv = vi.fn(() => VALID_SIMULATION_CSV);
+    const removeDirectory = vi.fn().mockResolvedValue(undefined);
 
     await generateSimulations(
-      { sourcePath: '/source/pvpoke', resume: true },
+      {
+        sourcePath: '/source/pvpoke',
+        resume: true,
+        forceRegenerateFormatIds: new Set(['great-league']),
+      },
       {
         getRuntime: () => ({ context: {} as never }),
         fileExists: (filePath: string) => {
@@ -706,28 +851,37 @@ describe('generateSimulations', () => {
         },
         readFile,
         mkdir: vi.fn().mockResolvedValue(undefined),
+        removeDirectory,
         writeFile: vi.fn().mockResolvedValue(undefined),
         generateScenarioCsv,
       },
     );
 
-    expect(readFile).toHaveBeenCalledWith(
+    expect(readFile).not.toHaveBeenCalledWith(
       path.join('data', 'simulations', 'cp1500', 'all', 'bulbasaur_1-1.csv'),
     );
+    expect(removeDirectory).toHaveBeenCalledWith(
+      path.join('data', 'simulations', 'cp1500', 'all'),
+    );
+    expect(readFile).toHaveBeenCalledWith(
+      path.join('data', 'simulations', 'cp2500', 'all', 'bulbasaur_1-1.csv'),
+    );
 
-    expect(generateScenarioCsv).not.toHaveBeenCalledWith(
+    expect(generateScenarioCsv).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ cp: 1500, cup: 'all' }),
       'bulbasaur',
       1,
       undefined,
+      expect.anything(),
     );
-    expect(generateScenarioCsv).toHaveBeenCalledWith(
+    expect(generateScenarioCsv).not.toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ cp: 2500, cup: 'all' }),
       'bulbasaur',
       1,
       undefined,
+      expect.anything(),
     );
   });
 });

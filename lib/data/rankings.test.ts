@@ -1,5 +1,6 @@
 import { getBattleFormats } from './battleFormats';
-import { speciesNameToChoosableId } from './pokemon';
+import { getMoveAvailability } from './moveAvailability';
+import { getPokemonBySpeciesName, speciesNameToChoosableId } from './pokemon';
 import {
   getAllRankingsForPokemon,
   getAttackersRankings,
@@ -182,6 +183,65 @@ describe('getOptimalMoveset', () => {
       chargedMove1: 'VICE_GRIP',
       chargedMove2: 'RAZOR_SHELL',
     });
+  });
+
+  it('never returns a rejected ranked default moveset', () => {
+    expect(getOptimalMoveset('Muk', 'master-league')).toEqual({
+      fastMove: 'POISON_JAB',
+      chargedMove1: 'THUNDER_PUNCH',
+      chargedMove2: 'DARK_PULSE',
+    });
+  });
+
+  it('keeps every checked-in Overall moveset eligible', () => {
+    const rejectedMoves = getBattleFormats().flatMap((format) => {
+      return getOverallRankings(format.id).flatMap((ranking) => {
+        const pokemon = getPokemonBySpeciesName(ranking.Pokemon);
+        if (!pokemon) {
+          return [
+            {
+              formatId: format.id,
+              speciesId: ranking.Pokemon,
+              reason: 'Pokemon does not resolve',
+            },
+          ];
+        }
+
+        const moveset = getOptimalMoveset(ranking.Pokemon, format.id);
+        return [
+          moveset.fastMove,
+          moveset.chargedMove1,
+          moveset.chargedMove2,
+        ].flatMap((moveId) => {
+          if (!moveId) {
+            return [
+              {
+                formatId: format.id,
+                speciesId: pokemon.speciesId,
+                reason: 'Moveset is incomplete',
+              },
+            ];
+          }
+          const availability = getMoveAvailability(
+            pokemon.speciesId,
+            moveId,
+            format.id,
+          );
+          return availability.kind === 'excluded'
+            ? [
+                {
+                  formatId: format.id,
+                  speciesId: pokemon.speciesId,
+                  moveId,
+                  reason: availability.reason,
+                },
+              ]
+            : [];
+        });
+      });
+    });
+
+    expect(rejectedMoves).toEqual([]);
   });
 
   it('resolves stateful move names against the canonical species movepool', () => {

@@ -31,9 +31,13 @@ For move-mechanics candidate filtering, retain observed and override moves uncon
 
 For moveset candidate derivation, preserve the eligible preferred Overall set first, retain exact observed and override sets, bound expansion to two fast and four charged moves, generate only one-move substitutions around observed anchors, and cap output at eight canonical variants. Bind move availability to the Pokemon snapshot loaded by the sync run so a same-process gamemaster refresh cannot use stale checked-in data.
 
+When a preferred Overall moveset contains an excluded move, retain its source moveset, excluded move, reason, and original PvPoke score as evidence; derive candidates before writing ranking CSVs; and replace only the Overall move columns with the strongest complete eligible candidate. If no complete eligible set exists, omit that species from Overall output while retaining its category evidence so runtime and simulation paths never consume the rejected set.
+
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 
 Simulation sync must iterate every format from `getBattleFormats()`, loading rankings from `data/rankings/cp<cp>/<cup>/overall_rankings.csv`, and write deterministic outputs as `data/simulations/cp<cp>/<cup>/<speciesId>_<scenario>.csv`; in resume mode only reuse existing files at that exact format-specific path.
+
+Treat emitted Overall rankings as the authoritative TeamRanker opponent pool: canonicalize and deduplicate aliases, initialize every target with its emitted default, fingerprint each Overall CSV against the pre-sync snapshot, and prune the affected format directory before resume regeneration when the fingerprint changes.
 
 Checked-in moveset-specific simulation variants must include complete `0-0`, `1-1`, and `2-2` files with matching opponent sets for every applicable format.
 

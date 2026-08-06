@@ -146,6 +146,7 @@ export interface AggregatedRankingMoveEvidence {
   readonly cup: RankingCup;
   readonly cp: number;
   readonly speciesId: string;
+  readonly pvpokeScorePrior: number | null;
   readonly movesetEvidence: readonly RankingMovesetEvidence[];
   readonly fastMoves: readonly AggregatedMoveUsageEvidence[];
   readonly chargedMoves: readonly AggregatedMoveUsageEvidence[];
@@ -158,6 +159,15 @@ export interface RankingSyncResult {
   overrideEvidence: readonly RankingOverrideEvidence[];
   aggregatedEvidence: readonly AggregatedRankingMoveEvidence[];
   candidateSets: readonly DerivedMovesetCandidateSet[];
+  formatsWithChangedOverallRankings: readonly BattleFormatId[];
+}
+
+/** Ranking sync inputs, including pre-sync Overall snapshots for invalidation. */
+export interface RankingSyncOptions extends SyncRunOptions {
+  readonly previousOverallRankingsByFormatId?: ReadonlyMap<
+    BattleFormatId,
+    string
+  >;
 }
 
 interface NormalizedMoveUsage {
@@ -176,6 +186,7 @@ interface MutableAggregatedRankingMoveEvidence {
   readonly cup: RankingCup;
   readonly cp: number;
   readonly speciesId: string;
+  pvpokeScorePrior: number | null;
   readonly movesetEvidence: RankingMovesetEvidence[];
   readonly fastMoveContributions: Map<string, MoveUsageContribution[]>;
   readonly chargedMoveContributions: Map<string, MoveUsageContribution[]>;
@@ -351,6 +362,7 @@ export function aggregateRankingMoveEvidence(
       cup,
       cp,
       speciesId,
+      pvpokeScorePrior: null,
       movesetEvidence: [],
       fastMoveContributions: new Map(),
       chargedMoveContributions: new Map(),
@@ -378,6 +390,9 @@ export function aggregateRankingMoveEvidence(
         evidence.cp,
         entry.canonicalSpeciesId,
       );
+      if (evidence.category === 'overall') {
+        group.pvpokeScorePrior = entry.score;
+      }
       addMoveUsage(group, evidence.category, entry.moves.fastMoves, 'fast');
       addMoveUsage(
         group,
@@ -435,6 +450,7 @@ export function aggregateRankingMoveEvidence(
         cup: group.cup,
         cp: group.cp,
         speciesId: group.speciesId,
+        pvpokeScorePrior: group.pvpokeScorePrior,
         movesetEvidence: [...group.movesetEvidence].sort(
           compareMovesetEvidence,
         ),
@@ -944,7 +960,7 @@ function isSkippableMissingPokemonError(error: unknown): boolean {
  * Sync rankings CSV data from local PvPoke ranking JSON files.
  */
 export async function scrapeRankings(
-  options: SyncRunOptions = {},
+  options: RankingSyncOptions = {},
   dependencies: Partial<RankingSyncDependencies> = {},
 ): Promise<RankingSyncResult> {
   const sourcePath = options.sourcePath;
@@ -1027,64 +1043,8 @@ export async function scrapeRankings(
           category,
           entries: normalizedRankings,
         });
-
-        const convertedEntries: RankingEntry[] = [];
-
-        for (const ranking of normalizedRankings) {
-          try {
-            convertedEntries.push(
-              convertRankingEntryToCsvRow(
-                ranking,
-                pokemonBySpeciesId,
-                moveById,
-                format.cp,
-              ),
-            );
-          } catch (error) {
-            if (!isSkippableMissingPokemonError(error)) {
-              throw error;
-            }
-
-            const errorMessage =
-              error instanceof Error ? error.message : String(error);
-            console.warn(`${errorMessage}; skipping ranking entry`);
-          }
-        }
-
-        const csvText = convertEntriesToCsv(convertedEntries);
-        const validation = validateRankingsCsv(csvText);
-        logValidationErrors(
-          `cp${format.cp} ${format.cup} ${category} rankings CSV`,
-          validation.errors,
-        );
-
-        if (!validation.valid) {
-          throw new Error(
-            `cp${format.cp} ${format.cup} ${category} rankings CSV validation failed: ${validation.errors.join(', ')}`,
-          );
-        }
-
-        const outputFilePath = path.join(
-          syncConfig.outputDir,
-          'rankings',
-          `cp${format.cp}`,
-          format.cup,
-          `${category}_rankings.csv`,
-        );
-        await resolvedDependencies.mkdir(path.dirname(outputFilePath));
-        await resolvedDependencies.writeFile(outputFilePath, csvText);
-
-        console.log(
-          `[sync-rankings] Synced ${convertedEntries.length} ${category} ranking entries to ${outputFilePath}`,
-        );
-
-        allRankings.push(...convertedEntries);
       }
     }
-
-    console.log(
-      `[sync-rankings] Successfully synced and validated ${allRankings.length} total ranking entries`,
-    );
     const aggregatedEvidence = aggregateRankingMoveEvidence(
       categoryEvidence,
       overrideEvidence,
@@ -1103,12 +1063,124 @@ export async function scrapeRankings(
           ]
         : [];
     });
+    const candidateSetsBySpecies = new Map(
+      candidateSets.map((candidateSet) => [
+        `${candidateSet.formatId}|${candidateSet.speciesId}`,
+        candidateSet,
+      ]),
+    );
+    const formatsWithChangedOverallRankings = new Set<BattleFormatId>();
+
+    for (const evidence of categoryEvidence) {
+      const convertedEntries: RankingEntry[] = [];
+      for (const ranking of evidence.entries) {
+        const candidateSet = candidateSetsBySpecies.get(
+          `${evidence.formatId}|${ranking.speciesId}`,
+        );
+        const selectedDefault = candidateSet?.candidates.find(
+          ({ isDefault }) => isDefault,
+        );
+        const hasCompleteSourceMoveset =
+          ranking.moveset.length === 3 &&
+          ranking.moveset.every((moveId) => moveId.length > 0) &&
+          ranking.moveset[1] !== ranking.moveset[2];
+        const shouldReplaceInvalidDefault =
+          evidence.category === 'overall' &&
+          (Boolean(candidateSet?.rejections.length) ||
+            !hasCompleteSourceMoveset);
+        if (
+          shouldReplaceInvalidDefault &&
+          !options.previousOverallRankingsByFormatId
+        ) {
+          formatsWithChangedOverallRankings.add(evidence.formatId);
+        }
+        if (shouldReplaceInvalidDefault && !selectedDefault) {
+          console.warn(
+            `[sync-rankings] Skipping '${ranking.speciesId}' in '${evidence.formatId}': no complete eligible replacement moveset`,
+          );
+          continue;
+        }
+        const rankingForOutput =
+          shouldReplaceInvalidDefault && selectedDefault
+            ? {
+                ...ranking,
+                moveset: [
+                  selectedDefault.fastMove,
+                  selectedDefault.chargedMove1,
+                  selectedDefault.chargedMove2,
+                ],
+              }
+            : ranking;
+
+        try {
+          convertedEntries.push(
+            convertRankingEntryToCsvRow(
+              rankingForOutput,
+              pokemonBySpeciesId,
+              moveById,
+              evidence.cp,
+            ),
+          );
+        } catch (error) {
+          if (!isSkippableMissingPokemonError(error)) {
+            throw error;
+          }
+
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          console.warn(`${errorMessage}; skipping ranking entry`);
+        }
+      }
+
+      const csvText = convertEntriesToCsv(convertedEntries);
+      if (
+        evidence.category === 'overall' &&
+        options.previousOverallRankingsByFormatId &&
+        options.previousOverallRankingsByFormatId.get(evidence.formatId) !==
+          csvText
+      ) {
+        formatsWithChangedOverallRankings.add(evidence.formatId);
+      }
+      const validation = validateRankingsCsv(csvText);
+      logValidationErrors(
+        `cp${evidence.cp} ${evidence.cup} ${evidence.category} rankings CSV`,
+        validation.errors,
+      );
+
+      if (!validation.valid) {
+        throw new Error(
+          `cp${evidence.cp} ${evidence.cup} ${evidence.category} rankings CSV validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      const outputFilePath = path.join(
+        syncConfig.outputDir,
+        'rankings',
+        `cp${evidence.cp}`,
+        evidence.cup,
+        `${evidence.category}_rankings.csv`,
+      );
+      await resolvedDependencies.mkdir(path.dirname(outputFilePath));
+      await resolvedDependencies.writeFile(outputFilePath, csvText);
+
+      console.log(
+        `[sync-rankings] Synced ${convertedEntries.length} ${evidence.category} ranking entries to ${outputFilePath}`,
+      );
+      allRankings.push(...convertedEntries);
+    }
+
+    console.log(
+      `[sync-rankings] Successfully synced and validated ${allRankings.length} total ranking entries`,
+    );
     return {
       rankings: allRankings,
       categoryEvidence,
       overrideEvidence,
       aggregatedEvidence,
       candidateSets,
+      formatsWithChangedOverallRankings: Array.from(
+        formatsWithChangedOverallRankings,
+      ).sort((left, right) => left.localeCompare(right)),
     };
   } catch (error) {
     logError(error as Error, 'sync-rankings', {

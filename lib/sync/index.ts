@@ -11,6 +11,10 @@ import {
   crossValidateRankingsVsPokemon,
   logValidationErrors,
 } from './validation';
+import {
+  type BattleFormatId,
+  getBattleFormats,
+} from '@/lib/data/battleFormats';
 
 /**
  * Persist successful sync metadata for UI freshness indicators.
@@ -60,6 +64,23 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     });
 
     const rankingsDir = path.join(syncConfig.outputDir, 'rankings');
+    const previousOverallRankingsByFormatId = new Map<BattleFormatId, string>();
+    if (options.resume) {
+      for (const format of getBattleFormats()) {
+        const overallRankingsPath = path.join(
+          rankingsDir,
+          `cp${format.cp}`,
+          format.cup,
+          'overall_rankings.csv',
+        );
+        if (fs.existsSync(overallRankingsPath)) {
+          previousOverallRankingsByFormatId.set(
+            format.id,
+            fs.readFileSync(overallRankingsPath, 'utf8'),
+          );
+        }
+      }
+    }
     if (fs.existsSync(rankingsDir)) {
       fs.rmSync(rankingsDir, { recursive: true, force: true });
       console.log('[sync] Deleted existing rankings directory');
@@ -84,6 +105,7 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     const rankingSyncResult = await scrapeRankings({
       ...options,
       sourcePath: sourceResolution.sourcePath,
+      ...(options.resume ? { previousOverallRankingsByFormatId } : {}),
     });
 
     // Generate simulations
@@ -97,6 +119,9 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     simulations = await generateSimulations({
       ...options,
       sourcePath: sourceResolution.sourcePath,
+      forceRegenerateFormatIds: new Set(
+        rankingSyncResult.formatsWithChangedOverallRankings,
+      ),
     });
 
     // Cross-validate data consistency

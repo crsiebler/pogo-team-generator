@@ -27,6 +27,13 @@ interface RecommendedMoveIds {
   chargedMove2: string | null;
 }
 
+type RecommendedMovesBySpeciesId = Readonly<Record<string, RecommendedMoveIds>>;
+
+/** Sync options that can invalidate cached outputs for changed ranking pools. */
+export interface SimulationSyncOptions extends SyncRunOptions {
+  readonly forceRegenerateFormatIds?: ReadonlySet<BattleFormat['id']>;
+}
+
 interface SimulationPokemonData {
   speciesId: string;
   speciesName: string;
@@ -515,6 +522,7 @@ export function generateScenarioCsvFromEngine(
   speciesId: string,
   shields: number,
   recommendedMoves?: RecommendedMoveIds,
+  recommendedMovesBySpeciesId: RecommendedMovesBySpeciesId = {},
 ): string {
   const rankingKey = `${format.cup}overall${format.cp}`;
   runtime.context.__speciesId = speciesId;
@@ -527,6 +535,9 @@ export function generateScenarioCsvFromEngine(
     recommendedMoves?.chargedMove1 ?? null;
   runtime.context.__selectedChargedMove2 =
     recommendedMoves?.chargedMove2 ?? null;
+  runtime.context.__recommendedMovesBySpeciesId = recommendedMovesBySpeciesId;
+  runtime.context.__normalizeToChoosableSpeciesId =
+    normalizeToChoosableSpeciesId;
 
   const script = new vm.Script(
     `(() => {
@@ -539,6 +550,30 @@ export function generateScenarioCsvFromEngine(
       if (!gm.rankings[rankingKey]) {
         gm.loadRankingData({}, 'overall', globalThis.__leagueCp, globalThis.__cup);
       }
+
+      const sanitizedRankingsBySpeciesId = new Map();
+      for (const ranking of gm.rankings[rankingKey] || []) {
+        const canonicalSpeciesId =
+          globalThis.__normalizeToChoosableSpeciesId(ranking.speciesId);
+        const recommendedMoves =
+          globalThis.__recommendedMovesBySpeciesId[canonicalSpeciesId];
+        if (!recommendedMoves) {
+          continue;
+        }
+
+        ranking.moveset = [
+          recommendedMoves.fastMove,
+          recommendedMoves.chargedMove1,
+          recommendedMoves.chargedMove2,
+        ];
+        const existing = sanitizedRankingsBySpeciesId.get(canonicalSpeciesId);
+        if (!existing || ranking.speciesId === canonicalSpeciesId) {
+          sanitizedRankingsBySpeciesId.set(canonicalSpeciesId, ranking);
+        }
+      }
+      gm.rankings[rankingKey] = Array.from(
+        sanitizedRankingsBySpeciesId.values()
+      );
 
       const cup = gm.getCupById(globalThis.__cup);
       const battle = new Battle();
@@ -560,7 +595,6 @@ export function generateScenarioCsvFromEngine(
       ranker.applySettings(settingsA, 0);
       ranker.applySettings(settingsB, 1);
       ranker.setShieldMode('single');
-      ranker.setTargets([]);
       ranker.setRecommendMoveUsage(true);
 
       const eligiblePokemon = gm.generateFilteredPokemonList(
@@ -568,6 +602,25 @@ export function generateScenarioCsvFromEngine(
         cup.include,
         cup.exclude
       );
+      const sanitizedTargetsBySpeciesId = new Map();
+      for (const ranking of gm.rankings[rankingKey]) {
+        const canonicalSpeciesId =
+          globalThis.__normalizeToChoosableSpeciesId(ranking.speciesId);
+        const recommendedMoves =
+          globalThis.__recommendedMovesBySpeciesId[canonicalSpeciesId];
+        if (!recommendedMoves) {
+          continue;
+        }
+
+        const pokemon = new Pokemon(canonicalSpeciesId, 0, battle);
+        pokemon.initialize(globalThis.__leagueCp);
+        pokemon.selectMove('fast', recommendedMoves.fastMove);
+        pokemon.selectMove('charged', recommendedMoves.chargedMove1, 0);
+        pokemon.selectMove('charged', recommendedMoves.chargedMove2, 1);
+        pokemon.resetMoves();
+        sanitizedTargetsBySpeciesId.set(canonicalSpeciesId, pokemon);
+      }
+      ranker.setTargets(Array.from(sanitizedTargetsBySpeciesId.values()));
       const selectedPokemon =
         eligiblePokemon.find((pokemon) => pokemon.speciesId === globalThis.__speciesId) ||
         new Pokemon(globalThis.__speciesId, 0, battle);
@@ -614,6 +667,7 @@ interface SimulationSyncDependencies {
   fileExists: (filePath: string) => boolean;
   readFile: (filePath: string) => Promise<string>;
   mkdir: (directoryPath: string) => Promise<void>;
+  removeDirectory: (directoryPath: string) => Promise<void>;
   writeFile: (filePath: string, content: string) => Promise<void>;
   generateScenarioCsv: (
     runtime: PvpokeVmRuntime,
@@ -621,6 +675,7 @@ interface SimulationSyncDependencies {
     speciesId: string,
     shields: number,
     recommendedMoves?: RecommendedMoveIds,
+    recommendedMovesBySpeciesId?: RecommendedMovesBySpeciesId,
   ) => string;
 }
 
@@ -631,6 +686,9 @@ const defaultDependencies: SimulationSyncDependencies = {
   mkdir: async (directoryPath: string) => {
     await fsAsync.mkdir(directoryPath, { recursive: true });
   },
+  removeDirectory: async (directoryPath: string) => {
+    await fsAsync.rm(directoryPath, { recursive: true, force: true });
+  },
   writeFile: async (filePath: string, content: string) => {
     await fsAsync.writeFile(filePath, content, 'utf8');
   },
@@ -640,6 +698,7 @@ const defaultDependencies: SimulationSyncDependencies = {
     speciesId: string,
     shields: number,
     recommendedMoves?: RecommendedMoveIds,
+    recommendedMovesBySpeciesId?: RecommendedMovesBySpeciesId,
   ) =>
     generateScenarioCsvFromEngine(
       runtime,
@@ -647,6 +706,7 @@ const defaultDependencies: SimulationSyncDependencies = {
       speciesId,
       shields,
       recommendedMoves,
+      recommendedMovesBySpeciesId,
     ),
 };
 
@@ -654,7 +714,7 @@ const defaultDependencies: SimulationSyncDependencies = {
  * Generate simulation data using local PvPoke engine logic (no browser automation).
  */
 export async function generateSimulations(
-  options: SyncRunOptions = {},
+  options: SimulationSyncOptions = {},
   dependencies: Partial<SimulationSyncDependencies> = {},
 ): Promise<SimulationsCsv> {
   const resolvedDependencies: SimulationSyncDependencies = {
@@ -730,10 +790,38 @@ export async function generateSimulations(
     const allSimulations: SimulationsCsv = [];
 
     for (const format of battleFormats) {
+      if (options.resume && options.forceRegenerateFormatIds?.has(format.id)) {
+        await resolvedDependencies.removeDirectory(
+          path.join(
+            syncConfig.outputDir,
+            'simulations',
+            `cp${format.cp}`,
+            format.cup,
+          ),
+        );
+      }
       const overallCsvPath = getOverallRankingsPath(format);
       const overallCsvText =
         await resolvedDependencies.readFile(overallCsvPath);
       const allRankings = parseRankingsCsv(overallCsvText);
+      const recommendedMovesBySpeciesId: Record<string, RecommendedMoveIds> =
+        {};
+      for (const ranking of allRankings) {
+        const speciesId = speciesByNormalizedName.get(
+          normalizeSpeciesName(ranking.Pokemon),
+        );
+        const pokemon = speciesId
+          ? pokemonBySpeciesId.get(normalizeToChoosableSpeciesId(speciesId))
+          : undefined;
+        const recommendedMoves = pokemon
+          ? getRecommendedMoveIds(ranking, pokemon, moveById)
+          : undefined;
+        if (speciesId && recommendedMoves?.chargedMove2) {
+          recommendedMovesBySpeciesId[
+            normalizeToChoosableSpeciesId(speciesId)
+          ] = recommendedMoves;
+        }
+      }
       const topPokemonNames = allRankings
         .slice(0, 150)
         .map((ranking) => ranking.Pokemon)
@@ -781,7 +869,11 @@ export async function generateSimulations(
             scenario.scenario,
           );
 
-          if (options.resume && resolvedDependencies.fileExists(outputPath)) {
+          if (
+            options.resume &&
+            !options.forceRegenerateFormatIds?.has(format.id) &&
+            resolvedDependencies.fileExists(outputPath)
+          ) {
             const existingCsv = await resolvedDependencies.readFile(outputPath);
             const existingValidation = validateSimulationsCsv(existingCsv);
             if (existingValidation.valid) {
@@ -809,6 +901,7 @@ export async function generateSimulations(
             speciesId,
             scenario.shields,
             recommendedMoves,
+            recommendedMovesBySpeciesId,
           );
           const validation = validateSimulationsCsv(csvText);
           logValidationErrors(
@@ -853,7 +946,11 @@ export async function generateSimulations(
               variant.id,
             );
 
-            if (options.resume && resolvedDependencies.fileExists(outputPath)) {
+            if (
+              options.resume &&
+              !options.forceRegenerateFormatIds?.has(format.id) &&
+              resolvedDependencies.fileExists(outputPath)
+            ) {
               const existingCsv =
                 await resolvedDependencies.readFile(outputPath);
               const existingValidation = validateSimulationsCsv(existingCsv);
@@ -879,6 +976,7 @@ export async function generateSimulations(
                 chargedMove1: variant.chargedMove1,
                 chargedMove2: variant.chargedMove2,
               },
+              recommendedMovesBySpeciesId,
             );
             const validation = validateSimulationsCsv(csvText);
             logValidationErrors(

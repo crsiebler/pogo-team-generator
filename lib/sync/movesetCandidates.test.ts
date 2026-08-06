@@ -83,6 +83,7 @@ const createEvidence = (
     cup: 'all',
     cp: 1500,
     speciesId,
+    pvpokeScorePrior: 90,
     movesetEvidence,
     fastMoves,
     chargedMoves,
@@ -103,6 +104,10 @@ const allMoves = [
   createMove('FAST_B', 'fast'),
   createMove('FAST_C', 'fast'),
   createMove('FAST_UNUSED', 'fast'),
+  createMove('ACID', 'fast', 'poison'),
+  createMove('POISON_JAB', 'fast', 'poison'),
+  createMove('PSYWAVE', 'fast', 'psychic'),
+  createMove('QUICK_ATTACK', 'fast', 'normal'),
   createMove('CHARGED_A', 'charged'),
   createMove('CHARGED_B', 'charged'),
   createMove('CHARGED_C', 'charged', 'grass'),
@@ -427,6 +432,117 @@ describe('deriveMovesetCandidates', () => {
     }
   });
 
+  it('records and replaces Muk ranked Acid without changing its score prior', () => {
+    const evidence = createEvidence(
+      [
+        createObserved('overall', ['ACID', 'CHARGED_A', 'CHARGED_B'], true),
+        createObserved('leads', ['POISON_JAB', 'CHARGED_A', 'CHARGED_B']),
+      ],
+      [createUsage('ACID', 3), createUsage('POISON_JAB', 2)],
+      [createUsage('CHARGED_A', 3), createUsage('CHARGED_B', 2)],
+      'muk',
+    );
+    const result = deriveMovesetCandidates({
+      evidence,
+      pokemonTypes: ['poison'],
+      moves: allMoves,
+      getMoveAvailability: (speciesId, moveId) =>
+        speciesId === 'muk' && moveId === 'ACID'
+          ? {
+              kind: 'excluded',
+              reason: 'ACID does not have an approved legacy policy for muk.',
+            }
+          : { kind: 'regular' },
+    });
+
+    expect(result.pvpokeScorePrior).toBe(90);
+    expect(result.rejections).toEqual([
+      {
+        sourceMoveset: {
+          fastMove: 'ACID',
+          chargedMove1: 'CHARGED_A',
+          chargedMove2: 'CHARGED_B',
+        },
+        excludedMove: 'ACID',
+        reason: 'ACID does not have an approved legacy policy for muk.',
+      },
+    ]);
+    expect(result.candidates[0]).toMatchObject({
+      fastMove: 'POISON_JAB',
+      chargedMove1: 'CHARGED_A',
+      chargedMove2: 'CHARGED_B',
+      isDefault: true,
+    });
+    expect(result.candidates.filter(({ isDefault }) => isDefault)).toHaveLength(
+      1,
+    );
+    expect(result.candidates.some(({ fastMove }) => fastMove === 'ACID')).toBe(
+      false,
+    );
+  });
+
+  it('repairs Starmie Quick Attack from deterministic usage evidence', () => {
+    const evidence = createEvidence(
+      [
+        createObserved(
+          'overall',
+          ['QUICK_ATTACK', 'CHARGED_A', 'CHARGED_B'],
+          true,
+        ),
+      ],
+      [createUsage('QUICK_ATTACK', 3), createUsage('PSYWAVE', 2)],
+      [createUsage('CHARGED_A', 3), createUsage('CHARGED_B', 2)],
+      'starmie',
+    );
+    const getMoveAvailability = (
+      speciesId: string,
+      moveId: string,
+    ): MoveAvailability =>
+      speciesId === 'starmie' && moveId === 'QUICK_ATTACK'
+        ? {
+            kind: 'excluded',
+            reason:
+              'QUICK_ATTACK does not have an approved legacy policy for starmie.',
+          }
+        : { kind: 'regular' };
+
+    const result = deriveMovesetCandidates({
+      evidence,
+      pokemonTypes: ['water', 'psychic'],
+      moves: allMoves,
+      getMoveAvailability,
+    });
+    const shuffled = deriveMovesetCandidates({
+      evidence: {
+        ...evidence,
+        movesetEvidence: [...evidence.movesetEvidence].reverse(),
+        fastMoves: [...evidence.fastMoves].reverse(),
+        chargedMoves: [...evidence.chargedMoves].reverse(),
+      },
+      pokemonTypes: ['water', 'psychic'],
+      moves: [...allMoves].reverse(),
+      getMoveAvailability,
+    });
+
+    expect(result.rejections).toEqual([
+      expect.objectContaining({
+        excludedMove: 'QUICK_ATTACK',
+        reason:
+          'QUICK_ATTACK does not have an approved legacy policy for starmie.',
+      }),
+    ]);
+    expect(result.candidates[0]).toMatchObject({
+      fastMove: 'PSYWAVE',
+      chargedMove1: 'CHARGED_A',
+      chargedMove2: 'CHARGED_B',
+      isDefault: true,
+    });
+    expect(
+      result.candidates.some(({ fastMove }) => fastMove === 'QUICK_ATTACK'),
+    ).toBe(false);
+    expect(JSON.stringify(shuffled)).toBe(JSON.stringify(result));
+  });
+
   it('retains the Golisopod pseudo-form alternative as canonical evidence', () => {
     const evidence = createEvidence(
       [
@@ -471,6 +587,47 @@ describe('deriveMovesetCandidates', () => {
         expect.objectContaining({ fastMove: 'SHADOW_CLAW', isDefault: false }),
       ]),
     );
+  });
+
+  it('does not derive canonical candidates from battle-state movesets', () => {
+    const battleStateMoveset = createObserved(
+      'leads',
+      ['FAST_B', 'CHARGED_C', 'CHARGED_D'],
+      false,
+      'testmon_battle_state',
+    );
+    const evidence = createEvidence(
+      [
+        createObserved('overall', ['FAST_A', 'CHARGED_A', 'CHARGED_B'], true),
+        {
+          ...battleStateMoveset,
+          speciesAliasKind: 'battle-state',
+        },
+      ],
+      [createUsage('FAST_A', 3), createUsage('FAST_B', 2)],
+      [
+        createUsage('CHARGED_A', 3),
+        createUsage('CHARGED_B', 2),
+        createUsage('CHARGED_C', 1),
+        createUsage('CHARGED_D', 0.5),
+      ],
+    );
+
+    const result = deriveMovesetCandidates({
+      evidence,
+      pokemonTypes: ['water'],
+      moves: allMoves,
+      getMoveAvailability: allowAvailableMoves,
+    });
+
+    expect(
+      result.candidates.every(
+        ({ fastMove, chargedMove1, chargedMove2 }) =>
+          fastMove !== 'FAST_B' &&
+          !['CHARGED_C', 'CHARGED_D'].includes(chargedMove1) &&
+          !['CHARGED_C', 'CHARGED_D'].includes(chargedMove2),
+      ),
+    ).toBe(true);
   });
 
   it('produces byte-identical output for shuffled evidence and move data', () => {

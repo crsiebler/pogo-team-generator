@@ -49,9 +49,18 @@ export interface DerivedMovesetCandidateSet {
   readonly cup: AggregatedRankingMoveEvidence['cup'];
   readonly cp: number;
   readonly speciesId: string;
+  readonly pvpokeScorePrior: number | null;
   readonly retainedFastMoves: readonly string[];
   readonly retainedChargedMoves: readonly string[];
+  readonly rejections: readonly RankedMovesetRejection[];
   readonly candidates: readonly MovesetVariant[];
+}
+
+/** One unavailable move that caused a preferred ranked moveset rejection. */
+export interface RankedMovesetRejection {
+  readonly sourceMoveset: Moveset;
+  readonly excludedMove: string;
+  readonly reason: string;
 }
 
 type CandidateKind = 'default' | 'exact' | 'substitution';
@@ -96,6 +105,36 @@ function isMovesetEligible(
     (moveId) =>
       getMoveAvailability(evidence.speciesId, moveId, evidence.formatId)
         .kind !== 'excluded',
+  );
+}
+
+function getRankedMovesetRejections(
+  source: ObservedRankingMovesetEvidence | null,
+  moveset: Moveset | null,
+  evidence: AggregatedRankingMoveEvidence,
+  getMoveAvailability: MoveAvailabilityResolver,
+): RankedMovesetRejection[] {
+  if (!moveset || source?.speciesAliasKind === 'battle-state') {
+    return [];
+  }
+
+  return [moveset.fastMove, moveset.chargedMove1, moveset.chargedMove2].flatMap(
+    (moveId): RankedMovesetRejection[] => {
+      const availability = getMoveAvailability(
+        evidence.speciesId,
+        moveId,
+        evidence.formatId,
+      );
+      return availability.kind === 'excluded'
+        ? [
+            {
+              sourceMoveset: moveset,
+              excludedMove: moveId,
+              reason: availability.reason,
+            },
+          ]
+        : [];
+    },
   );
 }
 
@@ -161,6 +200,10 @@ function getStrongestMoveSources(
       continue;
     }
 
+    if (evidence.speciesAliasKind === 'battle-state') {
+      continue;
+    }
+
     const moves =
       slot === 'fast'
         ? evidence.moveset.slice(0, 1)
@@ -188,9 +231,25 @@ function buildRankedMoveCandidates(
     evidence.movesetEvidence,
     slot,
   );
+  const battleStateMoveIds = new Set(
+    evidence.movesetEvidence.flatMap((source): readonly string[] => {
+      if (
+        source.source !== 'observed' ||
+        source.speciesAliasKind !== 'battle-state'
+      ) {
+        return [];
+      }
+      return slot === 'fast'
+        ? source.moveset.slice(0, 1)
+        : source.moveset.slice(1, 3);
+    }),
+  );
 
   for (const usage of usageEntries) {
-    if (!sourceByMoveId.has(usage.moveId)) {
+    if (
+      !sourceByMoveId.has(usage.moveId) &&
+      !battleStateMoveIds.has(usage.moveId)
+    ) {
       sourceByMoveId.set(usage.moveId, 'usage');
     }
   }
@@ -290,11 +349,9 @@ function getPreferredOverallEvidence(
 function createObservedCandidate(
   source: ObservedRankingMovesetEvidence,
   defaultSource: ObservedRankingMovesetEvidence | null,
-  evidence: AggregatedRankingMoveEvidence,
-  getMoveAvailability: MoveAvailabilityResolver,
 ): RankedCandidate | null {
   const moveset = toMoveset(source.moveset);
-  if (!moveset || !isMovesetEligible(moveset, evidence, getMoveAvailability)) {
+  if (!moveset) {
     return null;
   }
 
@@ -433,6 +490,12 @@ export function deriveMovesetCandidates(
   const defaultMoveset = defaultSource
     ? toMoveset(defaultSource.moveset)
     : null;
+  const rejections = getRankedMovesetRejections(
+    defaultSource,
+    defaultMoveset,
+    evidence,
+    getMoveAvailability,
+  );
   const fastMoveCandidates = buildRankedMoveCandidates(
     evidence,
     'fast',
@@ -473,14 +536,15 @@ export function deriveMovesetCandidates(
   for (const source of [...evidence.movesetEvidence].sort((left, right) =>
     JSON.stringify(left).localeCompare(JSON.stringify(right)),
   )) {
+    if (
+      source.source === 'observed' &&
+      source.speciesAliasKind === 'battle-state'
+    ) {
+      continue;
+    }
     const candidate =
       source.source === 'observed'
-        ? createObservedCandidate(
-            source,
-            defaultSource,
-            evidence,
-            getMoveAvailability,
-          )
+        ? createObservedCandidate(source, defaultSource)
         : createOverrideCandidate(
             source,
             defaultMoveset,
@@ -490,9 +554,11 @@ export function deriveMovesetCandidates(
     if (!candidate) {
       continue;
     }
-    exactCandidates.push(candidate);
     if (source.source === 'observed') {
       observedAnchors.push(candidate);
+    }
+    if (isMovesetEligible(candidate.variant, evidence, getMoveAvailability)) {
+      exactCandidates.push(candidate);
     }
   }
 
@@ -506,15 +572,27 @@ export function deriveMovesetCandidates(
     );
   }
 
+  const rankedCandidates = deduplicateCandidates(
+    allCandidates.filter(({ variant }) =>
+      isMovesetEligible(variant, evidence, getMoveAvailability),
+    ),
+  ).slice(0, MAX_MOVESET_CANDIDATES);
+  const defaultVariantId =
+    rankedCandidates.find(({ variant }) => variant.isDefault)?.variant.id ??
+    rankedCandidates[0]?.variant.id;
+
   return {
     formatId: evidence.formatId,
     cup: evidence.cup,
     cp: evidence.cp,
     speciesId: evidence.speciesId,
+    pvpokeScorePrior: evidence.pvpokeScorePrior,
     retainedFastMoves,
     retainedChargedMoves,
-    candidates: deduplicateCandidates(allCandidates)
-      .slice(0, MAX_MOVESET_CANDIDATES)
-      .map(({ variant }) => variant),
+    rejections,
+    candidates: rankedCandidates.map(({ variant }) => ({
+      ...variant,
+      isDefault: variant.id === defaultVariantId,
+    })),
   };
 }
