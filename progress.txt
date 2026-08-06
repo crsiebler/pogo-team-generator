@@ -10,6 +10,7 @@
 - Legacy move availability approvals are canonical species-move pairs classified as event-exclusive; exhaustive tests must map every checked-in `legacyMoves` pair to an explicit allow or exclude expectation.
 - Ranking sync validates and returns `RankingSyncResult` with unaggregated source movesets, nullable fast/charged usage, per-source alias provenance, and one optional override set per supported format; keep override path knowledge and missing-file handling inside `lib/sync/adapter.ts`.
 - Normalize ranking move usage per species entry and fast/charged slot before category weighting; retain exact observed movesets and overrides above usage-only evidence, then sort weighted evidence by category occurrence, exact Overall use, and move ID.
+- Move-mechanics filtering may reject only strictly dominated usage-only speculation; observed and override moves remain eligible, and status effects or distinct type coverage keep moves strategically incomparable until simulation.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -329,4 +330,49 @@
   - US-007 should consume aggregated evidence for mechanics filtering without replacing observed movesets or matchup simulation.
 - Next iteration start:
   - US-007 - Rank viable moves using battle mechanics
+---
+
+## 2026-08-05 21:01:34 MST - US-007
+- Implemented pure battle-mechanics evidence for fast and charged move candidates, including DPT, EPT, turns, DPE, energy, first-charge pacing, STAB, type coverage, and expected status effects; added conservative Pareto filtering that removes only strictly dominated usage speculation while retaining observed, override, bait, status, and distinct-coverage moves.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/data/moves.ts`, `lib/sync/types.ts`, `lib/sync/validation.ts`, `lib/sync/gamemaster.test.ts`, `lib/sync/moveMechanics.ts`, `lib/sync/moveMechanics.test.ts`, `progress.txt`
+- Commit message: `feat: US-007 - Rank viable moves using battle mechanics`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/moveMechanics.test.ts lib/sync/gamemaster.test.ts` (fail as expected before implementation: missing mechanics module and malformed status fields accepted)
+  - `npx vitest run lib/sync/moveMechanics.test.ts lib/sync/gamemaster.test.ts` (pass, 11 tests)
+  - `npx tsc --noEmit` before compatibility fix (fail: `getBuffDetails` exposed mutable status stages)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npx vitest run lib/sync/moveMechanics.test.ts lib/sync/gamemaster.test.ts lib/sync/rankings.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 28 tests)
+  - `npm test` (pass, 614 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/sync/moveMechanics.test.ts lib/sync/gamemaster.test.ts` after initial review tests (fail as expected: 4 tests exposed missing power, target-coherence, and validation behavior)
+  - `npx vitest run lib/sync/moveMechanics.test.ts lib/sync/gamemaster.test.ts` after review fixes (pass, 17 tests)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass after correcting one import-order error)
+  - `npx vitest run lib/sync/moveMechanics.test.ts lib/sync/gamemaster.test.ts lib/sync/rankings.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` after review fixes (pass, 34 tests)
+  - `npm test` after review fixes (pass, 620 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` after review fixes (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `test-automator`
+  - Used: `typescript-pro`; skipped `test-automator` because the standard-mode one-agent budget and focused pure-function test matrix made a second implementation advisor redundant
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `code-reviewer` and `qa-expert` re-review
+  - Findings: fixed four medium findings by preserving higher-power nukes, rejecting contradictory status targets, validating checked-in move data, and covering observed/override protection in both move slots; targeted re-review found none
+- Decisions (why):
+  - Kept mechanics in a pure sync/tooling helper instead of ranking aggregation so later candidate derivation can supply explicit observed, override, or usage provenance without coupling aggregation to Pokemon and move datasets.
+  - Required strict Pareto domination within the same move type and status signature; lower energy, status effects, and distinct type coverage remain incomparable so mechanics cannot replace matchup simulation.
+  - Required equal-or-higher one-hit power for charged domination so an efficient lower-energy move cannot mechanically remove a stronger shield-down nuke.
+  - Calculated coverage from the checked-in Pokemon GO type chart and represented `both` effects as separate expected self and opponent stage changes.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Checked-in move status data uses attack/defense tuples, string probabilities, and `OBSTRUCT`-style separate `buffsSelf` and `buffsOpponent` tuples when `buffTarget` is `both`.
+  - First-charge pacing intentionally ignores residual energy and full sequencing; simulation remains authoritative for matchup outcomes.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-007.
+  - US-008 should map aggregated exact movesets and overrides to protected mechanics candidates, then use viable usage moves only for bounded substitutions.
+- Next iteration start:
+  - US-008 - Derive bounded deterministic moveset candidates
 ---

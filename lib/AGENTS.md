@@ -27,6 +27,8 @@ Ranking sync must validate and retain each category's source moveset, nullable f
 
 Normalize ranking move usage within each species entry and fast/charged slot before applying category weights (`Overall` 3; `Leads`, `Switches`, `Closers` 2; supporting categories 1). Keep exact observed movesets and overrides at a higher evidence priority than usage-only moves, and sort aggregated evidence deterministically by weighted use, category occurrence, exact Overall use, then move ID.
 
+For move-mechanics candidate filtering, retain observed and override moves unconditionally and reject only usage-only speculation that is strictly dominated across the relevant DPT/EPT/turn or DPE/energy/pacing dimensions. Treat STAB, status-effect signatures, and distinct type coverage as separate strategic evidence rather than raw-damage penalties; matchup simulation remains authoritative.
+
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 
 Simulation sync must iterate every format from `getBattleFormats()`, loading rankings from `data/rankings/cp<cp>/<cup>/overall_rankings.csv`, and write deterministic outputs as `data/simulations/cp<cp>/<cup>/<speciesId>_<scenario>.csv`; in resume mode only reuse existing files at that exact format-specific path.

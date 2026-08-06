@@ -2,7 +2,8 @@ import path from 'path';
 import { describe, expect, it, vi } from 'vitest';
 import { syncConfig } from './config';
 import { fetchMovesData, fetchPokemonData } from './gamemaster';
-import { validatePokemonJson } from './validation';
+import { validateMovesJson, validatePokemonJson } from './validation';
+import movesData from '@/data/moves.json';
 
 const validPokemonData = {
   dex: 1,
@@ -101,6 +102,107 @@ describe('gamemaster local sync', () => {
       expect.stringContaining('"moveId": "VINE_WHIP"'),
     );
     expect(data).toHaveLength(1);
+  });
+
+  it('accepts typed self, opponent, and dual-target status effects', () => {
+    expect(
+      validateMovesJson([
+        {
+          moveId: 'OBSTRUCT',
+          name: 'Obstruct',
+          type: 'dark',
+          power: 15,
+          energy: 40,
+          energyGain: 0,
+          cooldown: 500,
+          archetype: 'Boost Spam',
+          turns: 1,
+          buffs: [0, 1],
+          buffsSelf: [0, 1],
+          buffsOpponent: [0, -1],
+          buffTarget: 'both',
+          buffApplyChance: '1',
+        },
+      ]),
+    ).toEqual({ valid: true, errors: [] });
+  });
+
+  it('validates every checked-in move status shape', () => {
+    expect(validateMovesJson(movesData)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects malformed status-effect fields', () => {
+    expect(
+      validateMovesJson([
+        {
+          moveId: 'INVALID_STATUS',
+          name: 'Invalid Status',
+          type: 'normal',
+          power: 20,
+          energy: 35,
+          energyGain: 0,
+          cooldown: 500,
+          archetype: 'Spam',
+          turns: 1,
+          buffs: [1],
+          buffsSelf: [0, Number.NaN],
+          buffsOpponent: 'none',
+          buffTarget: 'team',
+          buffApplyChance: '2',
+        },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Move 0: buffs must contain exactly two finite numbers if present',
+        'Move 0: buffsSelf must contain exactly two finite numbers if present',
+        'Move 0: buffsOpponent must contain exactly two finite numbers if present',
+        'Move 0: buffTarget must be self, opponent, or both if present',
+        'Move 0: buffApplyChance must be a numeric string from 0 to 1 if present',
+      ],
+    });
+  });
+
+  it('rejects status fields that contradict their declared target', () => {
+    const baseMove = {
+      moveId: 'INVALID_STATUS',
+      name: 'Invalid Status',
+      type: 'normal',
+      power: 20,
+      energy: 35,
+      energyGain: 0,
+      cooldown: 500,
+      archetype: 'Spam',
+      turns: 1,
+      buffApplyChance: '1',
+    };
+
+    expect(
+      validateMovesJson([
+        {
+          ...baseMove,
+          buffsSelf: [1, 0],
+          buffTarget: 'opponent',
+        },
+        {
+          ...baseMove,
+          buffs: [0, 1],
+          buffsSelf: [0, 1],
+          buffTarget: 'both',
+        },
+        {
+          ...baseMove,
+          buffs: [1, 0],
+        },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Move 0: self/opponent targets require buffs and forbid split status fields',
+        'Move 1: both target requires buffsSelf and buffsOpponent',
+        'Move 2: status fields require buffTarget',
+      ],
+    });
   });
 
   it('throws when pokemon JSON fails validation', async () => {

@@ -27,6 +27,12 @@ export interface MovesetVariant extends Moveset {
 /** Fixed moveset variants keyed by roster species id. */
 export type RosterMovesetAssignment = Readonly<Record<string, MovesetVariant>>;
 
+/** Attack and defense stage changes applied by a move. */
+export type MoveStatStages = readonly [attack: number, defense: number];
+
+/** Battler or battlers affected by a move's status effect. */
+export type MoveEffectTarget = 'self' | 'opponent' | 'both';
+
 export interface Pokemon {
   dex: number;
   speciesName: string;
@@ -71,8 +77,10 @@ export interface Move {
   cooldown: number;
   archetype: string;
   turns?: number;
-  buffs?: number[];
-  buffTarget?: string;
+  buffs?: MoveStatStages;
+  buffsSelf?: MoveStatStages;
+  buffsOpponent?: MoveStatStages;
+  buffTarget?: MoveEffectTarget;
   buffApplyChance?: string;
 }
 

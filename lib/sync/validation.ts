@@ -134,6 +134,71 @@ export function validateMovesJson(data: unknown): {
       errors.push(`Move ${index}: archetype must be string if present`);
     if (typeof m.turns !== 'number')
       errors.push(`Move ${index}: turns must be number`);
+
+    const hasValidStatStages = (value: unknown): boolean => {
+      return (
+        Array.isArray(value) &&
+        value.length === 2 &&
+        value.every(
+          (stage) => typeof stage === 'number' && Number.isFinite(stage),
+        )
+      );
+    };
+    const statusFields = [
+      ['buffs', m.buffs],
+      ['buffsSelf', m.buffsSelf],
+      ['buffsOpponent', m.buffsOpponent],
+    ] as const;
+    for (const [field, value] of statusFields) {
+      if (value !== undefined && !hasValidStatStages(value)) {
+        errors.push(
+          `Move ${index}: ${field} must contain exactly two finite numbers if present`,
+        );
+      }
+    }
+    const hasStatusFields = statusFields.some(
+      ([, value]) => value !== undefined,
+    );
+    if (hasStatusFields && m.buffTarget === undefined) {
+      errors.push(`Move ${index}: status fields require buffTarget`);
+    } else if (hasStatusFields && m.buffTarget === 'both') {
+      if (m.buffsSelf === undefined || m.buffsOpponent === undefined) {
+        errors.push(
+          `Move ${index}: both target requires buffsSelf and buffsOpponent`,
+        );
+      }
+    } else if (
+      hasStatusFields &&
+      (m.buffTarget === 'self' || m.buffTarget === 'opponent') &&
+      (m.buffs === undefined ||
+        m.buffsSelf !== undefined ||
+        m.buffsOpponent !== undefined)
+    ) {
+      errors.push(
+        `Move ${index}: self/opponent targets require buffs and forbid split status fields`,
+      );
+    }
+    if (
+      m.buffTarget !== undefined &&
+      !['self', 'opponent', 'both'].includes(m.buffTarget)
+    ) {
+      errors.push(
+        `Move ${index}: buffTarget must be self, opponent, or both if present`,
+      );
+    }
+    if (m.buffApplyChance !== undefined) {
+      const chance = Number(m.buffApplyChance);
+      if (
+        typeof m.buffApplyChance !== 'string' ||
+        !Number.isFinite(chance) ||
+        chance < 0 ||
+        chance > 1
+      ) {
+        errors.push(
+          `Move ${index}: buffApplyChance must be a numeric string from 0 to 1 if present`,
+        );
+      }
+    }
   });
 
   return { valid: errors.length === 0, errors };
