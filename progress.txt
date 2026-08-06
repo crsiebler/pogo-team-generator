@@ -23,6 +23,7 @@
 - Parse TeamRanker opponent cells with `extractSpeciesNameFromSimulationCell(...)` before canonical lookup or opponent-set comparison because PvPoke appends compact moveset tokens after species and form names.
 - Prepare every supported format manifest in memory after simulation and cross-validation succeed; production simulation generation returns validated deferred CSVs, and one rollback-capable batch stages all files, replaces manifests last, and restores every prior CSV and manifest target on failure.
 - Stale simulation cleanup runs only after successful generation publication, requires physical directories to match workspace catalog paths before enumeration and each unlink, deletes only regular strict-parser variant files omitted by all manifest candidate storage keys, and reports each successful deletion immediately; default matrices and declared inactive candidates remain untouched.
+- Runtime variant availability comes only from each format manifest's active candidates and exact scenario storage keys; validate declared completeness, finite CSV rows, and candidate/default opponent parity before caching, never scan variant filenames, and never substitute default rows for an unavailable alternate.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -867,4 +868,45 @@
   - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-015.
 - Next iteration start:
   - US-016 - Load runtime variants exclusively from manifests
+---
+
+## 2026-08-06 14:14:52 MST - US-016
+- Implemented a format-scoped manifest-backed runtime variant loader that exposes only active candidates, reads exact declared scenario storage keys, validates finite unique rows and scenario/default opponent parity before caching, and raises actionable typed errors for missing, malformed, incompatible, incomplete, or unavailable data. Aggregate and shield lookups now accept explicit variant identities, while runtime moveset selection no longer uses the hardcoded Golisopod variant map.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantSimulations.ts`, `lib/data/movesetVariantSimulations.test.ts`, `lib/data/simulations.ts`, `lib/data/simulations.test.ts`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `progress.txt`
+- Commit message: `feat: US-016 - Load runtime variants exclusively from manifests`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/genetic/moveset.test.ts` (fail as expected before implementation: manifest-backed loader module and injected active-variant boundary were missing)
+  - `npx vitest run lib/genetic/moveset.test.ts -t "until a format manifest is published"` (fail as expected before transition handling: absent checked-in manifest reached lineup moveset selection)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/data/simulations.test.ts lib/genetic/moveset.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 24 tests after implementation and transition fix)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after one import-order correction)
+  - `npm test` before transition fix (fail as expected: 714 pass, 2 manifest-missing failures in calibration and representative generation)
+  - `npm test` after transition fix (pass, 719 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/genetic/moveset.test.ts` after initial review regressions (fail as expected: 4 tests exposed unvalidated active storage, present-manifest ranked fallback, absent-species fallback, and blank numeric acceptance)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/genetic/moveset.test.ts lib/data/simulations.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` after review fixes (pass, 30 tests)
+  - Final `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, and diff checks after review fixes (pass, 723 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `backend-developer`, `architect-reviewer`
+  - Used: `architect-reviewer`; skipped `backend-developer` because one architecture-focused advisor covered the runtime loader contract, error boundary, cache scoping, and migration risk without redundant implementation guidance
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer` and `qa-expert` re-review
+  - Findings: fixed three deduplicated medium findings by validating every active candidate's declared storage before exposure, rejecting absent species and using the manifest default whenever a present manifest governs selection, and rejecting blank numeric CSV cells. Discarded the suggested exact `evaluationCounts` row equality because those counts represent the bounded top/full comparison pool while simulation CSVs intentionally retain the broader opponent matrix; initial security and targeted code/QA reviews found no remaining actionable issues.
+- Decisions (why):
+  - Added an injected loader instance instead of filesystem monkey-patching or global cache-clearing hooks so tests use deterministic repository-path fixtures and production keeps format-scoped caches.
+  - Kept unqualified default matrix loading unchanged because checked-in manifests are intentionally regenerated in US-024, but routed every explicit variant and active-candidate lookup through manifest authority.
+  - Allowed only `manifest-missing` to retain the ranked default at the high-level team moveset selector during the staged-data transition; present malformed, incompatible, incomplete, and unavailable authority still fails closed.
+  - Loaded all required scenarios and compared exact opponent identities against the candidate and its default before caching so a partial alternate cannot silently borrow or appear equivalent to default rows.
+  - Required CSV rows to contain nonblank finite numeric fields, but retained the `parsed rows >= evaluationCounts` invariant because manifest evaluation counts cover only the bounded selection pools rather than the complete simulation opponent matrix.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - `parseMovesetVariantManifestJson(...)` validates structural manifest identity, while runtime completeness must additionally validate declared files, finite unique CSV rows, scenario parity, and default-versus-alternate opponent parity.
+  - Runtime variant caches must include format, canonical species, and canonical variant identity; the same variant ID can validly resolve to different matrices in different formats.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-016.
+  - No manifests are checked in yet; US-024 must regenerate them for every format, after which runtime selection will consume active manifest candidates instead of the temporary ranked-default transition path.
+- Next iteration start:
+  - US-017 - Create immutable roster moveset assignments
 ---

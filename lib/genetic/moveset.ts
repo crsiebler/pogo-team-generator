@@ -1,20 +1,23 @@
 import type { BattleFormatId } from '@lib/data/battleFormats';
 import { getMoveByMoveId } from '@lib/data/moves';
-import {
-  getMovesetVariants,
-  selectBestMovesetVariant,
-} from '@lib/data/movesetVariants';
+import { selectBestMovesetVariant } from '@lib/data/movesetVariants';
+import { MovesetVariantSimulationDataError } from '@lib/data/movesetVariantSimulations';
 import { getPokemonBySpeciesId } from '@lib/data/pokemon';
 import {
   getOptimalMoveset,
   getRoleBasedThreatSpeciesIds,
 } from '@lib/data/rankings';
 import {
+  getActiveMovesetVariants,
   getMatchupResult,
-  getMovesetVariantShieldScenarioMatchupResult,
 } from '@lib/data/simulations';
 import { calculateEffectiveness } from '../coverage/typeChart';
-import type { Moveset, Pokemon } from '../types';
+import type {
+  Moveset,
+  MovesetVariant,
+  MovesetVariantId,
+  Pokemon,
+} from '../types';
 
 // Cache for optimal movesets to avoid recomputation
 const movesetCache = new Map<string, Moveset>();
@@ -40,6 +43,10 @@ export function getRecommendedMovesetForPokemon(
 }
 
 interface SimulationBackedMovesetDependencies {
+  getVariants: (
+    speciesId: string,
+    formatId: BattleFormatId,
+  ) => readonly MovesetVariant[];
   getThreats: (formatId: BattleFormatId) => string[];
   getDefaultMatchupRating: (
     speciesId: string,
@@ -47,7 +54,7 @@ interface SimulationBackedMovesetDependencies {
   ) => number | null;
   getVariantMatchupRating: (
     speciesId: string,
-    movesetVariantId: string,
+    movesetVariantId: MovesetVariantId,
     opponentSpeciesId: string,
   ) => number | null;
 }
@@ -60,13 +67,9 @@ export function getSimulationBackedMovesetForTeam(
   dependencies?: SimulationBackedMovesetDependencies,
 ): Moveset {
   const rankedDefault = getRecommendedMovesetForPokemon(pokemon, formatId);
-  const variants = getMovesetVariants(pokemon.speciesId, rankedDefault);
-  if (variants.length === 1) {
-    return rankedDefault;
-  }
-
   const resolvedDependencies: SimulationBackedMovesetDependencies =
     dependencies ?? {
+      getVariants: getActiveMovesetVariants,
       getThreats: (selectedFormatId) =>
         getRoleBasedThreatSpeciesIds(50, selectedFormatId),
       getDefaultMatchupRating: (speciesId, opponentSpeciesId) =>
@@ -75,42 +78,37 @@ export function getSimulationBackedMovesetForTeam(
         speciesId,
         movesetVariantId,
         opponentSpeciesId,
-      ) => {
-        const scenarios = [
-          { shields: 0 as const, weight: 0.3 },
-          { shields: 1 as const, weight: 0.5 },
-          { shields: 2 as const, weight: 0.2 },
-        ];
-        const evaluated = scenarios
-          .map(({ shields, weight }) => ({
-            rating: getMovesetVariantShieldScenarioMatchupResult(
-              speciesId,
-              movesetVariantId,
-              opponentSpeciesId,
-              shields,
-              formatId,
-            ),
-            weight,
-          }))
-          .filter(
-            (entry): entry is { rating: number; weight: number } =>
-              entry.rating !== null,
-          );
-        const totalWeight = evaluated.reduce(
-          (sum, entry) => sum + entry.weight,
-          0,
-        );
-        if (totalWeight === 0) {
-          return null;
-        }
-        return (
-          evaluated.reduce(
-            (sum, entry) => sum + entry.rating * entry.weight,
-            0,
-          ) / totalWeight
-        );
-      },
+      ) =>
+        getMatchupResult(
+          speciesId,
+          opponentSpeciesId,
+          formatId,
+          movesetVariantId,
+        ),
     };
+  let variants: readonly MovesetVariant[];
+  try {
+    variants = resolvedDependencies.getVariants(pokemon.speciesId, formatId);
+  } catch (error) {
+    if (
+      error instanceof MovesetVariantSimulationDataError &&
+      error.code === 'manifest-missing'
+    ) {
+      return rankedDefault;
+    }
+    throw error;
+  }
+  const defaultVariant = variants.find(({ isDefault }) => isDefault);
+  if (!defaultVariant) {
+    throw new Error('Active moveset variants must include a manifest default.');
+  }
+  if (variants.length === 1) {
+    return {
+      fastMove: defaultVariant.fastMove,
+      chargedMove1: defaultVariant.chargedMove1,
+      chargedMove2: defaultVariant.chargedMove2,
+    };
+  }
   const teammates = team.filter((speciesId) => speciesId !== pokemon.speciesId);
   const unresolvedThreats = resolvedDependencies
     .getThreats(formatId)
@@ -125,7 +123,11 @@ export function getSimulationBackedMovesetForTeam(
     });
 
   if (unresolvedThreats.length === 0) {
-    return rankedDefault;
+    return {
+      fastMove: defaultVariant.fastMove,
+      chargedMove1: defaultVariant.chargedMove1,
+      chargedMove2: defaultVariant.chargedMove2,
+    };
   }
 
   const selected = selectBestMovesetVariant(

@@ -62,8 +62,8 @@ describe('format-aware simulation loading', () => {
     ).toBe(352);
   });
 
-  it('loads moveset-specific matchup ratings without replacing the default', () => {
-    expect(
+  it('requires a manifest for variants without replacing default matrices', () => {
+    expect(() =>
       getMovesetVariantShieldScenarioMatchupResult(
         'golisopod',
         'shadow_claw--x_scissor--aqua_jet',
@@ -71,7 +71,12 @@ describe('format-aware simulation loading', () => {
         1,
         'battle-frontier-coupe-du-sillage',
       ),
-    ).toBe(533);
+    ).toThrowError(
+      expect.objectContaining({
+        name: 'MovesetVariantSimulationDataError',
+        code: 'manifest-missing',
+      }),
+    );
     expect(
       getShieldScenarioMatchupResult(
         'golisopod',
