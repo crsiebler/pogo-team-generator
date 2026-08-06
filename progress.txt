@@ -9,6 +9,7 @@
 - Purified Return eligibility requires an exact checked-in shadow counterpart for the canonical choosable form and the non-shadow form's finite `level25CP` at or below the format cap; never infer shadow forms from tags, family, or Dex identity.
 - Legacy move availability approvals are canonical species-move pairs classified as event-exclusive; exhaustive tests must map every checked-in `legacyMoves` pair to an explicit allow or exclude expectation.
 - Ranking sync validates and returns `RankingSyncResult` with unaggregated source movesets, nullable fast/charged usage, per-source alias provenance, and one optional override set per supported format; keep override path knowledge and missing-file handling inside `lib/sync/adapter.ts`.
+- Normalize ranking move usage per species entry and fast/charged slot before category weighting; retain exact observed movesets and overrides above usage-only evidence, then sort weighted evidence by category occurrence, exact Overall use, and move ID.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -254,4 +255,78 @@
   - US-006 should normalize usage within each source ranking entry before category weighting and consume the retained evidence without rereading vendor paths outside the adapter.
 - Next iteration start:
   - US-006 - Normalize and aggregate category move usage evidence
+---
+
+## 2026-08-05 20:39:06 MST - US-006
+- Implemented deterministic format-scoped move evidence aggregation that normalizes each species entry's fast and charged usage independently, applies the required 3/2/1 category weights, records category occurrence and exact Overall use, retains canonicalized observed movesets and overrides above usage-only evidence, and exposes the result from ranking sync.
+- Files changed: `lib/AGENTS.md`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `progress.txt`
+- Commit message: `feat: US-006 - Normalize and aggregate category move usage evidence`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/rankings.test.ts` (fail as expected before implementation: 3 aggregation tests failed because `aggregateRankingMoveEvidence` did not exist)
+  - `npx vitest run lib/sync/rankings.test.ts` (pass, 12 tests)
+  - `npx vitest run lib/sync/rankings.test.ts lib/sync/adapter.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 26 tests before the final tie-break assertion was added)
+  - `npx prettier --write "lib/AGENTS.md" "lib/sync/rankings.ts" "lib/sync/rankings.test.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 607 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/sync/rankings.test.ts` after review fix (pass, 13 tests)
+  - `npx tsc --noEmit` after review fix (pass)
+  - `npm run lint` after review fix (pass)
+  - `git diff --check` after review fix (pass)
+- Implementation agents:
+  - Recommended: `data-engineer`, `test-automator`
+  - Used: `data-engineer`; skipped `test-automator` because the standard-mode one-agent budget and focused pure-function test matrix made a second implementation advisor redundant
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: `code-reviewer` found none; the initial medium QA finding prompted a two-species scale-isolation test, but targeted re-review found that `createCategoryEvidence(...)` pre-sorts entries before the reversed fixture reaches the aggregation boundary; this remaining medium finding blocks the commit
+- Decisions (why):
+  - Kept aggregation in `lib/sync/rankings.ts` and attached it to `RankingSyncResult` so later candidate derivation consumes the exact evidence already loaded without rereading vendor paths or introducing a premature persistence format.
+  - Normalized positive usage within each entry and move slot before weighting so different source scales cannot dominate; retained `null` as unknown and explicit zero as zero for Overall tie-breaking.
+  - Assigned observed movesets and overrides priority 0 and usage-only move evidence priority 1 so future candidate derivation can seed exact evidence before speculative substitutions without implementing US-008 early.
+  - Aggregated numeric usage from each canonical preferred category entry once while retaining every alias source moveset separately, preventing alias rows from multiplying category weight while preserving pseudo-form evidence.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - The total available category weight is 12: Overall 3; Leads, Switches, and Closers 2 each; Chargers, Attackers, and Consistency 1 each.
+  - Move evidence ordering is weighted normalized use, distinct positive category occurrences, exact Overall use with unknown last, then canonical move ID.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-006.
+  - Commit blocked: reverse `RankingCategoryEvidence.entries` after normalization so the shuffled-input test proves `aggregateRankingMoveEvidence(...)` is deterministic when its direct species-entry input order changes, then rerun focused checks and review in the next iteration.
+  - US-007 should consume the aggregated usage as evidence for mechanics filtering without replacing exact observed movesets or matchup simulation.
+- Next iteration start:
+  - Resume US-006 by fixing the aggregation-boundary shuffle fixture, rerun checks, and complete review stabilization before marking the story passed.
+---
+
+## 2026-08-05 20:48:09 MST - US-006
+- Resumed the completed move-evidence aggregation candidate and corrected the determinism regression so it reverses normalized `RankingCategoryEvidence.entries` at the direct aggregation boundary instead of allowing the fixture helper to pre-sort both inputs.
+- Files changed: `lib/AGENTS.md`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-006 - Normalize and aggregate category move usage evidence`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/rankings.test.ts` (pass, 13 tests)
+  - `npx prettier --write "lib/AGENTS.md" "lib/sync/rankings.ts" "lib/sync/rankings.test.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 608 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` (pass)
+- Implementation agents:
+  - Recommended: `data-engineer`, `test-automator`
+  - Used: no new agent in this resumed iteration; the prior `data-engineer` guidance was already applied, and the remaining test-fixture correction was exact and did not justify another overlapping implementation advisor
+- Specialist review:
+  - Agents used: prior initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review for the corrected complete staged diff
+  - Findings: prior medium test-boundary finding fixed; targeted re-review found none and relied on the recorded passing quality checks
+- Decisions (why):
+  - Reversed entries only after `normalizeRankingSourceEntries(...)` returned so the assertion now proves `aggregateRankingMoveEvidence(...)` itself is deterministic for shuffled direct input.
+  - Left production code unchanged because it already sorts category entries at the aggregation boundary and the focused regression passes against that behavior.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Determinism tests must shuffle the direct input accepted by the unit under test; fixture builders that normalize or sort can otherwise mask the ordering behavior being asserted.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-006.
+  - US-007 should consume aggregated evidence for mechanics filtering without replacing observed movesets or matchup simulation.
+- Next iteration start:
+  - US-007 - Rank viable moves using battle mechanics
 ---

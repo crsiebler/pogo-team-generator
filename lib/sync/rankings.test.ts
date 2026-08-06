@@ -2,11 +2,338 @@ import path from 'path';
 import { describe, expect, it, vi } from 'vitest';
 import { RankingCategory } from './adapter';
 import {
+  aggregateRankingMoveEvidence,
   normalizeRankingSourceEntries,
   parseMovesetOverrides,
   parseRankingSourceEntries,
+  type RankingCategoryEvidence,
+  type RankingSourceEntry,
   scrapeRankings,
 } from './rankings';
+
+function createRankingSourceEntry(
+  speciesId: string,
+  fastMoves: Array<{ moveId: string; uses: number | null }>,
+  chargedMoves: Array<{ moveId: string; uses: number | null }>,
+  moveset: string[] = ['FAST_A', 'CHARGED_A', 'CHARGED_B'],
+): RankingSourceEntry {
+  return {
+    speciesId,
+    speciesName: speciesId,
+    score: 90,
+    moveset,
+    moves: { fastMoves, chargedMoves },
+  };
+}
+
+function createCategoryEvidence(
+  category: RankingCategory,
+  entries: RankingSourceEntry[],
+  formatId: RankingCategoryEvidence['formatId'] = 'great-league',
+): RankingCategoryEvidence {
+  return {
+    formatId,
+    cup: 'all',
+    cp: formatId === 'ultra-league' ? 2500 : 1500,
+    category,
+    entries: normalizeRankingSourceEntries(entries),
+  };
+}
+
+describe('ranking move evidence aggregation', () => {
+  it('normalizes each entry before applying category weights', () => {
+    const usesByCategory: Record<
+      RankingCategory,
+      Array<{ moveId: string; uses: number | null }>
+    > = {
+      overall: [
+        { moveId: 'FAST_A', uses: 900 },
+        { moveId: 'FAST_B', uses: 100 },
+      ],
+      leads: [
+        { moveId: 'FAST_A', uses: 9 },
+        { moveId: 'FAST_B', uses: 1 },
+      ],
+      switches: [
+        { moveId: 'FAST_A', uses: null },
+        { moveId: 'FAST_B', uses: 10 },
+      ],
+      closers: [
+        { moveId: 'FAST_A', uses: 0 },
+        { moveId: 'FAST_B', uses: 0 },
+      ],
+      chargers: [
+        { moveId: 'FAST_A', uses: 3 },
+        { moveId: 'FAST_B', uses: 1 },
+      ],
+      attackers: [
+        { moveId: 'FAST_A', uses: 2 },
+        { moveId: 'FAST_B', uses: 2 },
+      ],
+      consistency: [
+        { moveId: 'FAST_A', uses: 1 },
+        { moveId: 'FAST_B', uses: 3 },
+      ],
+    };
+    const categoryEvidence = Object.entries(usesByCategory).map(
+      ([category, fastMoves]) => {
+        return createCategoryEvidence(category as RankingCategory, [
+          createRankingSourceEntry('bulbasaur', fastMoves, [
+            { moveId: 'CHARGED_A', uses: 1 },
+          ]),
+        ]);
+      },
+    );
+
+    const [evidence] = aggregateRankingMoveEvidence(categoryEvidence, []);
+
+    expect(evidence.fastMoves).toEqual([
+      {
+        moveId: 'FAST_A',
+        categoryOccurrenceCount: 5,
+        weightedNormalizedUse: 6,
+        overallUse: 900,
+        evidencePriority: 1,
+      },
+      {
+        moveId: 'FAST_B',
+        categoryOccurrenceCount: 6,
+        weightedNormalizedUse: 4,
+        overallUse: 100,
+        evidencePriority: 1,
+      },
+    ]);
+    expect(evidence.chargedMoves).toEqual([
+      {
+        moveId: 'CHARGED_A',
+        categoryOccurrenceCount: 7,
+        weightedNormalizedUse: 12,
+        overallUse: 1,
+        evidencePriority: 1,
+      },
+    ]);
+  });
+
+  it('normalizes species independently of category size and entry order', () => {
+    const largeScale = createRankingSourceEntry(
+      'bulbasaur',
+      [
+        { moveId: 'FAST_A', uses: 900 },
+        { moveId: 'FAST_B', uses: 100 },
+      ],
+      [{ moveId: 'CHARGED_A', uses: 1 }],
+    );
+    const smallScale = createRankingSourceEntry(
+      'ivysaur',
+      [
+        { moveId: 'FAST_A', uses: 9 },
+        { moveId: 'FAST_B', uses: 1 },
+      ],
+      [{ moveId: 'CHARGED_A', uses: 1 }],
+    );
+
+    const overallEvidence = createCategoryEvidence('overall', [
+      largeScale,
+      smallScale,
+    ]);
+    const ordered = aggregateRankingMoveEvidence([overallEvidence], []);
+    const shuffled = aggregateRankingMoveEvidence(
+      [
+        {
+          ...overallEvidence,
+          entries: [...overallEvidence.entries].reverse(),
+        },
+      ],
+      [],
+    );
+
+    expect(JSON.stringify(shuffled)).toBe(JSON.stringify(ordered));
+    expect(
+      ordered.map(({ speciesId, fastMoves }) => ({
+        speciesId,
+        weightedUses: fastMoves.map(
+          ({ weightedNormalizedUse }) => weightedNormalizedUse,
+        ),
+      })),
+    ).toEqual([
+      { speciesId: 'bulbasaur', weightedUses: [2.7, 0.3] },
+      { speciesId: 'ivysaur', weightedUses: [2.7, 0.3] },
+    ]);
+  });
+
+  it('uses exact Overall use and lexical IDs as deterministic tie-breakers', () => {
+    const [evidence] = aggregateRankingMoveEvidence(
+      [
+        createCategoryEvidence('overall', [
+          createRankingSourceEntry(
+            'bulbasaur',
+            [
+              { moveId: 'FAST_HIGH_OVERALL', uses: 6 },
+              { moveId: 'FAST_LOW_OVERALL', uses: 4 },
+            ],
+            [
+              { moveId: 'CHARGED_WINNER', uses: 1 },
+              { moveId: 'CHARGED_ZERO', uses: 0 },
+              { moveId: 'CHARGED_UNKNOWN', uses: null },
+            ],
+          ),
+        ]),
+        createCategoryEvidence('leads', [
+          createRankingSourceEntry(
+            'bulbasaur',
+            [
+              { moveId: 'FAST_HIGH_OVERALL', uses: 35 },
+              { moveId: 'FAST_LOW_OVERALL', uses: 65 },
+            ],
+            [
+              { moveId: 'CHARGED_ZERO', uses: 1 },
+              { moveId: 'CHARGED_UNKNOWN', uses: 1 },
+            ],
+          ),
+        ]),
+      ],
+      [],
+    );
+
+    expect(evidence.fastMoves.map(({ moveId }) => moveId)).toEqual([
+      'FAST_HIGH_OVERALL',
+      'FAST_LOW_OVERALL',
+    ]);
+    expect(
+      evidence.chargedMoves.map(({ moveId, overallUse }) => ({
+        moveId,
+        overallUse,
+      })),
+    ).toEqual([
+      { moveId: 'CHARGED_WINNER', overallUse: 1 },
+      { moveId: 'CHARGED_ZERO', overallUse: 0 },
+      { moveId: 'CHARGED_UNKNOWN', overallUse: null },
+    ]);
+  });
+
+  it('keeps observed movesets and overrides ahead of usage-only evidence', () => {
+    const observed = createRankingSourceEntry(
+      'golisopodsh',
+      [{ moveId: 'SHADOW_CLAW', uses: 10 }],
+      [
+        { moveId: 'X_SCISSOR', uses: 7 },
+        { moveId: 'AQUA_JET', uses: 3 },
+      ],
+      ['SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET'],
+    );
+
+    const [evidence] = aggregateRankingMoveEvidence(
+      [createCategoryEvidence('overall', [observed])],
+      [
+        {
+          formatId: 'great-league',
+          cup: 'all',
+          cp: 1500,
+          entries: [
+            {
+              speciesId: 'golisopodsh',
+              fastMove: 'FURY_CUTTER',
+              chargedMoves: ['AQUA_JET', 'X_SCISSOR'],
+            },
+          ],
+        },
+      ],
+    );
+
+    expect(evidence.speciesId).toBe('golisopod');
+    expect(evidence.movesetEvidence).toEqual([
+      {
+        source: 'override',
+        evidencePriority: 0,
+        sourceSpeciesId: 'golisopodsh',
+        fastMove: 'FURY_CUTTER',
+        chargedMoves: ['AQUA_JET', 'X_SCISSOR'],
+        weight: null,
+      },
+      {
+        source: 'observed',
+        evidencePriority: 0,
+        category: 'overall',
+        categoryWeight: 3,
+        sourceSpeciesId: 'golisopodsh',
+        speciesAliasKind: 'moveset-variant',
+        moveset: ['SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET'],
+      },
+    ]);
+    expect(
+      evidence.movesetEvidence.every(
+        ({ evidencePriority }) =>
+          evidencePriority < evidence.fastMoves[0].evidencePriority,
+      ),
+    ).toBe(true);
+  });
+
+  it('produces byte-identical format-scoped evidence for shuffled inputs', () => {
+    const greatOverall = createCategoryEvidence('overall', [
+      createRankingSourceEntry(
+        'bulbasaur',
+        [
+          { moveId: 'FAST_B', uses: 1 },
+          { moveId: 'FAST_A', uses: 1 },
+        ],
+        [
+          { moveId: 'CHARGED_B', uses: 1 },
+          { moveId: 'CHARGED_A', uses: 1 },
+        ],
+      ),
+    ]);
+    const greatLeads = createCategoryEvidence('leads', [
+      createRankingSourceEntry(
+        'bulbasaur',
+        [
+          { moveId: 'FAST_A', uses: 1 },
+          { moveId: 'FAST_B', uses: 1 },
+        ],
+        [
+          { moveId: 'CHARGED_A', uses: 1 },
+          { moveId: 'CHARGED_B', uses: 1 },
+        ],
+      ),
+    ]);
+    const ultraOverall = createCategoryEvidence(
+      'overall',
+      [
+        createRankingSourceEntry(
+          'bulbasaur',
+          [{ moveId: 'FAST_A', uses: 1 }],
+          [{ moveId: 'CHARGED_A', uses: 1 }],
+        ),
+      ],
+      'ultra-league',
+    );
+    const overrides = [
+      {
+        formatId: 'great-league' as const,
+        cup: 'all' as const,
+        cp: 1500,
+        entries: [
+          { speciesId: 'bulbasaur', fastMove: 'FAST_B' },
+          { speciesId: 'bulbasaur', fastMove: 'FAST_A' },
+        ],
+      },
+    ];
+
+    const ordered = aggregateRankingMoveEvidence(
+      [greatOverall, greatLeads, ultraOverall],
+      overrides,
+    );
+    const shuffled = aggregateRankingMoveEvidence(
+      [ultraOverall, greatLeads, greatOverall],
+      [{ ...overrides[0], entries: [...overrides[0].entries].reverse() }],
+    );
+
+    expect(JSON.stringify(shuffled)).toBe(JSON.stringify(ordered));
+    expect(ordered.map(({ formatId }) => formatId)).toEqual([
+      'great-league',
+      'ultra-league',
+    ]);
+  });
+});
 
 describe('rankings local sync', () => {
   it('deduplicates canonical aliases deterministically without losing sources', () => {
@@ -276,6 +603,7 @@ describe('rankings local sync', () => {
     expect(result.rankings).toHaveLength(56);
     expect(result.categoryEvidence).toHaveLength(56);
     expect(result.overrideEvidence).toHaveLength(8);
+    expect(result.aggregatedEvidence).toHaveLength(8);
     expect(
       result.categoryEvidence
         .filter(({ formatId }) => formatId === 'great-league')
@@ -886,6 +1214,25 @@ describe('ranking source validation', () => {
       ),
     ).toThrowError(
       '[sync-rankings] Invalid overall ranking source entry 0: moves must be an object',
+    );
+    expect(() =>
+      parseRankingSourceEntries(
+        [
+          {
+            speciesId: 'bulbasaur',
+            speciesName: 'Bulbasaur',
+            score: 90,
+            moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
+            moves: {
+              fastMoves: [{ moveId: 'VINE_WHIP', uses: -1 }],
+              chargedMoves: [],
+            },
+          },
+        ],
+        'overall',
+      ),
+    ).toThrowError(
+      '[sync-rankings] Invalid overall ranking source entry 0: moves.fastMoves[0].uses must be a non-negative finite number or null',
     );
   });
 

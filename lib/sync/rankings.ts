@@ -86,11 +86,366 @@ export interface RankingOverrideEvidence {
   entries: readonly PvpokeMovesetOverride[];
 }
 
+/** Category weights used after per-entry move usage normalization. */
+export const RANKING_CATEGORY_WEIGHTS: Readonly<
+  Record<RankingCategory, number>
+> = {
+  overall: 3,
+  leads: 2,
+  switches: 2,
+  closers: 2,
+  chargers: 1,
+  attackers: 1,
+  consistency: 1,
+};
+
+/** Usage-only move evidence aggregated across ranking categories. */
+export interface AggregatedMoveUsageEvidence {
+  readonly moveId: string;
+  readonly categoryOccurrenceCount: number;
+  readonly weightedNormalizedUse: number;
+  readonly overallUse: number | null;
+  readonly evidencePriority: 1;
+}
+
+/** Exact moveset evidence observed in a ranking category. */
+export interface ObservedRankingMovesetEvidence {
+  readonly source: 'observed';
+  readonly evidencePriority: 0;
+  readonly category: RankingCategory;
+  readonly categoryWeight: number;
+  readonly sourceSpeciesId: string;
+  readonly speciesAliasKind: SpeciesAliasKind | null;
+  readonly moveset: readonly string[];
+}
+
+/** Explicit PvPoke moveset override evidence for one canonical species. */
+export interface OverrideRankingMovesetEvidence {
+  readonly source: 'override';
+  readonly evidencePriority: 0;
+  readonly sourceSpeciesId: string;
+  readonly fastMove?: string;
+  readonly chargedMoves?: readonly string[];
+  readonly weight: number | null;
+}
+
+/** Preferred exact-format evidence retained ahead of usage-only speculation. */
+export type RankingMovesetEvidence =
+  | ObservedRankingMovesetEvidence
+  | OverrideRankingMovesetEvidence;
+
+/** Deterministic ranking evidence for one species and battle format. */
+export interface AggregatedRankingMoveEvidence {
+  readonly formatId: BattleFormatId;
+  readonly cup: RankingCup;
+  readonly cp: number;
+  readonly speciesId: string;
+  readonly movesetEvidence: readonly RankingMovesetEvidence[];
+  readonly fastMoves: readonly AggregatedMoveUsageEvidence[];
+  readonly chargedMoves: readonly AggregatedMoveUsageEvidence[];
+}
+
 /** Ranking CSV output plus source evidence needed by later sync phases. */
 export interface RankingSyncResult {
   rankings: RankingsCsv;
   categoryEvidence: readonly RankingCategoryEvidence[];
   overrideEvidence: readonly RankingOverrideEvidence[];
+  aggregatedEvidence: readonly AggregatedRankingMoveEvidence[];
+}
+
+interface NormalizedMoveUsage {
+  readonly moveId: string;
+  readonly rawUse: number | null;
+  readonly normalizedUse: number;
+}
+
+interface MoveUsageContribution {
+  readonly category: RankingCategory;
+  readonly weightedNormalizedUse: number;
+}
+
+interface MutableAggregatedRankingMoveEvidence {
+  readonly formatId: BattleFormatId;
+  readonly cup: RankingCup;
+  readonly cp: number;
+  readonly speciesId: string;
+  readonly movesetEvidence: RankingMovesetEvidence[];
+  readonly fastMoveContributions: Map<string, MoveUsageContribution[]>;
+  readonly chargedMoveContributions: Map<string, MoveUsageContribution[]>;
+  readonly fastMoveOverallUses: Map<string, Array<number | null>>;
+  readonly chargedMoveOverallUses: Map<string, Array<number | null>>;
+}
+
+function normalizeMoveUsageEntries(
+  entries: readonly RankingMoveUsageEntry[],
+): NormalizedMoveUsage[] {
+  const usesByMoveId = new Map<string, Array<number | null>>();
+
+  for (const entry of entries) {
+    const moveId = normalizeMoveId(entry.moveId);
+    const uses = usesByMoveId.get(moveId) ?? [];
+    uses.push(entry.uses);
+    usesByMoveId.set(moveId, uses);
+  }
+
+  const groupedUses = Array.from(usesByMoveId.entries())
+    .map(([moveId, uses]) => {
+      const numericUses = uses
+        .filter((use): use is number => use !== null)
+        .sort((left, right) => left - right);
+      return {
+        moveId,
+        rawUse:
+          numericUses.length === 0
+            ? null
+            : numericUses.reduce((sum, use) => sum + use, 0),
+      };
+    })
+    .sort((left, right) => left.moveId.localeCompare(right.moveId));
+  const totalPositiveUse = groupedUses.reduce((sum, { rawUse }) => {
+    return sum + (rawUse !== null && rawUse > 0 ? rawUse : 0);
+  }, 0);
+
+  return groupedUses.map(({ moveId, rawUse }) => {
+    return {
+      moveId,
+      rawUse,
+      normalizedUse:
+        rawUse !== null && rawUse > 0 && totalPositiveUse > 0
+          ? rawUse / totalPositiveUse
+          : 0,
+    };
+  });
+}
+
+function addMoveUsage(
+  group: MutableAggregatedRankingMoveEvidence,
+  category: RankingCategory,
+  entries: readonly RankingMoveUsageEntry[],
+  slot: 'fast' | 'charged',
+): void {
+  const contributions =
+    slot === 'fast'
+      ? group.fastMoveContributions
+      : group.chargedMoveContributions;
+  const overallUses =
+    slot === 'fast' ? group.fastMoveOverallUses : group.chargedMoveOverallUses;
+
+  for (const usage of normalizeMoveUsageEntries(entries)) {
+    if (category === 'overall') {
+      const moveOverallUses = overallUses.get(usage.moveId) ?? [];
+      moveOverallUses.push(usage.rawUse);
+      overallUses.set(usage.moveId, moveOverallUses);
+    }
+
+    if (usage.normalizedUse <= 0) {
+      continue;
+    }
+
+    const moveContributions = contributions.get(usage.moveId) ?? [];
+    moveContributions.push({
+      category,
+      weightedNormalizedUse:
+        usage.normalizedUse * RANKING_CATEGORY_WEIGHTS[category],
+    });
+    contributions.set(usage.moveId, moveContributions);
+  }
+}
+
+function resolveOverallUse(
+  values: Array<number | null> | undefined,
+): number | null {
+  if (!values) {
+    return null;
+  }
+
+  const numericValues = values
+    .filter((value): value is number => value !== null)
+    .sort((left, right) => left - right);
+  return numericValues.length === 0
+    ? null
+    : numericValues.reduce((sum, value) => sum + value, 0);
+}
+
+function aggregateMoveUsage(
+  contributionsByMoveId: ReadonlyMap<string, MoveUsageContribution[]>,
+  overallUsesByMoveId: ReadonlyMap<string, Array<number | null>>,
+): AggregatedMoveUsageEvidence[] {
+  return Array.from(contributionsByMoveId.entries())
+    .map(([moveId, contributions]): AggregatedMoveUsageEvidence => {
+      const sortedContributions = [...contributions].sort((left, right) => {
+        return (
+          left.category.localeCompare(right.category) ||
+          left.weightedNormalizedUse - right.weightedNormalizedUse
+        );
+      });
+      const weightedNormalizedUse = sortedContributions.reduce(
+        (sum, contribution) => sum + contribution.weightedNormalizedUse,
+        0,
+      );
+
+      return {
+        moveId,
+        categoryOccurrenceCount: new Set(
+          sortedContributions.map(({ category }) => category),
+        ).size,
+        weightedNormalizedUse:
+          Math.round(weightedNormalizedUse * 1_000_000_000_000) /
+          1_000_000_000_000,
+        overallUse: resolveOverallUse(overallUsesByMoveId.get(moveId)),
+        evidencePriority: 1,
+      };
+    })
+    .sort((left, right) => {
+      return (
+        right.weightedNormalizedUse - left.weightedNormalizedUse ||
+        right.categoryOccurrenceCount - left.categoryOccurrenceCount ||
+        (right.overallUse ?? Number.NEGATIVE_INFINITY) -
+          (left.overallUse ?? Number.NEGATIVE_INFINITY) ||
+        left.moveId.localeCompare(right.moveId)
+      );
+    });
+}
+
+function compareMovesetEvidence(
+  left: RankingMovesetEvidence,
+  right: RankingMovesetEvidence,
+): number {
+  const sourceDifference = left.source.localeCompare(right.source);
+  if (sourceDifference !== 0) {
+    return left.source === 'override' ? -1 : 1;
+  }
+
+  return JSON.stringify(left).localeCompare(JSON.stringify(right));
+}
+
+/**
+ * Normalize and aggregate format-scoped ranking move evidence deterministically.
+ */
+export function aggregateRankingMoveEvidence(
+  categoryEvidence: readonly RankingCategoryEvidence[],
+  overrideEvidence: readonly RankingOverrideEvidence[],
+): AggregatedRankingMoveEvidence[] {
+  const groups = new Map<string, MutableAggregatedRankingMoveEvidence>();
+  const getGroup = (
+    formatId: BattleFormatId,
+    cup: RankingCup,
+    cp: number,
+    speciesId: string,
+  ): MutableAggregatedRankingMoveEvidence => {
+    const key = `${formatId}|${speciesId}`;
+    const existing = groups.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const group: MutableAggregatedRankingMoveEvidence = {
+      formatId,
+      cup,
+      cp,
+      speciesId,
+      movesetEvidence: [],
+      fastMoveContributions: new Map(),
+      chargedMoveContributions: new Map(),
+      fastMoveOverallUses: new Map(),
+      chargedMoveOverallUses: new Map(),
+    };
+    groups.set(key, group);
+    return group;
+  };
+
+  const sortedCategoryEvidence = [...categoryEvidence].sort((left, right) => {
+    return (
+      left.formatId.localeCompare(right.formatId) ||
+      left.category.localeCompare(right.category)
+    );
+  });
+  for (const evidence of sortedCategoryEvidence) {
+    const sortedEntries = [...evidence.entries].sort((left, right) => {
+      return left.speciesId.localeCompare(right.speciesId);
+    });
+    for (const entry of sortedEntries) {
+      const group = getGroup(
+        evidence.formatId,
+        evidence.cup,
+        evidence.cp,
+        entry.canonicalSpeciesId,
+      );
+      addMoveUsage(group, evidence.category, entry.moves.fastMoves, 'fast');
+      addMoveUsage(
+        group,
+        evidence.category,
+        entry.moves.chargedMoves,
+        'charged',
+      );
+
+      for (const sourceEntry of entry.sourceEntries) {
+        group.movesetEvidence.push({
+          source: 'observed',
+          evidencePriority: 0,
+          category: evidence.category,
+          categoryWeight: RANKING_CATEGORY_WEIGHTS[evidence.category],
+          sourceSpeciesId: sourceEntry.sourceSpeciesId,
+          speciesAliasKind: sourceEntry.speciesAliasKind,
+          moveset: sourceEntry.moveset.map(normalizeMoveId),
+        });
+      }
+    }
+  }
+
+  const sortedOverrideEvidence = [...overrideEvidence].sort((left, right) => {
+    return left.formatId.localeCompare(right.formatId);
+  });
+  for (const evidence of sortedOverrideEvidence) {
+    for (const override of evidence.entries) {
+      const alias = resolveSpeciesAlias(override.speciesId);
+      const group = getGroup(
+        evidence.formatId,
+        evidence.cup,
+        evidence.cp,
+        alias.canonicalSpeciesId,
+      );
+      group.movesetEvidence.push({
+        source: 'override',
+        evidencePriority: 0,
+        sourceSpeciesId: alias.sourceSpeciesId,
+        ...(override.fastMove === undefined
+          ? {}
+          : { fastMove: normalizeMoveId(override.fastMove) }),
+        ...(override.chargedMoves === undefined
+          ? {}
+          : { chargedMoves: override.chargedMoves.map(normalizeMoveId) }),
+        weight: override.weight ?? null,
+      });
+    }
+  }
+
+  return Array.from(groups.values())
+    .map((group): AggregatedRankingMoveEvidence => {
+      return {
+        formatId: group.formatId,
+        cup: group.cup,
+        cp: group.cp,
+        speciesId: group.speciesId,
+        movesetEvidence: [...group.movesetEvidence].sort(
+          compareMovesetEvidence,
+        ),
+        fastMoves: aggregateMoveUsage(
+          group.fastMoveContributions,
+          group.fastMoveOverallUses,
+        ),
+        chargedMoves: aggregateMoveUsage(
+          group.chargedMoveContributions,
+          group.chargedMoveOverallUses,
+        ),
+      };
+    })
+    .sort((left, right) => {
+      return (
+        left.formatId.localeCompare(right.formatId) ||
+        left.speciesId.localeCompare(right.speciesId)
+      );
+    });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -122,10 +477,12 @@ function validateMoveUsageEntries(
     }
     if (
       usage.uses !== null &&
-      (typeof usage.uses !== 'number' || !Number.isFinite(usage.uses))
+      (typeof usage.uses !== 'number' ||
+        !Number.isFinite(usage.uses) ||
+        usage.uses < 0)
     ) {
       throw new Error(
-        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves.${field}[${usageIndex}].uses must be a finite number or null`,
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves.${field}[${usageIndex}].uses must be a non-negative finite number or null`,
       );
     }
   });
@@ -707,10 +1064,15 @@ export async function scrapeRankings(
     console.log(
       `[sync-rankings] Successfully synced and validated ${allRankings.length} total ranking entries`,
     );
+    const aggregatedEvidence = aggregateRankingMoveEvidence(
+      categoryEvidence,
+      overrideEvidence,
+    );
     return {
       rankings: allRankings,
       categoryEvidence,
       overrideEvidence,
+      aggregatedEvidence,
     };
   } catch (error) {
     logError(error as Error, 'sync-rankings', {
