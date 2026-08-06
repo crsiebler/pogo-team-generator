@@ -8,6 +8,7 @@
 - Keep species ID, species display-name, and move spelling aliases in `lib/data/aliases.ts`; distinguish battle-state aliases from moveset variants and retain source provenance until canonical ranking deduplication finishes.
 - Purified Return eligibility requires an exact checked-in shadow counterpart for the canonical choosable form and the non-shadow form's finite `level25CP` at or below the format cap; never infer shadow forms from tags, family, or Dex identity.
 - Legacy move availability approvals are canonical species-move pairs classified as event-exclusive; exhaustive tests must map every checked-in `legacyMoves` pair to an explicit allow or exclude expectation.
+- Ranking sync validates and returns `RankingSyncResult` with unaggregated source movesets, nullable fast/charged usage, per-source alias provenance, and one optional override set per supported format; keep override path knowledge and missing-file handling inside `lib/sync/adapter.ts`.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -207,4 +208,50 @@
   - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-004.
 - Next iteration start:
   - US-005 - Preserve PvPoke ranking moveset evidence during sync
+---
+
+## 2026-08-05 20:16:20 MST - US-005
+- Preserved unaggregated Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency moveset evidence for every supported format; retained move usage and per-source alias provenance; added explicit optional PvPoke moveset override adapter reads; and kept existing ranking CSV output and runtime vendor boundaries unchanged.
+- Files changed: `lib/AGENTS.md`, `lib/sync/adapter.ts`, `lib/sync/adapter.test.ts`, `lib/sync/index.ts`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `progress.txt`
+- Commit message: `feat: US-005 - Preserve PvPoke ranking moveset evidence during sync`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/adapter.test.ts lib/sync/rankings.test.ts` (fail as expected before implementation: 5 tests failed for missing override adapter methods, evidence result, and source provenance)
+  - `npx vitest run lib/sync/adapter.test.ts lib/sync/rankings.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 20 tests)
+  - `npx prettier --write "lib/AGENTS.md" "lib/sync/adapter.ts" "lib/sync/adapter.test.ts" "lib/sync/index.ts" "lib/sync/rankings.ts" "lib/sync/rankings.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 600 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/sync/rankings.test.ts` after initial review tests (fail as expected: 3 tests failed before nullable usage and source-shape validation support)
+  - `npx vitest run lib/sync/adapter.test.ts lib/sync/rankings.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` after review fixes (pass, 23 tests)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 603 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` after review fixes (pass)
+- Implementation agents:
+  - Recommended: `data-engineer`, `typescript-pro`
+  - Used: `data-engineer`; skipped `typescript-pro` because one domain advisor was sufficient for the focused sync contract and the existing TypeScript patterns were clear
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `code-reviewer` and `qa-expert` re-review
+  - Findings: fixed four medium findings by modeling nullable source usage, validating ranking and override structures, asserting distinct evidence for every format/category pair, and covering moveset-variant pseudo-form provenance; targeted re-review found no blocking issues and one deferred low optional-stats validation improvement
+- Decisions (why):
+  - Returned source evidence alongside CSV rows in one `RankingSyncResult` so later aggregation can consume the exact data already read without duplicate I/O or premature US-006 weighting.
+  - Retained raw category usage and explicit overrides without aggregating or normalizing their weights because normalization and weighting belong to US-006.
+  - Treated missing override files as empty optional evidence because several supported PvPoke cups have no override file, while malformed present files remain errors.
+  - Read each format's overrides once before its seven categories to avoid redundant source reads.
+  - Validated source evidence before type assertions so malformed but syntactically valid vendor JSON cannot enter `RankingSyncResult` under an unsound contract.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - PvPoke ranking move usage lives under `moves.fastMoves` and `moves.chargedMoves`; explicit overrides live separately under `src/data/overrides/{cup}/{cp}.json` and may omit either fast or charged moves.
+  - PvPoke can emit `uses: null` for move usage, including checked-in Aegislash data, so downstream aggregation must handle null explicitly rather than assuming every usage value is numeric.
+  - `RankingSyncResult.categoryEvidence` preserves every original alias source entry after canonical grouping, including its source species id, canonical species id, alias kind, moveset, and usage arrays.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-005.
+  - A targeted reviewer noted that optional ranking `stats` members are not structurally validated; this low-severity hardening is deferred because it does not affect retained moveset evidence or the US-005 acceptance criteria.
+  - US-006 should normalize usage within each source ranking entry before category weighting and consume the retained evidence without rereading vendor paths outside the adapter.
+- Next iteration start:
+  - US-006 - Normalize and aggregate category move usage evidence
 ---

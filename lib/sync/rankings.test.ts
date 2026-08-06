@@ -1,7 +1,12 @@
 import path from 'path';
 import { describe, expect, it, vi } from 'vitest';
 import { RankingCategory } from './adapter';
-import { normalizeRankingSourceEntries, scrapeRankings } from './rankings';
+import {
+  normalizeRankingSourceEntries,
+  parseMovesetOverrides,
+  parseRankingSourceEntries,
+  scrapeRankings,
+} from './rankings';
 
 describe('rankings local sync', () => {
   it('deduplicates canonical aliases deterministically without losing sources', () => {
@@ -10,12 +15,39 @@ describe('rankings local sync', () => {
       speciesName: 'Morpeko (Full Belly)',
       score: 90,
       moveset: ['THUNDER_SHOCK', 'AURA_WHEEL_ELECTRIC', 'PSYCHIC_FANGS'],
+      moves: {
+        fastMoves: [{ moveId: 'THUNDER_SHOCK', uses: 70 }],
+        chargedMoves: [
+          { moveId: 'AURA_WHEEL_ELECTRIC', uses: 60 },
+          { moveId: 'PSYCHIC_FANGS', uses: 40 },
+        ],
+      },
     };
     const battleState = {
       speciesId: 'morpeko_hangry',
       speciesName: 'Morpeko (Hangry)',
       score: 90,
       moveset: ['THUNDER_SHOCK', 'AURA_WHEEL_DARK', 'PSYCHIC_FANGS'],
+      moves: {
+        fastMoves: [{ moveId: 'THUNDER_SHOCK', uses: 65 }],
+        chargedMoves: [
+          { moveId: 'AURA_WHEEL_DARK', uses: 55 },
+          { moveId: 'PSYCHIC_FANGS', uses: null },
+        ],
+      },
+    };
+    const movesetVariant = {
+      speciesId: 'golisopodsh',
+      speciesName: 'Golisopod',
+      score: 85,
+      moveset: ['SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET'],
+      moves: {
+        fastMoves: [{ moveId: 'SHADOW_CLAW', uses: 50 }],
+        chargedMoves: [
+          { moveId: 'X_SCISSOR', uses: 35 },
+          { moveId: 'AQUA_JET', uses: 15 },
+        ],
+      },
     };
 
     const canonicalFirst = normalizeRankingSourceEntries([
@@ -33,9 +65,36 @@ describe('rankings local sync', () => {
       sourceSpeciesId: 'morpeko_full_belly',
       speciesAliasKind: null,
     });
-    expect(
-      canonicalFirst[0].sourceEntries.map((entry) => entry.speciesId),
-    ).toEqual(['morpeko_full_belly', 'morpeko_hangry']);
+    expect(canonicalFirst[0].sourceEntries).toMatchObject([
+      {
+        sourceSpeciesId: 'morpeko_full_belly',
+        canonicalSpeciesId: 'morpeko_full_belly',
+        speciesAliasKind: null,
+        moves: canonical.moves,
+      },
+      {
+        sourceSpeciesId: 'morpeko_hangry',
+        canonicalSpeciesId: 'morpeko_full_belly',
+        speciesAliasKind: 'battle-state',
+        moves: battleState.moves,
+      },
+    ]);
+
+    const normalizedMovesetVariant = normalizeRankingSourceEntries([
+      movesetVariant,
+    ])[0];
+    expect(normalizedMovesetVariant).toMatchObject({
+      speciesId: 'golisopod',
+      sourceEntries: [
+        {
+          sourceSpeciesId: 'golisopodsh',
+          canonicalSpeciesId: 'golisopod',
+          speciesAliasKind: 'moveset-variant',
+          moveset: ['SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET'],
+          moves: movesetVariant.moves,
+        },
+      ],
+    });
   });
 
   it('converts local ranking JSON into validated CSV outputs', async () => {
@@ -68,6 +127,10 @@ describe('rankings local sync', () => {
             speciesName: string;
             score: number;
             moveset: string[];
+            moves: {
+              fastMoves: Array<{ moveId: string; uses: number }>;
+              chargedMoves: Array<{ moveId: string; uses: number }>;
+            };
             stats: { atk: number; def: number; hp: number };
           }>
         >
@@ -83,6 +146,16 @@ describe('rankings local sync', () => {
             cup === 'coupedusillage',
         ).toBe(true);
         expect(categories).toContain(category);
+        const cupIndex = [
+          'all',
+          'weather',
+          'copadiluvio',
+          'tsuki',
+          'ligaultra',
+          'coupedusillage',
+        ].indexOf(cup ?? 'all');
+        const usageSentinel =
+          categories.indexOf(category) * 100_000 + leagueCp * 10 + cupIndex;
 
         return [
           {
@@ -90,18 +163,41 @@ describe('rankings local sync', () => {
             speciesName: 'Bulbasaur',
             score: 90.5,
             moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
+            moves: {
+              fastMoves: [{ moveId: 'VINE_WHIP', uses: usageSentinel }],
+              chargedMoves: [
+                { moveId: 'POWER_WHIP', uses: 60 },
+                { moveId: 'SLUDGE_BOMB', uses: 40 },
+              ],
+            },
             stats: { atk: 102.1, def: 99.5, hp: 122 },
           },
         ];
       });
 
     const writeFile = vi.fn().mockResolvedValue(undefined);
+    const readMovesetOverridesJson = vi
+      .fn()
+      .mockImplementation(async (leagueCp: number, cup?: string) => {
+        expect([1500, 2500, 10000]).toContain(leagueCp);
+        return cup === 'weather'
+          ? [
+              {
+                speciesId: 'bulbasaur',
+                fastMove: 'VINE_WHIP',
+                chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+                weight: 2,
+              },
+            ]
+          : [];
+      });
 
-    const rankings = await scrapeRankings(
+    const result = await scrapeRankings(
       { sourcePath: '/source/pvpoke' },
       {
         createAdapter: () => ({
           readRankingJson,
+          readMovesetOverridesJson,
         }),
         readFile: async (filePath: string) => {
           if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
@@ -176,8 +272,31 @@ describe('rankings local sync', () => {
     );
 
     expect(readRankingJson).toHaveBeenCalledTimes(56);
-    expect(rankings).toHaveLength(56);
-    expect(rankings[0]).toMatchObject({
+    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(8);
+    expect(result.rankings).toHaveLength(56);
+    expect(result.categoryEvidence).toHaveLength(56);
+    expect(result.overrideEvidence).toHaveLength(8);
+    expect(
+      result.categoryEvidence
+        .filter(({ formatId }) => formatId === 'great-league')
+        .map(({ category }) => category),
+    ).toEqual(categories);
+    for (const evidence of result.categoryEvidence) {
+      const cupIndex = [
+        'all',
+        'weather',
+        'copadiluvio',
+        'tsuki',
+        'ligaultra',
+        'coupedusillage',
+      ].indexOf(evidence.cup);
+      expect(evidence.entries[0].moves.fastMoves[0].uses).toBe(
+        categories.indexOf(evidence.category) * 100_000 +
+          evidence.cp * 10 +
+          cupIndex,
+      );
+    }
+    expect(result.rankings[0]).toMatchObject({
       Pokemon: 'Bulbasaur',
       Score: 90.5,
       Dex: 1,
@@ -190,6 +309,42 @@ describe('rankings local sync', () => {
       'Charged Move 2 Count': 7,
       'Buddy Distance': 3,
       'Charged Move Cost': 10000,
+    });
+    expect(result.categoryEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          formatId: 'great-league',
+          cp: 1500,
+          cup: 'all',
+          category: 'overall',
+          entries: [
+            expect.objectContaining({
+              speciesId: 'bulbasaur',
+              moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
+              moves: {
+                fastMoves: [{ moveId: 'VINE_WHIP', uses: 15_000 }],
+                chargedMoves: [
+                  { moveId: 'POWER_WHIP', uses: 60 },
+                  { moveId: 'SLUDGE_BOMB', uses: 40 },
+                ],
+              },
+            }),
+          ],
+        }),
+      ]),
+    );
+    expect(result.overrideEvidence).toContainEqual({
+      formatId: 'weather-cup',
+      cp: 1500,
+      cup: 'weather',
+      entries: [
+        {
+          speciesId: 'bulbasaur',
+          fastMove: 'VINE_WHIP',
+          chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+          weight: 2,
+        },
+      ],
     });
 
     expect(writeFile).toHaveBeenCalledTimes(56);
@@ -275,12 +430,20 @@ describe('rankings local sync', () => {
         { sourcePath: '/source/pvpoke' },
         {
           createAdapter: () => ({
+            readMovesetOverridesJson: async () => [],
             readRankingJson: async () => [
               {
                 speciesId: 'bulbasaur',
                 speciesName: 'Bulbasaur',
                 score: 90.5,
                 moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
+                moves: {
+                  fastMoves: [{ moveId: 'VINE_WHIP', uses: 10 }],
+                  chargedMoves: [
+                    { moveId: 'POWER_WHIP', uses: 8 },
+                    { moveId: 'SLUDGE_BOMB', uses: 2 },
+                  ],
+                },
                 stats: { atk: 102.1, def: 99.5, hp: 122 },
               },
             ],
@@ -349,16 +512,24 @@ describe('rankings local sync', () => {
   it('skips ranking entries missing from gamemaster pokemon data', async () => {
     const writeFile = vi.fn().mockResolvedValue(undefined);
 
-    const rankings = await scrapeRankings(
+    const result = await scrapeRankings(
       { sourcePath: '/source/pvpoke' },
       {
         createAdapter: () => ({
+          readMovesetOverridesJson: async () => [],
           readRankingJson: async () => [
             {
               speciesId: 'bulbasaur',
               speciesName: 'Bulbasaur',
               score: 90.5,
               moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
+              moves: {
+                fastMoves: [{ moveId: 'VINE_WHIP', uses: 10 }],
+                chargedMoves: [
+                  { moveId: 'POWER_WHIP', uses: 8 },
+                  { moveId: 'SLUDGE_BOMB', uses: 2 },
+                ],
+              },
               stats: { atk: 102.1, def: 99.5, hp: 122 },
             },
             {
@@ -366,6 +537,13 @@ describe('rankings local sync', () => {
               speciesName: 'Kingler (Shadow)',
               score: 88.4,
               moveset: ['BUBBLE', 'CRABHAMMER', 'X_SCISSOR'],
+              moves: {
+                fastMoves: [{ moveId: 'BUBBLE', uses: 10 }],
+                chargedMoves: [
+                  { moveId: 'CRABHAMMER', uses: 7 },
+                  { moveId: 'X_SCISSOR', uses: 3 },
+                ],
+              },
               stats: { atk: 100, def: 100, hp: 100 },
             },
           ],
@@ -442,8 +620,10 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(rankings).toHaveLength(56);
-    expect(rankings.every((entry) => entry.Pokemon === 'Bulbasaur')).toBe(true);
+    expect(result.rankings).toHaveLength(56);
+    expect(
+      result.rankings.every((entry) => entry.Pokemon === 'Bulbasaur'),
+    ).toBe(true);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'tsuki', 'overall_rankings.csv'),
       expect.not.stringContaining('Kingler (Shadow)'),
@@ -453,16 +633,24 @@ describe('rankings local sync', () => {
   it('normalizes non-choosable battle forms to choosable forms', async () => {
     const writeFile = vi.fn().mockResolvedValue(undefined);
 
-    const rankings = await scrapeRankings(
+    const result = await scrapeRankings(
       { sourcePath: '/source/pvpoke' },
       {
         createAdapter: () => ({
+          readMovesetOverridesJson: async () => [],
           readRankingJson: async () => [
             {
               speciesId: 'morpeko_hangry',
               speciesName: 'Morpeko (Hangry)',
               score: 88.1,
               moveset: ['BITE', 'AURA_WHEEL_DARK', 'OUTRAGE'],
+              moves: {
+                fastMoves: [{ moveId: 'BITE', uses: 30 }],
+                chargedMoves: [
+                  { moveId: 'AURA_WHEEL_DARK', uses: 20 },
+                  { moveId: 'OUTRAGE', uses: 10 },
+                ],
+              },
               stats: { atk: 100, def: 100, hp: 100 },
             },
             {
@@ -470,6 +658,13 @@ describe('rankings local sync', () => {
               speciesName: 'Aegislash (Blade)',
               score: 87.2,
               moveset: ['PSYCHO_CUT', 'SHADOW_BALL', 'GYRO_BALL'],
+              moves: {
+                fastMoves: [{ moveId: 'PSYCHO_CUT', uses: 25 }],
+                chargedMoves: [
+                  { moveId: 'SHADOW_BALL', uses: 15 },
+                  { moveId: 'GYRO_BALL', uses: 5 },
+                ],
+              },
               stats: { atk: 100, def: 100, hp: 100 },
             },
           ],
@@ -600,18 +795,49 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(rankings.some((entry) => entry.Pokemon === 'Morpeko (Hangry)')).toBe(
-      false,
-    );
     expect(
-      rankings.some((entry) => entry.Pokemon === 'Aegislash (Blade)'),
+      result.rankings.some((entry) => entry.Pokemon === 'Morpeko (Hangry)'),
     ).toBe(false);
     expect(
-      rankings.some((entry) => entry.Pokemon === 'Morpeko (Full Belly)'),
+      result.rankings.some((entry) => entry.Pokemon === 'Aegislash (Blade)'),
+    ).toBe(false);
+    expect(
+      result.rankings.some((entry) => entry.Pokemon === 'Morpeko (Full Belly)'),
     ).toBe(true);
     expect(
-      rankings.some((entry) => entry.Pokemon === 'Aegislash (Shield)'),
+      result.rankings.some((entry) => entry.Pokemon === 'Aegislash (Shield)'),
     ).toBe(true);
+    expect(
+      result.categoryEvidence.find(
+        ({ formatId, category }) =>
+          formatId === 'great-league' && category === 'overall',
+      )?.entries,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          speciesId: 'morpeko_full_belly',
+          sourceEntries: [
+            expect.objectContaining({
+              sourceSpeciesId: 'morpeko_hangry',
+              canonicalSpeciesId: 'morpeko_full_belly',
+              speciesAliasKind: 'battle-state',
+              moveset: ['BITE', 'AURA_WHEEL_DARK', 'OUTRAGE'],
+            }),
+          ],
+        }),
+        expect.objectContaining({
+          speciesId: 'aegislash_shield',
+          sourceEntries: [
+            expect.objectContaining({
+              sourceSpeciesId: 'aegislash_blade',
+              canonicalSpeciesId: 'aegislash_shield',
+              speciesAliasKind: 'battle-state',
+              moveset: ['PSYCHO_CUT', 'SHADOW_BALL', 'GYRO_BALL'],
+            }),
+          ],
+        }),
+      ]),
+    );
 
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
@@ -620,6 +846,60 @@ describe('rankings local sync', () => {
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.not.stringContaining('Morpeko (Hangry)'),
+    );
+  });
+});
+
+describe('ranking source validation', () => {
+  it('accepts nullable move usage from PvPoke source evidence', () => {
+    expect(
+      parseRankingSourceEntries(
+        [
+          {
+            speciesId: 'aegislash_shield',
+            speciesName: 'Aegislash (Shield)',
+            score: 80,
+            moveset: ['PSYCHO_CUT', 'SHADOW_BALL', 'GYRO_BALL'],
+            moves: {
+              fastMoves: [{ moveId: 'PSYCHO_CUT', uses: 10 }],
+              chargedMoves: [{ moveId: 'SHADOW_BALL', uses: null }],
+            },
+          },
+        ],
+        'overall',
+      )[0].moves.chargedMoves[0].uses,
+    ).toBeNull();
+  });
+
+  it('rejects malformed ranking move evidence', () => {
+    expect(() =>
+      parseRankingSourceEntries(
+        [
+          {
+            speciesId: 'bulbasaur',
+            speciesName: 'Bulbasaur',
+            score: 90,
+            moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB'],
+          },
+        ],
+        'overall',
+      ),
+    ).toThrowError(
+      '[sync-rankings] Invalid overall ranking source entry 0: moves must be an object',
+    );
+  });
+
+  it('rejects malformed explicit moveset overrides', () => {
+    expect(() => parseMovesetOverrides({}, 'cp1500 all')).toThrowError(
+      '[sync-rankings] Invalid cp1500 all moveset overrides: expected an array',
+    );
+    expect(() =>
+      parseMovesetOverrides(
+        [{ speciesId: 'bulbasaur', chargedMoves: ['POWER_WHIP', 42] }],
+        'cp1500 all',
+      ),
+    ).toThrowError(
+      '[sync-rankings] Invalid cp1500 all moveset override 0: chargedMoves must contain strings',
     );
   });
 });

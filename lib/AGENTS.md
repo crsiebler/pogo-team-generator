@@ -23,6 +23,8 @@ For legacy move availability, key approvals by canonical species-move pair and c
 
 When syncing rankings, iterate all supported battle formats from `lib/data/battleFormats.ts` and read local PvPoke ranking JSON via adapter `readRankingJson(category, cp, cup)` from `src/data/rankings/<cup>/<category>/rankings-<cp>.json` before writing deterministic outputs under `data/rankings/cp<cp>/<cup>/<category>_rankings.csv`.
 
+Ranking sync must validate and retain each category's source moveset, nullable fast/charged move usage, and per-source alias provenance in `RankingSyncResult` until candidate evidence is derived. Read optional explicit overrides only through adapter `readMovesetOverridesJson(cp, cup)`; a missing override file means no overrides, while malformed present JSON remains an error.
+
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 
 Simulation sync must iterate every format from `getBattleFormats()`, loading rankings from `data/rankings/cp<cp>/<cup>/overall_rankings.csv`, and write deterministic outputs as `data/simulations/cp<cp>/<cup>/<speciesId>_<scenario>.csv`; in resume mode only reuse existing files at that exact format-specific path.

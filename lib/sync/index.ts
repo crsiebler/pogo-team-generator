@@ -81,7 +81,7 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
 
     // Scrape rankings
     console.log('[sync] Phase 2: Syncing rankings data');
-    const rankings = await scrapeRankings({
+    const rankingSyncResult = await scrapeRankings({
       ...options,
       sourcePath: sourceResolution.sourcePath,
     });
@@ -102,7 +102,7 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     // Cross-validate data consistency
     console.log('[sync] Phase 4: Cross-validating data consistency');
     const crossValidation = crossValidateRankingsVsPokemon(
-      rankings,
+      rankingSyncResult.rankings,
       pokemonData,
     );
     logValidationErrors(
@@ -122,7 +122,7 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     console.log('[sync] Pipeline completed successfully');
     const simMessage = `Simulations: ${simulations.length}`;
     console.log(
-      `[sync] Results: Pokemon: ${pokemonData.length}, Moves: ${movesData.length}, Rankings: ${rankings.length}, ${simMessage}`,
+      `[sync] Results: Pokemon: ${pokemonData.length}, Moves: ${movesData.length}, Rankings: ${rankingSyncResult.rankings.length}, ${simMessage}`,
     );
   } catch (error) {
     logError(error as Error, 'sync-pipeline');

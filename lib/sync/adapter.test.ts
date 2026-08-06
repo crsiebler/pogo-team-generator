@@ -48,6 +48,12 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('consistency', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/consistency/rankings-1500.json',
     );
+    expect(adapter.getMovesetOverridesFilePath(1500)).toBe(
+      '/source/pvpoke/src/data/overrides/all/1500.json',
+    );
+    expect(adapter.getMovesetOverridesFilePath(1500, 'weather')).toBe(
+      '/source/pvpoke/src/data/overrides/weather/1500.json',
+    );
   });
 
   it('reads and parses JSON through the adapter boundary', async () => {
@@ -95,6 +101,60 @@ describe('createPvpokeAdapter', () => {
     >('overall', 1500, 'tsuki');
 
     expect(rankings).toEqual([{ speciesName: 'Wigglytuff' }]);
+  });
+
+  it('reads explicit moveset overrides when present', async () => {
+    const sourcePath = '/source/pvpoke';
+    const overrideRelativePath = 'src/data/overrides/weather/1500.json';
+    const overrideAbsolutePath = path.join(sourcePath, overrideRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === overrideAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== overrideAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesId":"abomasnow","fastMove":"POWDER_SNOW"}]';
+      },
+    });
+
+    const overrides = await adapter.readMovesetOverridesJson<{
+      speciesId: string;
+      fastMove: string;
+    }>(1500, 'weather');
+
+    expect(overrides).toEqual([
+      { speciesId: 'abomasnow', fastMove: 'POWDER_SNOW' },
+    ]);
+  });
+
+  it('returns no explicit moveset overrides when the optional file is absent', async () => {
+    const adapter = createPvpokeAdapter({
+      sourcePath: '/source/pvpoke',
+      pathExists: () => false,
+      readFile: async () => {
+        throw new Error('missing optional overrides must not be read');
+      },
+    });
+
+    await expect(
+      adapter.readMovesetOverridesJson<unknown>(1500, 'tsuki'),
+    ).resolves.toEqual([]);
+  });
+
+  it('rejects malformed explicit moveset override JSON', async () => {
+    const adapter = createPvpokeAdapter({
+      sourcePath: '/source/pvpoke',
+      pathExists: () => true,
+      readFile: async () => '{not-json}',
+    });
+
+    await expect(
+      adapter.readMovesetOverridesJson<unknown>(1500),
+    ).rejects.toThrowError(
+      /\[pvpoke-adapter\] Invalid JSON in src\/data\/overrides\/all\/1500\.json:/,
+    );
   });
 
   it('rejects removed cup-specific ranking paths', () => {

@@ -16,7 +16,16 @@ import {
   resolveSpeciesAlias,
   type SpeciesAliasKind,
 } from '@/lib/data/aliases';
-import { getBattleFormats } from '@/lib/data/battleFormats';
+import {
+  getBattleFormats,
+  type BattleFormatId,
+} from '@/lib/data/battleFormats';
+
+/** One move-usage value retained from a PvPoke ranking entry. */
+export interface RankingMoveUsageEntry {
+  moveId: string;
+  uses: number | null;
+}
 
 /** One unmodified ranking record read from PvPoke source data. */
 export interface RankingSourceEntry {
@@ -24,6 +33,10 @@ export interface RankingSourceEntry {
   speciesName: string;
   score: number;
   moveset: string[];
+  moves: {
+    fastMoves: RankingMoveUsageEntry[];
+    chargedMoves: RankingMoveUsageEntry[];
+  };
   stats?: {
     atk?: number;
     def?: number;
@@ -31,12 +44,201 @@ export interface RankingSourceEntry {
   };
 }
 
+/** Source ranking evidence annotated before canonical species deduplication. */
+export interface RankingSourceEvidenceEntry extends RankingSourceEntry {
+  sourceSpeciesId: string;
+  sourceSpeciesName: string;
+  canonicalSpeciesId: string;
+  speciesAliasKind: SpeciesAliasKind | null;
+}
+
 /** Canonical ranking record retaining every source alias record. */
 export interface NormalizedRankingSourceEntry extends RankingSourceEntry {
   sourceSpeciesId: string;
   sourceSpeciesName: string;
+  canonicalSpeciesId: string;
   speciesAliasKind: SpeciesAliasKind | null;
-  sourceEntries: readonly RankingSourceEntry[];
+  sourceEntries: readonly RankingSourceEvidenceEntry[];
+}
+
+/** One explicit PvPoke moveset override retained for candidate derivation. */
+export interface PvpokeMovesetOverride {
+  speciesId: string;
+  fastMove?: string;
+  chargedMoves?: string[];
+  weight?: number;
+}
+
+/** Unaggregated category evidence for one supported battle format. */
+export interface RankingCategoryEvidence {
+  formatId: BattleFormatId;
+  cup: RankingCup;
+  cp: number;
+  category: RankingCategory;
+  entries: readonly NormalizedRankingSourceEntry[];
+}
+
+/** Explicit moveset overrides for one supported battle format. */
+export interface RankingOverrideEvidence {
+  formatId: BattleFormatId;
+  cup: RankingCup;
+  cp: number;
+  entries: readonly PvpokeMovesetOverride[];
+}
+
+/** Ranking CSV output plus source evidence needed by later sync phases. */
+export interface RankingSyncResult {
+  rankings: RankingsCsv;
+  categoryEvidence: readonly RankingCategoryEvidence[];
+  overrideEvidence: readonly RankingOverrideEvidence[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function validateMoveUsageEntries(
+  value: unknown,
+  context: string,
+  entryIndex: number,
+  field: 'fastMoves' | 'chargedMoves',
+): void {
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves.${field} must be an array`,
+    );
+  }
+
+  value.forEach((usage, usageIndex) => {
+    if (!isRecord(usage)) {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves.${field}[${usageIndex}] must be an object`,
+      );
+    }
+    if (typeof usage.moveId !== 'string') {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves.${field}[${usageIndex}].moveId must be a string`,
+      );
+    }
+    if (
+      usage.uses !== null &&
+      (typeof usage.uses !== 'number' || !Number.isFinite(usage.uses))
+    ) {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves.${field}[${usageIndex}].uses must be a finite number or null`,
+      );
+    }
+  });
+}
+
+/**
+ * Validate parsed PvPoke ranking JSON before exposing typed source evidence.
+ */
+export function parseRankingSourceEntries(
+  data: unknown,
+  context: string,
+): RankingSourceEntry[] {
+  if (!Array.isArray(data)) {
+    throw new Error(
+      `[sync-rankings] Invalid ${context} ranking source: expected an array`,
+    );
+  }
+
+  data.forEach((entry, entryIndex) => {
+    if (!isRecord(entry)) {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: expected an object`,
+      );
+    }
+    if (typeof entry.speciesId !== 'string') {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: speciesId must be a string`,
+      );
+    }
+    if (typeof entry.speciesName !== 'string') {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: speciesName must be a string`,
+      );
+    }
+    if (typeof entry.score !== 'number' || !Number.isFinite(entry.score)) {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: score must be a finite number`,
+      );
+    }
+    if (
+      !Array.isArray(entry.moveset) ||
+      entry.moveset.some((moveId) => typeof moveId !== 'string')
+    ) {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moveset must contain strings`,
+      );
+    }
+    if (!isRecord(entry.moves)) {
+      throw new Error(
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moves must be an object`,
+      );
+    }
+
+    validateMoveUsageEntries(
+      entry.moves.fastMoves,
+      context,
+      entryIndex,
+      'fastMoves',
+    );
+    validateMoveUsageEntries(
+      entry.moves.chargedMoves,
+      context,
+      entryIndex,
+      'chargedMoves',
+    );
+  });
+
+  return data as RankingSourceEntry[];
+}
+
+/**
+ * Validate parsed PvPoke moveset overrides before exposing typed evidence.
+ */
+export function parseMovesetOverrides(
+  data: unknown,
+  context: string,
+): PvpokeMovesetOverride[] {
+  if (!Array.isArray(data)) {
+    throw new Error(
+      `[sync-rankings] Invalid ${context} moveset overrides: expected an array`,
+    );
+  }
+
+  data.forEach((override, overrideIndex) => {
+    const prefix = `[sync-rankings] Invalid ${context} moveset override ${overrideIndex}`;
+    if (!isRecord(override)) {
+      throw new Error(`${prefix}: expected an object`);
+    }
+    if (typeof override.speciesId !== 'string') {
+      throw new Error(`${prefix}: speciesId must be a string`);
+    }
+    if (
+      override.fastMove !== undefined &&
+      typeof override.fastMove !== 'string'
+    ) {
+      throw new Error(`${prefix}: fastMove must be a string if present`);
+    }
+    if (
+      override.chargedMoves !== undefined &&
+      (!Array.isArray(override.chargedMoves) ||
+        override.chargedMoves.some((moveId) => typeof moveId !== 'string'))
+    ) {
+      throw new Error(`${prefix}: chargedMoves must contain strings`);
+    }
+    if (
+      override.weight !== undefined &&
+      (typeof override.weight !== 'number' || !Number.isFinite(override.weight))
+    ) {
+      throw new Error(`${prefix}: weight must be a finite number if present`);
+    }
+  });
+
+  return data as PvpokeMovesetOverride[];
 }
 
 function compareRankingSourceEntries(
@@ -59,6 +261,12 @@ function compareRankingSourceEntries(
       entry.speciesId,
       entry.speciesName,
       entry.moveset.join(','),
+      entry.moves.fastMoves
+        .map(({ moveId, uses }) => `${moveId}:${uses}`)
+        .join(','),
+      entry.moves.chargedMoves
+        .map(({ moveId, uses }) => `${moveId}:${uses}`)
+        .join(','),
       entry.stats?.atk ?? '',
       entry.stats?.def ?? '',
       entry.stats?.hp ?? '',
@@ -81,14 +289,23 @@ export function normalizeRankingSourceEntries(
     const alias = resolveSpeciesAlias(entry.speciesId);
     const canonicalSpeciesId = alias.canonicalSpeciesId;
     const existing = bySpeciesId.get(canonicalSpeciesId);
-    const sourceEntries = [...(existing?.sourceEntries ?? []), entry].sort(
-      compareRankingSourceEntries,
-    );
+    const evidenceEntry: RankingSourceEvidenceEntry = {
+      ...entry,
+      sourceSpeciesId: alias.sourceSpeciesId,
+      sourceSpeciesName: entry.speciesName,
+      canonicalSpeciesId,
+      speciesAliasKind: alias.aliasKind,
+    };
+    const sourceEntries = [
+      ...(existing?.sourceEntries ?? []),
+      evidenceEntry,
+    ].sort(compareRankingSourceEntries);
     const preferredEntry = sourceEntries[0];
     const preferredAlias = resolveSpeciesAlias(preferredEntry.speciesId);
     const normalizedEntry: NormalizedRankingSourceEntry = {
       ...preferredEntry,
       speciesId: canonicalSpeciesId,
+      canonicalSpeciesId,
       sourceSpeciesId: preferredAlias.sourceSpeciesId,
       sourceSpeciesName: preferredEntry.speciesName,
       speciesAliasKind: preferredAlias.aliasKind,
@@ -112,6 +329,10 @@ interface RankingSyncDependencies {
       leagueCp: number,
       cup?: RankingCup,
     ): Promise<unknown>;
+    readMovesetOverridesJson<T>(
+      leagueCp: number,
+      cup?: RankingCup,
+    ): Promise<T[]>;
   };
   readFile: (filePath: string) => Promise<string>;
   mkdir: (directoryPath: string) => Promise<void>;
@@ -347,7 +568,7 @@ function isSkippableMissingPokemonError(error: unknown): boolean {
 export async function scrapeRankings(
   options: SyncRunOptions = {},
   dependencies: Partial<RankingSyncDependencies> = {},
-): Promise<RankingsCsv> {
+): Promise<RankingSyncResult> {
   const sourcePath = options.sourcePath;
   if (!sourcePath) {
     throw new Error(
@@ -362,6 +583,8 @@ export async function scrapeRankings(
 
   try {
     const allRankings: RankingsCsv = [];
+    const categoryEvidence: RankingCategoryEvidence[] = [];
+    const overrideEvidence: RankingOverrideEvidence[] = [];
 
     const pokemonDataPath = path.join(syncConfig.outputDir, 'pokemon.json');
     const movesDataPath = path.join(syncConfig.outputDir, 'moves.json');
@@ -385,25 +608,47 @@ export async function scrapeRankings(
     const adapter = resolvedDependencies.createAdapter(sourcePath);
     const rankingFormats = getBattleFormats().map((format) => {
       return {
+        formatId: format.id,
         cup: format.cup,
         cp: format.cp,
       };
     });
 
     for (const format of rankingFormats) {
+      const overrideSource = await adapter.readMovesetOverridesJson<unknown>(
+        format.cp,
+        format.cup,
+      );
+      const overrides = parseMovesetOverrides(
+        overrideSource,
+        `cp${format.cp} ${format.cup}`,
+      );
+      overrideEvidence.push({
+        formatId: format.formatId,
+        cup: format.cup,
+        cp: format.cp,
+        entries: overrides,
+      });
+
       for (const category of RANKING_CATEGORIES) {
         console.log(
           `[sync-rankings] Syncing cp${format.cp} ${format.cup} ${category} rankings from local JSON`,
         );
 
-        const sourceRankings = (await adapter.readRankingJson(
-          category,
-          format.cp,
-          format.cup,
-        )) as RankingSourceEntry[];
+        const sourceRankings = parseRankingSourceEntries(
+          await adapter.readRankingJson(category, format.cp, format.cup),
+          `cp${format.cp} ${format.cup} ${category}`,
+        );
 
         const normalizedRankings =
           normalizeRankingSourceEntries(sourceRankings);
+        categoryEvidence.push({
+          formatId: format.formatId,
+          cup: format.cup,
+          cp: format.cp,
+          category,
+          entries: normalizedRankings,
+        });
 
         const convertedEntries: RankingEntry[] = [];
 
@@ -462,7 +707,11 @@ export async function scrapeRankings(
     console.log(
       `[sync-rankings] Successfully synced and validated ${allRankings.length} total ranking entries`,
     );
-    return allRankings;
+    return {
+      rankings: allRankings,
+      categoryEvidence,
+      overrideEvidence,
+    };
   } catch (error) {
     logError(error as Error, 'sync-rankings', {
       sourcePath,
