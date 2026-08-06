@@ -19,6 +19,8 @@ Keep species ID, species display-name, and move spelling aliases centralized in 
 
 For purified Return eligibility, canonicalize to the choosable form, require an exact checked-in `${canonicalSpeciesId}_shadow` record, and require the non-shadow form's finite `level25CP` to fit the format cap. Do not infer shadow availability from tags, family, or shared Dex identity.
 
+For legacy move availability, key approvals by canonical species-move pair and classify approved pairs as event-exclusive. Keep an exhaustive data-backed test expectation for every checked-in `legacyMoves` pair so new synced pairs require an explicit policy decision.
+
 When syncing rankings, iterate all supported battle formats from `lib/data/battleFormats.ts` and read local PvPoke ranking JSON via adapter `readRankingJson(category, cp, cup)` from `src/data/rankings/<cup>/<category>/rankings-<cp>.json` before writing deterministic outputs under `data/rankings/cp<cp>/<cup>/<category>_rankings.csv`.
 
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.

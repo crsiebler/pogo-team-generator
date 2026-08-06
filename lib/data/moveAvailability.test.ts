@@ -2,7 +2,32 @@ import { describe, expect, it } from 'vitest';
 import {
   getMoveAvailability,
   getMovesetAvailability,
+  isApprovedLegacyMove,
 } from './moveAvailability';
+import { filterPokemon } from './pokemon';
+
+const LEGACY_MOVE_EXPECTATIONS = [
+  ['grimer', 'ACID', 'excluded'],
+  ['muk', 'ACID', 'excluded'],
+  ['koffing', 'ACID', 'excluded'],
+  ['weezing', 'ACID', 'excluded'],
+  ['chansey', 'PSYBEAM', 'excluded'],
+  ['staryu', 'QUICK_ATTACK', 'excluded'],
+  ['starmie', 'QUICK_ATTACK', 'excluded'],
+  ['porygon', 'QUICK_ATTACK', 'excluded'],
+  ['mewtwo', 'COUNTER', 'eventExclusive'],
+  ['mewtwo_mega_x', 'COUNTER', 'eventExclusive'],
+  ['mewtwo_mega_y', 'COUNTER', 'eventExclusive'],
+  ['pichu', 'QUICK_ATTACK', 'excluded'],
+  ['delibird', 'QUICK_ATTACK', 'excluded'],
+  ['kirlia', 'DRAINING_KISS', 'excluded'],
+  ['dialga_origin', 'ROAR_OF_TIME', 'eventExclusive'],
+  ['palkia_origin', 'SPACIAL_REND', 'eventExclusive'],
+  ['kyurem_black', 'FREEZE_SHOCK', 'eventExclusive'],
+  ['kyurem_white', 'ICE_BURN', 'eventExclusive'],
+  ['zacian_crowned_sword', 'BEHEMOTH_BLADE', 'eventExclusive'],
+  ['zamazenta_crowned_shield', 'BEHEMOTH_BASH', 'eventExclusive'],
+] as const;
 
 describe('getMoveAvailability', () => {
   it('allows regular moves without an acquisition requirement', () => {
@@ -73,11 +98,64 @@ describe('getMoveAvailability', () => {
     });
   });
 
-  it('keeps legacy policy excluded until a species-move pair is approved', () => {
-    expect(getMoveAvailability('grimer', 'ACID', 'great-league')).toEqual({
+  it.each(LEGACY_MOVE_EXPECTATIONS)(
+    'classifies checked-in legacy pair %s/%s as %s',
+    (speciesId, moveId, expectedKind) => {
+      const availability = getMoveAvailability(
+        speciesId,
+        moveId,
+        'master-league',
+      );
+
+      expect(availability.kind).toBe(expectedKind);
+      if (expectedKind === 'excluded') {
+        expect(availability).toEqual({
+          kind: 'excluded',
+          reason: `${moveId} does not have an approved legacy policy for ${speciesId}.`,
+        });
+      } else {
+        expect(availability).toEqual({ kind: 'eventExclusive' });
+      }
+    },
+  );
+
+  it('requires an explicit expectation for every checked-in legacy pair', () => {
+    const checkedInPairs = filterPokemon(
+      (pokemon) => pokemon.legacyMoves !== undefined,
+    )
+      .flatMap((pokemon) =>
+        (pokemon.legacyMoves ?? []).map(
+          (moveId) => `${pokemon.speciesId}/${moveId}`,
+        ),
+      )
+      .sort();
+    const expectedPairs = LEGACY_MOVE_EXPECTATIONS.map(
+      ([speciesId, moveId]) => `${speciesId}/${moveId}`,
+    ).sort();
+
+    expect(expectedPairs).toEqual(checkedInPairs);
+    expect(new Set(expectedPairs).size).toBe(expectedPairs.length);
+  });
+
+  it('does not approve a legacy move for another form of its species', () => {
+    expect(
+      getMoveAvailability('mewtwo_armored', 'COUNTER', 'master-league'),
+    ).toEqual({
       kind: 'excluded',
-      reason: 'ACID does not have an approved legacy policy for grimer.',
+      reason: 'COUNTER is unavailable for mewtwo_armored.',
     });
+    expect(
+      getMoveAvailability('dialga', 'ROAR_OF_TIME', 'master-league'),
+    ).toEqual({
+      kind: 'excluded',
+      reason: 'ROAR_OF_TIME is unavailable for dialga.',
+    });
+  });
+
+  it('does not approve a legacy move ID without its species pair', () => {
+    expect(isApprovedLegacyMove('mewtwo', 'COUNTER')).toBe(true);
+    expect(isApprovedLegacyMove('mewtwo_armored', 'COUNTER')).toBe(false);
+    expect(isApprovedLegacyMove('dialga', 'ROAR_OF_TIME')).toBe(false);
   });
 });
 

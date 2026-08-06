@@ -7,6 +7,7 @@
 - Initialize `vendor/pvpoke` with `git submodule update --init vendor/pvpoke` before running tests that validate bundled PvPoke source data.
 - Keep species ID, species display-name, and move spelling aliases in `lib/data/aliases.ts`; distinguish battle-state aliases from moveset variants and retain source provenance until canonical ranking deduplication finishes.
 - Purified Return eligibility requires an exact checked-in shadow counterpart for the canonical choosable form and the non-shadow form's finite `level25CP` at or below the format cap; never infer shadow forms from tags, family, or Dex identity.
+- Legacy move availability approvals are canonical species-move pairs classified as event-exclusive; exhaustive tests must map every checked-in `legacyMoves` pair to an explicit allow or exclude expectation.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -166,4 +167,44 @@
   - US-004 must replace the provisional legacy exclusion branch with explicit species-move-pair policy.
 - Next iteration start:
   - US-004 - Implement species-scoped legacy move policy
+---
+
+## 2026-08-05 19:59:34 MST - US-004
+- Implemented a canonical species-move-pair legacy policy that allows the approved Counter and signature moves as event-exclusive while retaining explicit exclusions for accidental historical moves; added exhaustive coverage for all 20 checked-in legacy pairs and nearby-form rejection regressions.
+- Files changed: `lib/AGENTS.md`, `lib/data/moveAvailability.ts`, `lib/data/moveAvailability.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-004 - Implement species-scoped legacy move policy`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/moveAvailability.test.ts` (fail as expected before implementation: 9 approved pairs remained excluded)
+  - `npx vitest run lib/data/moveAvailability.test.ts` (pass, 32 tests)
+  - `npx prettier --write "lib/data/moveAvailability.ts" "lib/data/moveAvailability.test.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 596 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/data/moveAvailability.test.ts` after review fix (pass, 33 tests)
+  - `npx tsc --noEmit` after review fix (pass)
+  - `npm run lint` after review fix (pass)
+  - `npm test` after review fix (pass, 597 tests)
+  - `npm run build` after review fix (pass; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `test-automator`
+  - Used: `typescript-pro`; skipped `test-automator` because the standard-mode one-agent budget and focused pure-function test matrix made a second overlapping advisor unnecessary
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: `code-reviewer` found none; fixed one medium QA finding by directly testing the pure pair predicate against the same approved move IDs on unapproved species/forms; targeted re-review found none
+- Decisions (why):
+  - Classified approved legacy moves as `eventExclusive` because they are intentionally available but require special acquisition, unlike ordinary or Elite moves.
+  - Keyed the allowlist by canonical species and move together so approval of Counter or a signature move cannot leak to another form that shares the move family.
+  - Compared the explicit test table with checked-in Pokemon data so newly synced legacy pairs fail tests until maintainers choose allow or exclude behavior.
+  - Exported the pure pair predicate with TSDoc so species scoping can be tested independently of the checked-in `legacyMoves` branch and dataset composition.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - The checked-in Pokemon data currently contains 20 legacy pairs: 9 approved event-exclusive pairs and 11 excluded historical pairs.
+  - Legacy policy executes after Elite classification because supplemental move lists can overlap ordinary movepools and acquisition categories.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-004.
+- Next iteration start:
+  - US-005 - Preserve PvPoke ranking moveset evidence during sync
 ---

@@ -3,6 +3,31 @@ import { getBattleFormatById, type BattleFormatId } from './battleFormats';
 import { getPokemonBySpeciesId } from './pokemon';
 import type { MoveAvailability, Moveset } from '@/lib/types';
 
+type LegacyMovePair = readonly [speciesId: string, moveId: string];
+
+const APPROVED_LEGACY_MOVE_PAIRS = [
+  ['mewtwo', 'COUNTER'],
+  ['mewtwo_mega_x', 'COUNTER'],
+  ['mewtwo_mega_y', 'COUNTER'],
+  ['dialga_origin', 'ROAR_OF_TIME'],
+  ['palkia_origin', 'SPACIAL_REND'],
+  ['kyurem_black', 'FREEZE_SHOCK'],
+  ['kyurem_white', 'ICE_BURN'],
+  ['zacian_crowned_sword', 'BEHEMOTH_BLADE'],
+  ['zamazenta_crowned_shield', 'BEHEMOTH_BASH'],
+] as const satisfies readonly LegacyMovePair[];
+
+/** Return whether a canonical species-move pair has approved legacy access. */
+export function isApprovedLegacyMove(
+  speciesId: string,
+  moveId: string,
+): boolean {
+  return APPROVED_LEGACY_MOVE_PAIRS.some(
+    ([approvedSpeciesId, approvedMoveId]) =>
+      speciesId === approvedSpeciesId && moveId === approvedMoveId,
+  );
+}
+
 /** Availability classifications for every move slot in a moveset. */
 export type MovesetAvailability = Readonly<{
   [Slot in keyof Moveset]: MoveAvailability;
@@ -93,6 +118,10 @@ export function getMoveAvailability(
   }
 
   if (pokemon.legacyMoves?.includes(canonicalMoveId)) {
+    if (isApprovedLegacyMove(canonicalSpeciesId, canonicalMoveId)) {
+      return { kind: 'eventExclusive' };
+    }
+
     return {
       kind: 'excluded',
       reason: `${canonicalMoveId} does not have an approved legacy policy for ${canonicalSpeciesId}.`,
