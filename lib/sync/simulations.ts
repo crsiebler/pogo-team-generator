@@ -22,8 +22,19 @@ import {
   MOVESET_VARIANT_SCENARIOS,
 } from '@/lib/data/movesetVariantManifest';
 import { getMovesetVariantId } from '@/lib/data/movesetVariants';
+import { extractSpeciesNameFromSimulationCell } from '@/lib/data/simulations';
 import type { DerivedMovesetCandidateSet } from '@/lib/sync/movesetCandidates';
-import type { MovesetVariant } from '@/lib/types';
+import {
+  selectActiveMovesetVariants,
+  type ActiveMovesetVariantSelection,
+  type MovesetVariantSimulationEvidence,
+  type MovesetVariantSimulationMatchup,
+} from '@/lib/sync/movesetVariantManifest';
+import type {
+  MovesetVariant,
+  MovesetVariantId,
+  ShieldScenarioKey,
+} from '@/lib/types';
 
 interface RankingsCsvEntry {
   Pokemon: string;
@@ -82,11 +93,25 @@ const CANONICAL_SPECIES_ID_PATTERN = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
 const CANONICAL_MOVE_ID_PATTERN = /^[A-Z0-9]+(?:_[A-Z0-9]+)*$/;
 const CANONICAL_VARIANT_ID_PATTERN =
   /^[a-z0-9]+(?:_[a-z0-9]+)*(?:--[a-z0-9]+(?:_[a-z0-9]+)*){2}$/;
+const TOP_META_OPPONENT_LIMIT = 50;
+const FULL_META_OPPONENT_LIMIT = 100;
 
 const SIMULATION_SCENARIOS = MOVESET_VARIANT_SCENARIOS.map((scenario) => ({
   scenario,
   shields: Number.parseInt(scenario, 10),
 }));
+
+/** Active variant selection for one format and canonical species. */
+export interface SimulationVariantSelection extends ActiveMovesetVariantSelection {
+  readonly formatId: BattleFormatId;
+  readonly speciesId: string;
+}
+
+/** Generated flat simulation rows plus manifest-ready variant selections. */
+export interface SimulationSyncResult {
+  readonly simulations: SimulationsCsv;
+  readonly variantSelections: readonly SimulationVariantSelection[];
+}
 
 function getCandidateSetKey(
   formatId: BattleFormatId,
@@ -405,7 +430,11 @@ function getSimulationOpponentKeys(csvText: string): readonly string[] {
     .trim()
     .split('\n')
     .slice(1)
-    .map((line) => normalizeSpeciesName(line.split(',')[0]?.trim() ?? ''))
+    .map((line) =>
+      normalizeSpeciesName(
+        extractSpeciesNameFromSimulationCell(line.split(',')[0]?.trim() ?? ''),
+      ),
+    )
     .sort((left, right) => left.localeCompare(right));
 }
 
@@ -420,6 +449,64 @@ function hasMatchingOpponentSet(
       (opponentKey, index) => opponentKey === expectedOpponentKeys[index],
     )
   );
+}
+
+function getOrderedOpponentIds(
+  rankings: readonly RankingsCsvEntry[],
+  speciesByNormalizedName: ReadonlyMap<string, string>,
+  limit: number,
+): readonly string[] {
+  const opponentIds: string[] = [];
+  const seen = new Set<string>();
+  for (const ranking of rankings) {
+    const speciesId = speciesByNormalizedName.get(
+      normalizeSpeciesName(ranking.Pokemon),
+    );
+    if (!speciesId || seen.has(speciesId)) {
+      continue;
+    }
+    seen.add(speciesId);
+    opponentIds.push(speciesId);
+    if (opponentIds.length === limit) {
+      break;
+    }
+  }
+  return opponentIds;
+}
+
+function parseSimulationEvidence(
+  csvText: string,
+  speciesByNormalizedName: ReadonlyMap<string, string>,
+): readonly MovesetVariantSimulationMatchup[] {
+  const lines = csvText.trim().split('\n');
+  const headers = lines[0]?.split(',').map((header) => header.trim()) ?? [];
+  const opponentIndex = headers.findIndex(
+    (header) => header === 'Pokemon' || header === 'Opponent',
+  );
+  const ratingIndex = headers.indexOf('Battle Rating');
+  if (opponentIndex < 0 || ratingIndex < 0) {
+    return [];
+  }
+
+  return lines.slice(1).flatMap((line): MovesetVariantSimulationMatchup[] => {
+    const values = line.split(',');
+    const opponentId = speciesByNormalizedName.get(
+      normalizeSpeciesName(
+        extractSpeciesNameFromSimulationCell(
+          values[opponentIndex]?.trim() ?? '',
+        ),
+      ),
+    );
+    if (!opponentId) {
+      return [];
+    }
+    return [
+      {
+        opponentId,
+        rating: Number(values[ratingIndex]?.trim()),
+      },
+    ];
+  });
 }
 
 /**
@@ -883,7 +970,7 @@ const defaultDependencies: SimulationSyncDependencies = {
 export async function generateSimulations(
   options: SimulationSyncOptions = {},
   dependencies: Partial<SimulationSyncDependencies> = {},
-): Promise<SimulationsCsv> {
+): Promise<SimulationSyncResult> {
   const resolvedDependencies: SimulationSyncDependencies = {
     ...defaultDependencies,
     ...dependencies,
@@ -981,6 +1068,7 @@ export async function generateSimulations(
     });
 
     const allSimulations: SimulationsCsv = [];
+    const variantSelections: SimulationVariantSelection[] = [];
 
     for (const format of battleFormats) {
       if (options.resume && options.forceRegenerateFormatIds?.has(format.id)) {
@@ -1026,6 +1114,16 @@ export async function generateSimulations(
           );
           return speciesId ? [normalizeToChoosableSpeciesId(speciesId)] : [];
         });
+      const topMetaOpponentIds = getOrderedOpponentIds(
+        allRankings,
+        speciesByNormalizedName,
+        TOP_META_OPPONENT_LIMIT,
+      );
+      const fullMetaOpponentIds = getOrderedOpponentIds(
+        allRankings,
+        speciesByNormalizedName,
+        FULL_META_OPPONENT_LIMIT,
+      );
 
       console.log(
         `[sync-simulations] Generating ${format.label} simulations from ${overallCsvPath}`,
@@ -1071,6 +1169,16 @@ export async function generateSimulations(
           string,
           readonly string[]
         >();
+        const simulationEvidenceByVariantId = new Map<
+          MovesetVariantId,
+          Partial<
+            Record<
+              ShieldScenarioKey,
+              readonly MovesetVariantSimulationMatchup[]
+            >
+          >
+        >();
+        const defaultCandidate = candidates.find(({ isDefault }) => isDefault);
 
         for (const scenario of SIMULATION_SCENARIOS) {
           const outputPath = getSimulationOutputPath(
@@ -1102,6 +1210,18 @@ export async function generateSimulations(
                   scenario.scenario,
                 ),
               );
+              if (defaultCandidate) {
+                const evidence =
+                  simulationEvidenceByVariantId.get(defaultCandidate.id) ?? {};
+                evidence[scenario.scenario] = parseSimulationEvidence(
+                  existingCsv,
+                  speciesByNormalizedName,
+                );
+                simulationEvidenceByVariantId.set(
+                  defaultCandidate.id,
+                  evidence,
+                );
+              }
               console.log(
                 `[sync-simulations] Reused ${displayName} ${scenario.scenario} ${format.label} from existing CSV`,
               );
@@ -1139,6 +1259,15 @@ export async function generateSimulations(
           allSimulations.push(
             ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
           );
+          if (defaultCandidate) {
+            const evidence =
+              simulationEvidenceByVariantId.get(defaultCandidate.id) ?? {};
+            evidence[scenario.scenario] = parseSimulationEvidence(
+              csvText,
+              speciesByNormalizedName,
+            );
+            simulationEvidenceByVariantId.set(defaultCandidate.id, evidence);
+          }
         }
 
         const alternateVariants = candidates.filter(
@@ -1175,6 +1304,13 @@ export async function generateSimulations(
                     scenario.scenario,
                   ),
                 );
+                const evidence =
+                  simulationEvidenceByVariantId.get(variant.id) ?? {};
+                evidence[scenario.scenario] = parseSimulationEvidence(
+                  existingCsv,
+                  speciesByNormalizedName,
+                );
+                simulationEvidenceByVariantId.set(variant.id, evidence);
                 continue;
               }
             }
@@ -1215,7 +1351,42 @@ export async function generateSimulations(
             allSimulations.push(
               ...parseSimulationsCsv(csvText, displayName, scenario.scenario),
             );
+            const evidence =
+              simulationEvidenceByVariantId.get(variant.id) ?? {};
+            evidence[scenario.scenario] = parseSimulationEvidence(
+              csvText,
+              speciesByNormalizedName,
+            );
+            simulationEvidenceByVariantId.set(variant.id, evidence);
           }
+        }
+
+        if (defaultCandidate) {
+          const selection = selectActiveMovesetVariants({
+            candidates: candidates.map(
+              (candidate): MovesetVariantSimulationEvidence => {
+                const evidence = simulationEvidenceByVariantId.get(
+                  candidate.id,
+                );
+                return {
+                  id: candidate.id,
+                  isDefault: candidate.isDefault,
+                  scenarios: {
+                    '0-0': evidence?.['0-0'] ?? null,
+                    '1-1': evidence?.['1-1'] ?? null,
+                    '2-2': evidence?.['2-2'] ?? null,
+                  },
+                };
+              },
+            ),
+            topMetaOpponentIds,
+            fullMetaOpponentIds,
+          });
+          variantSelections.push({
+            formatId: format.id,
+            speciesId,
+            ...selection,
+          });
         }
       }
     }
@@ -1223,7 +1394,7 @@ export async function generateSimulations(
     console.log(
       `[sync-simulations] Successfully generated and validated ${allSimulations.length} total simulation entries`,
     );
-    return allSimulations;
+    return { simulations: allSimulations, variantSelections };
   } catch (error) {
     logError(error as Error, 'sync-simulations');
     throw error;

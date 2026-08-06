@@ -109,14 +109,8 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     });
 
     // Generate simulations
-    let simulations: {
-      Pokemon: string;
-      Opponent: string;
-      'Battle Rating': number;
-      'Shield Scenario': string;
-    }[] = [];
     console.log('[sync] Phase 3: Generating simulation data');
-    simulations = await generateSimulations({
+    const simulationResult = await generateSimulations({
       ...options,
       sourcePath: sourceResolution.sourcePath,
       forceRegenerateFormatIds: new Set(
@@ -148,7 +142,7 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
     console.log('[sync] Wrote sync-metadata.json');
 
     console.log('[sync] Pipeline completed successfully');
-    const simMessage = `Simulations: ${simulations.length}`;
+    const simMessage = `Simulations: ${simulationResult.simulations.length}`;
     console.log(
       `[sync] Results: Pokemon: ${pokemonData.length}, Moves: ${movesData.length}, Rankings: ${rankingSyncResult.rankings.length}, ${simMessage}`,
     );

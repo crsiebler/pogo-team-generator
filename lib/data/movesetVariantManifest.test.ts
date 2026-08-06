@@ -212,6 +212,49 @@ describe('moveset variant manifest validation', () => {
     );
   });
 
+  it('rejects active alternatives without complete evaluated scenarios', () => {
+    const incomplete = createMutableManifest();
+    incomplete.species[0]!.candidates.push(
+      createMutableCandidate({
+        id: 'shadow_claw--x_scissor--aqua_jet',
+        fastMove: 'SHADOW_CLAW',
+        isDefault: false,
+        active: true,
+        completeness: { '0-0': true, '1-1': true, '2-2': false },
+      }),
+    );
+    const unevaluated = createMutableManifest();
+    unevaluated.species[0]!.candidates.push(
+      createMutableCandidate({
+        id: 'shadow_claw--x_scissor--aqua_jet',
+        fastMove: 'SHADOW_CLAW',
+        isDefault: false,
+        active: true,
+        evaluationCounts: { '0-0': 100, '1-1': 0, '2-2': 100 },
+      }),
+    );
+    const sparse = createMutableManifest();
+    sparse.species[0]!.candidates.push(
+      createMutableCandidate({
+        id: 'shadow_claw--x_scissor--aqua_jet',
+        fastMove: 'SHADOW_CLAW',
+        isDefault: false,
+        active: true,
+        evaluationCounts: { '0-0': 1, '1-1': 1, '2-2': 1 },
+      }),
+    );
+
+    expect(() => parseMovesetVariantManifest(incomplete)).toThrowError(
+      /active alternatives must be complete/i,
+    );
+    expect(() => parseMovesetVariantManifest(unevaluated)).toThrowError(
+      /active alternatives must have positive evaluation counts/i,
+    );
+    expect(() => parseMovesetVariantManifest(sparse)).toThrowError(
+      /active alternatives must match the default evaluation counts/i,
+    );
+  });
+
   it('rejects species records that exceed their declared derivation caps', () => {
     const manifest = createMutableManifest();
     manifest.metadata.derivationSettings.maxCandidatesPerSpecies = 1;
@@ -470,6 +513,23 @@ describe('moveset variant manifest validation', () => {
 
     expect(() => parseMovesetVariantManifest(manifest)).toThrowError(
       /declared active variant cap of 1/i,
+    );
+  });
+
+  it('rejects active alternatives when the default is incomplete', () => {
+    const manifest = createMutableManifest();
+    manifest.species[0]!.candidates[0]!.completeness['1-1'] = false;
+    manifest.species[0]!.candidates.push(
+      createMutableCandidate({
+        id: 'shadow_claw--x_scissor--aqua_jet',
+        fastMove: 'SHADOW_CLAW',
+        isDefault: false,
+        active: true,
+      }),
+    );
+
+    expect(() => parseMovesetVariantManifest(manifest)).toThrowError(
+      /default candidate must be complete/i,
     );
   });
 

@@ -6,9 +6,19 @@ import {
   generateSimulations,
   type SimulationSyncOptions,
 } from './simulations';
+import { extractSpeciesNameFromSimulationCell } from '@/lib/data/simulations';
 
 const VALID_SIMULATION_CSV =
   'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nIvysaur,500,0,0\n';
+
+describe('simulation evidence species cells', () => {
+  it.each([
+    ['Castform H+WBR/EB', 'Castform'],
+    ['Sealeo (Shadow) PS+S/BS', 'Sealeo (Shadow)'],
+  ])('extracts the species name from %s', (cell, expected) => {
+    expect(extractSpeciesNameFromSimulationCell(cell)).toBe(expected);
+  });
+});
 
 function isOverallRankingPath(filePath: string): boolean {
   return filePath.endsWith(path.join('overall_rankings.csv'));
@@ -654,6 +664,10 @@ describe('generateSimulations', () => {
   });
 
   it('generates ranking-derived alternate movesets under format-scoped canonical paths', async () => {
+    const defaultSimulationCsv =
+      'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nFeraligatr SC+HC/IB,500,0,0\n';
+    const alternateSimulationCsv =
+      'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nFeraligatr SC+HC/IB,520,0,0\n';
     const writeFile = vi.fn().mockResolvedValue(undefined);
     const generatedMovesets: Array<{
       speciesId: string;
@@ -744,7 +758,7 @@ describe('generateSimulations', () => {
       throw new Error(`unexpected file read: ${filePath}`);
     };
 
-    await generateSimulations(options, {
+    const generatedResult = await generateSimulations(options, {
       getRuntime: () => ({ context: {} as never }),
       fileExists: (filePath: string) => isOverallRankingPath(filePath),
       readFile: readSourceFile,
@@ -761,9 +775,22 @@ describe('generateSimulations', () => {
         void format;
         void shields;
         generatedMovesets.push({ speciesId, recommendedMoves });
-        return VALID_SIMULATION_CSV;
+        return recommendedMoves?.fastMove === 'WATER_GUN'
+          ? alternateSimulationCsv
+          : defaultSimulationCsv;
       },
     });
+
+    expect(generatedResult.variantSelections).toEqual([
+      expect.objectContaining({
+        formatId: 'great-league',
+        speciesId: 'feraligatr',
+        activeVariantIds: [
+          'shadow_claw--ice_beam--hydro_cannon',
+          'water_gun--ice_beam--hydro_cannon',
+        ],
+      }),
+    ]);
 
     expect(generatedMovesets).toContainEqual({
       speciesId: 'feraligatr',
@@ -781,7 +808,7 @@ describe('generateSimulations', () => {
         'all',
         'feraligatr--water_gun--ice_beam--hydro_cannon_1-1.csv',
       ),
-      VALID_SIMULATION_CSV,
+      alternateSimulationCsv,
     );
     expect(
       generatedMovesets.filter(
@@ -797,7 +824,7 @@ describe('generateSimulations', () => {
           'all',
           `feraligatr--water_gun--ice_beam--hydro_cannon_${scenario}.csv`,
         ),
-        VALID_SIMULATION_CSV,
+        alternateSimulationCsv,
       );
     }
     expect(writeFile).not.toHaveBeenCalledWith(
@@ -834,7 +861,7 @@ describe('generateSimulations', () => {
     );
     const resumeReadFile = vi.fn(async (filePath: string): Promise<string> => {
       if (filePath === reusablePath) {
-        return VALID_SIMULATION_CSV;
+        return alternateSimulationCsv;
       }
       if (filePath === malformedPath) {
         return 'malformed';
@@ -844,10 +871,20 @@ describe('generateSimulations', () => {
       }
       return readSourceFile(filePath);
     });
-    const resumeGenerateScenarioCsv = vi.fn(() => VALID_SIMULATION_CSV);
+    const resumeGenerateScenarioCsv = vi.fn(
+      (runtime, format, speciesId, shields, recommendedMoves) => {
+        void runtime;
+        void format;
+        void speciesId;
+        void shields;
+        return recommendedMoves?.fastMove === 'WATER_GUN'
+          ? alternateSimulationCsv
+          : defaultSimulationCsv;
+      },
+    );
     const resumeWriteFile = vi.fn().mockResolvedValue(undefined);
 
-    await generateSimulations(
+    const resumedResult = await generateSimulations(
       { ...options, resume: true },
       {
         getRuntime: () => ({ context: {} as never }),
@@ -887,6 +924,9 @@ describe('generateSimulations', () => {
     expect(resumeWriteFile).not.toHaveBeenCalledWith(
       reusablePath,
       expect.anything(),
+    );
+    expect(resumedResult.variantSelections).toEqual(
+      generatedResult.variantSelections,
     );
 
     const generatedMismatchWriteFile = vi.fn().mockResolvedValue(undefined);

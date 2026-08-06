@@ -79,7 +79,7 @@ interface SimulationCSVRecord {
  * Extract the display species name from simulation row value.
  * Example: "Aegislash (Shield) AS+FC/GB" -> "Aegislash (Shield)"
  */
-function extractSpeciesNameFromSimulationCell(value: string): string {
+export function extractSpeciesNameFromSimulationCell(value: string): string {
   const trimmedValue = value.trim();
   if (!trimmedValue) {
     return '';

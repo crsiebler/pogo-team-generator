@@ -695,6 +695,54 @@ function readSpecies(
   if (!defaultCandidate.active) {
     fail(`${path}.candidates`, 'the default candidate must be active');
   }
+  const activeAlternatives = candidates.filter(
+    (candidate) => candidate.active && !candidate.isDefault,
+  );
+  if (
+    activeAlternatives.length > 0 &&
+    MOVESET_VARIANT_SCENARIOS.some(
+      (scenario) => !defaultCandidate.completeness[scenario],
+    )
+  ) {
+    fail(
+      `${path}.candidates`,
+      'the default candidate must be complete when alternatives are active',
+    );
+  }
+  for (const candidate of activeAlternatives) {
+    if (
+      MOVESET_VARIANT_SCENARIOS.some(
+        (scenario) => !candidate.completeness[scenario],
+      )
+    ) {
+      fail(
+        `${path}.candidates`,
+        'active alternatives must be complete in every required scenario',
+      );
+    }
+    if (
+      MOVESET_VARIANT_SCENARIOS.some(
+        (scenario) => candidate.evaluationCounts[scenario] === 0,
+      )
+    ) {
+      fail(
+        `${path}.candidates`,
+        'active alternatives must have positive evaluation counts in every required scenario',
+      );
+    }
+    if (
+      MOVESET_VARIANT_SCENARIOS.some(
+        (scenario) =>
+          candidate.evaluationCounts[scenario] !==
+          defaultCandidate.evaluationCounts[scenario],
+      )
+    ) {
+      fail(
+        `${path}.candidates`,
+        'active alternatives must match the default evaluation counts in every required scenario',
+      );
+    }
+  }
   const activeCount = candidates.filter((candidate) => candidate.active).length;
   if (activeCount > MAX_ACTIVE_MOVESET_VARIANTS) {
     fail(

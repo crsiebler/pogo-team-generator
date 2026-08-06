@@ -18,6 +18,9 @@
 - Moveset variant manifest parsing and canonical serialization live in `lib/data/movesetVariantManifest.ts`; source hashing and pure generated-manifest construction live in `lib/sync/movesetVariantManifest.ts`, and shared hard caps come from the data-layer manifest contract.
 - Manifest validation rejects known species aliases and requires canonical uppercase ASCII move IDs instead of normalizing alternate representations, preventing parallel species storage keys and moveset variant identities in authoritative generated data.
 - Simulation sync consumes ranking-derived candidate sets and sanitized top-150 target ids directly, validates candidates against the fresh Pokemon and move snapshots, keeps defaults on unqualified paths, and writes alternates only to canonical format-scoped variant paths.
+- Active moveset selection compares complete finite candidate/default cells across all required scenarios and explicit top/full opponent pools using soft matchup scores; top-meta uses 70% weight, the primary must improve beyond a numerical epsilon, and every remaining complete candidate can compete for the secondary through positive marginal coverage beyond both default and primary.
+- Epsilon-sensitive deterministic rankings quantize each metric independently before comparison; pairwise tolerance comparators are non-transitive and can make shuffled input change the winner.
+- Parse TeamRanker opponent cells with `extractSpeciesNameFromSimulationCell(...)` before canonical lookup or opponent-set comparison because PvPoke appends compact moveset tokens after species and form names.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -685,4 +688,93 @@
   - Manifest completeness records and active alternate selection remain intentionally deferred to US-013 and atomic publication to US-014.
 - Next iteration start:
   - US-013 - Select active simulation-backed alternatives
+---
+
+## 2026-08-06 01:46:05 MST - US-013
+- Implemented deterministic simulation-backed variant selection with complete finite scenario evidence, soft matchup comparisons over common explicit opponent pools, 70/30 top-meta/full-meta weighting, positive primary improvement, positive secondary marginal coverage, stable canonical-ID tie-breakers, and a hard default-plus-two active cap; simulation sync now returns manifest-ready selections for generated and reused CSV evidence, and manifest validation rejects incomplete or unevaluated active alternatives.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantManifest.ts`, `lib/data/movesetVariantManifest.test.ts`, `lib/sync/index.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `lib/sync/simulations.ts`, `lib/sync/simulations.test.ts`, `progress.txt`
+- Commit message: `feat: US-013 - Select active simulation-backed alternatives`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/movesetVariantManifest.test.ts` (fail as expected before implementation: selector export missing)
+  - `npx vitest run lib/sync/simulations.test.ts -t "generates ranking-derived alternate movesets"` (fail as expected before integration: simulation result exposed no variant selections)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts -t "active alternatives"` (fail as expected before validation hardening: incomplete active alternate accepted)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` (pass, 50 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after removing one type-only test constant)
+  - `npm test` (pass, 684 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts` after initial review tests (fail as expected: 3 regressions exposed secondary-pool, floating-tie, and sparse-manifest gaps)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` after review fixes (pass, 51 tests)
+  - `npx prettier --write "lib/data/movesetVariantManifest.test.ts" "lib/data/movesetVariantManifest.ts" "lib/sync/movesetVariantManifest.test.ts" "lib/sync/movesetVariantManifest.ts"` after review fixes (pass)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 685 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `test-automator`
+  - Used: `typescript-pro`; skipped `test-automator` because one focused TypeScript domain advisor plus the test-first selector, manifest, and simulation integration coverage fit the standard-mode budget
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer` and `qa-expert` passes
+  - Findings: fixed three deduplicated initial medium findings by evaluating every complete non-primary candidate for the secondary slot, treating improvements within `1e-12` as ties, and requiring active manifest alternatives to match default evaluation counts in every scenario; targeted re-review found one remaining medium non-transitive epsilon-ordering blocker
+- Decisions (why):
+  - Required full coverage of the caller's explicit bounded top-meta and full-meta pools in every scenario instead of inventing a fixed minimum sample count, so small cups remain eligible while sparse candidates fail closed.
+  - Reused the optimizer's continuous `scoreMatchupRating(...)` and established 70/30 top-meta/full-meta weighting so close battle-rating changes affect preference without replacing categorical thresholds elsewhere.
+  - Required the secondary to improve a matchup beyond the better of default and primary, preventing duplicate alternatives from consuming the second active slot.
+  - Allowed a secondary with negative overall improvement because its role is complementary marginal coverage, while retaining overall improvement as a deterministic tie-breaker after marginal quality.
+  - Used a `1e-12` comparison epsilon so floating-point residue cannot activate mathematically tied candidates or bypass stable variant-ID tie-breaking.
+  - Returned selections from simulation sync but deferred manifest publication to US-014, preserving the story boundary between selection and atomic authority publication.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Selection evidence must retain format, species, variant, scenario, canonical opponent, and finite rating identity; the previous flat `SimulationsCsv` return was insufficient to construct authoritative active manifest entries.
+  - Generated and resume-reused alternate CSVs must produce identical active selections when their exact simulation evidence is identical.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-013.
+  - Commit blocked after the one allowed targeted re-review: replace pairwise epsilon comparison with a transitive deterministic ranking strategy and add shuffled primary and secondary epsilon-chain regressions before rerunning checks and a fresh review stabilization loop.
+  - US-014 must construct and atomically publish one complete manifest per format from candidate metadata and the manifest-ready simulation selections returned here.
+- Next iteration start:
+  - Resume US-013 by implementing transitive epsilon ordering, adding permutation regressions, rerunning all checks, and completing a fresh staged review loop.
+---
+
+## 2026-08-06 12:36:41 MST - US-013
+- Resumed the simulation-backed active variant selector and replaced its non-transitive pairwise epsilon comparator with independently quantized ranking keys; added all six candidate-order permutations for primary and secondary epsilon chains so fixed simulation evidence now selects the same canonical winners regardless of source order.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantManifest.test.ts`, `lib/data/movesetVariantManifest.ts`, `lib/data/simulations.ts`, `lib/sync/index.ts`, `lib/sync/movesetVariantManifest.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/simulations.test.ts`, `lib/sync/simulations.ts`, `progress.txt`
+- Commit message: `feat: US-013 - Select active simulation-backed alternatives`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/movesetVariantManifest.test.ts` before comparator fix (fail as expected: primary and secondary winners changed across candidate permutations)
+  - `npx vitest run lib/sync/movesetVariantManifest.test.ts` after comparator fix (pass, 10 tests)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` (pass, 53 tests)
+  - `npx prettier --write "lib/data/movesetVariantManifest.test.ts" "lib/data/movesetVariantManifest.ts" "lib/sync/index.ts" "lib/sync/movesetVariantManifest.test.ts" "lib/sync/movesetVariantManifest.ts" "lib/sync/simulations.test.ts" "lib/sync/simulations.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 687 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` after initial review tests (fail as expected: incomplete defaults were accepted and moveset-suffixed TeamRanker cells produced empty evidence)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/data/simulations.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulations.test.ts` after review fixes (pass, 64 tests)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 690 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `test-automator`
+  - Used: no new implementation agent; prior `typescript-pro` guidance was already incorporated, and the explicit comparator blocker plus focused permutation regressions did not justify overlapping advice
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer` and `qa-expert` passes
+  - Findings: fixed one high and one deduplicated medium finding by stripping TeamRanker moveset suffixes through the shared simulation-cell parser before opponent resolution and by rejecting active alternatives when the default is incomplete; targeted re-review found none
+- Decisions (why):
+  - Quantized each ranking metric by the existing `1e-12` comparison epsilon before lexicographic comparison because independent integer ranks form a transitive ordering while retaining stable canonical-ID tie-breaking.
+  - Left the raw positive-improvement activation threshold unchanged so the fix affects deterministic ordering only, not eligibility, top/full weighting, primary improvement, or secondary marginal-coverage semantics.
+  - Reused the runtime simulation-cell parser in sync evidence and opponent-set checks so parenthesized forms and PvPoke moveset suffixes resolve identically across runtime and tooling.
+  - Required default completeness only when an alternative is active, preserving valid default-only manifests while preventing an alternate from claiming comparison against a partial baseline.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - A comparator that returns equality whenever two raw floating-point values are within epsilon is non-transitive across epsilon chains; permutation tests must cover both primary and secondary selection boundaries.
+  - Generated TeamRanker CSV cells include compact moveset suffixes such as `H+WBR/EB`; normalizing the full cell erases canonical species identity and silently makes selection evidence sparse.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-013.
+  - US-014 must construct and atomically publish one complete manifest per format from candidate metadata and the manifest-ready simulation selections returned here.
+- Next iteration start:
+  - US-014 - Publish complete manifests atomically
 ---
