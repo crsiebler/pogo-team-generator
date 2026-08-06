@@ -1,5 +1,7 @@
 import { enumeratePlayPokemonLineups } from './lineupEnumeration';
 import {
+  getAssignedMatchupRating,
+  getAssignedShieldScenarioMatchupRating,
   scoreOrderedLineup,
   type LineupScoreResult,
   type LineupScoringContext,
@@ -205,7 +207,7 @@ export function scoreFastRosterLineup(
 
   for (const threat of evaluatedThreats) {
     const ratings = speciesIds
-      .map((speciesId) => context.getMatchupRating(speciesId, threat))
+      .map((speciesId) => getAssignedMatchupRating(speciesId, threat, context))
       .filter((rating): rating is number => rating !== null);
 
     if (ratings.length === 0) {
@@ -407,27 +409,26 @@ function calculateFastResourcePathMetric(
   shieldsByRole: Record<LineupRole, 0 | 1 | 2>,
 ): NonNullable<LineupScoreResult['resourcePathMetrics']>['balanced'] {
   const ratings: number[] = [];
-  let availableRatingCount = 0;
 
   try {
     for (const threat of threats) {
       for (const role of ['lead', 'switch', 'closer'] as const) {
-        const rating = context.getShieldScenarioMatchupRating!(
+        const rating = getAssignedShieldScenarioMatchupRating(
           lineup[role],
           threat,
           shieldsByRole[role],
+          context,
         );
         if (rating !== null) {
-          availableRatingCount++;
+          ratings.push(rating);
         }
-        ratings.push(rating ?? 500);
       }
     }
   } catch {
     return { available: false };
   }
 
-  return availableRatingCount > 0
+  return ratings.length > 0
     ? {
         available: true,
         score: average(ratings.map((rating) => scoreMatchupRating(rating))),
@@ -450,7 +451,7 @@ function calculateThreatPoolCoverage(
 
   for (const threat of threats) {
     const ratings = speciesIds
-      .map((speciesId) => context.getMatchupRating(speciesId, threat))
+      .map((speciesId) => getAssignedMatchupRating(speciesId, threat, context))
       .filter((rating): rating is number => rating !== null);
     if (ratings.length === 0) {
       continue;
@@ -969,7 +970,12 @@ function calculateShieldStability(
     try {
       ratings = ([0, 1, 2] as const)
         .map((shields) =>
-          context.getShieldScenarioMatchupRating!(speciesId, threat, shields),
+          getAssignedShieldScenarioMatchupRating(
+            speciesId,
+            threat,
+            shields,
+            context,
+          ),
         )
         .filter((rating): rating is number => rating !== null);
     } catch {

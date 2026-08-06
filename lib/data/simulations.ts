@@ -677,6 +677,7 @@ export function getSingleCounterThreats(
 export function getMeanBattleRating(
   speciesId: string,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number {
   const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
@@ -693,6 +694,7 @@ export function getMeanBattleRating(
       canonicalSpeciesId,
       opponentSpeciesId,
       formatId,
+      movesetVariantId,
     );
     if (rating !== null) {
       ratings.push(rating);
@@ -712,6 +714,7 @@ export function getMeanBattleRating(
 export function getMedianBattleRating(
   speciesId: string,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number {
   const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
@@ -728,6 +731,7 @@ export function getMedianBattleRating(
       canonicalSpeciesId,
       opponentSpeciesId,
       formatId,
+      movesetVariantId,
     );
     if (rating !== null) {
       ratings.push(rating);
@@ -806,9 +810,10 @@ export function countersThreats(
 export function getMatchupQualityScore(
   speciesId: string,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number {
-  const mean = getMeanBattleRating(speciesId, formatId);
-  const median = getMedianBattleRating(speciesId, formatId);
+  const mean = getMeanBattleRating(speciesId, formatId, movesetVariantId);
+  const median = getMedianBattleRating(speciesId, formatId, movesetVariantId);
   const meanScore = mean / 1000;
   const medianScore = median / 1000;
 

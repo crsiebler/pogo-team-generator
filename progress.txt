@@ -25,6 +25,7 @@
 - Stale simulation cleanup runs only after successful generation publication, requires physical directories to match workspace catalog paths before enumeration and each unlink, deletes only regular strict-parser variant files omitted by all manifest candidate storage keys, and reports each successful deletion immediately; default matrices and declared inactive candidates remain untouched.
 - Runtime variant availability comes only from each format manifest's active candidates and exact scenario storage keys; validate declared completeness, finite CSV rows, and candidate/default opponent parity before caching, never scan variant filenames, and never substitute default rows for an unavailable alternate.
 - Resolve one deeply immutable roster moveset assignment against the complete bring-six roster before lineup enumeration; bind it into scoring contexts, normalize omitted scoring formats to the default before validation, and include its format, manifest policy identity, and canonical variants in every assignment-dependent cache fingerprint.
+- Route every roster-member aggregate matchup, shield scenario, matchup-quality, and move-typing read through the bound assignment's variant ID; ranked-default transition assignments remain unqualified, and missing shield rows remain unevaluated rather than synthetic neutral results.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -987,4 +988,81 @@
   - US-018 must route aggregate and shield-scenario matchup reads through each assigned variant while preserving missing rows as unevaluated.
 - Next iteration start:
   - US-018 - Make ordered lineup scoring variant-aware.
+---
+
+## 2026-08-06 15:31:16 MST - US-018
+- Implemented assignment-aware aggregate and shield matchup lookup for ordered lineup and fast roster scoring; extended production matchup-quality reads to explicit variants; aligned coverage, soft matchup quality, safety, overwhelming-loss checks, structure adjustments, shield reliability, resource paths, roster consistency, and offensive move typing with one fixed assignment; and excluded missing shield rows as unevaluated.
+- Files changed: `lib/AGENTS.md`, `lib/data/simulations.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-018 - Make ordered lineup scoring variant-aware`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` before implementation (fail as expected: 4 tests exposed unqualified aggregate, shield, and matchup-quality reads plus synthetic neutral shield rows)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/data/simulations.test.ts lib/genetic/fitness/index.test.ts lib/genetic/fitness/optimizerValidationFixtures.test.ts` (pass, 111 tests)
+  - `npx prettier --write "lib/AGENTS.md" "lib/data/simulations.ts" "lib/genetic/fitness/lineupScoring.ts" "lib/genetic/fitness/lineupScoring.test.ts" "lib/genetic/fitness/rosterScoring.ts" "lib/genetic/fitness/rosterScoring.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 745 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` after review regressions (pass, 90 tests)
+  - `npx prettier --write "lib/genetic/fitness/lineupScoring.test.ts" "lib/genetic/fitness/rosterScoring.test.ts"` after review regressions (pass; unchanged)
+  - `npx tsc --noEmit` after review regressions (pass)
+  - `npm run lint` after review regressions (pass)
+  - `git diff --check && git diff --cached --check` after review regressions (pass)
+- Implementation agents:
+  - Recommended: `performance-engineer`, `test-automator`
+  - Used: `performance-engineer`; skipped `test-automator` because one scoring/performance advisor plus test-first full, fast, ABC, ABB, ABA, threshold, and shield-path regressions covered the standard-mode complex-story budget
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: code review found none; fixed three initial medium QA coverage findings by strengthening full-lineup qualification assertions, adding assignment-sensitive ABA structure and roster shield-stability regressions, and covering unqualified ranked-default fallback reads. Targeted QA found two remaining medium assertion gaps, so the commit is blocked under the one-re-review limit. Deferred one low direct data-layer quality test because checked-in manifests are intentionally absent until US-024 and existing manifest-loader tests cover explicit variant aggregate reads.
+- Decisions (why):
+  - Added optional variant identity to existing injected matchup boundaries instead of introducing parallel scoring contexts, keeping old deterministic test fakes and ranked-default transition behavior compatible.
+  - Passed canonical variant IDs only for manifest-backed assignments because ranked-default fallback intentionally uses existing unqualified matrices while manifests are not checked in.
+  - Centralized assignment-aware aggregate, shield, and quality reads in lineup scoring helpers so full and fast paths cannot drift or independently select movesets.
+  - Left lineup and roster Threat Score diagnostic adapters unqualified for US-019, which explicitly owns variant-aware roster diagnostics and analysis, while keeping Threat Score outside weighted fitness.
+  - Excluded null shield rows from averages rather than inserting rating 500 because the story and module guidance require missing rows to remain unevaluated.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - The runtime simulation APIs already accept explicit variant IDs for aggregate and shield lookups; matchup-quality mean and median helpers needed the same optional identity to keep lineup consistency aligned.
+  - Manifest-backed roster assignments should pass variant IDs to repository-owned matrices, while the temporary ranked-default fallback must continue using unqualified files.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-018.
+  - Commit blocked after the one allowed targeted re-review: make the fast-lineup regression assert every recorded aggregate and shield tuple matches its species assignment, and assert fallback shield and matchup-quality read arrays are non-empty before their `every(...)` checks; then rerun focused checks and start a fresh review loop.
+  - US-019 must route roster Threat Score, threat analysis, shield-scenario analysis, and Pokemon-contribution analysis through the same assignment without adding diagnostics to GA hot paths.
+- Next iteration start:
+  - Resume US-018 by fixing the two remaining QA assertion gaps, rerunning checks, and completing a fresh staged review loop before marking the story passed.
+---
+
+## 2026-08-06 15:51:58 MST - US-018
+- Resumed the assignment-aware lineup scoring candidate by strengthening the fast-path regression to reject every mismatched aggregate or shield qualifier and proving fallback shield and matchup-quality reads occur before asserting they remain unqualified.
+- Files changed: `lib/AGENTS.md`, `lib/data/simulations.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-018 - Make ordered lineup scoring variant-aware`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass, 90 tests)
+  - `npx prettier --write "lib/genetic/fitness/lineupScoring.test.ts" "lib/genetic/fitness/rosterScoring.test.ts"` (pass; unchanged)
+  - Parallel `npx tsc --noEmit` with `npm run build` (fail: transient `.next/types/validator.ts` race while Next rebuilt generated types)
+  - `npx tsc --noEmit` after build completed (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 748 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` (pass)
+- Implementation agents:
+  - Recommended: `performance-engineer`, `test-automator`
+  - Used: `performance-engineer`; skipped `test-automator` because the remaining work was limited to two exact QA assertion gaps and another implementation advisor would duplicate the existing test strategy
+- Specialist review:
+  - Agents used: fresh `code-reviewer` and `qa-expert`
+  - Findings: no blocking findings; `code-reviewer` found none, and the one low QA suggestion for a production manifest-backed quality-forwarding test is deferred until checked-in manifests are available in US-024
+- Decisions (why):
+  - Kept the production candidate unchanged because the prior review identified assertion vacuity rather than a scoring defect, and the strengthened tests pass against the existing implementation.
+  - Asserted both per-species coverage and all-read qualification so a future extra unqualified read cannot hide behind one correct call for each lineup member.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Assertions using `every(...)` need a separate non-empty assertion when no earlier assertion guarantees the same collection was populated.
+  - Avoid running standalone TypeScript checks concurrently with `next build` because Next can replace generated `.next/types` files during compilation.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-018.
+  - Add direct manifest-backed matchup-quality production wiring coverage after US-024 checks in the required manifest fixtures; current injected-context and explicit-variant loader tests cover the story behavior.
+- Next iteration start:
+  - US-019 - Make roster diagnostics and analysis variant-aware.
 ---

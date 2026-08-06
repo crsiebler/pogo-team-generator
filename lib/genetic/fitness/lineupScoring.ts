@@ -47,6 +47,7 @@ import type {
   OrderedLineup,
   Pokemon,
   RosterMovesetAssignment,
+  MovesetVariantId,
 } from '@/lib/types';
 
 interface LineupMoveset {
@@ -120,13 +121,18 @@ export interface LineupScoringContext {
   getMatchupRating: (
     speciesId: string,
     threatSpeciesId: string,
+    movesetVariantId?: MovesetVariantId,
   ) => number | null;
   getShieldScenarioMatchupRating?: (
     speciesId: string,
     threatSpeciesId: string,
     shields: 0 | 1 | 2,
+    movesetVariantId?: MovesetVariantId,
   ) => number | null;
-  getMatchupQualityScore?: (speciesId: string) => number;
+  getMatchupQualityScore?: (
+    speciesId: string,
+    movesetVariantId?: MovesetVariantId,
+  ) => number;
   getMove?: (moveId: string) => LineupMoveData | undefined;
   getRecommendedMoveset?: (
     speciesId: string,
@@ -207,17 +213,23 @@ export function createDefaultLineupScoringContext(
         category as Parameters<typeof getRankingScore>[1],
         formatId,
       ) / 100,
-    getMatchupRating: (speciesId, threatSpeciesId) =>
-      getMatchupResult(speciesId, threatSpeciesId, formatId),
-    getShieldScenarioMatchupRating: (speciesId, threatSpeciesId, shields) =>
+    getMatchupRating: (speciesId, threatSpeciesId, movesetVariantId) =>
+      getMatchupResult(speciesId, threatSpeciesId, formatId, movesetVariantId),
+    getShieldScenarioMatchupRating: (
+      speciesId,
+      threatSpeciesId,
+      shields,
+      movesetVariantId,
+    ) =>
       getShieldScenarioMatchupResult(
         speciesId,
         threatSpeciesId,
         shields,
         formatId,
+        movesetVariantId,
       ),
-    getMatchupQualityScore: (speciesId) =>
-      getMatchupQualityScore(speciesId, formatId),
+    getMatchupQualityScore: (speciesId, movesetVariantId) =>
+      getMatchupQualityScore(speciesId, formatId, movesetVariantId),
     getMove: getMoveByMoveId,
     getRecommendedMoveset: (speciesId, teamSpeciesIds) => {
       const pokemon = getPokemonBySpeciesId(speciesId);
@@ -424,9 +436,17 @@ function leadCoversBacklineWeakness(
   topThreats: string[],
 ): boolean {
   return topThreats.some((threat) => {
-    const leadRating = context.getMatchupRating(lineup.lead, threat);
-    const switchRating = context.getMatchupRating(lineup.switch, threat);
-    const closerRating = context.getMatchupRating(lineup.closer, threat);
+    const leadRating = getAssignedMatchupRating(lineup.lead, threat, context);
+    const switchRating = getAssignedMatchupRating(
+      lineup.switch,
+      threat,
+      context,
+    );
+    const closerRating = getAssignedMatchupRating(
+      lineup.closer,
+      threat,
+      context,
+    );
 
     return (
       leadRating !== null &&
@@ -445,9 +465,17 @@ function hasAbaLeadAlignmentFragility(
   topThreats: string[],
 ): boolean {
   return topThreats.some((threat) => {
-    const leadRating = context.getMatchupRating(lineup.lead, threat);
-    const switchRating = context.getMatchupRating(lineup.switch, threat);
-    const closerRating = context.getMatchupRating(lineup.closer, threat);
+    const leadRating = getAssignedMatchupRating(lineup.lead, threat, context);
+    const switchRating = getAssignedMatchupRating(
+      lineup.switch,
+      threat,
+      context,
+    );
+    const closerRating = getAssignedMatchupRating(
+      lineup.closer,
+      threat,
+      context,
+    );
 
     return (
       leadRating !== null &&
@@ -882,7 +910,7 @@ function getThreatRatings(
   context: LineupScoringContext,
 ): number[] {
   return speciesIds
-    .map((speciesId) => context.getMatchupRating(speciesId, threat))
+    .map((speciesId) => getAssignedMatchupRating(speciesId, threat, context))
     .filter((rating): rating is number => rating !== null);
 }
 
@@ -919,7 +947,7 @@ function calculateRoleMatchupScore(
   context: LineupScoringContext,
 ): number {
   const ratings = threats
-    .map((threat) => context.getMatchupRating(speciesId, threat))
+    .map((threat) => getAssignedMatchupRating(speciesId, threat, context))
     .filter((rating): rating is number => rating !== null);
 
   return ratings.length > 0
@@ -1160,9 +1188,11 @@ function calculateShieldReliability(
   }
 
   return average(
-    speciesIds.map((speciesId) =>
-      clamp01(context.getMatchupQualityScore!(speciesId)),
-    ),
+    speciesIds.map((speciesId) => {
+      const score = getAssignedMatchupQualityScore(speciesId, context);
+
+      return score === undefined ? 0.5 : clamp01(score);
+    }),
   );
 }
 
@@ -1199,21 +1229,22 @@ function calculateResourcePathMetric(
   shieldsByRole: Record<LineupRole, 0 | 1 | 2>,
 ): LineupResourcePathMetric {
   const ratings: number[] = [];
-  let availableRatingCount = 0;
 
   for (const threat of context.threats) {
     for (const role of ['lead', 'switch', 'closer'] as const) {
-      const rating = context.getShieldScenarioMatchupRating!(
+      const rating = getAssignedShieldScenarioMatchupRating(
         lineup[role],
         threat,
         shieldsByRole[role],
+        context,
       );
-      ratings.push(rating ?? 500);
-      availableRatingCount += rating === null ? 0 : 1;
+      if (rating !== null) {
+        ratings.push(rating);
+      }
     }
   }
 
-  if (ratings.length === 0 || availableRatingCount === 0) {
+  if (ratings.length === 0) {
     return { available: false };
   }
 
@@ -1221,6 +1252,67 @@ function calculateResourcePathMetric(
     available: true,
     score: average(ratings.map((rating) => scoreMatchupRating(rating))),
   };
+}
+
+/** Reads one aggregate matchup using the roster member's fixed variant. */
+export function getAssignedMatchupRating(
+  speciesId: string,
+  threatSpeciesId: string,
+  context: LineupScoringContext,
+): number | null {
+  return context.getMatchupRating(
+    speciesId,
+    threatSpeciesId,
+    getAssignedMovesetVariantId(speciesId, context),
+  );
+}
+
+/** Reads one shield matchup using the roster member's fixed variant. */
+export function getAssignedShieldScenarioMatchupRating(
+  speciesId: string,
+  threatSpeciesId: string,
+  shields: 0 | 1 | 2,
+  context: LineupScoringContext,
+): number | null {
+  if (!context.getShieldScenarioMatchupRating) {
+    return null;
+  }
+
+  return context.getShieldScenarioMatchupRating(
+    speciesId,
+    threatSpeciesId,
+    shields,
+    getAssignedMovesetVariantId(speciesId, context),
+  );
+}
+
+/** Reads aggregate matchup quality using the roster member's fixed variant. */
+export function getAssignedMatchupQualityScore(
+  speciesId: string,
+  context: LineupScoringContext,
+): number | undefined {
+  return context.getMatchupQualityScore?.(
+    speciesId,
+    getAssignedMovesetVariantId(speciesId, context),
+  );
+}
+
+function getAssignedMovesetVariantId(
+  speciesId: string,
+  context: LineupScoringContext,
+): MovesetVariantId | undefined {
+  const assignment = context.movesetAssignment;
+  if (!assignment) {
+    return undefined;
+  }
+  const variant = assignment.variantsBySpeciesId[speciesId];
+  if (!variant) {
+    throw new Error(`Bound roster moveset assignment is missing ${speciesId}.`);
+  }
+
+  return assignment.policyIdentity.source === 'manifest'
+    ? variant.id
+    : undefined;
 }
 
 function sharesType(first: Pokemon, second: Pokemon): boolean {

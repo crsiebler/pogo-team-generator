@@ -5,6 +5,7 @@ import {
   type LineupScoringContext,
 } from './lineupScoring';
 import type {
+  MovesetVariantId,
   OrderedLineup,
   Pokemon,
   RosterMovesetAssignment,
@@ -1148,6 +1149,201 @@ describe('scoreOrderedLineup', () => {
     expect(requestedTeams).toEqual([]);
   });
 
+  test('uses the assigned variant for matchup, shield, consistency, and move scoring', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const assignment = createLineupAssignment(lineup);
+    const aggregateReads: Array<[string, MovesetVariantId | undefined]> = [];
+    const shieldReads: Array<[string, MovesetVariantId | undefined]> = [];
+    const qualityReads: Array<[string, MovesetVariantId | undefined]> = [];
+    const moveReads: string[] = [];
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        movesetAssignment: assignment,
+        getMatchupRating: (
+          speciesId: string,
+          _threatId: string,
+          variantId?: MovesetVariantId,
+        ) => {
+          aggregateReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 650
+            : 350;
+        },
+        getShieldScenarioMatchupRating: (
+          speciesId: string,
+          _threatId: string,
+          _shields: 0 | 1 | 2,
+          variantId?: MovesetVariantId,
+        ) => {
+          shieldReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 700
+            : 300;
+        },
+        getMatchupQualityScore: (
+          speciesId: string,
+          variantId?: MovesetVariantId,
+        ) => {
+          qualityReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 0.9
+            : 0.1;
+        },
+        getMove: (moveId) => {
+          moveReads.push(moveId);
+          return { type: moveId.endsWith('_FAST') ? 'water' : 'ghost' };
+        },
+      }),
+      { includeThreatScore: false },
+    );
+
+    expect(result.coverageMetrics.coverageRate).toBe(1);
+    expect(result.coverageMetrics.overwhelmingLossCount).toBe(0);
+    expect(result.componentScores.shieldReliability).toBeCloseTo(0.9);
+    expect(result.resourcePathMetrics?.balanced).toEqual({
+      available: true,
+      score: 1,
+    });
+    for (const speciesId of Object.values(lineup)) {
+      const variantId = assignment.variantsBySpeciesId[speciesId].id;
+      expect(aggregateReads).toContainEqual([speciesId, variantId]);
+      expect(shieldReads).toContainEqual([speciesId, variantId]);
+      expect(qualityReads).toContainEqual([speciesId, variantId]);
+      expect(moveReads).toContain(`${speciesId}_FAST`);
+      expect(moveReads).toContain(`${speciesId}_CHARGED_A`);
+      expect(moveReads).toContain(`${speciesId}_CHARGED_B`);
+    }
+    expect(
+      aggregateReads.every(
+        ([speciesId, variantId]) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id,
+      ),
+    ).toBe(true);
+    expect(
+      shieldReads.every(
+        ([speciesId, variantId]) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id,
+      ),
+    ).toBe(true);
+  });
+
+  test('uses assigned variants when identifying ABA lead-alignment fragility', () => {
+    const lineup: OrderedLineup = {
+      lead: 'water',
+      switch: 'ground',
+      closer: 'bulky',
+    };
+    const assignment = createLineupAssignment(lineup);
+    const fragile = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        fullMetaThreats: ['electric-threat'],
+        movesetAssignment: assignment,
+        getMatchupRating: (speciesId, _threat, variantId) => {
+          if (variantId !== assignment.variantsBySpeciesId[speciesId]?.id) {
+            return null;
+          }
+
+          return speciesId === 'ground' ? 700 : 350;
+        },
+      }),
+      { includeThreatScore: false },
+    );
+    const redundant = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        fullMetaThreats: ['electric-threat'],
+        movesetAssignment: assignment,
+        getMatchupRating: (speciesId, _threat, variantId) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 650
+            : null,
+      }),
+      { includeThreatScore: false },
+    );
+
+    expect(fragile.diagnosticLabel).toBe('ABA');
+    expect(fragile.scoreBreakdown.components.synergy).toBeLessThan(
+      redundant.scoreBreakdown.components.synergy,
+    );
+    expect(fragile.scoreBreakdown.components.safety).toBeLessThan(
+      redundant.scoreBreakdown.components.safety,
+    );
+  });
+
+  test('keeps ranked-default fallback matrix reads unqualified while using assigned moves', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const assignment = createLineupAssignment(
+      lineup,
+      'ranked-default-fallback',
+    );
+    const aggregateVariants: Array<MovesetVariantId | undefined> = [];
+    const shieldVariants: Array<MovesetVariantId | undefined> = [];
+    const qualityVariants: Array<MovesetVariantId | undefined> = [];
+    const moveReads: string[] = [];
+
+    scoreOrderedLineup(
+      lineup,
+      createContext({
+        movesetAssignment: assignment,
+        getMatchupRating: (_speciesId, _threat, variantId) => {
+          aggregateVariants.push(variantId);
+          return 550;
+        },
+        getShieldScenarioMatchupRating: (
+          _speciesId,
+          _threat,
+          _shields,
+          variantId,
+        ) => {
+          shieldVariants.push(variantId);
+          return 550;
+        },
+        getMatchupQualityScore: (_speciesId, variantId) => {
+          qualityVariants.push(variantId);
+          return 0.55;
+        },
+        getMove: (moveId) => {
+          moveReads.push(moveId);
+          return { type: 'normal' };
+        },
+      }),
+      { includeThreatScore: false },
+    );
+
+    expect(aggregateVariants).not.toHaveLength(0);
+    expect(
+      aggregateVariants.every((variantId) => variantId === undefined),
+    ).toBe(true);
+    expect(shieldVariants).not.toHaveLength(0);
+    expect(shieldVariants.every((variantId) => variantId === undefined)).toBe(
+      true,
+    );
+    expect(qualityVariants).not.toHaveLength(0);
+    expect(qualityVariants.every((variantId) => variantId === undefined)).toBe(
+      true,
+    );
+    for (const speciesId of Object.values(lineup)) {
+      expect(moveReads).toContain(`${speciesId}_FAST`);
+    }
+  });
+
   test('rejects a bound assignment that omits a lineup species', () => {
     const lineup: OrderedLineup = {
       lead: 'bulky',
@@ -1239,7 +1435,7 @@ describe('scoreOrderedLineup', () => {
 
     expect(result.resourcePathMetrics?.balanced).toEqual({
       available: true,
-      score: expect.closeTo(0.6666666666666666),
+      score: 1,
     });
     expect(result.resourcePathMetrics?.shieldSpend).toEqual({
       available: false,
@@ -1416,4 +1612,31 @@ function uniformMovesets(
       { fastMove, chargedMove1, chargedMove2 },
     ]),
   );
+}
+
+function createLineupAssignment(
+  lineup: OrderedLineup,
+  source: RosterMovesetAssignment['policyIdentity']['source'] = 'manifest',
+): RosterMovesetAssignment {
+  return {
+    formatId: 'great-league',
+    policyIdentity: {
+      source,
+      schemaVersion: 1,
+      policyVersion: 'ranking-evidence-v1',
+    },
+    fingerprint: 'variant-aware-lineup',
+    variantsBySpeciesId: Object.fromEntries(
+      Object.values(lineup).map((speciesId) => [
+        speciesId,
+        {
+          id: `${speciesId}_fast--${speciesId}_charged_b--${speciesId}_charged_a`,
+          fastMove: `${speciesId}_FAST`,
+          chargedMove1: `${speciesId}_CHARGED_A`,
+          chargedMove2: `${speciesId}_CHARGED_B`,
+          isDefault: false,
+        },
+      ]),
+    ),
+  };
 }

@@ -93,7 +93,7 @@ For lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, prefer `LineupScor
 
 Lineup scoring contexts may provide separate `topThreats` and `fullMetaThreats`; keep `context.threats` as the union/default threat list for compatibility, canonicalize, dedupe, and bound threat pools before scoring, expose split diagnostics through `LineupCoverageMetrics`, and weight evaluated top-threat coverage more heavily than full-meta coverage.
 
-For lineup resource path metrics, use shield-specific matchup lookup (`getShieldScenarioMatchupRating` in tests or `getShieldScenarioMatchupResult(...)` in production) rather than aggregate matchup ratings; missing shield rows should fall back neutrally and make a path unavailable only when that path has no shield-specific data at all.
+For lineup resource path metrics, use shield-specific matchup lookup (`getShieldScenarioMatchupRating` in tests or `getShieldScenarioMatchupResult(...)` in production) rather than aggregate matchup ratings; exclude missing shield rows as unevaluated and make a path unavailable only when that path has no shield-specific data at all.
 
 For PlayPokemon roster scoring in `lib/genetic/fitness/rosterScoring.ts`, inject cached lineup scoring through `PlayPokemonRosterScoringContext.scoreLineup` when evaluating many rosters, and use full `LineupAwareFitnessConfig` diagnostics only for finalists or recommendation output.
 
