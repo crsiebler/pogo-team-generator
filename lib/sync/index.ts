@@ -122,6 +122,9 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
       forceRegenerateFormatIds: new Set(
         rankingSyncResult.formatsWithChangedOverallRankings,
       ),
+      candidateSets: rankingSyncResult.candidateSets,
+      simulationSpeciesIdsByFormatId:
+        rankingSyncResult.simulationSpeciesIdsByFormatId,
     });
 
     // Cross-validate data consistency

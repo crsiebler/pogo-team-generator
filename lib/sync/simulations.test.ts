@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   generateScenarioCsvFromEngine,
   generateSimulations,
+  type SimulationSyncOptions,
 } from './simulations';
 
 const VALID_SIMULATION_CSV =
@@ -652,7 +653,7 @@ describe('generateSimulations', () => {
     );
   });
 
-  it('generates configured alternate moveset simulations under canonical species ids', async () => {
+  it('generates ranking-derived alternate movesets under format-scoped canonical paths', async () => {
     const writeFile = vi.fn().mockResolvedValue(undefined);
     const generatedMovesets: Array<{
       speciesId: string;
@@ -664,54 +665,238 @@ describe('generateSimulations', () => {
           }
         | undefined;
     }> = [];
+    const options: SimulationSyncOptions = {
+      sourcePath: '/source/pvpoke',
+      candidateSets: [
+        {
+          formatId: 'great-league',
+          cup: 'all',
+          cp: 1500,
+          speciesId: 'feraligatr',
+          pvpokeScorePrior: 90,
+          retainedFastMoves: ['SHADOW_CLAW', 'WATER_GUN'],
+          retainedChargedMoves: ['HYDRO_CANNON', 'ICE_BEAM'],
+          rejections: [],
+          candidates: [
+            {
+              id: 'shadow_claw--ice_beam--hydro_cannon',
+              fastMove: 'SHADOW_CLAW',
+              chargedMove1: 'HYDRO_CANNON',
+              chargedMove2: 'ICE_BEAM',
+              isDefault: true,
+            },
+            {
+              id: 'water_gun--ice_beam--hydro_cannon',
+              fastMove: 'WATER_GUN',
+              chargedMove1: 'HYDRO_CANNON',
+              chargedMove2: 'ICE_BEAM',
+              isDefault: false,
+            },
+          ],
+        },
+      ],
+      simulationSpeciesIdsByFormatId: new Map([
+        ['great-league', ['feraligatr']],
+      ]),
+    };
+    const readSourceFile = async (filePath: string): Promise<string> => {
+      if (isOverallRankingPath(filePath)) {
+        return [
+          'Pokemon,Fast Move,Charged Move 1,Charged Move 2',
+          'Feraligatr,Shadow Claw,Hydro Cannon,Ice Beam',
+          '',
+        ].join('\n');
+      }
+
+      if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
+        return JSON.stringify([
+          {
+            speciesId: 'feraligatr',
+            speciesName: 'Feraligatr',
+            fastMoves: ['SHADOW_CLAW', 'WATER_GUN'],
+            chargedMoves: ['HYDRO_CANNON', 'ICE_BEAM'],
+            released: true,
+          },
+        ]);
+      }
+
+      if (filePath.endsWith(path.join('data', 'moves.json'))) {
+        return JSON.stringify([
+          {
+            moveId: 'SHADOW_CLAW',
+            name: 'Shadow Claw',
+            energyGain: 8,
+          },
+          {
+            moveId: 'WATER_GUN',
+            name: 'Water Gun',
+            energyGain: 6,
+          },
+          {
+            moveId: 'HYDRO_CANNON',
+            name: 'Hydro Cannon',
+            energyGain: 0,
+          },
+          { moveId: 'ICE_BEAM', name: 'Ice Beam', energyGain: 0 },
+        ]);
+      }
+
+      throw new Error(`unexpected file read: ${filePath}`);
+    };
+
+    await generateSimulations(options, {
+      getRuntime: () => ({ context: {} as never }),
+      fileExists: (filePath: string) => isOverallRankingPath(filePath),
+      readFile: readSourceFile,
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      writeFile,
+      generateScenarioCsv: (
+        runtime,
+        format,
+        speciesId,
+        shields,
+        recommendedMoves,
+      ): string => {
+        void runtime;
+        void format;
+        void shields;
+        generatedMovesets.push({ speciesId, recommendedMoves });
+        return VALID_SIMULATION_CSV;
+      },
+    });
+
+    expect(generatedMovesets).toContainEqual({
+      speciesId: 'feraligatr',
+      recommendedMoves: {
+        fastMove: 'WATER_GUN',
+        chargedMove1: 'HYDRO_CANNON',
+        chargedMove2: 'ICE_BEAM',
+      },
+    });
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp1500',
+        'all',
+        'feraligatr--water_gun--ice_beam--hydro_cannon_1-1.csv',
+      ),
+      VALID_SIMULATION_CSV,
+    );
+    expect(
+      generatedMovesets.filter(
+        ({ recommendedMoves }) => recommendedMoves?.fastMove === 'WATER_GUN',
+      ),
+    ).toHaveLength(3);
+    for (const scenario of ['0-0', '1-1', '2-2']) {
+      expect(writeFile).toHaveBeenCalledWith(
+        path.join(
+          'data',
+          'simulations',
+          'cp1500',
+          'all',
+          `feraligatr--water_gun--ice_beam--hydro_cannon_${scenario}.csv`,
+        ),
+        VALID_SIMULATION_CSV,
+      );
+    }
+    expect(writeFile).not.toHaveBeenCalledWith(
+      expect.stringContaining(
+        path.join(
+          'cp2500',
+          'all',
+          'feraligatr--water_gun--ice_beam--hydro_cannon',
+        ),
+      ),
+      expect.anything(),
+    );
+
+    const reusablePath = path.join(
+      'data',
+      'simulations',
+      'cp1500',
+      'all',
+      'feraligatr--water_gun--ice_beam--hydro_cannon_1-1.csv',
+    );
+    const malformedPath = path.join(
+      'data',
+      'simulations',
+      'cp1500',
+      'all',
+      'feraligatr--water_gun--ice_beam--hydro_cannon_0-0.csv',
+    );
+    const mismatchedOpponentPath = path.join(
+      'data',
+      'simulations',
+      'cp1500',
+      'all',
+      'feraligatr--water_gun--ice_beam--hydro_cannon_2-2.csv',
+    );
+    const resumeReadFile = vi.fn(async (filePath: string): Promise<string> => {
+      if (filePath === reusablePath) {
+        return VALID_SIMULATION_CSV;
+      }
+      if (filePath === malformedPath) {
+        return 'malformed';
+      }
+      if (filePath === mismatchedOpponentPath) {
+        return 'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nVenusaur,500,0,0\n';
+      }
+      return readSourceFile(filePath);
+    });
+    const resumeGenerateScenarioCsv = vi.fn(() => VALID_SIMULATION_CSV);
+    const resumeWriteFile = vi.fn().mockResolvedValue(undefined);
 
     await generateSimulations(
-      { sourcePath: '/source/pvpoke' },
+      { ...options, resume: true },
       {
         getRuntime: () => ({ context: {} as never }),
-        fileExists: (filePath: string) => isOverallRankingPath(filePath),
-        readFile: async (filePath: string) => {
-          if (isOverallRankingPath(filePath)) {
-            return [
-              'Pokemon,Fast Move,Charged Move 1,Charged Move 2',
-              'Golisopod,Fury Cutter,X-Scissor,Aqua Jet',
-              '',
-            ].join('\n');
-          }
-
-          if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
-            return JSON.stringify([
-              {
-                speciesId: 'golisopod',
-                speciesName: 'Golisopod',
-                fastMoves: ['FURY_CUTTER', 'SHADOW_CLAW'],
-                chargedMoves: ['X_SCISSOR', 'AQUA_JET'],
-                released: true,
-              },
-            ]);
-          }
-
-          if (filePath.endsWith(path.join('data', 'moves.json'))) {
-            return JSON.stringify([
-              {
-                moveId: 'FURY_CUTTER',
-                name: 'Fury Cutter',
-                energyGain: 4,
-              },
-              {
-                moveId: 'SHADOW_CLAW',
-                name: 'Shadow Claw',
-                energyGain: 8,
-              },
-              { moveId: 'X_SCISSOR', name: 'X-Scissor', energyGain: 0 },
-              { moveId: 'AQUA_JET', name: 'Aqua Jet', energyGain: 0 },
-            ]);
-          }
-
-          throw new Error(`unexpected file read: ${filePath}`);
-        },
+        fileExists: (filePath: string) =>
+          isOverallRankingPath(filePath) ||
+          filePath === reusablePath ||
+          filePath === malformedPath ||
+          filePath === mismatchedOpponentPath,
+        readFile: resumeReadFile,
         mkdir: vi.fn().mockResolvedValue(undefined),
-        writeFile,
+        writeFile: resumeWriteFile,
+        generateScenarioCsv: resumeGenerateScenarioCsv,
+      },
+    );
+
+    expect(resumeReadFile).toHaveBeenCalledWith(reusablePath);
+    expect(resumeReadFile).toHaveBeenCalledWith(malformedPath);
+    expect(resumeReadFile).toHaveBeenCalledWith(mismatchedOpponentPath);
+    expect(resumeGenerateScenarioCsv).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: 'great-league' }),
+      'feraligatr',
+      1,
+      expect.objectContaining({ fastMove: 'WATER_GUN' }),
+      expect.anything(),
+    );
+    for (const shields of [0, 2]) {
+      expect(resumeGenerateScenarioCsv).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ id: 'great-league' }),
+        'feraligatr',
+        shields,
+        expect.objectContaining({ fastMove: 'WATER_GUN' }),
+        expect.anything(),
+      );
+    }
+    expect(resumeWriteFile).not.toHaveBeenCalledWith(
+      reusablePath,
+      expect.anything(),
+    );
+
+    const generatedMismatchWriteFile = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      generateSimulations(options, {
+        getRuntime: () => ({ context: {} as never }),
+        fileExists: (filePath: string) => isOverallRankingPath(filePath),
+        readFile: readSourceFile,
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile: generatedMismatchWriteFile,
         generateScenarioCsv: (
           runtime,
           format,
@@ -721,31 +906,200 @@ describe('generateSimulations', () => {
         ): string => {
           void runtime;
           void format;
+          void speciesId;
           void shields;
-          generatedMovesets.push({ speciesId, recommendedMoves });
-          return VALID_SIMULATION_CSV;
+          return recommendedMoves?.fastMove === 'WATER_GUN'
+            ? 'Pokemon,Battle Rating,Energy Remaining,HP Remaining\nVenusaur,500,0,0\n'
+            : VALID_SIMULATION_CSV;
         },
-      },
+      }),
+    ).rejects.toThrow(
+      'Feraligatr water_gun--ice_beam--hydro_cannon 0-0 Great League opponent set does not match the default matrix',
     );
-
-    expect(generatedMovesets).toContainEqual({
-      speciesId: 'golisopod',
-      recommendedMoves: {
-        fastMove: 'SHADOW_CLAW',
-        chargedMove1: 'X_SCISSOR',
-        chargedMove2: 'AQUA_JET',
-      },
-    });
-    expect(writeFile).toHaveBeenCalledWith(
-      path.join(
-        'data',
-        'simulations',
-        'cp10000',
-        'coupedusillage',
-        'golisopod--shadow_claw--x_scissor--aqua_jet_1-1.csv',
+    expect(generatedMismatchWriteFile).not.toHaveBeenCalledWith(
+      expect.stringContaining(
+        'feraligatr--water_gun--ice_beam--hydro_cannon_0-0.csv',
       ),
-      VALID_SIMULATION_CSV,
+      expect.anything(),
     );
+  });
+
+  it('rejects duplicate canonical identities before simulating candidates', async () => {
+    const generateScenarioCsv = vi.fn(() => VALID_SIMULATION_CSV);
+
+    await expect(
+      generateSimulations(
+        {
+          sourcePath: '/source/pvpoke',
+          candidateSets: [
+            {
+              formatId: 'great-league',
+              cup: 'all',
+              cp: 1500,
+              speciesId: 'bulbasaur',
+              pvpokeScorePrior: 90,
+              retainedFastMoves: ['VINE_WHIP'],
+              retainedChargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+              rejections: [],
+              candidates: [
+                {
+                  id: 'vine_whip--sludge_bomb--power_whip',
+                  fastMove: 'VINE_WHIP',
+                  chargedMove1: 'POWER_WHIP',
+                  chargedMove2: 'SLUDGE_BOMB',
+                  isDefault: true,
+                },
+                {
+                  id: 'vine_whip--sludge_bomb--power_whip',
+                  fastMove: 'VINE_WHIP',
+                  chargedMove1: 'POWER_WHIP',
+                  chargedMove2: 'SLUDGE_BOMB',
+                  isDefault: false,
+                },
+              ],
+            },
+          ],
+          simulationSpeciesIdsByFormatId: new Map([
+            ['great-league', ['bulbasaur']],
+          ]),
+        },
+        {
+          getRuntime: () => ({ context: {} as never }),
+          fileExists: isOverallRankingPath,
+          readFile: async (filePath: string) => {
+            if (isOverallRankingPath(filePath)) {
+              return [
+                'Pokemon,Fast Move,Charged Move 1,Charged Move 2',
+                'Bulbasaur,Vine Whip,Power Whip,Sludge Bomb',
+              ].join('\n');
+            }
+            if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
+              return JSON.stringify([
+                {
+                  speciesId: 'bulbasaur',
+                  speciesName: 'Bulbasaur',
+                  fastMoves: ['VINE_WHIP'],
+                  chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+                  released: true,
+                },
+              ]);
+            }
+            if (filePath.endsWith(path.join('data', 'moves.json'))) {
+              return JSON.stringify([
+                { moveId: 'VINE_WHIP', name: 'Vine Whip', energyGain: 8 },
+                {
+                  moveId: 'POWER_WHIP',
+                  name: 'Power Whip',
+                  energyGain: 0,
+                },
+                {
+                  moveId: 'SLUDGE_BOMB',
+                  name: 'Sludge Bomb',
+                  energyGain: 0,
+                },
+              ]);
+            }
+            throw new Error(`unexpected file read: ${filePath}`);
+          },
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile: vi.fn().mockResolvedValue(undefined),
+          generateScenarioCsv,
+        },
+      ),
+    ).rejects.toThrow(
+      "Duplicate candidate variant 'vine_whip--sludge_bomb--power_whip' for great-league/bulbasaur",
+    );
+    expect(generateScenarioCsv).not.toHaveBeenCalled();
+  });
+
+  it('rejects path-unsafe candidate move ids before filesystem access', async () => {
+    const generateScenarioCsv = vi.fn(() => VALID_SIMULATION_CSV);
+    const unsafeMoveId = '../../../ESCAPE';
+
+    await expect(
+      generateSimulations(
+        {
+          sourcePath: '/source/pvpoke',
+          candidateSets: [
+            {
+              formatId: 'great-league',
+              cup: 'all',
+              cp: 1500,
+              speciesId: 'bulbasaur',
+              pvpokeScorePrior: 90,
+              retainedFastMoves: ['VINE_WHIP', unsafeMoveId],
+              retainedChargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+              rejections: [],
+              candidates: [
+                {
+                  id: 'vine_whip--sludge_bomb--power_whip',
+                  fastMove: 'VINE_WHIP',
+                  chargedMove1: 'POWER_WHIP',
+                  chargedMove2: 'SLUDGE_BOMB',
+                  isDefault: true,
+                },
+                {
+                  id: '../../../escape--sludge_bomb--power_whip',
+                  fastMove: unsafeMoveId,
+                  chargedMove1: 'POWER_WHIP',
+                  chargedMove2: 'SLUDGE_BOMB',
+                  isDefault: false,
+                },
+              ],
+            },
+          ],
+          simulationSpeciesIdsByFormatId: new Map([
+            ['great-league', ['bulbasaur']],
+          ]),
+        },
+        {
+          getRuntime: () => ({ context: {} as never }),
+          fileExists: isOverallRankingPath,
+          readFile: async (filePath: string) => {
+            if (isOverallRankingPath(filePath)) {
+              return [
+                'Pokemon,Fast Move,Charged Move 1,Charged Move 2',
+                'Bulbasaur,Vine Whip,Power Whip,Sludge Bomb',
+              ].join('\n');
+            }
+            if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
+              return JSON.stringify([
+                {
+                  speciesId: 'bulbasaur',
+                  speciesName: 'Bulbasaur',
+                  fastMoves: ['VINE_WHIP', unsafeMoveId],
+                  chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+                  released: true,
+                },
+              ]);
+            }
+            if (filePath.endsWith(path.join('data', 'moves.json'))) {
+              return JSON.stringify([
+                { moveId: 'VINE_WHIP', name: 'Vine Whip', energyGain: 8 },
+                { moveId: unsafeMoveId, name: 'Escape', energyGain: 8 },
+                {
+                  moveId: 'POWER_WHIP',
+                  name: 'Power Whip',
+                  energyGain: 0,
+                },
+                {
+                  moveId: 'SLUDGE_BOMB',
+                  name: 'Sludge Bomb',
+                  energyGain: 0,
+                },
+              ]);
+            }
+            throw new Error(`unexpected file read: ${filePath}`);
+          },
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile: vi.fn().mockResolvedValue(undefined),
+          generateScenarioCsv,
+        },
+      ),
+    ).rejects.toThrow(
+      "Candidate '../../../escape--sludge_bomb--power_whip' has path-unsafe move '../../../ESCAPE'",
+    );
+    expect(generateScenarioCsv).not.toHaveBeenCalled();
   });
 
   it('in resume mode reuses only valid unchanged format-specific files', async () => {

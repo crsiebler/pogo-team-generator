@@ -11,8 +11,19 @@ import {
   moveNameToMoveId,
   normalizeToChoosableSpeciesId,
 } from '@/lib/data/aliases';
-import { BattleFormat, getBattleFormats } from '@/lib/data/battleFormats';
-import { getMovesetVariants } from '@/lib/data/movesetVariants';
+import {
+  BattleFormat,
+  BattleFormatId,
+  getBattleFormats,
+} from '@/lib/data/battleFormats';
+import { createMoveAvailabilityResolver } from '@/lib/data/moveAvailability';
+import {
+  MAX_MOVESET_CANDIDATES,
+  MOVESET_VARIANT_SCENARIOS,
+} from '@/lib/data/movesetVariantManifest';
+import { getMovesetVariantId } from '@/lib/data/movesetVariants';
+import type { DerivedMovesetCandidateSet } from '@/lib/sync/movesetCandidates';
+import type { MovesetVariant } from '@/lib/types';
 
 interface RankingsCsvEntry {
   Pokemon: string;
@@ -32,6 +43,11 @@ type RecommendedMovesBySpeciesId = Readonly<Record<string, RecommendedMoveIds>>;
 /** Sync options that can invalidate cached outputs for changed ranking pools. */
 export interface SimulationSyncOptions extends SyncRunOptions {
   readonly forceRegenerateFormatIds?: ReadonlySet<BattleFormat['id']>;
+  readonly candidateSets?: readonly DerivedMovesetCandidateSet[];
+  readonly simulationSpeciesIdsByFormatId?: ReadonlyMap<
+    BattleFormatId,
+    readonly string[]
+  >;
 }
 
 interface SimulationPokemonData {
@@ -62,12 +78,115 @@ interface AjaxOptions {
 }
 
 const runtimeBySourcePath = new Map<string, PvpokeVmRuntime>();
+const CANONICAL_SPECIES_ID_PATTERN = /^[a-z0-9]+(?:_[a-z0-9]+)*$/;
+const CANONICAL_MOVE_ID_PATTERN = /^[A-Z0-9]+(?:_[A-Z0-9]+)*$/;
+const CANONICAL_VARIANT_ID_PATTERN =
+  /^[a-z0-9]+(?:_[a-z0-9]+)*(?:--[a-z0-9]+(?:_[a-z0-9]+)*){2}$/;
 
-const SIMULATION_SCENARIOS = [
-  { scenario: '1-1', shields: 1 },
-  { scenario: '0-0', shields: 0 },
-  { scenario: '2-2', shields: 2 },
-] as const;
+const SIMULATION_SCENARIOS = MOVESET_VARIANT_SCENARIOS.map((scenario) => ({
+  scenario,
+  shields: Number.parseInt(scenario, 10),
+}));
+
+function getCandidateSetKey(
+  formatId: BattleFormatId,
+  speciesId: string,
+): string {
+  return `${formatId}|${speciesId}`;
+}
+
+function getValidatedCandidates(
+  format: BattleFormat,
+  speciesId: string,
+  candidateSet: DerivedMovesetCandidateSet | undefined,
+  pokemon: SimulationPokemonData,
+  moveById: ReadonlyMap<string, SimulationMoveData>,
+  getMoveAvailability: ReturnType<typeof createMoveAvailabilityResolver>,
+  recommendedMoves: RecommendedMoveIds | undefined,
+): readonly MovesetVariant[] {
+  if (!candidateSet) {
+    return [];
+  }
+  if (
+    candidateSet.formatId !== format.id ||
+    candidateSet.cup !== format.cup ||
+    candidateSet.cp !== format.cp ||
+    candidateSet.speciesId !== speciesId
+  ) {
+    throw new Error(
+      `[sync-simulations] Candidate set metadata does not match ${format.id}/${speciesId}`,
+    );
+  }
+  if (candidateSet.candidates.length > MAX_MOVESET_CANDIDATES) {
+    throw new Error(
+      `[sync-simulations] ${format.id}/${speciesId} has ${candidateSet.candidates.length} candidates; maximum is ${MAX_MOVESET_CANDIDATES}`,
+    );
+  }
+
+  const defaultCandidates = candidateSet.candidates.filter(
+    ({ isDefault }) => isDefault,
+  );
+  if (defaultCandidates.length !== 1) {
+    throw new Error(
+      `[sync-simulations] ${format.id}/${speciesId} must have exactly one default candidate`,
+    );
+  }
+  const defaultCandidate = defaultCandidates[0];
+  if (
+    !recommendedMoves?.chargedMove2 ||
+    defaultCandidate.fastMove !== recommendedMoves.fastMove ||
+    defaultCandidate.chargedMove1 !== recommendedMoves.chargedMove1 ||
+    defaultCandidate.chargedMove2 !== recommendedMoves.chargedMove2
+  ) {
+    throw new Error(
+      `[sync-simulations] Derived default does not match emitted Overall moves for ${format.id}/${speciesId}`,
+    );
+  }
+
+  const candidateIds = new Set<string>();
+  for (const candidate of candidateSet.candidates) {
+    if (candidateIds.has(candidate.id)) {
+      throw new Error(
+        `[sync-simulations] Duplicate candidate variant '${candidate.id}' for ${format.id}/${speciesId}`,
+      );
+    }
+    candidateIds.add(candidate.id);
+    if (candidate.id !== getMovesetVariantId(candidate)) {
+      throw new Error(
+        `[sync-simulations] Candidate '${candidate.id}' has an inconsistent variant identity for ${format.id}/${speciesId}`,
+      );
+    }
+    if (candidate.chargedMove1 === candidate.chargedMove2) {
+      throw new Error(
+        `[sync-simulations] Candidate '${candidate.id}' repeats its charged move for ${format.id}/${speciesId}`,
+      );
+    }
+
+    const moveSlots = [
+      ['fast', candidate.fastMove],
+      ['charged', candidate.chargedMove1],
+      ['charged', candidate.chargedMove2],
+    ] as const;
+    for (const [slot, moveId] of moveSlots) {
+      if (!CANONICAL_MOVE_ID_PATTERN.test(moveId)) {
+        throw new Error(
+          `[sync-simulations] Candidate '${candidate.id}' has path-unsafe move '${moveId}'`,
+        );
+      }
+      const move = moveById.get(moveId);
+      const isCorrectSlot =
+        move && (slot === 'fast' ? move.energyGain > 0 : move.energyGain <= 0);
+      const availability = getMoveAvailability(speciesId, moveId, format.id);
+      if (!isCorrectSlot || availability.kind === 'excluded') {
+        throw new Error(
+          `[sync-simulations] Candidate '${candidate.id}' has invalid ${slot} move '${moveId}' for ${format.id}/${pokemon.speciesId}`,
+        );
+      }
+    }
+  }
+
+  return candidateSet.candidates;
+}
 
 /**
  * Parse rankings CSV text into key/value objects.
@@ -223,16 +342,42 @@ function getSimulationOutputPath(
   movesetVariantId?: string,
 ): string {
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+  if (!CANONICAL_SPECIES_ID_PATTERN.test(canonicalSpeciesId)) {
+    throw new Error(
+      `[sync-simulations] Species '${speciesId}' is not safe for simulation storage`,
+    );
+  }
+  if (
+    movesetVariantId !== undefined &&
+    !CANONICAL_VARIANT_ID_PATTERN.test(movesetVariantId)
+  ) {
+    throw new Error(
+      `[sync-simulations] Variant '${movesetVariantId}' is not safe for simulation storage`,
+    );
+  }
   const filenamePrefix = movesetVariantId
     ? `${canonicalSpeciesId}--${movesetVariantId}`
     : canonicalSpeciesId;
-  return path.join(
+  const formatDirectory = path.join(
     syncConfig.outputDir,
     'simulations',
     `cp${format.cp}`,
     format.cup,
+  );
+  const outputPath = path.join(
+    formatDirectory,
     `${filenamePrefix}_${scenario}.csv`,
   );
+  if (
+    !path
+      .resolve(outputPath)
+      .startsWith(`${path.resolve(formatDirectory)}${path.sep}`)
+  ) {
+    throw new Error(
+      `[sync-simulations] Output path escapes the ${format.id} simulation directory`,
+    );
+  }
+  return outputPath;
 }
 
 /**
@@ -253,6 +398,28 @@ function getOverallRankingsPath(format: BattleFormat): string {
  */
 function normalizeSpeciesName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function getSimulationOpponentKeys(csvText: string): readonly string[] {
+  return csvText
+    .trim()
+    .split('\n')
+    .slice(1)
+    .map((line) => normalizeSpeciesName(line.split(',')[0]?.trim() ?? ''))
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function hasMatchingOpponentSet(
+  csvText: string,
+  expectedOpponentKeys: readonly string[],
+): boolean {
+  const opponentKeys = getSimulationOpponentKeys(csvText);
+  return (
+    opponentKeys.length === expectedOpponentKeys.length &&
+    opponentKeys.every(
+      (opponentKey, index) => opponentKey === expectedOpponentKeys[index],
+    )
+  );
 }
 
 /**
@@ -765,6 +932,32 @@ export async function generateSimulations(
         move,
       ]),
     );
+    const getMoveAvailability = createMoveAvailabilityResolver(pokemonData);
+    const candidateSetsByFormatAndSpecies = new Map<
+      string,
+      DerivedMovesetCandidateSet
+    >();
+    for (const candidateSet of options.candidateSets ?? []) {
+      if (
+        normalizeToChoosableSpeciesId(candidateSet.speciesId) !==
+          candidateSet.speciesId ||
+        !CANONICAL_SPECIES_ID_PATTERN.test(candidateSet.speciesId)
+      ) {
+        throw new Error(
+          `[sync-simulations] Candidate set species '${candidateSet.speciesId}' is not canonical`,
+        );
+      }
+      const key = getCandidateSetKey(
+        candidateSet.formatId,
+        candidateSet.speciesId,
+      );
+      if (candidateSetsByFormatAndSpecies.has(key)) {
+        throw new Error(
+          `[sync-simulations] Duplicate candidate set for ${candidateSet.formatId}/${candidateSet.speciesId}`,
+        );
+      }
+      candidateSetsByFormatAndSpecies.set(key, candidateSet);
+    }
 
     pokemonData.forEach((pokemon) => {
       const canonicalSpeciesId = normalizeToChoosableSpeciesId(
@@ -806,6 +999,7 @@ export async function generateSimulations(
       const allRankings = parseRankingsCsv(overallCsvText);
       const recommendedMovesBySpeciesId: Record<string, RecommendedMoveIds> =
         {};
+      const rankingBySpeciesId = new Map<string, RankingsCsvEntry>();
       for (const ranking of allRankings) {
         const speciesId = speciesByNormalizedName.get(
           normalizeSpeciesName(ranking.Pokemon),
@@ -816,40 +1010,39 @@ export async function generateSimulations(
         const recommendedMoves = pokemon
           ? getRecommendedMoveIds(ranking, pokemon, moveById)
           : undefined;
-        if (speciesId && recommendedMoves?.chargedMove2) {
-          recommendedMovesBySpeciesId[
-            normalizeToChoosableSpeciesId(speciesId)
-          ] = recommendedMoves;
+        if (speciesId) {
+          const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
+          rankingBySpeciesId.set(canonicalSpeciesId, ranking);
+          if (recommendedMoves?.chargedMove2) {
+            recommendedMovesBySpeciesId[canonicalSpeciesId] = recommendedMoves;
+          }
         }
       }
-      const topPokemonNames = allRankings
-        .slice(0, 150)
-        .map((ranking) => ranking.Pokemon)
-        .filter((name): name is string => typeof name === 'string' && !!name);
+      const simulationSpeciesIds =
+        options.simulationSpeciesIdsByFormatId?.get(format.id) ??
+        allRankings.slice(0, 150).flatMap((ranking): string[] => {
+          const speciesId = speciesByNormalizedName.get(
+            normalizeSpeciesName(ranking.Pokemon),
+          );
+          return speciesId ? [normalizeToChoosableSpeciesId(speciesId)] : [];
+        });
 
       console.log(
         `[sync-simulations] Generating ${format.label} simulations from ${overallCsvPath}`,
       );
 
-      for (let i = 0; i < topPokemonNames.length; i++) {
-        const pokemonName = topPokemonNames[i];
-        const ranking = allRankings[i];
-        const normalizedName = normalizeSpeciesName(pokemonName);
-        const resolvedSpeciesId = speciesByNormalizedName.get(normalizedName);
-        const speciesId = resolvedSpeciesId
-          ? normalizeToChoosableSpeciesId(resolvedSpeciesId)
-          : undefined;
-
-        if (!speciesId) {
-          console.warn(
-            `[sync-simulations] Skipping ${pokemonName}: no matching speciesId in pokemon.json`,
+      for (let i = 0; i < simulationSpeciesIds.length; i++) {
+        const speciesId = simulationSpeciesIds[i];
+        const ranking = rankingBySpeciesId.get(speciesId);
+        if (!ranking) {
+          throw new Error(
+            `[sync-simulations] Missing emitted Overall ranking for '${format.id}/${speciesId}'`,
           );
-          continue;
         }
 
-        const displayName = speciesNameById.get(speciesId) ?? pokemonName;
+        const displayName = speciesNameById.get(speciesId) ?? ranking.Pokemon;
         console.log(
-          `[sync-simulations] Processing ${displayName} for ${format.label} (${i + 1}/${topPokemonNames.length})`,
+          `[sync-simulations] Processing ${displayName} for ${format.label} (${i + 1}/${simulationSpeciesIds.length})`,
         );
 
         const pokemon = pokemonBySpeciesId.get(speciesId);
@@ -858,9 +1051,26 @@ export async function generateSimulations(
             `[sync-simulations] Missing canonical Pokemon data for '${speciesId}'`,
           );
         }
-        const recommendedMoves = ranking
-          ? getRecommendedMoveIds(ranking, pokemon, moveById)
-          : undefined;
+        const recommendedMoves = getRecommendedMoveIds(
+          ranking,
+          pokemon,
+          moveById,
+        );
+        const candidates = getValidatedCandidates(
+          format,
+          speciesId,
+          candidateSetsByFormatAndSpecies.get(
+            getCandidateSetKey(format.id, speciesId),
+          ),
+          pokemon,
+          moveById,
+          getMoveAvailability,
+          recommendedMoves,
+        );
+        const defaultOpponentKeysByScenario = new Map<
+          string,
+          readonly string[]
+        >();
 
         for (const scenario of SIMULATION_SCENARIOS) {
           const outputPath = getSimulationOutputPath(
@@ -877,6 +1087,10 @@ export async function generateSimulations(
             const existingCsv = await resolvedDependencies.readFile(outputPath);
             const existingValidation = validateSimulationsCsv(existingCsv);
             if (existingValidation.valid) {
+              defaultOpponentKeysByScenario.set(
+                scenario.scenario,
+                getSimulationOpponentKeys(existingCsv),
+              );
               logValidationErrors(
                 `${displayName} ${scenario.scenario} ${format.label} simulations CSV`,
                 existingValidation.errors,
@@ -914,6 +1128,10 @@ export async function generateSimulations(
               `[sync-simulations] ${displayName} ${scenario.scenario} ${format.label} validation failed: ${validation.errors.join(', ')}`,
             );
           }
+          defaultOpponentKeysByScenario.set(
+            scenario.scenario,
+            getSimulationOpponentKeys(csvText),
+          );
 
           await resolvedDependencies.mkdir(path.dirname(outputPath));
           await resolvedDependencies.writeFile(outputPath, csvText);
@@ -923,21 +1141,11 @@ export async function generateSimulations(
           );
         }
 
-        if (!recommendedMoves?.chargedMove2) {
-          continue;
-        }
-
-        const alternateVariants = getMovesetVariants(speciesId, {
-          fastMove: recommendedMoves.fastMove,
-          chargedMove1: recommendedMoves.chargedMove1,
-          chargedMove2: recommendedMoves.chargedMove2,
-        }).filter((variant) => !variant.isDefault);
+        const alternateVariants = candidates.filter(
+          (variant) => !variant.isDefault,
+        );
 
         for (const variant of alternateVariants) {
-          if (!pokemon.fastMoves.includes(variant.fastMove)) {
-            continue;
-          }
-
           for (const scenario of SIMULATION_SCENARIOS) {
             const outputPath = getSimulationOutputPath(
               format,
@@ -954,7 +1162,12 @@ export async function generateSimulations(
               const existingCsv =
                 await resolvedDependencies.readFile(outputPath);
               const existingValidation = validateSimulationsCsv(existingCsv);
-              if (existingValidation.valid) {
+              const defaultOpponentKeys =
+                defaultOpponentKeysByScenario.get(scenario.scenario) ?? [];
+              if (
+                existingValidation.valid &&
+                hasMatchingOpponentSet(existingCsv, defaultOpponentKeys)
+              ) {
                 allSimulations.push(
                   ...parseSimulationsCsv(
                     existingCsv,
@@ -987,6 +1200,13 @@ export async function generateSimulations(
             if (!validation.valid) {
               throw new Error(
                 `[sync-simulations] ${displayName} ${variant.id} ${scenario.scenario} ${format.label} validation failed: ${validation.errors.join(', ')}`,
+              );
+            }
+            const defaultOpponentKeys =
+              defaultOpponentKeysByScenario.get(scenario.scenario) ?? [];
+            if (!hasMatchingOpponentSet(csvText, defaultOpponentKeys)) {
+              throw new Error(
+                `[sync-simulations] ${displayName} ${variant.id} ${scenario.scenario} ${format.label} opponent set does not match the default matrix`,
               );
             }
 

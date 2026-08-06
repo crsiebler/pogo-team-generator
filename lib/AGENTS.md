@@ -39,6 +39,8 @@ Simulation sync must iterate every format from `getBattleFormats()`, loading ran
 
 Treat emitted Overall rankings as the authoritative TeamRanker opponent pool: canonicalize and deduplicate aliases, initialize every target with its emitted default, fingerprint each Overall CSV against the pre-sync snapshot, and prune the affected format directory before resume regeneration when the fingerprint changes.
 
+Pass ranking-derived candidate sets and sanitized top-150 species ids directly from ranking sync into simulation sync. Validate path-safe candidate metadata, canonical identity, move slots, and snapshot-bound availability before VM execution; keep default matrices on unqualified species paths, write only non-default candidates to canonical variant-qualified paths, and require every alternate scenario's opponent set to match its default matrix before reuse or persistence.
+
 Checked-in moveset-specific simulation variants must include complete `0-0`, `1-1`, and `2-2` files with matching opponent sets for every applicable format.
 
 Simulation projection must bypass the destructive `runSync(...)` pipeline, derive candidates through read-only sync dependencies, limit alternate output to sanitized top-150 Overall targets with multiple candidates, and recognize stale files only through the strict canonical variant filename parser.
