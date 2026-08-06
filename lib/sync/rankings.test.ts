@@ -1,9 +1,43 @@
 import path from 'path';
 import { describe, expect, it, vi } from 'vitest';
 import { RankingCategory } from './adapter';
-import { scrapeRankings } from './rankings';
+import { normalizeRankingSourceEntries, scrapeRankings } from './rankings';
 
 describe('rankings local sync', () => {
+  it('deduplicates canonical aliases deterministically without losing sources', () => {
+    const canonical = {
+      speciesId: 'morpeko_full_belly',
+      speciesName: 'Morpeko (Full Belly)',
+      score: 90,
+      moveset: ['THUNDER_SHOCK', 'AURA_WHEEL_ELECTRIC', 'PSYCHIC_FANGS'],
+    };
+    const battleState = {
+      speciesId: 'morpeko_hangry',
+      speciesName: 'Morpeko (Hangry)',
+      score: 90,
+      moveset: ['THUNDER_SHOCK', 'AURA_WHEEL_DARK', 'PSYCHIC_FANGS'],
+    };
+
+    const canonicalFirst = normalizeRankingSourceEntries([
+      canonical,
+      battleState,
+    ]);
+    const battleStateFirst = normalizeRankingSourceEntries([
+      battleState,
+      canonical,
+    ]);
+
+    expect(canonicalFirst).toEqual(battleStateFirst);
+    expect(canonicalFirst[0]).toMatchObject({
+      speciesId: 'morpeko_full_belly',
+      sourceSpeciesId: 'morpeko_full_belly',
+      speciesAliasKind: null,
+    });
+    expect(
+      canonicalFirst[0].sourceEntries.map((entry) => entry.speciesId),
+    ).toEqual(['morpeko_full_belly', 'morpeko_hangry']);
+  });
+
   it('converts local ranking JSON into validated CSV outputs', async () => {
     const categories: RankingCategory[] = [
       'overall',

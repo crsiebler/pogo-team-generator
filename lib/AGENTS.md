@@ -15,6 +15,8 @@ When syncing gamemaster JSON, call adapter `readPokemonJson`/`readMovesJson`, va
 
 When extending the synced `PokemonData` contract, update `validatePokemonJson(...)` to validate each new optional field and cover valid and malformed values in `lib/sync/gamemaster.test.ts`.
 
+Keep species ID, species display-name, and move spelling aliases centralized in `lib/data/aliases.ts`; runtime loaders and sync tooling must use those helpers, and ranking normalization must retain battle-state versus moveset-variant provenance until canonical species deduplication is complete.
+
 When syncing rankings, iterate all supported battle formats from `lib/data/battleFormats.ts` and read local PvPoke ranking JSON via adapter `readRankingJson(category, cp, cup)` from `src/data/rankings/<cup>/<category>/rankings-<cp>.json` before writing deterministic outputs under `data/rankings/cp<cp>/<cup>/<category>_rankings.csv`.
 
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.

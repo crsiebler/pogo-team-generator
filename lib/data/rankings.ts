@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { parse } from 'csv-parse/sync';
 import type { RankedPokemon } from '../types';
+import { moveNameToMoveId } from './aliases';
 import type { BattleFormatId } from './battleFormats';
 import { DEFAULT_BATTLE_FORMAT_ID, getBattleFormatById } from './battleFormats';
 import {
@@ -8,7 +9,9 @@ import {
   type CandidateRankingBandOptions,
   type CandidateRankingBandsResult,
 } from './candidateRankingBands';
+import { getMoveByMoveId } from './moves';
 import {
+  getPokemonBySpeciesName,
   normalizeToChoosableSpeciesName,
   speciesNameToChoosableId,
   speciesIdToSpeciesName,
@@ -426,37 +429,22 @@ function getOptionalRankingScore(
   }
 }
 
-/**
- * Convert CSV move name to move ID format
- * Examples:
- * - "Shadow Ball" -> "SHADOW_BALL"
- * - "Weather Ball (Fire)" -> "WEATHER_BALL_FIRE"
- * - "Play Rough" -> "PLAY_ROUGH"
- */
-function moveNameToMoveId(moveName: string): string {
-  // Extract type from parentheses if present (e.g., "Weather Ball (Fire)")
-  const match = moveName.match(/^(.+?)\s*\((.+?)\)$/);
+function resolveRankingMoveId(moveName: string, pokemonName: string): string {
+  const pokemon = getPokemonBySpeciesName(pokemonName);
+  const matchingMoveIds = [
+    ...new Set([
+      ...(pokemon?.fastMoves ?? []),
+      ...(pokemon?.chargedMoves ?? []),
+      ...(pokemon?.eliteMoves ?? []),
+      ...(pokemon?.legacyMoves ?? []),
+    ]),
+  ].filter((moveId) => getMoveByMoveId(moveId)?.name === moveName);
 
-  if (match) {
-    const baseName = match[1].trim();
-    const type = match[2].trim();
-    // Convert both parts to uppercase and join with underscore
-    const baseId = baseName
-      .toUpperCase()
-      .replace(/'/g, '')
-      .replace(/[\s-]+/g, '_');
-    const typeId = type
-      .toUpperCase()
-      .replace(/'/g, '')
-      .replace(/[\s-]+/g, '_');
-    return `${baseId}_${typeId}`;
+  if (matchingMoveIds.length === 1) {
+    return matchingMoveIds[0];
   }
 
-  // No type suffix, just convert to uppercase and replace spaces
-  return moveName
-    .toUpperCase()
-    .replace(/'/g, '')
-    .replace(/[\s-]+/g, '_');
+  return moveNameToMoveId(moveName);
 }
 
 /**
@@ -484,12 +472,14 @@ export function getOptimalMoveset(
   }
 
   return {
-    fastMove: entry['Fast Move'] ? moveNameToMoveId(entry['Fast Move']) : null,
+    fastMove: entry['Fast Move']
+      ? resolveRankingMoveId(entry['Fast Move'], canonicalPokemonName)
+      : null,
     chargedMove1: entry['Charged Move 1']
-      ? moveNameToMoveId(entry['Charged Move 1'])
+      ? resolveRankingMoveId(entry['Charged Move 1'], canonicalPokemonName)
       : null,
     chargedMove2: entry['Charged Move 2']
-      ? moveNameToMoveId(entry['Charged Move 2'])
+      ? resolveRankingMoveId(entry['Charged Move 2'], canonicalPokemonName)
       : null,
   };
 }

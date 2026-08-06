@@ -170,4 +170,30 @@ describe('getOptimalMoveset', () => {
       chargedMove2: 'AQUA_JET',
     });
   });
+
+  it('normalizes ranking move spelling aliases', () => {
+    expect(getOptimalMoveset('Snorlax')).toEqual({
+      fastMove: 'LICK',
+      chargedMove1: 'BODY_SLAM',
+      chargedMove2: 'SUPER_POWER',
+    });
+    expect(getOptimalMoveset('Krabby')).toEqual({
+      fastMove: 'BUBBLE',
+      chargedMove1: 'VICE_GRIP',
+      chargedMove2: 'RAZOR_SHELL',
+    });
+  });
+
+  it('resolves stateful move names against the canonical species movepool', () => {
+    expect(getOptimalMoveset('Morpeko (Full Belly)')).toEqual({
+      fastMove: 'THUNDER_SHOCK',
+      chargedMove1: 'AURA_WHEEL_ELECTRIC',
+      chargedMove2: 'PSYCHIC_FANGS',
+    });
+    expect(getOptimalMoveset('Aegislash (Shield)')).toEqual({
+      fastMove: 'AEGISLASH_CHARGE_PSYCHO_CUT',
+      chargedMove1: 'SHADOW_BALL',
+      chargedMove2: 'GYRO_BALL',
+    });
+  });
 });

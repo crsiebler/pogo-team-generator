@@ -7,6 +7,10 @@ import { resolvePvpokeSourcePath } from './source';
 import { SyncRunOptions, SimulationData, SimulationsCsv } from './types';
 import { logError } from './utils';
 import { logValidationErrors, validateSimulationsCsv } from './validation';
+import {
+  moveNameToMoveId,
+  normalizeToChoosableSpeciesId,
+} from '@/lib/data/aliases';
 import { BattleFormat, getBattleFormats } from '@/lib/data/battleFormats';
 import { getMovesetVariants } from '@/lib/data/movesetVariants';
 
@@ -58,19 +62,6 @@ const SIMULATION_SCENARIOS = [
   { scenario: '2-2', shields: 2 },
 ] as const;
 
-const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
-  morpeko_hangry: 'morpeko_full_belly',
-  aegislash_blade: 'aegislash_shield',
-  lanturnw: 'lanturn',
-  cradily_b: 'cradily',
-  golisopodsh: 'golisopod',
-};
-
-const MOVE_ID_ALIASES: Record<string, string> = {
-  SUPERPOWER: 'SUPER_POWER',
-  VISE_GRIP: 'VICE_GRIP',
-};
-
 /**
  * Parse rankings CSV text into key/value objects.
  */
@@ -100,37 +91,6 @@ function parseRankingsCsv(csvText: string): RankingsCsvEntry[] {
   }
 
   return entries;
-}
-
-/**
- * Convert CSV move names to PvPoke move ids.
- */
-function moveNameToMoveId(moveName: string): string {
-  const match = moveName.match(/^(.+?)\s*\((.+?)\)$/);
-
-  if (match) {
-    const normalizedBase = match[1]
-      .trim()
-      .toUpperCase()
-      .replace(/'/g, '')
-      .replace(/[\s-]+/g, '_');
-    const normalizedType = match[2]
-      .trim()
-      .toUpperCase()
-      .replace(/'/g, '')
-      .replace(/[\s-]+/g, '_');
-    const moveId = `${normalizedBase}_${normalizedType}`;
-
-    return MOVE_ID_ALIASES[moveId] ?? moveId;
-  }
-
-  const moveId = moveName
-    .trim()
-    .toUpperCase()
-    .replace(/'/g, '')
-    .replace(/[\s-]+/g, '_');
-
-  return MOVE_ID_ALIASES[moveId] ?? moveId;
 }
 
 function resolveMoveId(
@@ -244,13 +204,6 @@ function parseSimulationsCsv(
   }
 
   return entries;
-}
-
-/**
- * Resolve a speciesId to choosable form speciesId.
- */
-function normalizeToChoosableSpeciesId(speciesId: string): string {
-  return NON_CHOOSABLE_FORM_ALIASES[speciesId] ?? speciesId;
 }
 
 /**

@@ -5,6 +5,7 @@
 - Implement behavioral changes test-first and record the failing and passing focused test commands in each iteration log.
 - Preserve unrelated worktree changes and do not remove generated files outside the tested stale-variant cleanup boundary.
 - Initialize `vendor/pvpoke` with `git submodule update --init vendor/pvpoke` before running tests that validate bundled PvPoke source data.
+- Keep species ID, species display-name, and move spelling aliases in `lib/data/aliases.ts`; distinguish battle-state aliases from moveset variants and retain source provenance until canonical ranking deduplication finishes.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -86,4 +87,41 @@
   - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-001.
 - Next iteration start:
   - US-002 - Centralize species and move alias normalization
+---
+
+## 2026-08-05 19:23:21 MST - US-002
+- Centralized species ID, display-name, and move spelling aliases in pure shared helpers; wired runtime Pokemon/ranking loading plus ranking and simulation sync to those helpers; retained all source entries and alias-kind provenance through deterministic ranking deduplication; resolved stateful move names against canonical species movepools; and preserved non-choosable candidate filtering.
+- Files changed: `lib/AGENTS.md`, `lib/data/aliases.ts`, `lib/data/aliases.test.ts`, `lib/data/pokemon.ts`, `lib/data/pokemon.test.ts`, `lib/data/rankings.ts`, `lib/data/rankings.test.ts`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `lib/sync/simulations.ts`, `progress.txt`
+- Commit message: `feat: US-002 - Centralize species and move alias normalization`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/rankings.test.ts lib/data/pokemon.test.ts` (fail as expected before implementation: `Superpower` returned `SUPERPOWER` instead of `SUPER_POWER`)
+  - `npx vitest run lib/data/aliases.test.ts lib/data/pokemon.test.ts lib/data/rankings.test.ts lib/sync/rankings.test.ts lib/sync/simulations.test.ts` (pass, 46 tests)
+  - `npx vitest run lib/data/rankings.test.ts lib/sync/rankings.test.ts` before review fixes (fail as expected: stateful runtime move IDs were context-free and ranking normalization was not exported/provenance-complete)
+  - `npx vitest run lib/data/rankings.test.ts lib/sync/rankings.test.ts` after review fixes (pass, 17 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` before import-order fix (fail: one `import/order` error in `lib/data/rankings.ts`)
+  - `npm run lint` after import-order fix (pass)
+  - `npm test` after review fixes (pass, 564 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `refactoring-specialist`
+  - Used: `typescript-pro`; skipped `refactoring-specialist` because the standard-mode one-agent budget and small pure-helper consolidation made overlapping refactor guidance unnecessary
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `code-reviewer` and `qa-expert` re-review
+  - Findings: fixed two medium findings by resolving runtime moves against canonical species movepools and retaining all source entries with deterministic canonical-preferred tie-breaking; targeted re-review found none
+- Decisions (why):
+  - Classified aliases as `battle-state` or `moveset-variant` so Morpeko and Aegislash source forms remain distinguishable from ordinary alternate-moveset pseudo-forms.
+  - Kept existing Pokemon normalization exports available from `lib/data/pokemon.ts` while moving the source of truth to `lib/data/aliases.ts` to avoid unnecessary consumer churn.
+  - Normalized only the known `SUPERPOWER` and `VISE_GRIP` spelling differences; stateful form-specific move IDs remain untouched.
+  - Preferred canonical source entries on equal scores, then used stable source keys, while retaining every colliding source record so input order cannot change deduplication output or erase pseudo-form evidence.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Runtime ranking conversion previously drifted from simulation sync and emitted non-canonical `SUPERPOWER` and `VISE_GRIP` IDs.
+  - Ranking entries carry every original source record plus selected source species ID, display name, and alias kind after canonicalization, allowing later evidence collection to preserve pseudo-form provenance.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-002.
+- Next iteration start:
+  - US-003 - Implement regular, Elite, purified, and Frustration availability rules
 ---

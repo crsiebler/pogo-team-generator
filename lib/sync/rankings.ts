@@ -11,9 +11,15 @@ import {
 } from './types';
 import { logError } from './utils';
 import { logValidationErrors, validateRankingsCsv } from './validation';
+import {
+  normalizeMoveId,
+  resolveSpeciesAlias,
+  type SpeciesAliasKind,
+} from '@/lib/data/aliases';
 import { getBattleFormats } from '@/lib/data/battleFormats';
 
-interface RankingSourceEntry {
+/** One unmodified ranking record read from PvPoke source data. */
+export interface RankingSourceEntry {
   speciesId: string;
   speciesName: string;
   score: number;
@@ -25,46 +31,78 @@ interface RankingSourceEntry {
   };
 }
 
-const NON_CHOOSABLE_FORM_ALIASES: Record<string, string> = {
-  morpeko_hangry: 'morpeko_full_belly',
-  aegislash_blade: 'aegislash_shield',
-  lanturnw: 'lanturn',
-  cradily_b: 'cradily',
-  golisopodsh: 'golisopod',
-};
-
-const RANKING_MOVE_ALIASES: Record<string, string> = {
-  VISE_GRIP: 'VICE_GRIP',
-};
-
-function normalizeToChoosableSpeciesId(speciesId: string): string {
-  return NON_CHOOSABLE_FORM_ALIASES[speciesId] ?? speciesId;
+/** Canonical ranking record retaining every source alias record. */
+export interface NormalizedRankingSourceEntry extends RankingSourceEntry {
+  sourceSpeciesId: string;
+  sourceSpeciesName: string;
+  speciesAliasKind: SpeciesAliasKind | null;
+  sourceEntries: readonly RankingSourceEntry[];
 }
 
-function normalizeRankingMoveId(moveId: string): string {
-  return RANKING_MOVE_ALIASES[moveId] ?? moveId;
-}
-
-function normalizeRankingSourceEntries(
-  entries: RankingSourceEntry[],
-): RankingSourceEntry[] {
-  const bySpeciesId = new Map<string, RankingSourceEntry>();
-
-  for (const entry of entries) {
-    const canonicalSpeciesId = normalizeToChoosableSpeciesId(entry.speciesId);
-    const existing = bySpeciesId.get(canonicalSpeciesId);
-
-    const normalizedEntry: RankingSourceEntry = {
-      ...entry,
-      speciesId: canonicalSpeciesId,
-    };
-
-    if (!existing || normalizedEntry.score > existing.score) {
-      bySpeciesId.set(canonicalSpeciesId, normalizedEntry);
-    }
+function compareRankingSourceEntries(
+  left: RankingSourceEntry,
+  right: RankingSourceEntry,
+): number {
+  const scoreDifference = right.score - left.score;
+  if (scoreDifference !== 0) {
+    return scoreDifference;
   }
 
-  return Array.from(bySpeciesId.values());
+  const leftIsAlias = resolveSpeciesAlias(left.speciesId).aliasKind !== null;
+  const rightIsAlias = resolveSpeciesAlias(right.speciesId).aliasKind !== null;
+  if (leftIsAlias !== rightIsAlias) {
+    return leftIsAlias ? 1 : -1;
+  }
+
+  const toStableKey = (entry: RankingSourceEntry): string => {
+    return [
+      entry.speciesId,
+      entry.speciesName,
+      entry.moveset.join(','),
+      entry.stats?.atk ?? '',
+      entry.stats?.def ?? '',
+      entry.stats?.hp ?? '',
+    ].join('|');
+  };
+
+  return toStableKey(left).localeCompare(toStableKey(right));
+}
+
+/**
+ * Canonicalize and deterministically deduplicate rankings while retaining
+ * source-form evidence.
+ */
+export function normalizeRankingSourceEntries(
+  entries: RankingSourceEntry[],
+): NormalizedRankingSourceEntry[] {
+  const bySpeciesId = new Map<string, NormalizedRankingSourceEntry>();
+
+  for (const entry of entries) {
+    const alias = resolveSpeciesAlias(entry.speciesId);
+    const canonicalSpeciesId = alias.canonicalSpeciesId;
+    const existing = bySpeciesId.get(canonicalSpeciesId);
+    const sourceEntries = [...(existing?.sourceEntries ?? []), entry].sort(
+      compareRankingSourceEntries,
+    );
+    const preferredEntry = sourceEntries[0];
+    const preferredAlias = resolveSpeciesAlias(preferredEntry.speciesId);
+    const normalizedEntry: NormalizedRankingSourceEntry = {
+      ...preferredEntry,
+      speciesId: canonicalSpeciesId,
+      sourceSpeciesId: preferredAlias.sourceSpeciesId,
+      sourceSpeciesName: preferredEntry.speciesName,
+      speciesAliasKind: preferredAlias.aliasKind,
+      sourceEntries,
+    };
+
+    bySpeciesId.set(canonicalSpeciesId, normalizedEntry);
+  }
+
+  return Array.from(bySpeciesId.values()).sort((left, right) => {
+    return (
+      right.score - left.score || left.speciesId.localeCompare(right.speciesId)
+    );
+  });
 }
 
 interface RankingSyncDependencies {
@@ -111,7 +149,7 @@ function getMoveByIdOrThrow(
   moveById: Map<string, MovesData>,
   speciesId: string,
 ): MovesData {
-  const normalizedMoveId = normalizeRankingMoveId(moveId);
+  const normalizedMoveId = normalizeMoveId(moveId);
   const move = moveById.get(normalizedMoveId);
   if (!move) {
     throw new Error(

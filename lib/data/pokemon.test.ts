@@ -60,12 +60,26 @@ describe('Battle Frontier bans', () => {
 
   it('excludes non-choosable moveset aliases from ranked candidate pools', () => {
     const rankedPokemon = getRankedPokemonForFormat(
-      new Set(['Golisopod']),
-      'battle-frontier-coupe-du-sillage',
+      new Set([
+        'Aegislash (Blade)',
+        'Cradily',
+        'Golisopod',
+        'Lanturn',
+        'Morpeko (Hangry)',
+      ]),
+      'master-league',
     );
 
-    expect(rankedPokemon.map((pokemon) => pokemon.speciesId)).toEqual([
-      'golisopod',
-    ]);
+    const rankedSpeciesIds = rankedPokemon.map((pokemon) => pokemon.speciesId);
+
+    for (const alias of [
+      'aegislash_blade',
+      'cradily_b',
+      'golisopodsh',
+      'lanturnw',
+      'morpeko_hangry',
+    ]) {
+      expect(rankedSpeciesIds).not.toContain(alias);
+    }
   });
 });
