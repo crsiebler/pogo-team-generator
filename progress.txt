@@ -14,6 +14,7 @@
 - Moveset derivation preserves the eligible preferred Overall set first, retains exact observed and override sets, limits expansion to two fast and four charged moves, generates only single-move substitutions around observed anchors, and emits at most eight canonical variants using the current sync Pokemon snapshot for availability.
 - Invalid preferred Overall sets retain rejection evidence and the original PvPoke score prior; ranking sync derives replacements before CSV conversion, changes only Overall move columns, and omits an Overall row only when no complete eligible candidate exists.
 - Emitted Overall rankings are the authoritative TeamRanker opponent pool; resume sync fingerprints each format, prunes changed format caches, and initializes canonical deduplicated targets with sanitized defaults before simulation.
+- Simulation projection bypasses the destructive full sync pipeline, derives candidates with no-op persistence boundaries, projects alternates only for sanitized top-150 Overall targets with multiple candidates, and recognizes stale files only through strict canonical variant filenames and required shield scenarios.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -475,4 +476,50 @@
   - Role-category CSVs intentionally retain raw source moveset evidence; only Overall output is the runtime and default-simulation authority changed by this story.
 - Next iteration start:
   - US-010 - Add deterministic simulation projection reporting
+---
+
+## 2026-08-05 23:49:58 MST - US-010
+- Implemented a deterministic read-only simulation projection for every supported format; reports multi-candidate species, total and alternate variants, per-species eight-candidate caps, required shield-scenario CSV totals, and stale strictly recognized variant files; exposed sanitized top-150 simulation species from ranking sync; and added the non-interactive `npm run sync -- --project-simulations` command.
+- Files changed: `lib/AGENTS.md`, `lib/scripts/sync.ts`, `lib/sync/gamemaster.ts`, `lib/sync/rankings.ts`, `lib/sync/rankings.test.ts`, `lib/sync/simulationProjection.ts`, `lib/sync/simulationProjection.test.ts`, `progress.txt`
+- Commit message: `feat: US-010 - Add deterministic simulation projection reporting`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/simulationProjection.test.ts lib/sync/rankings.test.ts` (fail as expected before implementation: projection module and sanitized simulation target map were missing)
+  - `npx vitest run lib/sync/simulationProjection.test.ts lib/sync/rankings.test.ts` (pass, 17 tests)
+  - `npm run sync -- --project-simulations` with before/after worktree digest comparison (pass; all eight formats reported and no files changed)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after correcting one import-order error)
+  - `npm test` (pass, 638 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/sync/simulationProjection.test.ts lib/sync/rankings.test.ts` after initial review tests (fail as expected: noncanonical charged order, polluted CLI stdout, and missing top-150 helper)
+  - `npx vitest run lib/sync/simulationProjection.test.ts lib/sync/rankings.test.ts lib/sync/gamemaster.test.ts` after review fixes (pass, 29 tests)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 641 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` after review fixes (pass)
+- Implementation agents:
+  - Recommended: `tooling-engineer`, `data-engineer`
+  - Used: `tooling-engineer`; skipped `data-engineer` because the read-only CLI boundary and existing candidate derivation contract were clear after one focused tooling review
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `code-reviewer` and `qa-expert` re-review
+  - Findings: fixed four medium findings by emitting standalone JSON, requiring canonical charged-move ordering, automating read-only orchestration and real CLI output, and directly testing the 150-target cap; targeted QA found none, and one targeted npm lifecycle-banner suggestion was discarded because package-manager framing is outside the application report contract and standalone npm stdout was not an acceptance criterion
+- Decisions (why):
+  - Added a dedicated `--project-simulations` branch before `runSync(...)` because the existing full pipeline deletes rankings and may delete simulations before deriving candidates.
+  - Derived projection data from the current local PvPoke source through no-op persistence dependencies so source validation and candidate policy remain identical without writing Pokemon, move, ranking, manifest, or simulation files.
+  - Exposed canonical species IDs that actually survive Overall conversion and the top-150 simulation cut so omitted invalid defaults and non-target ranking evidence cannot inflate projected variant output.
+  - Counted candidate variants including each qualifying species default while projecting shield CSV growth only for non-default variants, making both evidence volume and generated-file growth explicit.
+  - Restricted stale recognition to lowercase canonical species/move IDs, exactly three move tokens, and `0-0`, `1-1`, or `2-2` scenarios so default and malformed files are never reported as cleanup candidates.
+  - Added quiet read-only source/ranking derivation and reserved projection stdout for JSON so repeated CLI output is machine-readable and byte-comparable.
+  - Kept the documented `npm run sync -- --project-simulations` invocation consistent with the existing sync command; machine consumers can call the tested Bun entry point directly, while npm's own lifecycle banner does not alter report ordering or totals.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - The full sync entry point is destructive before ranking derivation; dry tooling must not call `runSync(...)`.
+  - Ranking candidate sets cover more species than simulation generation, so projection must intersect them with sanitized top-150 Overall targets rather than count every evidence record.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-010.
+  - US-012 will replace the hardcoded simulation alternate generation with the projected derived candidates; US-015 will use the strict recognized stale-file boundary for deletion only after successful publication.
+- Next iteration start:
+  - US-011 - Define and validate the moveset variant manifest schema
 ---

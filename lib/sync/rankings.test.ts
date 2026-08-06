@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RankingCategory } from './adapter';
 import {
   aggregateRankingMoveEvidence,
+  getSimulationSpeciesIds,
   normalizeRankingSourceEntries,
   parseMovesetOverrides,
   parseRankingSourceEntries,
@@ -339,6 +340,17 @@ describe('ranking move evidence aggregation', () => {
 });
 
 describe('rankings local sync', () => {
+  it('limits simulation targets to the first 150 successfully converted Overall species', () => {
+    const convertedSpeciesIds = Array.from(
+      { length: 152 },
+      (_, index) => `species_${index}`,
+    );
+
+    expect(getSimulationSpeciesIds(convertedSpeciesIds)).toEqual(
+      convertedSpeciesIds.slice(0, 150),
+    );
+  });
+
   it('deduplicates canonical aliases deterministically without losing sources', () => {
     const canonical = {
       speciesId: 'morpeko_full_belly',
@@ -916,6 +928,11 @@ describe('rankings local sync', () => {
     expect(result.overrideEvidence).toHaveLength(8);
     expect(result.aggregatedEvidence).toHaveLength(26);
     expect(result.candidateSets).toHaveLength(26);
+    expect(result.simulationSpeciesIdsByFormatId.get('great-league')).toEqual([
+      'bulbasaur',
+      'golisopod',
+      'muk',
+    ]);
     expect(result.candidateSets[0]?.candidates[0]).toMatchObject({
       fastMove: 'VINE_WHIP',
       chargedMove1: 'POWER_WHIP',

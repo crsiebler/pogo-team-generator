@@ -30,6 +30,12 @@ interface SyncGamemasterJsonOptions {
   validationContext: string;
   operationContext: string;
   validate: (data: unknown) => { valid: boolean; errors: string[] };
+  quiet: boolean;
+}
+
+/** Optional output controls for gamemaster synchronization. */
+export interface GamemasterSyncOptions {
+  readonly quiet?: boolean;
 }
 
 const defaultDependencies: GamemasterSyncDependencies = {
@@ -54,6 +60,7 @@ async function syncGamemasterJson<T>(
     validationContext,
     operationContext,
     validate,
+    quiet,
   } = options;
 
   try {
@@ -61,7 +68,9 @@ async function syncGamemasterJson<T>(
     const data = await readSourceJson(adapter);
 
     const validation = validate(data);
-    logValidationErrors(validationContext, validation.errors);
+    if (!quiet || validation.errors.length > 0) {
+      logValidationErrors(validationContext, validation.errors);
+    }
     if (!validation.valid) {
       throw new Error(
         `${validationContext} validation failed: ${validation.errors.join(', ')}`,
@@ -75,9 +84,11 @@ async function syncGamemasterJson<T>(
       `${JSON.stringify(data, null, 2)}\n`,
     );
 
-    console.log(
-      `[${operationContext}] Synced ${sourceDescription} to ${outputFilePath}`,
-    );
+    if (!quiet) {
+      console.log(
+        `[${operationContext}] Synced ${sourceDescription} to ${outputFilePath}`,
+      );
+    }
 
     return data as T;
   } catch (error) {
@@ -95,6 +106,7 @@ async function syncGamemasterJson<T>(
 export async function fetchPokemonData(
   sourcePath: string,
   dependencies: Partial<GamemasterSyncDependencies> = {},
+  options: GamemasterSyncOptions = {},
 ): Promise<PokemonJson> {
   return syncGamemasterJson<PokemonJson>(
     {
@@ -105,6 +117,7 @@ export async function fetchPokemonData(
       validationContext: 'Pokemon JSON',
       operationContext: 'sync-pokemon',
       validate: validatePokemonJson,
+      quiet: options.quiet ?? false,
     },
     {
       ...defaultDependencies,
@@ -119,6 +132,7 @@ export async function fetchPokemonData(
 export async function fetchMovesData(
   sourcePath: string,
   dependencies: Partial<GamemasterSyncDependencies> = {},
+  options: GamemasterSyncOptions = {},
 ): Promise<MovesJson> {
   return syncGamemasterJson<MovesJson>(
     {
@@ -129,6 +143,7 @@ export async function fetchMovesData(
       validationContext: 'Moves JSON',
       operationContext: 'sync-moves',
       validate: validateMovesJson,
+      quiet: options.quiet ?? false,
     },
     {
       ...defaultDependencies,

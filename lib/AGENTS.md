@@ -41,6 +41,8 @@ Treat emitted Overall rankings as the authoritative TeamRanker opponent pool: ca
 
 Checked-in moveset-specific simulation variants must include complete `0-0`, `1-1`, and `2-2` files with matching opponent sets for every applicable format.
 
+Simulation projection must bypass the destructive `runSync(...)` pipeline, derive candidates through read-only sync dependencies, limit alternate output to sanitized top-150 Overall targets with multiple candidates, and recognize stale files only through the strict canonical variant filename parser.
+
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
 
 Use `lib/data/battleFormats.ts` as the single source of truth for supported format ids, labels, cup, and CP. UI, API, data loaders, and sync code should import catalog values from there instead of hardcoding format strings.

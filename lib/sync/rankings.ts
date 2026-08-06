@@ -159,15 +159,27 @@ export interface RankingSyncResult {
   overrideEvidence: readonly RankingOverrideEvidence[];
   aggregatedEvidence: readonly AggregatedRankingMoveEvidence[];
   candidateSets: readonly DerivedMovesetCandidateSet[];
+  simulationSpeciesIdsByFormatId: ReadonlyMap<
+    BattleFormatId,
+    readonly string[]
+  >;
   formatsWithChangedOverallRankings: readonly BattleFormatId[];
 }
 
 /** Ranking sync inputs, including pre-sync Overall snapshots for invalidation. */
 export interface RankingSyncOptions extends SyncRunOptions {
+  readonly quiet?: boolean;
   readonly previousOverallRankingsByFormatId?: ReadonlyMap<
     BattleFormatId,
     string
   >;
+}
+
+/** Limit successfully converted Overall species to the simulation matrix cap. */
+export function getSimulationSpeciesIds(
+  convertedSpeciesIds: readonly string[],
+): readonly string[] {
+  return convertedSpeciesIds.slice(0, 150);
 }
 
 interface NormalizedMoveUsage {
@@ -1025,9 +1037,11 @@ export async function scrapeRankings(
       });
 
       for (const category of RANKING_CATEGORIES) {
-        console.log(
-          `[sync-rankings] Syncing cp${format.cp} ${format.cup} ${category} rankings from local JSON`,
-        );
+        if (!options.quiet) {
+          console.log(
+            `[sync-rankings] Syncing cp${format.cp} ${format.cup} ${category} rankings from local JSON`,
+          );
+        }
 
         const sourceRankings = parseRankingSourceEntries(
           await adapter.readRankingJson(category, format.cp, format.cup),
@@ -1070,9 +1084,14 @@ export async function scrapeRankings(
       ]),
     );
     const formatsWithChangedOverallRankings = new Set<BattleFormatId>();
+    const simulationSpeciesIdsByFormatId = new Map<
+      BattleFormatId,
+      readonly string[]
+    >();
 
     for (const evidence of categoryEvidence) {
       const convertedEntries: RankingEntry[] = [];
+      const convertedSpeciesIds: string[] = [];
       for (const ranking of evidence.entries) {
         const candidateSet = candidateSetsBySpecies.get(
           `${evidence.formatId}|${ranking.speciesId}`,
@@ -1121,6 +1140,7 @@ export async function scrapeRankings(
               evidence.cp,
             ),
           );
+          convertedSpeciesIds.push(ranking.speciesId);
         } catch (error) {
           if (!isSkippableMissingPokemonError(error)) {
             throw error;
@@ -1133,6 +1153,12 @@ export async function scrapeRankings(
       }
 
       const csvText = convertEntriesToCsv(convertedEntries);
+      if (evidence.category === 'overall') {
+        simulationSpeciesIdsByFormatId.set(
+          evidence.formatId,
+          getSimulationSpeciesIds(convertedSpeciesIds),
+        );
+      }
       if (
         evidence.category === 'overall' &&
         options.previousOverallRankingsByFormatId &&
@@ -1142,10 +1168,12 @@ export async function scrapeRankings(
         formatsWithChangedOverallRankings.add(evidence.formatId);
       }
       const validation = validateRankingsCsv(csvText);
-      logValidationErrors(
-        `cp${evidence.cp} ${evidence.cup} ${evidence.category} rankings CSV`,
-        validation.errors,
-      );
+      if (!options.quiet || validation.errors.length > 0) {
+        logValidationErrors(
+          `cp${evidence.cp} ${evidence.cup} ${evidence.category} rankings CSV`,
+          validation.errors,
+        );
+      }
 
       if (!validation.valid) {
         throw new Error(
@@ -1163,21 +1191,26 @@ export async function scrapeRankings(
       await resolvedDependencies.mkdir(path.dirname(outputFilePath));
       await resolvedDependencies.writeFile(outputFilePath, csvText);
 
-      console.log(
-        `[sync-rankings] Synced ${convertedEntries.length} ${evidence.category} ranking entries to ${outputFilePath}`,
-      );
+      if (!options.quiet) {
+        console.log(
+          `[sync-rankings] Synced ${convertedEntries.length} ${evidence.category} ranking entries to ${outputFilePath}`,
+        );
+      }
       allRankings.push(...convertedEntries);
     }
 
-    console.log(
-      `[sync-rankings] Successfully synced and validated ${allRankings.length} total ranking entries`,
-    );
+    if (!options.quiet) {
+      console.log(
+        `[sync-rankings] Successfully synced and validated ${allRankings.length} total ranking entries`,
+      );
+    }
     return {
       rankings: allRankings,
       categoryEvidence,
       overrideEvidence,
       aggregatedEvidence,
       candidateSets,
+      simulationSpeciesIdsByFormatId,
       formatsWithChangedOverallRankings: Array.from(
         formatsWithChangedOverallRankings,
       ).sort((left, right) => left.localeCompare(right)),
