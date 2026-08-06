@@ -15,6 +15,8 @@
 - Invalid preferred Overall sets retain rejection evidence and the original PvPoke score prior; ranking sync derives replacements before CSV conversion, changes only Overall move columns, and omits an Overall row only when no complete eligible candidate exists.
 - Emitted Overall rankings are the authoritative TeamRanker opponent pool; resume sync fingerprints each format, prunes changed format caches, and initializes canonical deduplicated targets with sanitized defaults before simulation.
 - Simulation projection bypasses the destructive full sync pipeline, derives candidates with no-op persistence boundaries, projects alternates only for sanitized top-150 Overall targets with multiple candidates, and recognizes stale files only through strict canonical variant filenames and required shield scenarios.
+- Moveset variant manifest parsing and canonical serialization live in `lib/data/movesetVariantManifest.ts`; source hashing and pure generated-manifest construction live in `lib/sync/movesetVariantManifest.ts`, and shared hard caps come from the data-layer manifest contract.
+- Manifest validation rejects known species aliases and requires canonical uppercase ASCII move IDs instead of normalizing alternate representations, preventing parallel species storage keys and moveset variant identities in authoritative generated data.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -522,4 +524,116 @@
   - US-012 will replace the hardcoded simulation alternate generation with the projected derived candidates; US-015 will use the strict recognized stale-file boundary for deletion only after successful publication.
 - Next iteration start:
   - US-011 - Define and validate the moveset variant manifest schema
+---
+
+## 2026-08-06 00:19:25 MST - US-011
+- Defined a versioned typed moveset variant manifest contract with format and policy metadata, SHA-256 source digests, derivation settings, per-species ranking evidence, per-candidate acquisition requirements, deterministic storage keys, completeness and evaluation maps, and active/default status; added strict unknown-input parsing, path-aware typed validation errors, canonical serialization, and a pure sync-layer builder.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantManifest.ts`, `lib/data/movesetVariantManifest.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `lib/sync/movesetCandidates.ts`, `progress.txt`
+- Commit message: `feat: US-011 - Define and validate the moveset variant manifest schema`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts` (fail as expected before implementation: both manifest modules were missing)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts` (fail as expected before validation hardening: declared derivation caps and unsafe logical source keys were accepted)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts` after initial review tests (fail as expected: five regressions exposed missing path, normalized identity, canonical evidence, and total-sort behavior)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/movesetCandidates.test.ts` after review fixes (pass, 36 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after correcting two import-order errors)
+  - `npm test` after review fixes (pass, 666 tests before the final positive acquisition fixture)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `architect-reviewer`
+  - Used: `architect-reviewer`; skipped `typescript-pro` because one architecture-focused advisor covered the complex schema boundary and the repository's strict TypeScript parsing patterns were already clear
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed six deduplicated initial medium findings by normalizing charged-move distinctness, requiring canonical evidence variant IDs, defining the exact format-scoped manifest path, covering required metadata and default/declared-cap failures, and giving rejection evidence a total deterministic comparator; also added the suggested low-severity positive acquisition-category fixture. Targeted code and QA re-reviews found none, but targeted security re-review found two remaining medium alias-canonicalization findings, so the commit is blocked.
+- Decisions (why):
+  - Kept the wire-format DTO and all unknown-input validation in `lib/data` while limiting `lib/sync` to exact-byte source hashing and pure construction, preserving the runtime vendor boundary and leaving atomic publication to US-014.
+  - Stored logical source digests as sorted key/algorithm/digest records instead of absolute paths or timestamps so identical repository inputs serialize byte-identically across machines.
+  - Required canonical variant identities and exact default-versus-alternate storage basenames while preserving charged moves in preferred source order inside each candidate.
+  - Centralized the eight-candidate and three-active hard caps in the manifest contract, then re-exported the candidate cap from derivation to avoid breaking current consumers while preventing policy drift.
+  - Defined the repository-relative manifest path from typed format metadata without adding publication or filesystem behavior that belongs to US-014.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Manifest validation must compare format id, cup, and CP against `lib/data/battleFormats.ts`, and declared per-manifest caps must be at least as strict as each species record.
+  - Deterministic serialization sorts logical source digests, species, candidates, candidate source categories, and source variant IDs without sorting the candidate's preferred charged-move display order or ranked retained-move pools.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-011.
+  - Commit blocked after the one allowed targeted re-review: require `normalizeToChoosableSpeciesId(speciesId) === speciesId` so known species aliases cannot create parallel manifest/storage identities, and require move IDs to equal `normalizeMoveId(...)` so spelling aliases such as `SUPERPOWER` and `SUPER_POWER` cannot create distinct variants for one logical moveset.
+  - US-012 should populate this contract from exact derived candidates and simulation results; US-013 should select active alternatives; US-014 should publish the fully constructed manifest atomically.
+- Next iteration start:
+  - Resume US-011 with failing species-alias and move-alias parser regressions, apply canonicalization validation, rerun checks, and perform a fresh review stabilization loop before marking the story passed.
+---
+
+## 2026-08-06 00:37:21 MST - US-011
+- Resumed the manifest schema story and closed the blocked canonicalization gaps by rejecting known species aliases and move spelling aliases across candidates, source variant IDs, retained move evidence, and rejection evidence.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantManifest.ts`, `lib/data/movesetVariantManifest.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `lib/sync/movesetCandidates.ts`, `progress.txt`
+- Commit message: `feat: US-011 - Define and validate the moveset variant manifest schema`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts` (fail as expected: five alias regressions were accepted before implementation)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/movesetCandidates.test.ts` (pass, 45 tests after review fixes)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail before mechanical import-order fix; pass afterward)
+  - `npm test` (pass, 676 tests after review fixes)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `architect-reviewer`
+  - Used: no new agent in this resumed iteration; the prior `architect-reviewer` guidance was already applied, and the two explicit parser findings did not justify overlapping implementation advice
+- Specialist review:
+  - Agents used: fresh initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed one deduplicated medium canonical-ID finding by requiring uppercase ASCII move fields, preserving separately validated lowercase variant-ID components, and adding isolated `excludedMove` alias coverage. Targeted code and security re-reviews found none; targeted QA found one remaining medium test-isolation issue, so the commit is blocked. Deferred one medium catalog-reference suggestion to US-012 because correct species, move-slot, legality, and acquisition validation requires the exact freshly synced source snapshot supplied during generated candidate construction rather than stale runtime imports in the schema parser.
+- Decisions (why):
+  - Rejected aliases instead of silently normalizing them because the manifest is authoritative generated data and accepting alternate spellings would make serialized identity depend on source representation.
+  - Applied canonical move validation to every manifest field that carries move identity, not only candidate movesets, so retained and rejection evidence cannot reintroduce ambiguous IDs.
+  - Kept structural parsing independent from checked-in Pokemon and move snapshots; US-012 must validate generated candidates against the same freshly loaded sync snapshot that produced them.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Canonical manifest move fields use uppercase ASCII IDs, while canonical variant IDs use lowercase components that must round trip through the uppercase move-alias map.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-011.
+  - Commit blocked after the one allowed targeted re-review: make the source-moveset alias regression keep `excludedMove` canonical so only `sourceMoveset.chargedMove1` triggers validation; the following fixture already isolates the inverse `excludedMove` case.
+  - US-012 should populate this contract from exact derived candidates and simulation results; US-013 should select active alternatives; US-014 should publish the fully constructed manifest atomically.
+- Next iteration start:
+  - Resume US-011 by isolating the source-moveset alias fixture, rerun focused and full checks, then perform a fresh review stabilization loop before marking the story passed.
+---
+
+## 2026-08-06 00:50:01 MST - US-011
+- Resumed the manifest schema story and isolated the final alias-validation regression so the source-moveset case keeps `excludedMove` canonical and independently proves that a move spelling alias inside `sourceMoveset` is rejected.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantManifest.ts`, `lib/data/movesetVariantManifest.test.ts`, `lib/sync/movesetCandidates.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-011 - Define and validate the moveset variant manifest schema`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/movesetCandidates.test.ts` (pass, 45 tests)
+  - `npx prettier --write "lib/data/movesetVariantManifest.test.ts" "lib/data/movesetVariantManifest.ts" "lib/sync/movesetCandidates.ts" "lib/sync/movesetVariantManifest.test.ts" "lib/sync/movesetVariantManifest.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 676 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` (pass)
+  - `npx vitest run lib/data/movesetVariantManifest.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/movesetCandidates.test.ts` after review fix (pass, 45 tests)
+  - `npx prettier --write "lib/data/movesetVariantManifest.test.ts"` after review fix (pass; unchanged)
+  - `npx tsc --noEmit` in parallel with build after review fix (fail: Next.js temporarily removed `.next/types/validator.ts` while TypeScript read it)
+  - `npm run lint` after review fix (pass)
+  - `npm test` after review fix (pass, 676 tests)
+  - `npm run build` after review fix (pass; existing multiple-lockfile workspace-root warning only)
+  - `npx tsc --noEmit` after build completed (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `architect-reviewer`
+  - Used: no new implementation agent in this resumed iteration; prior `architect-reviewer` guidance was already incorporated, and the remaining isolated fixture correction was exact and did not justify overlapping advice
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` re-review
+  - Findings: code and security reviewers found none; fixed one medium QA finding by rebuilding the zero-default candidate with alternate-form storage keys and asserting the exact default-consistency errors instead of accepting any validation failure; targeted QA re-review found none
+- Decisions (why):
+  - Kept `excludedMove` as canonical `SUPER_POWER` in the source-moveset regression because each table case must mutate only the field named by that case; the following fixture independently covers an aliased `excludedMove`.
+  - Made no production change in this resumed pass because parser canonicalization already rejected the isolated source alias and all focused and full checks passed.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Validation table fixtures must keep every non-target field valid so a passing assertion proves the intended parser boundary rather than an earlier sibling-field failure.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-011.
+  - Generated candidates still require source-snapshot species, move-slot, legality, and acquisition validation in US-012 rather than coupling the structural manifest parser to stale checked-in runtime data.
+- Next iteration start:
+  - US-012 - Generate candidate variant simulation files
 ---

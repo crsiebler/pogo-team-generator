@@ -11,6 +11,7 @@ import type {
   RankingMovesetEvidence,
 } from './rankings';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
+import { MAX_MOVESET_CANDIDATES } from '@/lib/data/movesetVariantManifest';
 import { getMovesetVariantId } from '@/lib/data/movesetVariants';
 import type {
   Move,
@@ -19,8 +20,7 @@ import type {
   MovesetVariant,
 } from '@/lib/types';
 
-/** Maximum number of variants derived for one species and format. */
-export const MAX_MOVESET_CANDIDATES = 8;
+export { MAX_MOVESET_CANDIDATES } from '@/lib/data/movesetVariantManifest';
 
 /** Maximum fast moves retained for evidence-backed substitutions. */
 export const MAX_EXPANSION_FAST_MOVES = 2;

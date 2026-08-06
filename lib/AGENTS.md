@@ -43,6 +43,8 @@ Checked-in moveset-specific simulation variants must include complete `0-0`, `1-
 
 Simulation projection must bypass the destructive `runSync(...)` pipeline, derive candidates through read-only sync dependencies, limit alternate output to sanitized top-150 Overall targets with multiple candidates, and recognize stale files only through the strict canonical variant filename parser.
 
+Keep moveset variant manifest types, unknown-input validation, and canonical serialization in `lib/data/movesetVariantManifest.ts`; keep source hashing and generated manifest construction in `lib/sync/movesetVariantManifest.ts`. Import candidate and active caps from the data-layer manifest contract so derivation, projection, and validation cannot drift. Reject known species and move aliases at the manifest boundary, and require uppercase ASCII move IDs in manifest fields, so alternate representations cannot create parallel storage or variant identities.
+
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
 
 Use `lib/data/battleFormats.ts` as the single source of truth for supported format ids, labels, cup, and CP. UI, API, data loaders, and sync code should import catalog values from there instead of hardcoding format strings.
