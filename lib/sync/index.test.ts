@@ -23,6 +23,7 @@ describe('completeSimulationManifestSync', () => {
     const generate = vi.fn();
     const prepare = vi.fn();
     const publish = vi.fn();
+    const cleanup = vi.fn();
 
     await expect(
       completeSimulationManifestSync(input, {
@@ -30,17 +31,20 @@ describe('completeSimulationManifestSync', () => {
         generate,
         prepare,
         publish,
+        cleanup,
       }),
     ).rejects.toThrow('Cross-validation failed: invalid ranking');
 
     expect(generate).not.toHaveBeenCalled();
     expect(prepare).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
   });
 
   it('does not prepare or publish manifests after simulation failure', async () => {
     const prepare = vi.fn();
     const publish = vi.fn();
+    const cleanup = vi.fn();
 
     await expect(
       completeSimulationManifestSync(input, {
@@ -48,15 +52,18 @@ describe('completeSimulationManifestSync', () => {
         generate: vi.fn().mockRejectedValue(new Error('simulation failed')),
         prepare,
         publish,
+        cleanup,
       }),
     ).rejects.toThrow('simulation failed');
 
     expect(prepare).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
   });
 
   it('does not publish prepared CSVs when manifest preparation fails', async () => {
     const publish = vi.fn();
+    const cleanup = vi.fn();
     const preparedCsvFiles = [
       {
         formatId: 'great-league' as const,
@@ -77,10 +84,32 @@ describe('completeSimulationManifestSync', () => {
           throw new Error('manifest preparation failed');
         }),
         publish,
+        cleanup,
       }),
     ).rejects.toThrow('manifest preparation failed');
 
     expect(publish).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
+  });
+
+  it('does not clean stale files when publication fails', async () => {
+    const cleanup = vi.fn();
+
+    await expect(
+      completeSimulationManifestSync(input, {
+        crossValidate: () => ({ valid: true, errors: [] }),
+        generate: vi.fn().mockResolvedValue({
+          simulations: [],
+          variantSelections: [],
+          preparedCsvFiles: [],
+        }),
+        prepare: vi.fn(() => []),
+        publish: vi.fn().mockRejectedValue(new Error('publication failed')),
+        cleanup,
+      }),
+    ).rejects.toThrow('publication failed');
+
+    expect(cleanup).not.toHaveBeenCalled();
   });
 
   it('publishes prepared CSVs and manifests through one transaction', async () => {
@@ -99,6 +128,13 @@ describe('completeSimulationManifestSync', () => {
       },
     ];
     const publish = vi.fn().mockResolvedValue(undefined);
+    const deletedPath =
+      'data/simulations/cp1500/all/stale--fast--charged_a--charged_b_1-1.csv';
+    const cleanup = vi.fn(async (_manifests, dependencies) => {
+      dependencies?.reportDeleted?.(deletedPath);
+      return [deletedPath];
+    });
+    const log = vi.fn();
     const generate = vi.fn().mockResolvedValue({
       simulations: [],
       variantSelections: [],
@@ -110,11 +146,23 @@ describe('completeSimulationManifestSync', () => {
       generate,
       prepare: vi.fn(() => preparedManifests),
       publish,
+      cleanup,
+      log,
     });
 
     expect(generate).toHaveBeenCalledWith(
       expect.objectContaining({ deferPublication: true }),
     );
     expect(publish).toHaveBeenCalledWith(preparedCsvFiles, preparedManifests);
+    expect(cleanup).toHaveBeenCalledWith(
+      preparedManifests,
+      expect.objectContaining({ reportDeleted: expect.any(Function) }),
+    );
+    expect(publish.mock.invocationCallOrder[0]).toBeLessThan(
+      cleanup.mock.invocationCallOrder[0]!,
+    );
+    expect(log).toHaveBeenCalledWith(
+      '[sync] Deleted stale moveset variant data/simulations/cp1500/all/stale--fast--charged_a--charged_b_1-1.csv',
+    );
   });
 });

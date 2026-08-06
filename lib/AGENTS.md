@@ -51,6 +51,8 @@ Select active moveset alternatives in `lib/sync/movesetVariantManifest.ts` from 
 
 Prepare and validate every supported format manifest in memory only after simulation and cross-validation succeed. In the production pipeline, defer generated CSV writes and publish all CSVs plus manifests as one rollback-capable batch using exclusive same-directory temporary files, prior-target backups, and manifests last; restore every prior target if any replacement fails. Do not delete simulation format directories before generation, and leave stale recognized variant cleanup to the post-publication sync phase.
 
+After successful batch publication, delete only regular files accepted by the strict canonical variant filename parser and omitted by all manifest candidate storage keys. Derive each cleanup directory from the battle-format catalog, require its physical path to match the workspace catalog path before enumeration and each unlink, validate every manifest cleanup plan before deletion, preserve default matrices and declared inactive candidates, and report each successful deletion immediately in deterministic order.
+
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
 
 Use `lib/data/battleFormats.ts` as the single source of truth for supported format ids, labels, cup, and CP. UI, API, data loaders, and sync code should import catalog values from there instead of hardcoding format strings.

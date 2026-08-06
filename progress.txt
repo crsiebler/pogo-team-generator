@@ -22,6 +22,7 @@
 - Epsilon-sensitive deterministic rankings quantize each metric independently before comparison; pairwise tolerance comparators are non-transitive and can make shuffled input change the winner.
 - Parse TeamRanker opponent cells with `extractSpeciesNameFromSimulationCell(...)` before canonical lookup or opponent-set comparison because PvPoke appends compact moveset tokens after species and form names.
 - Prepare every supported format manifest in memory after simulation and cross-validation succeed; production simulation generation returns validated deferred CSVs, and one rollback-capable batch stages all files, replaces manifests last, and restores every prior CSV and manifest target on failure.
+- Stale simulation cleanup runs only after successful generation publication, requires physical directories to match workspace catalog paths before enumeration and each unlink, deletes only regular strict-parser variant files omitted by all manifest candidate storage keys, and reports each successful deletion immediately; default matrices and declared inactive candidates remain untouched.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -828,4 +829,42 @@
   - US-015 must remove only strictly recognized stale variant CSVs after successful manifest publication and must not delete default matrices or files outside the active format directory.
 - Next iteration start:
   - US-015 - Delete stale generated variant files after successful sync
+---
+
+## 2026-08-06 13:44:18 MST - US-015
+- Implemented deterministic post-publication cleanup that validates every catalog-scoped manifest plan before unlinking, preserves default matrices and all declared candidates, ignores malformed files and non-regular entries, deletes only strict-parser stale variant CSVs, and logs each deleted repository-relative path after successful cleanup.
+- Files changed: `lib/AGENTS.md`, `lib/sync/index.ts`, `lib/sync/index.test.ts`, `lib/sync/simulationCleanup.ts`, `lib/sync/simulationCleanup.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-015 - Delete stale generated variant files after successful sync`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/sync/simulationCleanup.test.ts lib/sync/index.test.ts` (fail as expected before implementation: cleanup module was missing and orchestration did not invoke cleanup)
+  - `npx vitest run lib/sync/simulationCleanup.test.ts lib/sync/index.test.ts` (pass, 10 tests)
+  - `npx vitest run lib/sync/simulationCleanup.test.ts lib/sync/index.test.ts lib/sync/simulationProjection.test.ts lib/sync/movesetVariantManifest.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 36 tests before review fixes; pass, 37 tests after review fixes)
+  - `npx vitest run lib/sync/simulationCleanup.test.ts lib/sync/index.test.ts` after initial review regressions (fail as expected: 3 tests exposed missing physical-directory validation and incremental deletion reporting)
+  - `npx vitest run lib/sync/simulationCleanup.test.ts lib/sync/index.test.ts` after review fixes (pass, 11 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after correcting two import-order errors)
+  - `npm test` (pass, 707 tests before review; pass, 708 tests after review fixes)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `tooling-engineer`, `test-automator`
+  - Used: `tooling-engineer`; skipped `test-automator` because one focused tooling advisor plus the test-first cleanup and orchestration coverage fit the standard-mode budget
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer`, `qa-expert`, and `security-engineer` passes
+  - Findings: fixed one deduplicated high physical-path finding and one medium partial-reporting finding by rejecting format directories whose real paths differ from their workspace catalog paths, revalidating the physical parent before each unlink, and reporting each successful deletion immediately before later cleanup can fail; targeted re-review found none
+- Decisions (why):
+  - Kept cleanup outside the rollback-capable publication transaction because stale files are not declared by the new authoritative manifests and deletion must begin only after every new manifest is installed successfully.
+  - Preserved storage keys for every non-default manifest candidate, not only active alternatives, because the manifest declares complete bounded simulation evidence that later policy changes may activate.
+  - Validated all manifest targets and contents before reading directories or unlinking so a malformed later format cannot cause partial cleanup of earlier formats.
+  - Used the projection's strict canonical variant filename parser and regular-file checks so default matrices, malformed names, directories, and symlinks cannot become cleanup targets.
+  - Added physical directory validation before enumeration and immediately before every unlink because lexical containment alone cannot prevent a catalog directory symlink from redirecting deletion outside the worktree.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `test-runner`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Cleanup failures occur after authoritative manifest publication; the sync must fail before freshness metadata is written and allow a later run to retry cleanup rather than roll back a valid generation.
+  - Report each successful deletion immediately; cleanup is non-transactional, so a later unlink failure must not hide files already removed from sync output.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-015.
+- Next iteration start:
+  - US-016 - Load runtime variants exclusively from manifests
 ---

@@ -7,6 +7,7 @@ import {
   publishSimulationGeneration,
 } from './movesetVariantManifest';
 import { scrapeRankings, type RankingSyncResult } from './rankings';
+import { deleteStaleVariantSimulationFiles } from './simulationCleanup';
 import { generateSimulations, type SimulationSyncResult } from './simulations';
 import { resolvePvpokeSourcePath, validatePhase1SourceFiles } from './source';
 import { type PokemonData, SyncRunOptions } from './types';
@@ -42,6 +43,8 @@ interface CompleteSimulationManifestSyncDependencies {
   readonly generate: typeof generateSimulations;
   readonly prepare: typeof prepareMovesetVariantManifests;
   readonly publish: typeof publishSimulationGeneration;
+  readonly cleanup: typeof deleteStaleVariantSimulationFiles;
+  readonly log: (message: string) => void;
 }
 
 const defaultCompleteSimulationManifestSyncDependencies: CompleteSimulationManifestSyncDependencies =
@@ -50,6 +53,8 @@ const defaultCompleteSimulationManifestSyncDependencies: CompleteSimulationManif
     generate: generateSimulations,
     prepare: prepareMovesetVariantManifests,
     publish: publishSimulationGeneration,
+    cleanup: deleteStaleVariantSimulationFiles,
+    log: console.log,
   };
 
 /**
@@ -100,6 +105,12 @@ export async function completeSimulationManifestSync(
     simulationResult.preparedCsvFiles,
     preparedManifests,
   );
+  await resolvedDependencies.cleanup(preparedManifests, {
+    reportDeleted: (filePath) =>
+      resolvedDependencies.log(
+        `[sync] Deleted stale moveset variant ${filePath}`,
+      ),
+  });
   return simulationResult;
 }
 
