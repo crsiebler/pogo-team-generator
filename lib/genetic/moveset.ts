@@ -14,17 +14,10 @@ import {
   getMovesetVariantShieldScenarioMatchupResult,
 } from '@lib/data/simulations';
 import { calculateEffectiveness } from '../coverage/typeChart';
-import type { Pokemon } from '../types';
+import type { Moveset, Pokemon } from '../types';
 
 // Cache for optimal movesets to avoid recomputation
-const movesetCache = new Map<
-  string,
-  {
-    fastMove: string;
-    chargedMove1: string;
-    chargedMove2: string;
-  }
->();
+const movesetCache = new Map<string, Moveset>();
 
 /**
  * Get strict recommended moveset from rankings for a Pokemon.
@@ -33,11 +26,7 @@ const movesetCache = new Map<
 export function getRecommendedMovesetForPokemon(
   pokemon: Pokemon,
   formatId?: BattleFormatId,
-): {
-  fastMove: string;
-  chargedMove1: string;
-  chargedMove2: string;
-} {
+): Moveset {
   const rankedMoves = getOptimalMoveset(pokemon.speciesName, formatId);
 
   return {
@@ -69,11 +58,7 @@ export function getSimulationBackedMovesetForTeam(
   team: readonly string[],
   formatId: BattleFormatId,
   dependencies?: SimulationBackedMovesetDependencies,
-): {
-  fastMove: string;
-  chargedMove1: string;
-  chargedMove2: string;
-} {
+): Moveset {
   const rankedDefault = getRecommendedMovesetForPokemon(pokemon, formatId);
   const variants = getMovesetVariants(pokemon.speciesId, rankedDefault);
   if (variants.length === 1) {
@@ -354,11 +339,7 @@ export function getOptimalMovesetForTeam(
   pokemon: Pokemon,
   team: string[],
   formatId?: BattleFormatId,
-): {
-  fastMove: string;
-  chargedMove1: string;
-  chargedMove2: string;
-} {
+): Moveset {
   // Create cache key based on Pokemon + team composition
   // CRITICAL: Copy array before sorting to avoid mutation!
   const cacheKey = `${formatId ?? 'default'}:${pokemon.speciesId}:${[...team].sort().join(',')}`;

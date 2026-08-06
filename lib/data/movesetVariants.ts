@@ -1,17 +1,4 @@
-/** One legal fast-move and charged-move combination for a canonical species. */
-export interface MovesetVariant {
-  id: string;
-  fastMove: string;
-  chargedMove1: string;
-  chargedMove2: string;
-  isDefault: boolean;
-}
-
-export interface RankedMoveset {
-  fastMove: string;
-  chargedMove1: string;
-  chargedMove2: string;
-}
+import type { Moveset, MovesetVariant, MovesetVariantId } from '@/lib/types';
 
 const ALTERNATE_FAST_MOVES_BY_SPECIES_ID: Readonly<
   Record<string, readonly string[]>
@@ -19,17 +6,21 @@ const ALTERNATE_FAST_MOVES_BY_SPECIES_ID: Readonly<
   golisopod: ['SHADOW_CLAW'],
 };
 
-/** Build a stable identifier for a moveset variant. */
-export function getMovesetVariantId(moveset: RankedMoveset): string {
-  return [moveset.fastMove, moveset.chargedMove1, moveset.chargedMove2]
-    .join('--')
-    .toLowerCase();
+/** Build a stable identifier without changing preferred charged-move order. */
+export function getMovesetVariantId(moveset: Moveset): MovesetVariantId {
+  const chargedMoves = [moveset.chargedMove1, moveset.chargedMove2]
+    .map((moveId) => moveId.toLowerCase())
+    .sort((left, right) => (left < right ? 1 : left > right ? -1 : 0));
+
+  return [moveset.fastMove.toLowerCase(), ...chargedMoves].join(
+    '--',
+  ) as MovesetVariantId;
 }
 
 /** Return the ranked default followed by configured legal alternatives. */
 export function getMovesetVariants(
   speciesId: string,
-  rankedDefault: RankedMoveset,
+  rankedDefault: Moveset,
 ): MovesetVariant[] {
   const defaultVariant: MovesetVariant = {
     ...rankedDefault,

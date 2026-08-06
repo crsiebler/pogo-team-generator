@@ -4,6 +4,86 @@
 - Required optimizer docs: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
 - Implement behavioral changes test-first and record the failing and passing focused test commands in each iteration log.
 - Preserve unrelated worktree changes and do not remove generated files outside the tested stale-variant cleanup boundary.
+- Initialize `vendor/pvpoke` with `git submodule update --init vendor/pvpoke` before running tests that validate bundled PvPoke source data.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
+
+## 2026-08-05 18:56:01 MST - US-001
+- Implemented shared `Moveset`, `MovesetVariant`, `MovesetVariantId`, `MoveAvailability`, and `RosterMovesetAssignment` contracts; canonicalized charged-move identity without changing preferred order; typed Elite and legacy Pokemon moves; and replaced equivalent local moveset shapes.
+- Files changed: `AGENTS.md`, `lib/types.ts`, `lib/data/movesetVariants.ts`, `lib/data/movesetVariants.test.ts`, `lib/data/pokemon.test.ts`, `lib/genetic/moveset.ts`, `lib/sync/types.ts`, `progress.txt`
+- Commit message: `feat: US-001 - Define shared moveset contracts and canonical variant IDs`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariants.test.ts lib/data/pokemon.test.ts` (fail as expected before implementation: charged-order identity and typed Pokemon fields)
+  - `npx vitest run lib/sync/simulations.test.ts lib/data/movesetVariants.test.ts lib/data/pokemon.test.ts lib/genetic/moveset.test.ts` (pass, 23 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm run build` (pass)
+  - `git diff --check` (pass)
+  - `npm test` (fail: 541 pass, 1 pre-existing data-fixture failure in `lib/data/simulations.test.ts` because the expected generated Golisopod alternate CSV is not checked in)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `refactoring-specialist`
+  - Used: `typescript-pro`; skipped `refactoring-specialist` because the standard-mode one-agent budget and focused contract refactor made it redundant
+- Specialist review:
+  - Agents used: skipped because the mandatory full test gate did not pass, so no candidate diff was staged for review
+  - Findings: review not run; commit blocked before the review stabilization loop
+- Decisions (why):
+  - Canonicalized the charged pair in reverse lexical order because identity must be order-independent while the existing Golisopod storage ID `x_scissor--aqua_jet` must remain compatible.
+  - Kept nullable UI/export moveset boundaries separate because they represent incomplete data, while the shared domain `Moveset` requires all three moves.
+  - Did not generate or fabricate missing alternate simulation CSVs because complete variant-data generation and publication belong to later stories and partial production data would be unsafe.
+- **Learnings for future iterations:**
+  - Read `.opencode/skills/gbl-optimizer/SKILL.md`, `docs/pokemon-go-team-optimization.md`, and all required `docs/team-optimization/` references listed in Codebase Patterns.
+  - Full data tests require the initialized `vendor/pvpoke` submodule.
+  - `lib/data/simulations.test.ts` currently assumes a generated Golisopod alternate CSV that is absent from the checked-in `data/simulations/` tree.
+- Known issues / follow-ups:
+  - `US-001` remains `passes: false`; no commit was created because `npm test` is not green.
+  - Resolve the missing complete Golisopod alternate simulation fixture through the authorized deterministic generation path before staging and specialist review.
+- Next iteration start:
+  - Resume US-001 after the required alternate simulation data is available, rerun all checks, then stage and run the standard-mode `code-reviewer` plus `qa-expert` pass.
+---
+
+## 2026-08-05 19:01:03 MST - US-001
+- Completed the shared moveset contract implementation and generated the missing simulation-backed Golisopod Shadow Claw variant data for every supported format where Golisopod is ranked, preserving the existing runtime variant lookup.
+- Files changed: `AGENTS.md`, `lib/AGENTS.md`, `lib/types.ts`, `lib/data/movesetVariants.ts`, `lib/data/movesetVariants.test.ts`, `lib/data/pokemon.test.ts`, `lib/data/simulations.test.ts`, `lib/genetic/moveset.ts`, `lib/sync/types.ts`, `lib/sync/validation.ts`, `lib/sync/gamemaster.test.ts`, `data/simulations/cp10000/{all,coupedusillage}/golisopod--shadow_claw--x_scissor--aqua_jet_*.csv`, `data/simulations/cp1500/{all,copadiluvio,weather}/golisopod--shadow_claw--x_scissor--aqua_jet_*.csv`, `data/simulations/cp2500/{all,ligaultra}/golisopod--shadow_claw--x_scissor--aqua_jet_*.csv`, `progress.txt`
+- Commit message: `feat: US-001 - Define shared moveset contracts and canonical variant IDs`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariants.test.ts lib/data/pokemon.test.ts lib/genetic/moveset.test.ts lib/sync/simulations.test.ts` (pass, 23 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm test` before data generation (fail as expected: 541 pass, missing generated Golisopod alternate simulation fixture)
+  - `bun -e "import { generateSimulations } from './lib/sync/simulations.ts'; await generateSimulations({ resume: true, sourcePath: './vendor/pvpoke' });"` (pass; generated only missing Golisopod alternate files and reused valid defaults)
+  - `npx prettier --write "lib/types.ts" "lib/data/movesetVariants.ts" "lib/data/movesetVariants.test.ts" "lib/data/pokemon.test.ts" "lib/genetic/moveset.ts" "lib/sync/types.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 542 tests)
+  - `npm run build` (pass)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/sync/gamemaster.test.ts lib/data/simulations.test.ts` before review fixes (fail as expected: malformed supplemental move lists were accepted; generated-data completeness test passed)
+  - `npx vitest run lib/sync/gamemaster.test.ts lib/data/simulations.test.ts` after review fixes (pass, 13 tests)
+  - `npx prettier --write "lib/sync/validation.ts" "lib/sync/gamemaster.test.ts" "lib/data/simulations.test.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 544 tests)
+  - `npm run build` after review fixes (pass)
+  - `git diff --check` after review fixes (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `refactoring-specialist`
+  - Used: `typescript-pro` in the initial US-001 implementation; skipped `refactoring-specialist` because the standard-mode one-agent budget and focused contract consolidation made overlapping guidance unnecessary
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: `code-reviewer` found none; fixed two medium QA findings by validating supplemental move arrays and enforcing complete generated variant scenario sets with opponent parity; targeted re-review found none
+- Decisions (why):
+  - Kept reverse-lexical charged-move canonicalization so charged order is identity-independent without changing the existing Golisopod storage key.
+  - Generated all three Golisopod alternate shield scenarios through the existing resume-mode PvPoke sync path instead of weakening the runtime test or fabricating one matchup row.
+  - Included complete generated Golisopod alternate sets for every applicable checked-in format because publishing only the single CSV required by the failing assertion would leave partial simulation data.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` skill plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references before resuming the implementation.
+  - Resume-mode simulation sync validates and reuses existing default CSVs while generating missing configured alternate files.
+  - Generated moveset variants require complete `0-0`, `1-1`, and `2-2` scenario sets per applicable format to keep runtime data coherent.
+  - Extending `PokemonData` requires matching runtime validation and malformed-input coverage; TypeScript declarations alone do not protect synced JSON.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-001.
+- Next iteration start:
+  - US-002 - Centralize species and move alias normalization
+---

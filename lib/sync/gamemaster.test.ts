@@ -2,25 +2,32 @@ import path from 'path';
 import { describe, expect, it, vi } from 'vitest';
 import { syncConfig } from './config';
 import { fetchMovesData, fetchPokemonData } from './gamemaster';
+import { validatePokemonJson } from './validation';
+
+const validPokemonData = {
+  dex: 1,
+  speciesName: 'Bulbasaur',
+  speciesId: 'bulbasaur',
+  baseStats: { atk: 118, def: 111, hp: 128 },
+  types: ['Grass', 'Poison'],
+  fastMoves: ['VINE_WHIP'],
+  chargedMoves: ['POWER_WHIP'],
+  defaultIVs: { cp500: [0], cp1500: [0], cp2500: [0] },
+  level25CP: 700,
+  buddyDistance: 3,
+  thirdMoveCost: 50000,
+  released: true,
+  family: { id: 'BULBASAUR' },
+};
 
 describe('gamemaster local sync', () => {
   it('syncs pokemon JSON from local source path', async () => {
     const sourcePath = '/source/pvpoke';
     const readPokemonJson = vi.fn().mockResolvedValue([
       {
-        dex: 1,
-        speciesName: 'Bulbasaur',
-        speciesId: 'bulbasaur',
-        baseStats: { atk: 118, def: 111, hp: 128 },
-        types: ['Grass', 'Poison'],
-        fastMoves: ['VINE_WHIP'],
-        chargedMoves: ['POWER_WHIP'],
-        defaultIVs: { cp500: [0], cp1500: [0], cp2500: [0] },
-        level25CP: 700,
-        buddyDistance: 3,
-        thirdMoveCost: 50000,
-        released: true,
-        family: { id: 'BULBASAUR' },
+        ...validPokemonData,
+        eliteMoves: ['FRENZY_PLANT'],
+        legacyMoves: ['TACKLE'],
       },
     ]);
     const mkdir = vi.fn().mockResolvedValue(undefined);
@@ -42,6 +49,24 @@ describe('gamemaster local sync', () => {
       expect.stringContaining('"speciesName": "Bulbasaur"'),
     );
     expect(data).toHaveLength(1);
+  });
+
+  it('rejects malformed optional move availability lists', () => {
+    expect(
+      validatePokemonJson([
+        {
+          ...validPokemonData,
+          eliteMoves: ['FRENZY_PLANT', 1],
+          legacyMoves: 'TACKLE',
+        },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Pokemon 0: eliteMoves must contain strings',
+        'Pokemon 0: legacyMoves must be array if present',
+      ],
+    });
   });
 
   it('syncs moves JSON from local source path', async () => {

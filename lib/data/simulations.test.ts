@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { parse } from 'csv-parse/sync';
 import { getBattleFormats } from './battleFormats';
 import {
   ensureSimulationDataAvailable,
@@ -77,6 +80,47 @@ describe('format-aware simulation loading', () => {
         'battle-frontier-coupe-du-sillage',
       ),
     ).toBe(564);
+  });
+
+  it('keeps generated Golisopod variants complete across applicable formats', () => {
+    const scenarios = ['0-0', '1-1', '2-2'] as const;
+    const simulationRoot = path.join(process.cwd(), 'data', 'simulations');
+    const applicableFormats = getBattleFormats().filter((format) =>
+      scenarios.every((scenario) =>
+        existsSync(
+          path.join(
+            simulationRoot,
+            `cp${format.cp}`,
+            format.cup,
+            `golisopod_${scenario}.csv`,
+          ),
+        ),
+      ),
+    );
+
+    expect(applicableFormats).not.toHaveLength(0);
+
+    for (const format of applicableFormats) {
+      const opponentLists = scenarios.map((scenario) => {
+        const variantPath = path.join(
+          simulationRoot,
+          `cp${format.cp}`,
+          format.cup,
+          `golisopod--shadow_claw--x_scissor--aqua_jet_${scenario}.csv`,
+        );
+
+        expect(existsSync(variantPath), variantPath).toBe(true);
+
+        const records = parse(readFileSync(variantPath, 'utf8'), {
+          columns: true,
+          skip_empty_lines: true,
+        }) as Array<{ Pokemon: string }>;
+        return records.map((record) => record.Pokemon);
+      });
+
+      expect(opponentLists[1]).toEqual(opponentLists[0]);
+      expect(opponentLists[2]).toEqual(opponentLists[0]);
+    }
   });
 
   it('returns null when shield scenario matchup data is missing', () => {

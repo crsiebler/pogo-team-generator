@@ -1,8 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getMovesetVariantId,
   getMovesetVariants,
   selectBestMovesetVariant,
 } from './movesetVariants';
+
+describe('getMovesetVariantId', () => {
+  it('returns a stable identity when charged move order changes', () => {
+    const preferredMoveset = {
+      fastMove: 'SHADOW_CLAW',
+      chargedMove1: 'X_SCISSOR',
+      chargedMove2: 'AQUA_JET',
+    };
+    const reversedMoveset = {
+      ...preferredMoveset,
+      chargedMove1: preferredMoveset.chargedMove2,
+      chargedMove2: preferredMoveset.chargedMove1,
+    };
+
+    expect(getMovesetVariantId(preferredMoveset)).toBe(
+      'shadow_claw--x_scissor--aqua_jet',
+    );
+    expect(getMovesetVariantId(reversedMoveset)).toBe(
+      getMovesetVariantId(preferredMoveset),
+    );
+  });
+});
 
 describe('getMovesetVariants', () => {
   it('keeps the ranked Golisopod moveset as default and exposes Shadow Claw as an alternate', () => {
@@ -28,6 +51,20 @@ describe('getMovesetVariants', () => {
         isDefault: false,
       },
     ]);
+  });
+
+  it('retains preferred charged move order separately from identity', () => {
+    const [variant] = getMovesetVariants('other', {
+      fastMove: 'SHADOW_CLAW',
+      chargedMove1: 'AQUA_JET',
+      chargedMove2: 'X_SCISSOR',
+    });
+
+    expect(variant).toMatchObject({
+      id: 'shadow_claw--x_scissor--aqua_jet',
+      chargedMove1: 'AQUA_JET',
+      chargedMove2: 'X_SCISSOR',
+    });
   });
 });
 

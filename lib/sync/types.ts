@@ -26,6 +26,8 @@ export interface PokemonData {
   types: string[];
   fastMoves: string[];
   chargedMoves: string[];
+  eliteMoves?: string[];
+  legacyMoves?: string[];
   tags?: string[];
   defaultIVs: {
     cp500: number[];

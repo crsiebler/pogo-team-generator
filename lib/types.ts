@@ -1,5 +1,32 @@
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 
+/** One complete battle moveset in preferred simulation and display order. */
+export interface Moveset {
+  readonly fastMove: string;
+  readonly chargedMove1: string;
+  readonly chargedMove2: string;
+}
+
+/** Canonical identity for a fast move and order-independent charged-move pair. */
+export type MovesetVariantId = `${string}--${string}--${string}`;
+
+/** Acquisition category for one move in a moveset. */
+export type MoveAvailability =
+  | { readonly kind: 'regular' }
+  | { readonly kind: 'elite' }
+  | { readonly kind: 'eventExclusive' }
+  | { readonly kind: 'purified' }
+  | { readonly kind: 'excluded'; readonly reason: string };
+
+/** One legal moveset variant with canonical identity and preferred move order. */
+export interface MovesetVariant extends Moveset {
+  readonly id: MovesetVariantId;
+  readonly isDefault: boolean;
+}
+
+/** Fixed moveset variants keyed by roster species id. */
+export type RosterMovesetAssignment = Readonly<Record<string, MovesetVariant>>;
+
 export interface Pokemon {
   dex: number;
   speciesName: string;
@@ -12,6 +39,8 @@ export interface Pokemon {
   types: string[];
   fastMoves: string[];
   chargedMoves: string[];
+  eliteMoves?: string[];
+  legacyMoves?: string[];
   tags: string[];
   defaultIVs: {
     cp1500?: number[];

@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getPokemonBySpeciesId,
   getRankedPokemonForFormat,
   isBattleFrontierBannedSpeciesId,
   speciesNameToId,
   validateTeamUniqueness,
 } from './pokemon';
+
+describe('Pokemon move availability data', () => {
+  it('retains typed Elite and legacy move lists', () => {
+    expect(getPokemonBySpeciesId('venusaur')?.eliteMoves).toContain(
+      'FRENZY_PLANT',
+    );
+    expect(getPokemonBySpeciesId('grimer')?.legacyMoves).toContain('ACID');
+  });
+});
 
 describe('speciesNameToId', () => {
   it('resolves duplicate species names to the first occurrence', () => {

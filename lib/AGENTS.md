@@ -13,11 +13,15 @@ Runtime app, component, and optimizer code must not import, require, bundle, or 
 
 When syncing gamemaster JSON, call adapter `readPokemonJson`/`readMovesJson`, validate with `lib/sync/validation.ts`, then write normalized JSON outputs to `data/`.
 
+When extending the synced `PokemonData` contract, update `validatePokemonJson(...)` to validate each new optional field and cover valid and malformed values in `lib/sync/gamemaster.test.ts`.
+
 When syncing rankings, iterate all supported battle formats from `lib/data/battleFormats.ts` and read local PvPoke ranking JSON via adapter `readRankingJson(category, cp, cup)` from `src/data/rankings/<cup>/<category>/rankings-<cp>.json` before writing deterministic outputs under `data/rankings/cp<cp>/<cup>/<category>_rankings.csv`.
 
 When syncing simulations, run PvPoke `TeamRanker` inside a Node `vm` context and stub only minimal jQuery data-loading APIs (`$.ajax`, `$.getJSON`, `$.each`) so simulation CSVs are generated from local engine logic without browser automation.
 
 Simulation sync must iterate every format from `getBattleFormats()`, loading rankings from `data/rankings/cp<cp>/<cup>/overall_rankings.csv`, and write deterministic outputs as `data/simulations/cp<cp>/<cup>/<speciesId>_<scenario>.csv`; in resume mode only reuse existing files at that exact format-specific path.
+
+Checked-in moveset-specific simulation variants must include complete `0-0`, `1-1`, and `2-2` files with matching opponent sets for every applicable format.
 
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
 

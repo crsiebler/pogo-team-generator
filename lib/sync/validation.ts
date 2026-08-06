@@ -73,6 +73,18 @@ export function validatePokemonJson(data: unknown): {
       errors.push(`Pokemon ${index}: chargedMoves must contain strings`);
     }
 
+    if (p.eliteMoves !== undefined && !Array.isArray(p.eliteMoves)) {
+      errors.push(`Pokemon ${index}: eliteMoves must be array if present`);
+    } else if (p.eliteMoves?.some((move) => typeof move !== 'string')) {
+      errors.push(`Pokemon ${index}: eliteMoves must contain strings`);
+    }
+
+    if (p.legacyMoves !== undefined && !Array.isArray(p.legacyMoves)) {
+      errors.push(`Pokemon ${index}: legacyMoves must be array if present`);
+    } else if (p.legacyMoves?.some((move) => typeof move !== 'string')) {
+      errors.push(`Pokemon ${index}: legacyMoves must contain strings`);
+    }
+
     if (typeof p.released !== 'boolean')
       errors.push(`Pokemon ${index}: released must be boolean`);
   });
