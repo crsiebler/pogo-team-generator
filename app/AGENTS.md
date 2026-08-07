@@ -18,7 +18,7 @@ For `/api/generate-team`, ignore deprecated `algorithm` request fields, do not p
 
 When `/api/generate-team` returns display-facing lineup diagnostics, resolve threat species ids such as lineup weaknesses to readable species names in the route adapter so client components stay display-only.
 
-`/api/generate-team` must return the exact scored `movesetAssignment`. `/api/team-details` must require and validate that assignment, then project its move IDs and structured acquisition metadata without invoking team-aware moveset selection again.
+`/api/generate-team` must return the exact scored `movesetAssignment`. `/api/team-details` must structurally parse the assignment, validate it against current compact-snapshot and ranking authorities, then project its move IDs and structured acquisition metadata without invoking team-aware moveset selection again.
 
 For bounded public JSON endpoints, validate any declared `Content-Length` and count bytes while reading the request stream; never rely on the header alone because it may be absent or inaccurate.
 

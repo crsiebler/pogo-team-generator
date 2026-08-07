@@ -4,10 +4,12 @@ import { POST } from './route';
 import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
 import { getMovesetAvailability } from '@/lib/data/moveAvailability';
 import { getMovesetVariantId } from '@/lib/data/movesetVariants';
+import { MovesetVariantSimulationDataError } from '@/lib/data/movesetVariantSimulations';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
 import {
   createRosterMovesetAssignment,
   getSimulationBackedMovesetForTeam,
+  validateRosterMovesetAssignmentAuthority,
 } from '@/lib/genetic/moveset';
 import type {
   MoveAvailability,
@@ -34,11 +36,13 @@ vi.mock('@/lib/genetic/moveset', async () => {
   return {
     ...actual,
     getSimulationBackedMovesetForTeam: vi.fn(),
+    validateRosterMovesetAssignmentAuthority: vi.fn(),
   };
 });
 
 function createAssignment(
   formatId: RosterMovesetAssignment['formatId'] = DEFAULT_BATTLE_FORMAT_ID,
+  authorityMode: 'manifest' | 'ranked-default-fallback' | 'mixed' = 'mixed',
 ): RosterMovesetAssignment {
   const mewtwoMoveset: Moveset = {
     fastMove: 'COUNTER',
@@ -54,22 +58,36 @@ function createAssignment(
   return createRosterMovesetAssignment({
     formatId,
     authorityBySpeciesId: {
-      mewtwo: {
-        source: 'manifest',
-        schemaVersion: 1,
-        policyVersion: 'ranking-evidence-v1',
-      },
-      sableye: {
-        source: 'ranked-default-fallback',
-        schemaVersion: 0,
-        policyVersion: 'ranked-default-v1',
-      },
+      mewtwo:
+        authorityMode === 'ranked-default-fallback'
+          ? {
+              source: 'ranked-default-fallback',
+              schemaVersion: 0,
+              policyVersion: 'ranked-default-v1',
+            }
+          : {
+              source: 'manifest',
+              schemaVersion: 1,
+              policyVersion: 'ranking-evidence-v1',
+            },
+      sableye:
+        authorityMode === 'manifest'
+          ? {
+              source: 'manifest',
+              schemaVersion: 1,
+              policyVersion: 'ranking-evidence-v1',
+            }
+          : {
+              source: 'ranked-default-fallback',
+              schemaVersion: 0,
+              policyVersion: 'ranked-default-v1',
+            },
     },
     variantsBySpeciesId: {
       mewtwo: {
         ...mewtwoMoveset,
         id: getMovesetVariantId(mewtwoMoveset),
-        isDefault: false,
+        isDefault: authorityMode === 'ranked-default-fallback',
       },
       sableye: {
         ...sableyeMoveset,
@@ -104,6 +122,9 @@ describe('POST /api/team-details format-aware movesets', () => {
       chargedMove1: 'FRENZY_PLANT',
       chargedMove2: 'SPIRIT_SHACKLE',
     });
+    vi.mocked(validateRosterMovesetAssignmentAuthority).mockImplementation(
+      (assignment) => assignment,
+    );
 
     vi.mocked(getMovesetAvailability).mockImplementation(
       (_speciesId, moveset) => {
@@ -185,6 +206,159 @@ describe('POST /api/team-details format-aware movesets', () => {
       },
     });
     expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
+    expect(validateRosterMovesetAssignmentAuthority).toHaveBeenCalledWith(
+      movesetAssignment,
+    );
+  });
+
+  it.each(['manifest', 'ranked-default-fallback', 'mixed'] as const)(
+    'accepts a current %s assignment',
+    async (authorityMode) => {
+      const movesetAssignment = createAssignment(undefined, authorityMode);
+      const actualMovesetModule = await vi.importActual<
+        typeof import('@/lib/genetic/moveset')
+      >('@/lib/genetic/moveset');
+      vi.mocked(validateRosterMovesetAssignmentAuthority).mockImplementation(
+        (assignment) =>
+          actualMovesetModule.validateRosterMovesetAssignmentAuthority(
+            assignment,
+            {
+              ensureSimulationData: () => undefined,
+              getManifestPolicyIdentity: () => ({
+                schemaVersion: 1,
+                policyVersion: 'ranking-evidence-v1',
+              }),
+              getActiveVariants: (speciesId) => [
+                movesetAssignment.variantsBySpeciesId[speciesId]!,
+              ],
+              getPokemon: getPokemonBySpeciesId,
+              getRankedDefault: (pokemon) =>
+                movesetAssignment.variantsBySpeciesId[pokemon.speciesId],
+            },
+          ),
+      );
+      const request = new Request('http://localhost/api/team-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team: ['mewtwo', 'sableye'],
+          formatId: 'great-league',
+          movesetAssignment,
+        }),
+      });
+
+      const response = await POST(request as NextRequest);
+
+      expect(response.status).toBe(200);
+      expect(validateRosterMovesetAssignmentAuthority).toHaveBeenCalledWith(
+        movesetAssignment,
+      );
+    },
+  );
+
+  it.each([
+    'a legal inactive manifest variant',
+    'a modified ranked default',
+    'a stale manifest policy',
+    'a false manifest authority label',
+  ])('rejects %s as invalid authority', async (tampering) => {
+    const currentAssignment = createAssignment();
+    const mewtwoVariant = currentAssignment.variantsBySpeciesId.mewtwo!;
+    const sableyeVariant = currentAssignment.variantsBySpeciesId.sableye!;
+    const movesetAssignment = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      authorityBySpeciesId: {
+        mewtwo:
+          tampering === 'a stale manifest policy'
+            ? {
+                ...currentAssignment.authorityBySpeciesId.mewtwo!,
+                policyVersion: 'ranking-evidence-v0',
+              }
+            : currentAssignment.authorityBySpeciesId.mewtwo!,
+        sableye:
+          tampering === 'a false manifest authority label'
+            ? {
+                source: 'manifest',
+                schemaVersion: 1,
+                policyVersion: 'ranking-evidence-v1',
+              }
+            : currentAssignment.authorityBySpeciesId.sableye!,
+      },
+      variantsBySpeciesId: {
+        mewtwo:
+          tampering === 'a legal inactive manifest variant'
+            ? {
+                fastMove: 'COUNTER',
+                chargedMove1: 'PSYSTRIKE',
+                chargedMove2: 'SHADOW_BALL',
+                id: getMovesetVariantId({
+                  fastMove: 'COUNTER',
+                  chargedMove1: 'PSYSTRIKE',
+                  chargedMove2: 'SHADOW_BALL',
+                }),
+                isDefault: false,
+              }
+            : mewtwoVariant,
+        sableye:
+          tampering === 'a modified ranked default'
+            ? {
+                fastMove: 'SHADOW_CLAW',
+                chargedMove1: 'FOUL_PLAY',
+                chargedMove2: 'POWER_GEM',
+                id: getMovesetVariantId({
+                  fastMove: 'SHADOW_CLAW',
+                  chargedMove1: 'FOUL_PLAY',
+                  chargedMove2: 'POWER_GEM',
+                }),
+                isDefault: true,
+              }
+            : sableyeVariant,
+      },
+    });
+    const actualMovesetModule = await vi.importActual<
+      typeof import('@/lib/genetic/moveset')
+    >('@/lib/genetic/moveset');
+    vi.mocked(validateRosterMovesetAssignmentAuthority).mockImplementation(
+      (assignment) =>
+        actualMovesetModule.validateRosterMovesetAssignmentAuthority(
+          assignment,
+          {
+            ensureSimulationData: () => undefined,
+            getManifestPolicyIdentity: () => ({
+              schemaVersion: 1,
+              policyVersion: 'ranking-evidence-v1',
+            }),
+            getActiveVariants: (speciesId) => {
+              if (speciesId === 'sableye') {
+                throw new MovesetVariantSimulationDataError(
+                  'variant-unavailable',
+                  'great-league',
+                  'runtime-snapshot.json',
+                  speciesId,
+                );
+              }
+              return [mewtwoVariant];
+            },
+            getPokemon: getPokemonBySpeciesId,
+            getRankedDefault: (pokemon) =>
+              currentAssignment.variantsBySpeciesId[pokemon.speciesId],
+          },
+        ),
+    );
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        formatId: 'great-league',
+        movesetAssignment,
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(400);
+    expect(getMovesetAvailability).not.toHaveBeenCalled();
   });
 
   it('defaults missing formatId to Great League', async () => {

@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - `RosterMovesetAssignment` authority is per species in `authorityBySpeciesId`; its keys must exactly match the canonical assigned roster and variant map, every authority belongs in the fingerprint, manifest defaults use qualified simulation lookups, and ranked-default fallbacks remain unqualified through `getAssignedMovesetVariantId(...)`.
+- Returned assignments require two gates before projection: structural parsing/fingerprint validation, then repository-authority validation. Prepare compact snapshots only when a species claims manifest authority, require exact policy and complete active-variant equality, compare fallback species with current format rankings, and propagate snapshot integrity failures without fallback.
 - Variant-enabled resolution may use a per-species ranked default only when `MovesetVariantSimulationDataError` is an unqualified `variant-unavailable` failure matching the current format and canonical species; singleton fallback slots preserve assignment bounds, while missing or corrupt authority and mismatched/specific-variant failures propagate.
 - Turbopack compiles `outputFileTracingExcludes` into glob regexes and can panic when thousands of generated paths are listed individually; use narrow non-overlapping semantic exclusions for source simulation CSVs/manifests, explicitly include catalog snapshots, and let post-build trace validation reject every unauthorized data asset.
 - Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team snapshot/ranking assets and pokemon-list assets from the battle-format catalog, use route-specific excludes for automatically over-traced files, and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
@@ -1857,4 +1858,41 @@
   - US-037 must replace the optimizer guide's pre-US-035 missing-manifest fallback description with mixed per-species authority and fail-closed snapshot semantics.
 - Next iteration start:
   - US-036 - Validate returned moveset assignments against runtime authorities
+---
+
+## 2026-08-07 14:54:46 MST - US-036
+- Added an injectable repository-authority validator after structural assignment parsing; manifest-backed species now require the prepared compact snapshot's current policy and a complete active variant match, ranked-default fallbacks require the current format ranking recommendation and fallback policy, and team details projects only the validated original assignment.
+- Files changed: `app/AGENTS.md`, `app/api/team-details/route.ts`, `app/api/team-details/route.test.ts`, `lib/AGENTS.md`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-036 - Validate returned moveset assignments against runtime authorities`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/genetic/moveset.test.ts` (fail as expected before implementation: authority validator was missing)
+  - `npx vitest run app/api/team-details/route.test.ts` (fail as expected before route integration: validator was not invoked and authority failures returned 200)
+  - `npx vitest run lib/genetic/moveset.test.ts -t "without a complete format ranking"` (fail as expected during review remediation: missing ranking authority raised an untyped error)
+  - `npx vitest run lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 79 tests after review fixes)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` after review fixes (pass after correcting one import-order error)
+  - `npm test` after review fixes (pass, 900 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `security-engineer`, `backend-developer`
+  - Used: `security-engineer`, `backend-developer`; both fit the standard-mode high-risk budget and converged on the same injectable validation boundary, exact comparison rules, lazy snapshot preparation, and fail-closed error handling
+- Specialist review:
+  - Agents used: initial staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` and `security-engineer` re-review
+  - Findings: `code-reviewer` found none; fixed one medium QA finding by replacing duplicate mocked route failures with distinct recomputed payloads through the real validator, and one medium security finding by rejecting fallback authority without a complete current format ranking; targeted re-review found none
+- Decisions (why):
+  - Kept validation beside assignment parsing and projection in `lib/genetic/moveset.ts` so the route remains a thin adapter and unit tests can inject snapshot and ranking authorities without filesystem or module patching.
+  - Compared every variant field, including preferred charged-move order and `isDefault`, because canonical variant IDs alone intentionally normalize charged-move order and cannot prove the complete scored assignment.
+  - Used a strict complete ranking lookup only for returned fallback authority validation; generation keeps its existing movepool fallback behavior, but an external authority claim cannot be authenticated when the selected format has no complete ranking recommendation.
+  - Prepared compact simulation data once only when at least one species claims manifest authority; fallback-only assignments remain ranking-only, while malformed, missing, incompatible, incomplete, and unprepared snapshot failures propagate instead of being reclassified as fallback.
+  - Converted only the exact unqualified unavailable-species error for a manifest claim into a caller validation failure; mismatched, variant-qualified, and integrity errors remain operational failures.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - A deterministic fingerprint proves that payload fields agree with each other, but current repository-owned compact snapshots and rankings are required to prove those fields remain authoritative.
+  - `getActiveMovesetVariants(...)` exposes complete preferred-order variants from the prepared snapshot, allowing authenticity checks without reading manifests, simulation CSVs, or PvPoke runtime code.
+- Known issues / follow-ups:
+  - US-037 must add `/api/team-details` compact snapshot trace planning, route trace analysis, runtime-boundary coverage, and mixed-authority documentation for the new runtime dependency.
+- Next iteration start:
+  - US-037 - Guard assignment authority deployment and documentation contracts
 ---

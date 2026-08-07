@@ -129,6 +129,8 @@ Resolve one immutable `RosterMovesetAssignment` against the complete bring-six r
 
 Track moveset authority per species in `authorityBySpeciesId`, require its keys to match the canonical assigned roster, and include each authority in the assignment fingerprint. Use `getAssignedMovesetVariantId(...)` for simulation lookups so manifest defaults remain variant-qualified while ranked-default fallbacks remain unqualified.
 
+Treat assignment fingerprints as structural identity, not authenticity. After parsing a returned assignment, validate every manifest-backed species against the prepared compact snapshot policy and complete active variant, and validate every ranked-default fallback against the current format ranking recommendation. Prepare snapshot data only when at least one species claims manifest authority, and propagate snapshot integrity failures without falling back.
+
 When variant simulation is enabled, fall back one species to its ranked default only for an unqualified `variant-unavailable` error matching the current format and canonical species. Keep supported roster members manifest-backed, use one singleton fallback slot during finalist assignment enumeration, and propagate missing, malformed, incompatible, incomplete, unprepared, mismatched-species, and specific-variant failures.
 
 Retain the final scored `RosterMovesetAssignment` for both PlayPokemon and GBL output. When a serialized assignment returns through an API, bound its input size and validate its format, exact canonical roster, canonical move slots, variant identities, and deterministic fingerprint before projecting the assigned moves and acquisition metadata; never select a replacement moveset in an output adapter.

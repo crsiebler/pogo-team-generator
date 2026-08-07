@@ -646,7 +646,7 @@
         "Typecheck passes."
       ],
       "priority": 36,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @security-engineer, @backend-developer. Implementation notes: deterministic fingerprints provide identity, not authenticity; establish authenticity by comparing each transient assignment with repository-owned runtime authorities. Keep validation dependencies injectable in unit tests."
     },
     {

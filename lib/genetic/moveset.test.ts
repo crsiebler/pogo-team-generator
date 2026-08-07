@@ -7,6 +7,8 @@ import {
   getSimulationBackedMovesetForTeam,
   resolveRankedDefaultRosterMovesetAssignment,
   resolveRosterMovesetAssignment,
+  RosterMovesetAssignmentValidationError,
+  validateRosterMovesetAssignmentAuthority,
 } from './moveset';
 import { MovesetVariantSimulationDataError } from '@/lib/data/movesetVariantSimulations';
 import type { MovesetVariantSimulationDataErrorCode } from '@/lib/data/movesetVariantSimulations';
@@ -14,6 +16,7 @@ import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
 import { ensureSimulationDataAvailable } from '@/lib/data/simulations';
 import type {
   MovesetAssignmentPolicyIdentity,
+  RosterMovesetAssignment,
   MovesetVariant,
   Pokemon,
 } from '@/lib/types';
@@ -165,6 +168,11 @@ describe('roster moveset assignments', () => {
     schemaVersion: 1,
     policyVersion: 'ranking-evidence-v1',
   };
+  const fallbackPolicy: MovesetAssignmentPolicyIdentity = {
+    source: 'ranked-default-fallback',
+    schemaVersion: 0,
+    policyVersion: 'ranked-default-v1',
+  };
   const defaultVariant: MovesetVariant = simulationVariants[0];
   const alternateVariant: MovesetVariant = simulationVariants[1];
 
@@ -241,11 +249,6 @@ describe('roster moveset assignments', () => {
   });
 
   it('includes each species authority in mixed-assignment fingerprints', () => {
-    const fallbackPolicy: MovesetAssignmentPolicyIdentity = {
-      source: 'ranked-default-fallback',
-      schemaVersion: 0,
-      policyVersion: 'ranked-default-v1',
-    };
     const createMixedAssignment = (
       golisopodAuthority: MovesetAssignmentPolicyIdentity,
     ) =>
@@ -269,6 +272,284 @@ describe('roster moveset assignments', () => {
       defaultVariant.id,
     );
     expect(getAssignedMovesetVariantId(mixed, 'milotic')).toBeUndefined();
+  });
+
+  describe('validateRosterMovesetAssignmentAuthority', () => {
+    const pokemonById = new Map(
+      ['golisopod', 'milotic'].map((speciesId) => [
+        speciesId,
+        { speciesId, speciesName: speciesId } as Pokemon,
+      ]),
+    );
+
+    function createAuthorityAssignment(
+      authorityBySpeciesId: Readonly<
+        Record<string, MovesetAssignmentPolicyIdentity>
+      >,
+      variantsBySpeciesId: Readonly<Record<string, MovesetVariant>>,
+    ): RosterMovesetAssignment {
+      return createRosterMovesetAssignment({
+        formatId: 'great-league',
+        authorityBySpeciesId,
+        variantsBySpeciesId,
+      });
+    }
+
+    it.each<{
+      label: string;
+      authorityBySpeciesId: Readonly<
+        Record<string, MovesetAssignmentPolicyIdentity>
+      >;
+      variantsBySpeciesId: Readonly<Record<string, MovesetVariant>>;
+      expectedPrepareCalls: number;
+      expectedActiveSpecies: string[];
+      expectedRankedSpecies: string[];
+    }>([
+      {
+        label: 'manifest',
+        authorityBySpeciesId: { golisopod: manifestPolicy },
+        variantsBySpeciesId: { golisopod: alternateVariant },
+        expectedPrepareCalls: 1,
+        expectedActiveSpecies: ['golisopod'],
+        expectedRankedSpecies: [],
+      },
+      {
+        label: 'ranked fallback',
+        authorityBySpeciesId: { golisopod: fallbackPolicy },
+        variantsBySpeciesId: { golisopod: defaultVariant },
+        expectedPrepareCalls: 0,
+        expectedActiveSpecies: [],
+        expectedRankedSpecies: ['golisopod'],
+      },
+      {
+        label: 'mixed',
+        authorityBySpeciesId: {
+          golisopod: manifestPolicy,
+          milotic: fallbackPolicy,
+        },
+        variantsBySpeciesId: {
+          golisopod: alternateVariant,
+          milotic: defaultVariant,
+        },
+        expectedPrepareCalls: 1,
+        expectedActiveSpecies: ['golisopod'],
+        expectedRankedSpecies: ['milotic'],
+      },
+    ])(
+      'accepts a current $label assignment without selecting another moveset',
+      ({
+        authorityBySpeciesId,
+        variantsBySpeciesId,
+        expectedPrepareCalls,
+        expectedActiveSpecies,
+        expectedRankedSpecies,
+      }) => {
+        let prepareCalls = 0;
+        const activeSpecies: string[] = [];
+        const rankedSpecies: string[] = [];
+        const assignment = createAuthorityAssignment(
+          authorityBySpeciesId,
+          variantsBySpeciesId,
+        );
+
+        const validated = validateRosterMovesetAssignmentAuthority(assignment, {
+          ensureSimulationData: () => {
+            prepareCalls++;
+          },
+          getManifestPolicyIdentity: () => ({
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          }),
+          getActiveVariants: (speciesId: string) => {
+            activeSpecies.push(speciesId);
+            return [defaultVariant, alternateVariant];
+          },
+          getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+          getRankedDefault: (pokemon: Pokemon) => {
+            rankedSpecies.push(pokemon.speciesId);
+            return defaultVariant;
+          },
+        });
+
+        expect(validated).toBe(assignment);
+        expect(prepareCalls).toBe(expectedPrepareCalls);
+        expect(activeSpecies).toEqual(expectedActiveSpecies);
+        expect(rankedSpecies).toEqual(expectedRankedSpecies);
+      },
+    );
+
+    it.each([
+      [
+        'a legal inactive moveset',
+        alternateVariant,
+        [defaultVariant],
+        manifestPolicy,
+      ],
+      [
+        'modified preferred charged-move order',
+        {
+          ...alternateVariant,
+          chargedMove1: alternateVariant.chargedMove2,
+          chargedMove2: alternateVariant.chargedMove1,
+        },
+        [alternateVariant],
+        manifestPolicy,
+      ],
+      [
+        'modified default status',
+        { ...alternateVariant, isDefault: true },
+        [alternateVariant],
+        manifestPolicy,
+      ],
+      [
+        'a stale manifest policy',
+        alternateVariant,
+        [alternateVariant],
+        { ...manifestPolicy, policyVersion: 'ranking-evidence-v0' },
+      ],
+    ] as const)(
+      'rejects manifest authority with %s even after fingerprint recomputation',
+      (_label, assignedVariant, activeVariants, authority) => {
+        const assignment = createAuthorityAssignment(
+          { golisopod: authority },
+          { golisopod: assignedVariant },
+        );
+
+        expect(() =>
+          validateRosterMovesetAssignmentAuthority(assignment, {
+            ensureSimulationData: () => undefined,
+            getManifestPolicyIdentity: () => ({
+              schemaVersion: 1,
+              policyVersion: 'ranking-evidence-v1',
+            }),
+            getActiveVariants: () => activeVariants,
+            getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+            getRankedDefault: () => defaultVariant,
+          }),
+        ).toThrowError(RosterMovesetAssignmentValidationError);
+      },
+    );
+
+    it.each([
+      ['modified moves', alternateVariant, fallbackPolicy],
+      [
+        'modified default status',
+        { ...defaultVariant, isDefault: false },
+        fallbackPolicy,
+      ],
+      [
+        'a stale fallback policy',
+        defaultVariant,
+        { ...fallbackPolicy, policyVersion: 'ranked-default-v0' },
+      ],
+    ] as const)(
+      'rejects ranked-default authority with %s after fingerprint recomputation',
+      (_label, assignedVariant, authority) => {
+        const assignment = createAuthorityAssignment(
+          { golisopod: authority },
+          { golisopod: assignedVariant },
+        );
+
+        expect(() =>
+          validateRosterMovesetAssignmentAuthority(assignment, {
+            ensureSimulationData: () => {
+              throw new Error('fallback validation must not prepare snapshots');
+            },
+            getManifestPolicyIdentity: () => {
+              throw new Error('fallback validation must not read policies');
+            },
+            getActiveVariants: () => {
+              throw new Error('fallback validation must not read variants');
+            },
+            getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+            getRankedDefault: () => defaultVariant,
+          }),
+        ).toThrowError(RosterMovesetAssignmentValidationError);
+      },
+    );
+
+    it('rejects fallback authority without a complete format ranking', () => {
+      const assignment = createAuthorityAssignment(
+        { golisopod: fallbackPolicy },
+        { golisopod: defaultVariant },
+      );
+
+      expect(() =>
+        validateRosterMovesetAssignmentAuthority(assignment, {
+          ensureSimulationData: () => {
+            throw new Error('fallback validation must not prepare snapshots');
+          },
+          getManifestPolicyIdentity: () => {
+            throw new Error('fallback validation must not read policies');
+          },
+          getActiveVariants: () => {
+            throw new Error('fallback validation must not read variants');
+          },
+          getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+          getRankedDefault: () => undefined,
+        }),
+      ).toThrowError(RosterMovesetAssignmentValidationError);
+    });
+
+    it('rejects false manifest authority for a snapshot-unsupported species', () => {
+      const assignment = createAuthorityAssignment(
+        { golisopod: manifestPolicy },
+        { golisopod: defaultVariant },
+      );
+
+      expect(() =>
+        validateRosterMovesetAssignmentAuthority(assignment, {
+          ensureSimulationData: () => undefined,
+          getManifestPolicyIdentity: () => ({
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          }),
+          getActiveVariants: () => {
+            throw new MovesetVariantSimulationDataError(
+              'variant-unavailable',
+              'great-league',
+              'runtime-snapshot.json',
+              'golisopod',
+            );
+          },
+          getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+          getRankedDefault: () => defaultVariant,
+        }),
+      ).toThrowError(RosterMovesetAssignmentValidationError);
+    });
+
+    it.each<MovesetVariantSimulationDataErrorCode>([
+      'manifest-missing',
+      'manifest-malformed',
+      'manifest-incompatible',
+      'manifest-incomplete',
+      'snapshot-not-prepared',
+    ])('propagates %s snapshot preparation failures', (code) => {
+      const assignment = createAuthorityAssignment(
+        { golisopod: manifestPolicy },
+        { golisopod: alternateVariant },
+      );
+
+      expect(() =>
+        validateRosterMovesetAssignmentAuthority(assignment, {
+          ensureSimulationData: () => {
+            throw new MovesetVariantSimulationDataError(
+              code,
+              'great-league',
+              'runtime-snapshot.json',
+            );
+          },
+          getManifestPolicyIdentity: () => {
+            throw new Error('unreachable');
+          },
+          getActiveVariants: () => {
+            throw new Error('unreachable');
+          },
+          getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+          getRankedDefault: () => defaultVariant,
+        }),
+      ).toThrowError(expect.objectContaining({ code }));
+    });
   });
 
   it('rejects authority keys that do not exactly match assigned variants', () => {

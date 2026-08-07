@@ -8,6 +8,7 @@ import {
   getAssignedMovesetDetails,
   parseRosterMovesetAssignment,
   RosterMovesetAssignmentValidationError,
+  validateRosterMovesetAssignmentAuthority,
 } from '@/lib/genetic/moveset';
 
 const MAX_TEAM_DETAILS_REQUEST_BYTES = 16_384;
@@ -89,11 +90,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const assignment = parseRosterMovesetAssignment(
+    const parsedAssignment = parseRosterMovesetAssignment(
       movesetAssignment,
       team,
       resolvedFormatId,
     );
+    const assignment =
+      validateRosterMovesetAssignmentAuthority(parsedAssignment);
 
     console.log('Team details requested for:', team);
     console.log('Team size:', team.length);

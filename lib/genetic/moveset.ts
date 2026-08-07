@@ -13,6 +13,7 @@ import {
 } from '@lib/data/rankings';
 import { MovesetVariantSimulationDataError } from '@lib/data/runtimeSimulationRepository';
 import {
+  ensureSimulationDataAvailable,
   getActiveMovesetVariants,
   getMatchupResult,
   getMovesetVariantManifestPolicyIdentity,
@@ -49,6 +50,25 @@ export function getRecommendedMovesetForPokemon(
       rankedMoves.chargedMove2 ||
       pokemon.chargedMoves[1] ||
       pokemon.chargedMoves[0],
+  };
+}
+
+function getCompleteRankedMovesetForPokemon(
+  pokemon: Pokemon,
+  formatId: BattleFormatId,
+): Moveset | undefined {
+  const rankedMoves = getOptimalMoveset(pokemon.speciesName, formatId);
+  if (
+    !rankedMoves.fastMove ||
+    !rankedMoves.chargedMove1 ||
+    !rankedMoves.chargedMove2
+  ) {
+    return undefined;
+  }
+  return {
+    fastMove: rankedMoves.fastMove,
+    chargedMove1: rankedMoves.chargedMove1,
+    chargedMove2: rankedMoves.chargedMove2,
   };
 }
 
@@ -101,6 +121,23 @@ export interface RosterMovesetAssignmentEnumerationDependencies {
 export interface RankedDefaultRosterMovesetAssignmentDependencies {
   getPokemon: (speciesId: string) => Pokemon | undefined;
   getRankedDefault: (pokemon: Pokemon, formatId: BattleFormatId) => Moveset;
+}
+
+/** Injectable runtime authorities for validating returned roster assignments. */
+export interface RosterMovesetAuthorityValidationDependencies {
+  ensureSimulationData: (formatId: BattleFormatId) => void;
+  getManifestPolicyIdentity: (
+    formatId: BattleFormatId,
+  ) => Readonly<{ schemaVersion: number; policyVersion: string }>;
+  getActiveVariants: (
+    speciesId: string,
+    formatId: BattleFormatId,
+  ) => readonly MovesetVariant[];
+  getPokemon: (speciesId: string) => Pokemon | undefined;
+  getRankedDefault: (
+    pokemon: Pokemon,
+    formatId: BattleFormatId,
+  ) => Moveset | undefined;
 }
 
 /** Input used to create a validated immutable roster assignment value. */
@@ -156,6 +193,30 @@ function isUnsupportedSpeciesVariantError(
     error.formatId === formatId &&
     error.speciesId === speciesId &&
     error.variantId === undefined
+  );
+}
+
+function matchesPolicyIdentity(
+  actual: MovesetAssignmentPolicyIdentity,
+  expected: MovesetAssignmentPolicyIdentity,
+): boolean {
+  return (
+    actual.source === expected.source &&
+    actual.schemaVersion === expected.schemaVersion &&
+    actual.policyVersion === expected.policyVersion
+  );
+}
+
+function matchesMovesetVariant(
+  actual: MovesetVariant,
+  expected: MovesetVariant,
+): boolean {
+  return (
+    actual.id === expected.id &&
+    actual.fastMove === expected.fastMove &&
+    actual.chargedMove1 === expected.chargedMove1 &&
+    actual.chargedMove2 === expected.chargedMove2 &&
+    actual.isDefault === expected.isDefault
   );
 }
 
@@ -552,6 +613,114 @@ export function parseRosterMovesetAssignment(
       'Roster moveset assignment fingerprint is invalid.',
     );
   }
+  return assignment;
+}
+
+/** Validate a parsed assignment against current snapshot and ranking authorities. */
+export function validateRosterMovesetAssignmentAuthority(
+  assignment: RosterMovesetAssignment,
+  dependencies: RosterMovesetAuthorityValidationDependencies = {
+    ensureSimulationData: ensureSimulationDataAvailable,
+    getManifestPolicyIdentity: getMovesetVariantManifestPolicyIdentity,
+    getActiveVariants: getActiveMovesetVariants,
+    getPokemon: getPokemonBySpeciesId,
+    getRankedDefault: getCompleteRankedMovesetForPokemon,
+  },
+): RosterMovesetAssignment {
+  const speciesIds = Object.keys(assignment.variantsBySpeciesId).toSorted();
+  const hasManifestAuthority = speciesIds.some(
+    (speciesId) =>
+      assignment.authorityBySpeciesId[speciesId]?.source === 'manifest',
+  );
+  let manifestPolicy: MovesetAssignmentPolicyIdentity | undefined;
+
+  if (hasManifestAuthority) {
+    dependencies.ensureSimulationData(assignment.formatId);
+    manifestPolicy = {
+      source: 'manifest',
+      ...dependencies.getManifestPolicyIdentity(assignment.formatId),
+    };
+  }
+
+  for (const speciesId of speciesIds) {
+    const authority = assignment.authorityBySpeciesId[speciesId];
+    const assignedVariant = assignment.variantsBySpeciesId[speciesId];
+    if (!authority || !assignedVariant) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment authority for ${speciesId} is incomplete.`,
+      );
+    }
+
+    if (authority.source === 'manifest') {
+      if (
+        !manifestPolicy ||
+        !matchesPolicyIdentity(authority, manifestPolicy)
+      ) {
+        throw new RosterMovesetAssignmentValidationError(
+          `Roster moveset assignment manifest authority for ${speciesId} is stale.`,
+        );
+      }
+
+      let activeVariants: readonly MovesetVariant[];
+      try {
+        activeVariants = dependencies.getActiveVariants(
+          speciesId,
+          assignment.formatId,
+        );
+      } catch (error) {
+        if (
+          !isUnsupportedSpeciesVariantError(
+            error,
+            assignment.formatId,
+            speciesId,
+          )
+        ) {
+          throw error;
+        }
+        throw new RosterMovesetAssignmentValidationError(
+          `Roster moveset assignment manifest authority for ${speciesId} is unavailable.`,
+        );
+      }
+      if (
+        !activeVariants.some((variant) =>
+          matchesMovesetVariant(assignedVariant, variant),
+        )
+      ) {
+        throw new RosterMovesetAssignmentValidationError(
+          `Roster moveset assignment variant for ${speciesId} is not active.`,
+        );
+      }
+      continue;
+    }
+
+    if (!matchesPolicyIdentity(authority, RANKED_DEFAULT_POLICY_IDENTITY)) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment ranked-default authority for ${speciesId} is stale.`,
+      );
+    }
+    const pokemon = dependencies.getPokemon(speciesId);
+    if (!pokemon) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment authority references unknown Pokemon ${speciesId}.`,
+      );
+    }
+    const rankedMoveset = dependencies.getRankedDefault(
+      pokemon,
+      assignment.formatId,
+    );
+    if (!rankedMoveset) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment ranked-default authority for ${speciesId} is unavailable.`,
+      );
+    }
+    const rankedDefault = toDefaultMovesetVariant(rankedMoveset);
+    if (!matchesMovesetVariant(assignedVariant, rankedDefault)) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment ranked default for ${speciesId} is not current.`,
+      );
+    }
+  }
+
   return assignment;
 }
 
