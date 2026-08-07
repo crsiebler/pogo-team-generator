@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createRosterMovesetAssignment,
+  enumerateRosterMovesetAssignments,
   getRecommendedMovesetForPokemon,
   getSimulationBackedMovesetForTeam,
   getSimulationBackedMovesetVariantForTeam,
@@ -314,6 +315,54 @@ describe('roster moveset assignments', () => {
       'golisopod',
       'milotic',
     ]);
+  });
+
+  it('enumerates at most three active variants per roster member deterministically', () => {
+    const roster = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const variants = [
+      defaultVariant,
+      alternateVariant,
+      {
+        ...alternateVariant,
+        id: 'waterfall--x_scissor--aqua_jet' as const,
+        fastMove: 'WATERFALL',
+      },
+    ];
+    const pokemonById = new Map(
+      roster.map((speciesId) => [
+        speciesId,
+        { speciesId, speciesName: speciesId } as Pokemon,
+      ]),
+    );
+    const dependencies = {
+      getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+      getManifestPolicyIdentity: () => ({
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      }),
+      getActiveVariants: () => [...variants].reverse(),
+      getRankedDefault: () => {
+        throw new Error('ranked fallback must remain lazy');
+      },
+    };
+
+    const first = enumerateRosterMovesetAssignments(
+      roster,
+      'great-league',
+      dependencies,
+    );
+    const second = enumerateRosterMovesetAssignments(roster, 'great-league', {
+      ...dependencies,
+      getActiveVariants: () => variants,
+    });
+
+    expect(first).toHaveLength(729);
+    expect(new Set(first.map(({ fingerprint }) => fingerprint))).toHaveLength(
+      729,
+    );
+    expect(first.map(({ fingerprint }) => fingerprint)).toEqual(
+      second.map(({ fingerprint }) => fingerprint),
+    );
   });
 
   it('uses the injected ranked default for every species only when policy authority is missing', () => {

@@ -9,6 +9,7 @@ import {
   calculateLineupAwareFitness,
   bindRosterMovesetAssignment,
   createLineupAwareFitnessContext,
+  enumeratePlayPokemonLineups,
   getLineupAwareFitnessCacheKey,
   evaluatePopulation,
 } from './index';
@@ -321,6 +322,45 @@ describe('lineup-aware fitness entry point', () => {
       hits: 0,
       misses: 1,
       size: 1,
+    });
+  });
+
+  it('builds full reranking contexts with distinct top and full-meta pool limits', () => {
+    createLineupAwareFitnessContext('battle-frontier-tsuki-cup', 'team-aware', {
+      threatCount: 100,
+    });
+
+    expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
+      'battle-frontier-tsuki-cup',
+      100,
+      'team-aware',
+    );
+  });
+
+  it('isolates twelve full 120-lineup assignment passes and reuses the winner', () => {
+    const context = createLineupAwareFitnessContext(
+      'battle-frontier-tsuki-cup',
+      'team-aware',
+    );
+    const lineups = enumeratePlayPokemonLineups(['a', 'b', 'c', 'd', 'e', 'f']);
+    const assignments = Array.from({ length: 12 }, (_, index) =>
+      createAssignment(`assignment-${index}`),
+    );
+
+    for (const assignment of assignments) {
+      for (const lineup of lineups) {
+        context.scoreLineup(lineup, assignment);
+      }
+    }
+    for (const lineup of lineups) {
+      context.scoreLineup(lineup, assignments[0]);
+    }
+
+    expect(lineups).toHaveLength(120);
+    expect(context.cacheStats.lineup).toEqual({
+      hits: 120,
+      misses: 12 * 120,
+      size: 12 * 120,
     });
   });
 

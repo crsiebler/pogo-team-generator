@@ -21,7 +21,12 @@ import {
   getWorstMatchups,
 } from '@lib/data/simulations';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Chromosome, OptimizerScoreBreakdown, Pokemon } from '../types';
+import type {
+  Chromosome,
+  OptimizerScoreBreakdown,
+  Pokemon,
+  RosterMovesetAssignment,
+} from '../types';
 import { generateMultipleTeams, generateTeam } from './algorithm';
 import {
   calculateDiversity,
@@ -39,6 +44,7 @@ import {
   createLineupAwareFitnessContext,
   scorePlayPokemonRoster,
 } from './fitness';
+import { rerankRosterFinalists } from './fitness/finalistReranking';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
 vi.mock('@lib/data/rankings', () => ({
@@ -92,6 +98,10 @@ vi.mock('./fitness', () => ({
   createLineupAwareFitnessContext: vi.fn(),
   evaluatePopulation: vi.fn(),
   scorePlayPokemonRoster: vi.fn(),
+}));
+
+vi.mock('./fitness/finalistReranking', () => ({
+  rerankRosterFinalists: vi.fn(),
 }));
 
 vi.mock('./operators', () => ({
@@ -157,6 +167,21 @@ function createChromosomeWithTeam(
   };
 }
 
+function createTestAssignment(
+  team: readonly string[],
+): RosterMovesetAssignment {
+  return {
+    formatId: 'great-league',
+    policyIdentity: {
+      source: 'ranked-default-fallback',
+      schemaVersion: 0,
+      policyVersion: 'ranked-default-v1',
+    },
+    variantsBySpeciesId: {},
+    fingerprint: `assignment:${team.join(',')}`,
+  };
+}
+
 function configurePlayPokemonPool(speciesIds: readonly string[]): void {
   vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
     new Set(speciesIds),
@@ -195,7 +220,40 @@ describe('generateTeam format-aware candidate selection', () => {
       })),
       scoreLineup: vi.fn(),
       scoreFastLineup: vi.fn(),
+      cacheStats: {
+        lineup: { hits: 0, misses: 0, size: 0 },
+        fastLineup: { hits: 0, misses: 0, size: 0 },
+      },
     } as never);
+    vi.mocked(rerankRosterFinalists).mockImplementation((finalists) => {
+      const finalist = finalists[0];
+      const assignment = createTestAssignment(finalist.team);
+      return {
+        finalist,
+        assignment,
+        score: {
+          roster: finalist.team,
+          fitness: 0.9,
+          scoreBreakdown: createScoreBreakdown(0.9),
+          evaluatedLineupCount: 120,
+          metrics: {
+            viableLineupCount: 12,
+            topLineupQuality: 0.9,
+            topNLineupDepth: 0.8,
+            dominatingMatchupRate: 0.2,
+            overwhelmingLossRate: 0.05,
+            singleAnswerRisks: [],
+            viableLeadDiversity: 4,
+            benchUtilitySummary: [],
+          },
+        },
+        stats: {
+          finalistCount: finalists.length,
+          assignmentEvaluationCount: finalists.length,
+          fullScoreCount: finalists.length,
+        },
+      };
+    });
     vi.mocked(buildGblLineupRecommendation).mockReturnValue({
       lineup: { lead: 'mewtwo', switch: 'dragonite', closer: 'mew' },
       score: 0.88,
@@ -872,16 +930,23 @@ describe('generateTeam format-aware candidate selection', () => {
         scoringContext: { threats: ['azumarill'] },
       }),
     );
-    const fitnessContext = vi.mocked(createLineupAwareFitnessContext).mock
-      .results[0].value;
-    expect(fitnessContext.resolveMovesetAssignment).toHaveBeenCalledWith(
-      result.team,
+    expect(rerankRosterFinalists).toHaveBeenCalledWith(
+      result.defaultScoredFinalists,
+      expect.objectContaining({
+        getAssignments: expect.any(Function),
+        scoreAssignment: expect.any(Function),
+      }),
+    );
+    expect(createLineupAwareFitnessContext).toHaveBeenCalledWith(
+      'battle-frontier-tsuki-cup',
+      'team-aware',
+      { threatCount: 100 },
     );
     expect(scorePlayPokemonRoster).toHaveBeenCalledWith(
       result.team,
       expect.objectContaining({
         movesetAssignment: expect.objectContaining({
-          fingerprint: 'test-assignment',
+          fingerprint: `assignment:${result.team.join(',')}`,
         }),
       }),
       { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
@@ -894,8 +959,8 @@ describe('generateTeam format-aware candidate selection', () => {
         lineup: { lead: 'mew', switch: 'mewtwo', closer: 'dragonite' },
       }),
     ]);
-    expect(result.movesetAssignment).toBe(
-      fitnessContext.resolveMovesetAssignment.mock.results[0].value,
+    expect(result.movesetAssignment?.fingerprint).toBe(
+      `assignment:${result.team.join(',')}`,
     );
     expect(result).not.toHaveProperty('rosterMetrics');
     expect(result).not.toHaveProperty('benchUtility');
@@ -949,7 +1014,7 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(result.fitness).toBe(result.scoreBreakdown?.score);
   });
 
-  it('retains default-scored finalists across generations without replacing bestOverall', async () => {
+  it('retains default-scored finalists across generations for final reranking', async () => {
     const initialBestTeam = ['f', 'e', 'd', 'c', 'b', 'a'];
     const reorderedInitialBest = ['a', 'b', 'c', 'd', 'e', 'f'];
     const initialRunnerUp = ['g', 'h', 'i', 'j', 'k', 'l'];
@@ -981,13 +1046,91 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 1,
     });
 
-    expect(result.team).toEqual(initialBestTeam);
+    expect(result.team).toEqual(reorderedInitialBest);
     expect(result.defaultScoredFinalists).toEqual([
       createChromosomeWithTeam(reorderedInitialBest, 0.9),
       createChromosomeWithTeam(evolvedRunnerUp, 0.85),
       createChromosomeWithTeam(initialRunnerUp, 0.8),
     ]);
     expect(scorePlayPokemonRoster).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses bounded variant-aware reranking to select the final PlayPokemon roster', async () => {
+    const higherDefault = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const lowerDefault = ['g', 'h', 'i', 'j', 'k', 'l'];
+    configurePlayPokemonPool([...higherDefault, ...lowerDefault]);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam(higherDefault, 0.9),
+      createChromosomeWithTeam(lowerDefault, 0.8),
+    ]);
+    vi.mocked(getBestChromosome).mockImplementation(
+      (population) => population[0],
+    );
+    const selectedAssignment = createTestAssignment(lowerDefault);
+    vi.mocked(rerankRosterFinalists).mockImplementationOnce((finalists) => ({
+      finalist: finalists.find(({ team }) => team[0] === 'g')!,
+      assignment: selectedAssignment,
+      score: {
+        roster: lowerDefault,
+        fitness: 0.95,
+        scoreBreakdown: createScoreBreakdown(0.95),
+        evaluatedLineupCount: 120,
+        metrics: {
+          viableLineupCount: 12,
+          topLineupQuality: 0.95,
+          topNLineupDepth: 0.9,
+          dominatingMatchupRate: 0.3,
+          overwhelmingLossRate: 0.02,
+          singleAnswerRisks: [],
+          viableLeadDiversity: 4,
+          benchUtilitySummary: [],
+        },
+      },
+      stats: {
+        finalistCount: 2,
+        assignmentEvaluationCount: 2,
+        fullScoreCount: 2,
+      },
+    }));
+    vi.mocked(scorePlayPokemonRoster).mockReturnValueOnce({
+      roster: lowerDefault,
+      fitness: 0.95,
+      scoreBreakdown: createScoreBreakdown(0.95),
+      evaluatedLineupCount: 120,
+      metrics: {
+        viableLineupCount: 12,
+        topLineupQuality: 0.95,
+        topNLineupDepth: 0.9,
+        dominatingMatchupRate: 0.3,
+        overwhelmingLossRate: 0.02,
+        singleAnswerRisks: [],
+        viableLeadDiversity: 4,
+        benchUtilitySummary: [],
+      },
+      lineupScores: [],
+    });
+
+    const result = await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'great-league',
+      populationSize: 2,
+      generations: 0,
+    });
+
+    expect(rerankRosterFinalists).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ team: [...higherDefault].sort() }),
+        expect.objectContaining({ team: [...lowerDefault].sort() }),
+      ]),
+      expect.objectContaining({
+        getAssignments: expect.any(Function),
+        getMatchupRating: expect.any(Function),
+        scoreAssignment: expect.any(Function),
+      }),
+    );
+    expect(result.team).toEqual([...lowerDefault].sort());
+    expect(result.movesetAssignment).toBe(selectedAssignment);
+    expect(result.fitness).toBe(result.scoreBreakdown?.score);
   });
 
   it('preserves explicit anchor order while canonicalizing flexible finalists', async () => {

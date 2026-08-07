@@ -110,6 +110,7 @@ export interface LineupAwareFitnessContext {
 
 /** Injectable boundaries for one lineup-aware fitness run. */
 export interface LineupAwareFitnessDependencies {
+  threatCount?: number;
   resolveMovesetAssignment?: (
     roster: readonly string[],
   ) => RosterMovesetAssignment;
@@ -123,7 +124,11 @@ export function createLineupAwareFitnessContext(
 ): LineupAwareFitnessContext {
   const resolvedFormatId = formatId ?? DEFAULT_BATTLE_FORMAT_ID;
   const scoringContext = {
-    ...createDefaultLineupScoringContext(resolvedFormatId, 50, movesetPolicy),
+    ...createDefaultLineupScoringContext(
+      resolvedFormatId,
+      dependencies.threatCount ?? 50,
+      movesetPolicy,
+    ),
     formatId: resolvedFormatId,
   };
   const lineupScoreCache = new Map<string, LineupScoreResult>();

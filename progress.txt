@@ -28,6 +28,7 @@
 - Route every roster-member aggregate matchup, shield scenario, matchup-quality, and move-typing read through the bound assignment's variant ID; ranked-default transition assignments remain unqualified, and missing shield rows remain unevaluated rather than synthetic neutral results.
 - Final threat analysis reuses the assignment-aware `scoreBreakdown.threatScore`; retain the exact final roster assignment for shield-scenario and Pokemon-contribution diagnostics rather than resolving or selecting movesets in analysis modules.
 - Only PlayPokemon evolution uses unqualified ranked-default fast scoring; GBL evolution remains team-aware. Retain a canonical, deduplicated top-ten PlayPokemon archive across generations, preserve explicit anchor order, sort flexible roster members, and use lexical canonical keys for equal-fitness ordering before assignment-aware finalist work.
+- Post-evolution PlayPokemon reranking enumerates at most `3^6` manifest assignments per finalist, caches aggregate matrix reads for a 70/30 top-meta/full-meta answer-depth prefilter, fully scores only the top twelve assignments across all 120 ordered lineups, and selects by variant-aware fitness, default-only fitness, then canonical roster key.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1186,4 +1187,47 @@
   - US-021 should consume `defaultScoredFinalists` for bounded assignment prefiltering and full variant-aware reranking without changing the PlayPokemon GA population-scoring path.
 - Next iteration start:
   - US-021 - Prefilter assignments and rerank roster finalists.
+---
+
+## 2026-08-06 19:01:30 MST - US-021
+- Implemented deterministic post-evolution assignment enumeration and finalist reranking: each retained roster evaluates at most 729 immutable assignments through a cached aggregate matchup objective, only twelve assignments receive full 120-lineup scoring, and the final winner uses variant-aware fitness followed by default-only fitness and canonical roster identity. Final diagnostics reuse assignment-fingerprinted lineup cache entries and expose bounded work counters.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/types.lineup.test.ts`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/algorithm.performance.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/finalistReranking.ts`, `lib/genetic/fitness/finalistReranking.test.ts`, `progress.txt`
+- Commit message: `feat: US-021 - Prefilter assignments and rerank roster finalists`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/finalistReranking.test.ts lib/genetic/moveset.test.ts` (fail as expected before implementation: reranking module and assignment enumeration API were missing)
+  - `npx vitest run lib/genetic/algorithm.test.ts -t "uses bounded variant-aware reranking"` (fail as expected before orchestration: finalist reranker was not called)
+  - `npx vitest run lib/genetic/fitness/finalistReranking.test.ts -t "prefilters every bounded assignment"` (fail as expected before matchup precomputation: 8,748 matrix reads instead of 36)
+  - `npx vitest run lib/genetic/fitness/finalistReranking.test.ts lib/genetic/moveset.test.ts lib/genetic/algorithm.test.ts lib/genetic/fitness/index.test.ts lib/genetic/fitness/rosterScoring.test.ts lib/types.lineup.test.ts` (pass, 107 tests)
+  - `npx vitest run lib/genetic/fitness/finalistReranking.test.ts lib/genetic/algorithm.performance.test.ts` (pass, 6 tests; representative generation about 1.2 seconds)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail before removing one unused test parameter; pass afterward)
+  - `npm test` (pass, 766 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/genetic/fitness/index.test.ts -t "distinct top and full-meta"` after initial review regression (fail as expected: full-meta wiring still requested 50 threats)
+  - `npx vitest run lib/genetic/fitness/finalistReranking.test.ts -t "does not evaluate all 120"` after initial review regression (fail as expected: a 119-lineup full score was accepted)
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/fitness/finalistReranking.test.ts lib/genetic/algorithm.test.ts lib/genetic/algorithm.performance.test.ts` after review fixes (pass, 35 tests)
+  - Final `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, and diff checks after review fixes (pass, 769 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `performance-engineer`, `test-automator`
+  - Used: `performance-engineer`, `test-automator`; both fit the standard-mode complex-story budget and provided non-overlapping bounded-scoring architecture and regression-test guidance
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer` and `qa-expert` passes
+  - Findings: fixed two medium findings by using distinct 50-entry top-meta and 100-entry full-meta pools, requiring every full assignment score to evaluate all 120 lineups, and directly asserting twelve assignment namespaces produce 1,440 misses plus 120 winner-reuse hits; also fixed the low final logging/validation ordering issue; targeted re-review found none
+- Decisions (why):
+  - Kept PlayPokemon GA evolution ranked-default-only and created a separate post-evolution team-aware context so assignment work cannot enter the hot population-scoring path or alter GBL behavior.
+  - Used a lightweight aggregate objective that rewards best, second, and third roster answers per threat with 70/30 top-meta/full-meta weighting; this approximates coverage and answer depth without enumerating lineups, while full scoring remains authoritative.
+  - Preferred fewer alternates and then lexical assignment fingerprints for equal prefilter/full scores, while cross-finalist ties use only the required variant-aware score, preserved default score, and canonical roster key.
+  - Added a full-scoring/no-display-diagnostics configuration for prefiltered assignments so Threat Score and recommendation payloads are built only for the selected final assignment.
+  - Moved final legality, anchor validation, and logging after reranking so they describe and guard the actual returned roster rather than the default-only GA leader.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `test-runner`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Cache aggregate matchup reads by species, opponent, and variant during prefiltering; six species with three variants and two threat fixtures need 36 reads regardless of the 729 assignment combinations.
+  - Re-scoring the selected assignment for final diagnostics should hit all 120 assignment-fingerprinted lineup cache entries rather than add misses.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-021.
+  - Checked-in manifests remain deferred to US-024; until then production enumeration deterministically yields the single ranked-default transition assignment.
+- Next iteration start:
+  - US-022 - Propagate scored assignments through generation and team details APIs.
 ---

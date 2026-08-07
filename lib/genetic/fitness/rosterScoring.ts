@@ -107,7 +107,9 @@ export function scorePlayPokemonRoster(
     config.includeDiagnostics,
   );
   const diagnosticLimit =
-    config.mode === 'full' ? Math.max(0, config.recommendationLimit) : 0;
+    config.mode === 'full' && config.includeDiagnostics
+      ? Math.max(0, config.recommendationLimit)
+      : 0;
 
   return {
     roster: [...roster],

@@ -80,6 +80,19 @@ export interface RosterMovesetAssignmentDependencies {
   getRankedDefault: (pokemon: Pokemon, formatId: BattleFormatId) => Moveset;
 }
 
+/** Injectable boundaries for bounded roster assignment enumeration. */
+export interface RosterMovesetAssignmentEnumerationDependencies {
+  getPokemon: (speciesId: string) => Pokemon | undefined;
+  getManifestPolicyIdentity: (
+    formatId: BattleFormatId,
+  ) => Readonly<{ schemaVersion: number; policyVersion: string }>;
+  getActiveVariants: (
+    speciesId: string,
+    formatId: BattleFormatId,
+  ) => readonly MovesetVariant[];
+  getRankedDefault: (pokemon: Pokemon, formatId: BattleFormatId) => Moveset;
+}
+
 /** Input used to create a validated immutable roster assignment value. */
 export interface CreateRosterMovesetAssignmentInput {
   readonly formatId: BattleFormatId;
@@ -92,6 +105,8 @@ const RANKED_DEFAULT_POLICY_IDENTITY: MovesetAssignmentPolicyIdentity = {
   schemaVersion: 0,
   policyVersion: 'ranked-default-v1',
 };
+const MAX_ACTIVE_VARIANTS_PER_SPECIES = 3;
+export const MAX_ROSTER_MOVESET_ASSIGNMENTS = 3 ** 6;
 
 function toDefaultMovesetVariant(moveset: Moveset): MovesetVariant {
   return {
@@ -300,6 +315,133 @@ export function resolveRosterMovesetAssignment(
   return createRosterMovesetAssignment({
     formatId,
     policyIdentity,
+    variantsBySpeciesId,
+  });
+}
+
+/** Enumerate the bounded Cartesian product of active variants for one roster. */
+export function enumerateRosterMovesetAssignments(
+  roster: readonly string[],
+  formatId: BattleFormatId,
+  dependencies: RosterMovesetAssignmentEnumerationDependencies = {
+    getPokemon: getPokemonBySpeciesId,
+    getManifestPolicyIdentity: getMovesetVariantManifestPolicyIdentity,
+    getActiveVariants: getActiveMovesetVariants,
+    getRankedDefault: getRecommendedMovesetForPokemon,
+  },
+): readonly RosterMovesetAssignment[] {
+  let manifestPolicy: Readonly<{
+    schemaVersion: number;
+    policyVersion: string;
+  }>;
+  try {
+    manifestPolicy = dependencies.getManifestPolicyIdentity(formatId);
+  } catch (error) {
+    if (
+      error instanceof MovesetVariantSimulationDataError &&
+      error.code === 'manifest-missing'
+    ) {
+      return [
+        createRankedDefaultRosterAssignment(roster, formatId, dependencies),
+      ];
+    }
+    throw error;
+  }
+
+  const pokemon = roster.map((speciesId) => {
+    const entry = dependencies.getPokemon(speciesId);
+    if (!entry) {
+      throw new Error(
+        `Cannot enumerate moveset assignments for unknown Pokemon ${speciesId}.`,
+      );
+    }
+    return entry;
+  });
+  const canonicalSpeciesIds = pokemon.map(({ speciesId }) => speciesId);
+  if (new Set(canonicalSpeciesIds).size !== canonicalSpeciesIds.length) {
+    throw new Error(
+      'Cannot enumerate assignments for duplicate roster species.',
+    );
+  }
+
+  const variantsByRosterSlot = pokemon.map(({ speciesId }) => {
+    const variants = [
+      ...dependencies.getActiveVariants(speciesId, formatId),
+    ].toSorted((first, second) => {
+      if (first.isDefault !== second.isDefault) {
+        return first.isDefault ? -1 : 1;
+      }
+      return first.id.localeCompare(second.id);
+    });
+    if (
+      variants.length === 0 ||
+      variants.length > MAX_ACTIVE_VARIANTS_PER_SPECIES ||
+      variants.filter(({ isDefault }) => isDefault).length !== 1 ||
+      new Set(variants.map(({ id }) => id)).size !== variants.length
+    ) {
+      throw new Error(
+        `Active moveset variants for ${speciesId} must contain one default and at most three unique variants.`,
+      );
+    }
+    return variants;
+  });
+
+  const assignmentCount = variantsByRosterSlot.reduce(
+    (count, variants) => count * variants.length,
+    1,
+  );
+  if (assignmentCount > MAX_ROSTER_MOVESET_ASSIGNMENTS) {
+    throw new Error(
+      `Roster moveset assignments exceed the ${MAX_ROSTER_MOVESET_ASSIGNMENTS} candidate limit.`,
+    );
+  }
+
+  let assignments: Array<Record<string, MovesetVariant>> = [{}];
+  variantsByRosterSlot.forEach((variants, index) => {
+    const speciesId = canonicalSpeciesIds[index];
+    assignments = assignments.flatMap((assignment) =>
+      variants.map((variant) => ({ ...assignment, [speciesId]: variant })),
+    );
+  });
+
+  return assignments.map((variantsBySpeciesId) =>
+    createRosterMovesetAssignment({
+      formatId,
+      policyIdentity: { source: 'manifest', ...manifestPolicy },
+      variantsBySpeciesId,
+    }),
+  );
+}
+
+function createRankedDefaultRosterAssignment(
+  roster: readonly string[],
+  formatId: BattleFormatId,
+  dependencies: Pick<
+    RosterMovesetAssignmentEnumerationDependencies,
+    'getPokemon' | 'getRankedDefault'
+  >,
+): RosterMovesetAssignment {
+  const variantsBySpeciesId: Record<string, MovesetVariant> = {};
+  for (const requestedSpeciesId of roster) {
+    const pokemon = dependencies.getPokemon(requestedSpeciesId);
+    if (!pokemon) {
+      throw new Error(
+        `Cannot enumerate moveset assignments for unknown Pokemon ${requestedSpeciesId}.`,
+      );
+    }
+    if (variantsBySpeciesId[pokemon.speciesId]) {
+      throw new Error(
+        `Cannot enumerate duplicate roster species ${pokemon.speciesId}.`,
+      );
+    }
+    variantsBySpeciesId[pokemon.speciesId] = toDefaultMovesetVariant(
+      dependencies.getRankedDefault(pokemon, formatId),
+    );
+  }
+
+  return createRosterMovesetAssignment({
+    formatId,
+    policyIdentity: RANKED_DEFAULT_POLICY_IDENTITY,
     variantsBySpeciesId,
   });
 }

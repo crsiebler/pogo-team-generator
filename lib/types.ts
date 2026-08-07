@@ -269,9 +269,26 @@ export type LineupAwareFitnessConfig =
     }
   | {
       mode: 'full';
+      includeDiagnostics: false;
+      recommendationLimit: 0;
+    }
+  | {
+      mode: 'full';
       includeDiagnostics: true;
       recommendationLimit: number;
     };
+
+/** Bounded work and lineup-cache counters from finalist assignment reranking. */
+export interface FinalistRerankingStats {
+  readonly finalistCount: number;
+  readonly assignmentEvaluationCount: number;
+  readonly fullScoreCount: number;
+  readonly lineupCache: {
+    readonly hits: number;
+    readonly misses: number;
+    readonly size: number;
+  };
+}
 
 export interface Chromosome {
   team: string[];
@@ -279,6 +296,7 @@ export interface Chromosome {
   fitness: number;
   /** Canonical top GA rosters scored with ranked-default movesets. */
   defaultScoredFinalists?: readonly Chromosome[];
+  finalistRerankingStats?: FinalistRerankingStats;
   movesetAssignment?: RosterMovesetAssignment;
   scoreBreakdown?: OptimizerScoreBreakdown;
   recommendedLineups?: RecommendedLineup[];

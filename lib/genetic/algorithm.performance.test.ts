@@ -25,6 +25,15 @@ describe('generateTeam performance safeguards', () => {
     expect(result.team).toHaveLength(6);
     expect(result.fitness).toBeGreaterThan(0);
     expect(result.scoreBreakdown?.score).toBe(result.fitness);
+    expect(result.finalistRerankingStats).toBeDefined();
+    const stats = result.finalistRerankingStats!;
+    expect(stats.assignmentEvaluationCount).toBeLessThanOrEqual(
+      stats.finalistCount * 729,
+    );
+    expect(stats.fullScoreCount).toBeLessThanOrEqual(stats.finalistCount * 12);
+    expect(stats.lineupCache.misses).toBe(stats.fullScoreCount * 120);
+    expect(stats.lineupCache.size).toBe(stats.lineupCache.misses);
+    expect(stats.lineupCache.hits).toBe(120);
     expect(elapsedMs).toBeLessThan(60_000);
   }, 70_000);
 
@@ -55,6 +64,14 @@ describe('generateTeam performance safeguards', () => {
           team,
           fitness,
         })),
+      );
+      expect(second.team).toEqual(first.team);
+      expect(second.movesetAssignment?.fingerprint).toBe(
+        first.movesetAssignment?.fingerprint,
+      );
+      expect(second.fitness).toBe(first.fitness);
+      expect(second.finalistRerankingStats).toEqual(
+        first.finalistRerankingStats,
       );
     } finally {
       random.mockRestore();
