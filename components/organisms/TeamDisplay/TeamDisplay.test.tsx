@@ -1,6 +1,61 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamDisplay } from './TeamDisplay';
+import type { RosterMovesetAssignment } from '@/lib/types';
+
+const movesetAssignment: RosterMovesetAssignment = {
+  formatId: 'battle-frontier-liga-ultra',
+  policyIdentity: {
+    source: 'manifest',
+    schemaVersion: 1,
+    policyVersion: 'ranking-evidence-v1',
+  },
+  variantsBySpeciesId: {
+    decidueye: {
+      id: 'leafage--spirit_shackle--frenzy_plant',
+      fastMove: 'LEAFAGE',
+      chargedMove1: 'FRENZY_PLANT',
+      chargedMove2: 'SPIRIT_SHACKLE',
+      isDefault: false,
+    },
+  },
+  fingerprint: 'team-display-assignment',
+};
+
+function assignmentForFormat(
+  formatId: RosterMovesetAssignment['formatId'],
+  speciesIds: readonly string[] = ['decidueye'],
+): RosterMovesetAssignment {
+  const variant = movesetAssignment.variantsBySpeciesId.decidueye!;
+
+  return {
+    ...movesetAssignment,
+    formatId,
+    variantsBySpeciesId: Object.fromEntries(
+      speciesIds.map((speciesId) => [speciesId, variant]),
+    ),
+    fingerprint: `assignment:${formatId}`,
+  };
+}
+
+function createPokemonDetails(
+  speciesId: string,
+  assignment: RosterMovesetAssignment,
+  speciesName: string = speciesId,
+) {
+  return {
+    speciesId,
+    speciesName,
+    recommendedMoveset: {
+      ...assignment.variantsBySpeciesId[speciesId],
+      acquisitionRequirements: {
+        fastMove: { kind: 'regular' },
+        chargedMove1: { kind: 'regular' },
+        chargedMove2: { kind: 'regular' },
+      },
+    },
+  };
+}
 
 vi.mock('@/components/molecules', () => ({
   PokemonCard: () => <div>Pokemon Card</div>,
@@ -18,7 +73,9 @@ describe('TeamDisplay', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
-        json: vi.fn().mockResolvedValue({ pokemon: [] }),
+        json: vi.fn().mockResolvedValue({
+          pokemon: [createPokemonDetails('decidueye', movesetAssignment)],
+        }),
       }),
     );
   });
@@ -33,6 +90,7 @@ describe('TeamDisplay', () => {
         team={['decidueye']}
         mode="PlayPokemon"
         formatId="battle-frontier-liga-ultra"
+        movesetAssignment={movesetAssignment}
       />,
     );
 
@@ -51,21 +109,121 @@ describe('TeamDisplay', () => {
     expect(JSON.parse(options.body)).toEqual({
       team: ['decidueye'],
       formatId: 'battle-frontier-liga-ultra',
+      movesetAssignment,
     });
   });
 
+  it.each([
+    [
+      'a non-success response',
+      {
+        ok: false,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [{ speciesId: 'decidueye' }],
+        }),
+      },
+    ],
+    [
+      'a malformed success response',
+      {
+        ok: true,
+        json: vi.fn().mockResolvedValue({}),
+      },
+    ],
+    [
+      'an incomplete roster response',
+      {
+        ok: true,
+        json: vi.fn().mockResolvedValue({ pokemon: [] }),
+      },
+    ],
+    [
+      'moves that differ from the scored assignment',
+      {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [
+            {
+              speciesId: 'decidueye',
+              recommendedMoveset: {
+                ...movesetAssignment.variantsBySpeciesId.decidueye,
+                fastMove: 'ASTONISH',
+                acquisitionRequirements: {
+                  fastMove: { kind: 'regular' },
+                  chargedMove1: { kind: 'regular' },
+                  chargedMove2: { kind: 'regular' },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    ],
+    [
+      'invalid acquisition metadata',
+      {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [
+            {
+              speciesId: 'decidueye',
+              recommendedMoveset: {
+                ...movesetAssignment.variantsBySpeciesId.decidueye,
+                acquisitionRequirements: {
+                  fastMove: { kind: 'excluded' },
+                  chargedMove1: { kind: 'regular' },
+                  chargedMove2: { kind: 'regular' },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    ],
+  ])('rejects %s without corrupting team state', async (_label, response) => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+
+    render(
+      <TeamDisplay
+        team={['decidueye']}
+        mode="PlayPokemon"
+        formatId="battle-frontier-liga-ultra"
+        movesetAssignment={movesetAssignment}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        'Failed to fetch team details:',
+        expect.any(Error),
+      );
+    });
+
+    expect(screen.queryByText('Pokemon Card')).not.toBeInTheDocument();
+    expect(screen.getByText(/Team Notes/)).toBeInTheDocument();
+  });
+
   it('does not show Battle Frontier Master point usage in the notes', async () => {
+    const team = ['charizard_mega_y', 'garchomp'];
+    const assignment = assignmentForFormat(
+      'battle-frontier-coupe-du-sillage',
+      team,
+    );
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
           pokemon: [
-            {
-              speciesId: 'charizard_mega_y',
-              speciesName: 'Charizard (Mega Y)',
-            },
-            { speciesId: 'garchomp', speciesName: 'Garchomp' },
+            createPokemonDetails(
+              'charizard_mega_y',
+              assignment,
+              'Charizard (Mega Y)',
+            ),
+            createPokemonDetails('garchomp', assignment, 'Garchomp'),
           ],
         }),
       }),
@@ -73,9 +231,10 @@ describe('TeamDisplay', () => {
 
     render(
       <TeamDisplay
-        team={['charizard_mega_y', 'garchomp']}
+        team={team}
         mode="PlayPokemon"
         formatId="battle-frontier-coupe-du-sillage"
+        movesetAssignment={assignment}
       />,
     );
 
@@ -88,25 +247,26 @@ describe('TeamDisplay', () => {
   });
 
   it('keeps recommended lineups out of the generated team card list', async () => {
+    const team = ['azumarill', 'skarmory', 'registeel'];
+    const assignment = assignmentForFormat('great-league', team);
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
-          pokemon: [
-            { speciesId: 'azumarill', speciesName: 'Azumarill' },
-            { speciesId: 'skarmory', speciesName: 'Skarmory' },
-            { speciesId: 'registeel', speciesName: 'Registeel' },
-          ],
+          pokemon: team.map((speciesId) =>
+            createPokemonDetails(speciesId, assignment),
+          ),
         }),
       }),
     );
 
     render(
       <TeamDisplay
-        team={['azumarill', 'skarmory', 'registeel']}
+        team={team}
         mode="PlayPokemon"
         formatId="great-league"
+        movesetAssignment={assignment}
       />,
     );
 
@@ -121,25 +281,26 @@ describe('TeamDisplay', () => {
   });
 
   it('keeps GBL role-ordered lineups out of the generated team card list', async () => {
+    const team = ['clodsire', 'feraligatr', 'dunsparce'];
+    const assignment = assignmentForFormat('great-league', team);
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
-          pokemon: [
-            { speciesId: 'clodsire', speciesName: 'Clodsire' },
-            { speciesId: 'feraligatr', speciesName: 'Feraligatr' },
-            { speciesId: 'dunsparce', speciesName: 'Dunsparce' },
-          ],
+          pokemon: team.map((speciesId) =>
+            createPokemonDetails(speciesId, assignment),
+          ),
         }),
       }),
     );
 
     render(
       <TeamDisplay
-        team={['clodsire', 'feraligatr', 'dunsparce']}
+        team={team}
         mode="GBL"
         formatId="great-league"
+        movesetAssignment={assignment}
       />,
     );
 
@@ -155,24 +316,26 @@ describe('TeamDisplay', () => {
   });
 
   it('omits PlayPokemon roster metrics and bench utility from generated team cards', async () => {
+    const team = ['azumarill', 'registeel'];
+    const assignment = assignmentForFormat('great-league', team);
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue({
-          pokemon: [
-            { speciesId: 'azumarill', speciesName: 'Azumarill' },
-            { speciesId: 'registeel', speciesName: 'Registeel' },
-          ],
+          pokemon: team.map((speciesId) =>
+            createPokemonDetails(speciesId, assignment),
+          ),
         }),
       }),
     );
 
     render(
       <TeamDisplay
-        team={['azumarill', 'registeel']}
+        team={team}
         mode="PlayPokemon"
         formatId="great-league"
+        movesetAssignment={assignment}
       />,
     );
 
@@ -188,19 +351,26 @@ describe('TeamDisplay', () => {
   });
 
   it('does not show PlayPokemon roster metrics for GBL results', async () => {
+    const team = ['azumarill', 'registeel'];
+    const assignment = assignmentForFormat('great-league', team);
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
-        json: vi.fn().mockResolvedValue({ pokemon: [] }),
+        json: vi.fn().mockResolvedValue({
+          pokemon: team.map((speciesId) =>
+            createPokemonDetails(speciesId, assignment),
+          ),
+        }),
       }),
     );
 
     render(
       <TeamDisplay
-        team={['azumarill', 'registeel']}
+        team={team}
         mode="GBL"
         formatId="great-league"
+        movesetAssignment={assignment}
       />,
     );
 

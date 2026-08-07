@@ -42,6 +42,7 @@ import {
   buildPlayPokemonRosterRecommendations,
   createDefaultLineupScoringContext,
   createLineupAwareFitnessContext,
+  scoreOrderedLineup,
   scorePlayPokemonRoster,
 } from './fitness';
 import { rerankRosterFinalists } from './fitness/finalistReranking';
@@ -97,6 +98,7 @@ vi.mock('./fitness', () => ({
   createDefaultLineupScoringContext: vi.fn(),
   createLineupAwareFitnessContext: vi.fn(),
   evaluatePopulation: vi.fn(),
+  scoreOrderedLineup: vi.fn(),
   scorePlayPokemonRoster: vi.fn(),
 }));
 
@@ -857,7 +859,7 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(getMegaMasterTeamLegality).toHaveBeenCalledWith(illegalTeam);
   });
 
-  it('adds one role-ordered lineup recommendation for generated GBL teams', async () => {
+  it('retains one scored assignment for generated GBL teams', async () => {
     vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set<string>(['Mew']),
     );
@@ -872,14 +874,37 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 0,
     });
 
-    expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
-      'battle-frontier-tsuki-cup',
-    );
+    const fitnessContext = vi.mocked(createLineupAwareFitnessContext).mock
+      .results[0]?.value;
+    const movesetAssignment = vi.mocked(
+      fitnessContext!.resolveMovesetAssignment,
+    ).mock.results[0]?.value;
+
     expect(buildGblLineupRecommendation).toHaveBeenCalledWith(
       ['mew', 'mewtwo', 'dragonite'],
-      { context: { threats: ['azumarill'] } },
+      { scoreLineup: expect.any(Function) },
     );
+    const recommendationOptions = vi.mocked(buildGblLineupRecommendation).mock
+      .calls[0]?.[1];
+    const lineup = {
+      lead: 'mew',
+      switch: 'mewtwo',
+      closer: 'dragonite',
+    };
+    recommendationOptions?.scoreLineup?.(lineup);
+
+    expect(fitnessContext?.resolveMovesetAssignment).toHaveBeenCalledWith([
+      'mew',
+      'mewtwo',
+      'dragonite',
+    ]);
+    expect(scoreOrderedLineup).toHaveBeenCalledWith(
+      lineup,
+      expect.objectContaining({ movesetAssignment }),
+    );
+    expect(vi.mocked(scoreOrderedLineup).mock.calls[0]).toHaveLength(2);
     expect(result.team).toEqual(['mew', 'mewtwo', 'dragonite']);
+    expect(result.movesetAssignment).toBe(movesetAssignment);
     expect(result.recommendedLineups).toEqual([
       expect.objectContaining({
         lineup: { lead: 'mewtwo', switch: 'dragonite', closer: 'mew' },

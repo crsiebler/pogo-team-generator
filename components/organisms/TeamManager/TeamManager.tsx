@@ -16,6 +16,7 @@ import type {
   GenerationAnalysis,
   OptimizerScoreBreakdown,
   RecommendedLineup,
+  RosterMovesetAssignment,
   TournamentMode,
 } from '@/lib/types';
 
@@ -26,6 +27,7 @@ interface TeamManagerProps {
 interface GeneratedTeamResult {
   team: string[];
   formatId: BattleFormatId;
+  movesetAssignment: RosterMovesetAssignment;
   recommendedLineups?: RecommendedLineup[];
   scoreBreakdown?: OptimizerScoreBreakdown;
 }
@@ -236,10 +238,12 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         recommendedLineups?: RecommendedLineup[];
         scoreBreakdown?: OptimizerScoreBreakdown;
         analysis?: GenerationAnalysis;
+        movesetAssignment: RosterMovesetAssignment;
       };
       setGeneratedTeam({
         team: data.team,
         formatId: currentFormatId,
+        movesetAssignment: data.movesetAssignment,
         recommendedLineups: data.recommendedLineups,
         scoreBreakdown: data.scoreBreakdown,
       });

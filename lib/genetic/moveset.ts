@@ -1,4 +1,6 @@
+import { normalizeMoveId } from '@lib/data/aliases';
 import type { BattleFormatId } from '@lib/data/battleFormats';
+import { getMovesetAvailability } from '@lib/data/moveAvailability';
 import { getMoveByMoveId } from '@lib/data/moves';
 import {
   getMovesetVariantId,
@@ -17,7 +19,9 @@ import {
 } from '@lib/data/simulations';
 import { calculateEffectiveness } from '../coverage/typeChart';
 import type {
+  EligibleMoveAvailability,
   Moveset,
+  MovesetAcquisitionRequirements,
   MovesetAssignmentPolicyIdentity,
   MovesetVariant,
   MovesetVariantId,
@@ -100,12 +104,28 @@ export interface CreateRosterMovesetAssignmentInput {
   readonly variantsBySpeciesId: Readonly<Record<string, MovesetVariant>>;
 }
 
+/** Assigned moveset projected for API display without selecting another variant. */
+export interface AssignedMovesetDetails extends MovesetVariant {
+  readonly acquisitionRequirements: MovesetAcquisitionRequirements;
+}
+
+/** Typed failure raised when a client-supplied roster assignment is inconsistent. */
+export class RosterMovesetAssignmentValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RosterMovesetAssignmentValidationError';
+  }
+}
+
 const RANKED_DEFAULT_POLICY_IDENTITY: MovesetAssignmentPolicyIdentity = {
   source: 'ranked-default-fallback',
   schemaVersion: 0,
   policyVersion: 'ranked-default-v1',
 };
 const MAX_ACTIVE_VARIANTS_PER_SPECIES = 3;
+const MAX_ROSTER_SIZE = 6;
+const MAX_ASSIGNMENT_STRING_LENGTH = 128;
+const MAX_ASSIGNMENT_FINGERPRINT_LENGTH = 16_384;
 export const MAX_ROSTER_MOVESET_ASSIGNMENTS = 3 ** 6;
 
 function toDefaultMovesetVariant(moveset: Moveset): MovesetVariant {
@@ -260,6 +280,247 @@ export function createRosterMovesetAssignment(
     variantsBySpeciesId,
     fingerprint,
   });
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readBoundedString(
+  value: unknown,
+  field: string,
+  maxLength: number = MAX_ASSIGNMENT_STRING_LENGTH,
+): string {
+  if (
+    typeof value !== 'string' ||
+    value.trim() === '' ||
+    value.length > maxLength
+  ) {
+    throw new RosterMovesetAssignmentValidationError(
+      `Roster moveset assignment ${field} must be a non-empty string of at most ${maxLength} characters.`,
+    );
+  }
+  return value;
+}
+
+function validateCanonicalMoveId(moveId: string, field: string): void {
+  if (!/^[A-Z0-9_]+$/.test(moveId) || normalizeMoveId(moveId) !== moveId) {
+    throw new RosterMovesetAssignmentValidationError(
+      `Roster moveset assignment ${field} must use a canonical move ID.`,
+    );
+  }
+}
+
+function validateMoveSlots(speciesId: string, moveset: Moveset): void {
+  const fastMove = getMoveByMoveId(moveset.fastMove);
+  const chargedMove1 = getMoveByMoveId(moveset.chargedMove1);
+  const chargedMove2 = getMoveByMoveId(moveset.chargedMove2);
+  if (!fastMove || fastMove.energy !== 0 || fastMove.energyGain <= 0) {
+    throw new RosterMovesetAssignmentValidationError(
+      `Roster moveset assignment fast move for ${speciesId} is invalid.`,
+    );
+  }
+  if (
+    !chargedMove1 ||
+    chargedMove1.energy <= 0 ||
+    chargedMove1.energyGain !== 0 ||
+    !chargedMove2 ||
+    chargedMove2.energy <= 0 ||
+    chargedMove2.energyGain !== 0
+  ) {
+    throw new RosterMovesetAssignmentValidationError(
+      `Roster moveset assignment charged moves for ${speciesId} are invalid.`,
+    );
+  }
+}
+
+/** Parse and validate a serialized assignment against its requested roster. */
+export function parseRosterMovesetAssignment(
+  value: unknown,
+  roster: readonly string[],
+  formatId: BattleFormatId,
+): RosterMovesetAssignment {
+  if (roster.length === 0 || roster.length > MAX_ROSTER_SIZE) {
+    throw new RosterMovesetAssignmentValidationError(
+      `Roster moveset assignments require between 1 and at most ${MAX_ROSTER_SIZE} Pokemon.`,
+    );
+  }
+  if (!isUnknownRecord(value)) {
+    throw new RosterMovesetAssignmentValidationError(
+      'A scored roster moveset assignment is required.',
+    );
+  }
+  if (value.formatId !== formatId) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment format does not match the requested format.',
+    );
+  }
+
+  const policy = value.policyIdentity;
+  if (!isUnknownRecord(policy)) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment policy identity is invalid.',
+    );
+  }
+  const source = policy.source;
+  if (source !== 'manifest' && source !== 'ranked-default-fallback') {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment policy source is invalid.',
+    );
+  }
+  const schemaVersion = policy.schemaVersion;
+  if (!Number.isSafeInteger(schemaVersion) || Number(schemaVersion) < 0) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment schema version is invalid.',
+    );
+  }
+
+  const variants = value.variantsBySpeciesId;
+  if (!isUnknownRecord(variants)) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment variants are invalid.',
+    );
+  }
+  const variantSpeciesIds = Object.keys(variants);
+  if (variantSpeciesIds.length > MAX_ROSTER_SIZE) {
+    throw new RosterMovesetAssignmentValidationError(
+      `Roster moveset assignments support at most ${MAX_ROSTER_SIZE} species.`,
+    );
+  }
+
+  const canonicalRoster = roster.map((speciesId) => {
+    readBoundedString(speciesId, 'roster species ID');
+    const pokemon = getPokemonBySpeciesId(speciesId);
+    if (!pokemon) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment references unknown Pokemon ${speciesId}.`,
+      );
+    }
+    return pokemon.speciesId;
+  });
+  if (new Set(canonicalRoster).size !== canonicalRoster.length) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment cannot contain duplicate species.',
+    );
+  }
+  variantSpeciesIds.sort();
+  const expectedSpeciesIds = [...canonicalRoster].toSorted();
+  if (
+    variantSpeciesIds.length !== expectedSpeciesIds.length ||
+    variantSpeciesIds.some(
+      (speciesId, index) => speciesId !== expectedSpeciesIds[index],
+    )
+  ) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment species do not match the requested team.',
+    );
+  }
+
+  const variantsBySpeciesId: Record<string, MovesetVariant> = {};
+  for (const speciesId of expectedSpeciesIds) {
+    const candidate = variants[speciesId];
+    if (!isUnknownRecord(candidate)) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment variant for ${speciesId} is invalid.`,
+      );
+    }
+    const moveset: Moveset = {
+      fastMove: readBoundedString(candidate.fastMove, `${speciesId}.fastMove`),
+      chargedMove1: readBoundedString(
+        candidate.chargedMove1,
+        `${speciesId}.chargedMove1`,
+      ),
+      chargedMove2: readBoundedString(
+        candidate.chargedMove2,
+        `${speciesId}.chargedMove2`,
+      ),
+    };
+    validateCanonicalMoveId(moveset.fastMove, `${speciesId}.fastMove`);
+    validateCanonicalMoveId(moveset.chargedMove1, `${speciesId}.chargedMove1`);
+    validateCanonicalMoveId(moveset.chargedMove2, `${speciesId}.chargedMove2`);
+    if (moveset.chargedMove1 === moveset.chargedMove2) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment charged moves for ${speciesId} must be distinct.`,
+      );
+    }
+    validateMoveSlots(speciesId, moveset);
+    const id = readBoundedString(candidate.id, `${speciesId}.id`, 512);
+    if (id !== getMovesetVariantId(moveset)) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment variant identity for ${speciesId} is invalid.`,
+      );
+    }
+    if (typeof candidate.isDefault !== 'boolean') {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment default status for ${speciesId} is invalid.`,
+      );
+    }
+    variantsBySpeciesId[speciesId] = {
+      ...moveset,
+      id: id as MovesetVariantId,
+      isDefault: candidate.isDefault,
+    };
+  }
+
+  const assignment = createRosterMovesetAssignment({
+    formatId,
+    policyIdentity: {
+      source,
+      schemaVersion: Number(schemaVersion),
+      policyVersion: readBoundedString(
+        policy.policyVersion,
+        'policyIdentity.policyVersion',
+      ),
+    },
+    variantsBySpeciesId,
+  });
+  const fingerprint = readBoundedString(
+    value.fingerprint,
+    'fingerprint',
+    MAX_ASSIGNMENT_FINGERPRINT_LENGTH,
+  );
+  if (fingerprint !== assignment.fingerprint) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment fingerprint is invalid.',
+    );
+  }
+  return assignment;
+}
+
+function requireEligibleMoveAvailability(
+  availability: ReturnType<typeof getMovesetAvailability>[keyof Moveset],
+): EligibleMoveAvailability {
+  if (availability.kind === 'excluded') {
+    throw new RosterMovesetAssignmentValidationError(availability.reason);
+  }
+  return availability;
+}
+
+/** Add acquisition metadata to the exact variant assigned during scoring. */
+export function getAssignedMovesetDetails(
+  assignment: RosterMovesetAssignment,
+  speciesId: string,
+): AssignedMovesetDetails {
+  const variant = assignment.variantsBySpeciesId[speciesId];
+  if (!variant) {
+    throw new RosterMovesetAssignmentValidationError(
+      `Roster moveset assignment is missing ${speciesId}.`,
+    );
+  }
+  const availability = getMovesetAvailability(
+    speciesId,
+    variant,
+    assignment.formatId,
+  );
+
+  return {
+    ...variant,
+    acquisitionRequirements: {
+      fastMove: requireEligibleMoveAvailability(availability.fastMove),
+      chargedMove1: requireEligibleMoveAvailability(availability.chargedMove1),
+      chargedMove2: requireEligibleMoveAvailability(availability.chargedMove2),
+    } satisfies MovesetAcquisitionRequirements,
+  };
 }
 
 /** Resolve every roster member once against one manifest policy authority. */

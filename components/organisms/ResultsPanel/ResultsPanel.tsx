@@ -3,12 +3,13 @@
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import type { TournamentMode } from '@/lib/types';
+import type { RosterMovesetAssignment, TournamentMode } from '@/lib/types';
 
 interface ResultsPanelProps {
   generatedTeam: {
     team: string[];
     formatId: BattleFormatId;
+    movesetAssignment: RosterMovesetAssignment;
   } | null;
   mode: TournamentMode;
   isGenerating: boolean;
@@ -113,6 +114,7 @@ export function ResultsPanel({
           team={generatedTeam.team}
           mode={mode}
           formatId={generatedTeam.formatId}
+          movesetAssignment={generatedTeam.movesetAssignment}
         />
       )}
     </div>

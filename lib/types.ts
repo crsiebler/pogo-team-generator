@@ -18,6 +18,17 @@ export type MoveAvailability =
   | { readonly kind: 'purified' }
   | { readonly kind: 'excluded'; readonly reason: string };
 
+/** Acquisition category for a move that is eligible for recommendation. */
+export type EligibleMoveAvailability = Exclude<
+  MoveAvailability,
+  { readonly kind: 'excluded' }
+>;
+
+/** Acquisition requirements for every move slot in one recommended moveset. */
+export type MovesetAcquisitionRequirements = Readonly<{
+  [Slot in keyof Moveset]: EligibleMoveAvailability;
+}>;
+
 /** One legal moveset variant with canonical identity and preferred move order. */
 export interface MovesetVariant extends Moveset {
   readonly id: MovesetVariantId;
@@ -73,9 +84,12 @@ export interface Pokemon {
     evolutions?: string[];
   };
   recommendedMoveset?: {
+    id?: MovesetVariantId;
     fastMove: string | null;
     chargedMove1: string | null;
     chargedMove2: string | null;
+    isDefault?: boolean;
+    acquisitionRequirements?: MovesetAcquisitionRequirements;
   };
 }
 

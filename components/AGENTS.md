@@ -20,6 +20,8 @@ Lineup-aware generation is the only frontend generation path. Do not add `Fitnes
 
 Lineup-aware result UI should pass `recommendedLineups` from the generate-team response through `TeamManager` into `AnalysisPanel`; frontend adapters should display these diagnostics in the analysis column rather than recomputing lineup scoring or rendering them inside generated-team cards.
 
+Keep the scored `RosterMovesetAssignment` in `TeamManager` result state and pass it unchanged through `ResultsPanel` and `TeamDisplay` to `/api/team-details`; client components must not derive or select replacement movesets.
+
 Recommended Lineups should render as an `AnalysisPanel` accordion section immediately after Summary Statistics. Keep it in the shared rendered-section list so accordion keyboard navigation follows the visible section order.
 
 Recommended Lineups accordion cards should use the same blue diagnostic styling family as the surrounding analysis accordions and Summary Statistics cards; do not reintroduce emerald/green card styling unless a current story explicitly changes the visual contract.

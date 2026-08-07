@@ -2,7 +2,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import { TeamManager } from './TeamManager';
 import { type BattleFormatId } from '@/lib/data/battleFormats';
-import type { OptimizerScoreBreakdown, RecommendedLineup } from '@/lib/types';
+import type {
+  OptimizerScoreBreakdown,
+  RecommendedLineup,
+  RosterMovesetAssignment,
+} from '@/lib/types';
 
 const showToastMock = vi.fn();
 
@@ -32,8 +36,28 @@ interface MockAnalysisPanelProps {
 interface MockResultsPanelProps {
   generatedTeam: {
     team?: string[];
+    movesetAssignment?: RosterMovesetAssignment;
   } | null;
 }
+
+const movesetAssignment: RosterMovesetAssignment = {
+  formatId: 'great-league',
+  policyIdentity: {
+    source: 'manifest',
+    schemaVersion: 1,
+    policyVersion: 'ranking-evidence-v1',
+  },
+  variantsBySpeciesId: {
+    azumarill: {
+      id: 'bubble--play_rough--ice_beam',
+      fastMove: 'BUBBLE',
+      chargedMove1: 'ICE_BEAM',
+      chargedMove2: 'PLAY_ROUGH',
+      isDefault: true,
+    },
+  },
+  fingerprint: 'team-manager-assignment',
+};
 
 vi.mock('@/components/organisms', () => ({
   TeamConfigPanel: (
@@ -90,7 +114,10 @@ vi.mock('@/components/organisms', () => ({
     );
   },
   ResultsPanel: ({ generatedTeam }: MockResultsPanelProps) => (
-    <div>Results team {generatedTeam?.team?.join(', ') ?? 'none'}</div>
+    <div>
+      Results team {generatedTeam?.team?.join(', ') ?? 'none'} assignment{' '}
+      {generatedTeam?.movesetAssignment?.fingerprint ?? 'none'}
+    </div>
   ),
   AnalysisPanel: ({
     generatedTeam,
@@ -183,6 +210,7 @@ describe('TeamManager', () => {
             score: 0.74,
           },
           analysis: { generatedAt: '2026-03-15T00:00:00.000Z' },
+          movesetAssignment,
         }),
       });
     });
@@ -478,7 +506,11 @@ describe('TeamManager', () => {
     fireEvent.click(screen.getByText('Generate Team'));
 
     await waitFor(() => {
-      expect(screen.getByText(/Results team Azumarill/)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Results team Azumarill assignment team-manager-assignment/,
+        ),
+      ).toBeInTheDocument();
     });
   });
 

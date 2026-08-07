@@ -6,7 +6,7 @@ import {
 } from './battleFormats';
 import { getMovesetVariantId } from './movesetVariants';
 import type {
-  MoveAvailability,
+  EligibleMoveAvailability,
   Moveset,
   MovesetVariantId,
   ShieldScenarioKey,
@@ -38,12 +38,6 @@ export type MovesetVariantEvidenceCategory =
   | 'chargers'
   | 'attackers'
   | 'consistency';
-
-/** Eligible acquisition requirements that may be published in a manifest. */
-export type EligibleMoveAvailability = Exclude<
-  MoveAvailability,
-  { readonly kind: 'excluded' }
->;
 
 /** Values keyed by each required simulation shield scenario. */
 export type MovesetVariantScenarioRecord<Value> = Readonly<

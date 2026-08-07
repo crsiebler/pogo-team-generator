@@ -2,77 +2,390 @@ import type { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
+import { getMovesetAvailability } from '@/lib/data/moveAvailability';
+import { getMovesetVariantId } from '@/lib/data/movesetVariants';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
-import { getSimulationBackedMovesetForTeam } from '@/lib/genetic/moveset';
+import {
+  createRosterMovesetAssignment,
+  getSimulationBackedMovesetForTeam,
+} from '@/lib/genetic/moveset';
+import type {
+  MoveAvailability,
+  Moveset,
+  RosterMovesetAssignment,
+} from '@/lib/types';
 
 vi.mock('@/lib/data/pokemon', () => ({
   getPokemonBySpeciesId: vi.fn(),
 }));
 
-vi.mock('@/lib/genetic/moveset', () => ({
-  getSimulationBackedMovesetForTeam: vi.fn(),
-}));
+vi.mock('@/lib/data/moveAvailability', async () => {
+  const actual = await vi.importActual('@/lib/data/moveAvailability');
+
+  return {
+    ...actual,
+    getMovesetAvailability: vi.fn(),
+  };
+});
+
+vi.mock('@/lib/genetic/moveset', async () => {
+  const actual = await vi.importActual('@/lib/genetic/moveset');
+
+  return {
+    ...actual,
+    getSimulationBackedMovesetForTeam: vi.fn(),
+  };
+});
+
+function createAssignment(
+  formatId: RosterMovesetAssignment['formatId'] = DEFAULT_BATTLE_FORMAT_ID,
+): RosterMovesetAssignment {
+  const mewtwoMoveset: Moveset = {
+    fastMove: 'COUNTER',
+    chargedMove1: 'PSYSTRIKE',
+    chargedMove2: 'PSYCHIC',
+  };
+  const sableyeMoveset: Moveset = {
+    fastMove: 'SHADOW_CLAW',
+    chargedMove1: 'FOUL_PLAY',
+    chargedMove2: 'RETURN',
+  };
+
+  return createRosterMovesetAssignment({
+    formatId,
+    policyIdentity: {
+      source: 'manifest',
+      schemaVersion: 1,
+      policyVersion: 'ranking-evidence-v1',
+    },
+    variantsBySpeciesId: {
+      mewtwo: {
+        ...mewtwoMoveset,
+        id: getMovesetVariantId(mewtwoMoveset),
+        isDefault: false,
+      },
+      sableye: {
+        ...sableyeMoveset,
+        id: getMovesetVariantId(sableyeMoveset),
+        isDefault: true,
+      },
+    },
+  });
+}
 
 describe('POST /api/team-details format-aware movesets', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    vi.mocked(getPokemonBySpeciesId).mockReturnValue({
-      speciesId: 'decidueye',
-      speciesName: 'Decidueye',
-      dex: 724,
+    vi.mocked(getPokemonBySpeciesId).mockImplementation((speciesId) => ({
+      speciesId,
+      speciesName: speciesId === 'mewtwo' ? 'Mewtwo' : 'Sableye',
+      dex: speciesId === 'mewtwo' ? 150 : 302,
       baseStats: { atk: 1, def: 1, hp: 1 },
-      types: ['grass', 'ghost'],
-      fastMoves: ['LEAFAGE', 'ASTONISH'],
-      chargedMoves: ['FRENZY_PLANT', 'SPIRIT_SHACKLE'],
+      types: ['psychic'],
+      fastMoves: ['COUNTER', 'SHADOW_CLAW'],
+      chargedMoves: ['PSYSTRIKE', 'PSYCHIC', 'FOUL_PLAY', 'RETURN'],
       tags: [],
       defaultIVs: {},
       buddyDistance: 3,
       thirdMoveCost: 10000,
       released: true,
-    });
+    }));
 
     vi.mocked(getSimulationBackedMovesetForTeam).mockReturnValue({
       fastMove: 'ASTONISH',
       chargedMove1: 'FRENZY_PLANT',
       chargedMove2: 'SPIRIT_SHACKLE',
     });
+
+    vi.mocked(getMovesetAvailability).mockImplementation(
+      (_speciesId, moveset) => {
+        const availabilityByMoveId: Record<string, MoveAvailability> = {
+          COUNTER: { kind: 'eventExclusive' },
+          PSYSTRIKE: { kind: 'elite' },
+          PSYCHIC: { kind: 'regular' },
+          SHADOW_CLAW: { kind: 'regular' },
+          FOUL_PLAY: { kind: 'regular' },
+          RETURN: { kind: 'purified' },
+        };
+
+        return {
+          fastMove: availabilityByMoveId[moveset.fastMove]!,
+          chargedMove1: availabilityByMoveId[moveset.chargedMove1]!,
+          chargedMove2: availabilityByMoveId[moveset.chargedMove2]!,
+        };
+      },
+    );
   });
 
-  it('passes the selected formatId to moveset lookup', async () => {
+  it('returns the exact assigned moves with structured acquisition metadata', async () => {
+    const movesetAssignment = createAssignment();
     const request = new Request('http://localhost/api/team-details', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        team: ['decidueye'],
-        formatId: 'battle-frontier-liga-ultra',
+        team: ['mewtwo', 'sableye'],
+        formatId: 'great-league',
+        movesetAssignment,
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      pokemon: Array<{
+        speciesId: string;
+        recommendedMoveset: unknown;
+      }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.pokemon.map(({ speciesId }) => speciesId)).toEqual([
+      'mewtwo',
+      'sableye',
+    ]);
+    expect(payload.pokemon[0]?.recommendedMoveset).toEqual({
+      id: getMovesetVariantId({
+        fastMove: 'COUNTER',
+        chargedMove1: 'PSYSTRIKE',
+        chargedMove2: 'PSYCHIC',
+      }),
+      fastMove: 'COUNTER',
+      chargedMove1: 'PSYSTRIKE',
+      chargedMove2: 'PSYCHIC',
+      isDefault: false,
+      acquisitionRequirements: {
+        fastMove: { kind: 'eventExclusive' },
+        chargedMove1: { kind: 'elite' },
+        chargedMove2: { kind: 'regular' },
+      },
+    });
+    expect(payload.pokemon[1]?.recommendedMoveset).toEqual({
+      id: getMovesetVariantId({
+        fastMove: 'SHADOW_CLAW',
+        chargedMove1: 'FOUL_PLAY',
+        chargedMove2: 'RETURN',
+      }),
+      fastMove: 'SHADOW_CLAW',
+      chargedMove1: 'FOUL_PLAY',
+      chargedMove2: 'RETURN',
+      isDefault: true,
+      acquisitionRequirements: {
+        fastMove: { kind: 'regular' },
+        chargedMove1: { kind: 'regular' },
+        chargedMove2: { kind: 'purified' },
+      },
+    });
+    expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
+  });
+
+  it('defaults missing formatId to Great League', async () => {
+    const movesetAssignment = createAssignment();
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        movesetAssignment,
       }),
     });
 
     const response = await POST(request as NextRequest);
 
     expect(response.status).toBe(200);
-    expect(getSimulationBackedMovesetForTeam).toHaveBeenCalledWith(
-      expect.objectContaining({ speciesId: 'decidueye' }),
-      ['decidueye'],
-      'battle-frontier-liga-ultra',
+    expect(getMovesetAvailability).toHaveBeenCalledWith(
+      'mewtwo',
+      expect.objectContaining({ fastMove: 'COUNTER' }),
+      DEFAULT_BATTLE_FORMAT_ID,
     );
   });
 
-  it('defaults missing formatId to Great League', async () => {
+  it('rejects requests without the scored roster assignment', async () => {
     const request = new Request('http://localhost/api/team-details', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team: ['decidueye'] }),
+      body: JSON.stringify({ team: ['mewtwo'], formatId: 'great-league' }),
     });
 
     const response = await POST(request as NextRequest);
 
-    expect(response.status).toBe(200);
-    expect(getSimulationBackedMovesetForTeam).toHaveBeenCalledWith(
-      expect.objectContaining({ speciesId: 'decidueye' }),
-      ['decidueye'],
-      DEFAULT_BATTLE_FORMAT_ID,
-    );
+    expect(response.status).toBe(400);
+    expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      'a different format',
+      ['mewtwo', 'sableye'],
+      createAssignment('ultra-league'),
+    ],
+    ['different roster species', ['mewtwo'], createAssignment()],
+    [
+      'a modified variant fingerprint',
+      ['mewtwo', 'sableye'],
+      {
+        ...createAssignment(),
+        fingerprint: 'stale-fingerprint',
+      },
+    ],
+  ] as const)(
+    'rejects an assignment with %s',
+    async (_label, team, assignment) => {
+      const request = new Request('http://localhost/api/team-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team,
+          formatId: 'great-league',
+          movesetAssignment: assignment,
+        }),
+      });
+
+      const response = await POST(request as NextRequest);
+
+      expect(response.status).toBe(400);
+      expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    [
+      'noncanonical move IDs',
+      {
+        fastMove: 'counter',
+        chargedMove1: 'PSYSTRIKE',
+        chargedMove2: 'PSYCHIC',
+      },
+    ],
+    [
+      'duplicate charged moves',
+      {
+        fastMove: 'COUNTER',
+        chargedMove1: 'PSYSTRIKE',
+        chargedMove2: 'PSYSTRIKE',
+      },
+    ],
+    [
+      'moves in the wrong slots',
+      {
+        fastMove: 'PSYCHIC',
+        chargedMove1: 'COUNTER',
+        chargedMove2: 'PSYSTRIKE',
+      },
+    ],
+  ] as const)('rejects %s', async (_label, moveset) => {
+    const baseAssignment = createAssignment();
+    const movesetAssignment = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      policyIdentity: baseAssignment.policyIdentity,
+      variantsBySpeciesId: {
+        ...baseAssignment.variantsBySpeciesId,
+        mewtwo: {
+          ...moveset,
+          id: getMovesetVariantId(moveset),
+          isDefault: false,
+        },
+      },
+    });
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        formatId: 'great-league',
+        movesetAssignment,
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects oversized assignment requests before parsing their bodies', async () => {
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': '20000',
+      },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        movesetAssignment: createAssignment(),
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(413);
+  });
+
+  it.each([
+    ['an omitted content length', {}],
+    ['an underreported content length', { 'Content-Length': '1' }],
+  ])('rejects an oversized request with %s', async (_label, headers) => {
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        movesetAssignment: createAssignment(),
+        padding: 'x'.repeat(16_384),
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(413);
+    expect(getPokemonBySpeciesId).not.toHaveBeenCalled();
+  });
+
+  it.each(['invalid', '-1', '1.5'])(
+    'rejects an invalid declared content length of %s',
+    async (contentLength) => {
+      const request = new Request('http://localhost/api/team-details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': contentLength,
+        },
+        body: JSON.stringify({
+          team: ['mewtwo', 'sableye'],
+          movesetAssignment: createAssignment(),
+        }),
+      });
+
+      const response = await POST(request as NextRequest);
+
+      expect(response.status).toBe(400);
+      expect(getPokemonBySpeciesId).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects rosters larger than the generated team maximum', async () => {
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: [
+          'mewtwo',
+          'sableye',
+          'azumarill',
+          'lanturn',
+          'dewgong',
+          'annihilape',
+          'umbreon',
+        ],
+        movesetAssignment: createAssignment(),
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as { error: string };
+
+    expect(response.status).toBe(400);
+    expect(payload.error).toMatch(/at most 6/i);
   });
 });

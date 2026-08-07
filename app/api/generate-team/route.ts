@@ -162,6 +162,11 @@ export async function POST(request: NextRequest) {
       populationSize: 150,
       generations: 75,
     });
+    if (!result.movesetAssignment) {
+      throw new Error(
+        'Generated team is missing its scored moveset assignment.',
+      );
+    }
 
     const threats = buildThreatAnalysis(result.scoreBreakdown?.threatScore);
 
@@ -192,6 +197,7 @@ export async function POST(request: NextRequest) {
         result.recommendedLineups,
       ),
       scoreBreakdown: result.scoreBreakdown,
+      movesetAssignment: result.movesetAssignment,
       analysis,
     });
   } catch (error) {

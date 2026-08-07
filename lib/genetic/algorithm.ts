@@ -45,9 +45,9 @@ import {
   buildGblLineupRecommendation,
   buildPlayPokemonRosterRecommendations,
   bindRosterMovesetAssignment,
-  createDefaultLineupScoringContext,
   createLineupAwareFitnessContext,
   evaluatePopulation,
+  scoreOrderedLineup,
   scorePlayPokemonRoster,
 } from './fitness';
 import { rerankRosterFinalists } from './fitness/finalistReranking';
@@ -430,15 +430,22 @@ export async function generateTeam(
 
   if (mode === 'GBL') {
     validateFinalTeam(bestOverall, anchorPokemon, formatId);
-    const lineupContext = createDefaultLineupScoringContext(formatId);
+    const movesetAssignment = fitnessContext.resolveMovesetAssignment(
+      bestOverall.team,
+    );
+    const finalLineupContext = bindRosterMovesetAssignment(
+      fitnessContext.scoringContext,
+      movesetAssignment,
+    );
     const recommendedLineup = buildGblLineupRecommendation(bestOverall.team, {
-      context: lineupContext,
+      scoreLineup: (lineup) => scoreOrderedLineup(lineup, finalLineupContext),
     });
 
     bestOverall = {
       ...bestOverall,
       fitness:
         recommendedLineup.scoreBreakdown?.score ?? recommendedLineup.score,
+      movesetAssignment,
       scoreBreakdown: recommendedLineup.scoreBreakdown,
       recommendedLineups: [recommendedLineup],
     };

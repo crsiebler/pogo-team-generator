@@ -29,6 +29,8 @@
 - Final threat analysis reuses the assignment-aware `scoreBreakdown.threatScore`; retain the exact final roster assignment for shield-scenario and Pokemon-contribution diagnostics rather than resolving or selecting movesets in analysis modules.
 - Only PlayPokemon evolution uses unqualified ranked-default fast scoring; GBL evolution remains team-aware. Retain a canonical, deduplicated top-ten PlayPokemon archive across generations, preserve explicit anchor order, sort flexible roster members, and use lexical canonical keys for equal-fitness ordering before assignment-aware finalist work.
 - Post-evolution PlayPokemon reranking enumerates at most `3^6` manifest assignments per finalist, caches aggregate matrix reads for a 70/30 top-meta/full-meta answer-depth prefilter, fully scores only the top twelve assignments across all 120 ordered lineups, and selects by variant-aware fitness, default-only fitness, then canonical roster key.
+- Retain the exact scored roster assignment in generation output for both tournament modes; pass it unchanged through the client, bound and validate its format, canonical roster, move slots, variant identities, and fingerprint on return, and project move/acquisition details without selecting movesets in API adapters.
+- Enforce public JSON payload limits by validating any declared `Content-Length` and counting bytes from the request stream; headers may be absent or inaccurate and are not an authoritative size boundary.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1230,4 +1232,90 @@
   - Checked-in manifests remain deferred to US-024; until then production enumeration deterministically yields the single ranked-default transition assignment.
 - Next iteration start:
   - US-022 - Propagate scored assignments through generation and team details APIs.
+---
+
+## 2026-08-06 19:35:02 MST - US-022
+- Propagated the exact final scored roster assignment through GBL and PlayPokemon generation, the generate-team response, client result state, and team-details requests; team-details now validates the serialized assignment and projects its exact move IDs with regular, Elite, event-exclusive, and purified acquisition metadata without selecting another moveset.
+- Files changed: `app/AGENTS.md`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `app/api/team-details/route.ts`, `app/api/team-details/route.test.ts`, `components/AGENTS.md`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `lib/AGENTS.md`, `lib/types.ts`, `lib/data/movesetVariantManifest.ts`, `lib/genetic/moveset.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `progress.txt`
+- Commit message: `feat: US-022 - Propagate scored assignments through generation and team details APIs`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/algorithm.test.ts app/api/generate-team/route.test.ts app/api/team-details/route.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` before implementation (fail as expected: 7 assignment retention, API projection, validation, and client propagation regressions)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/algorithm.test.ts app/api/generate-team/route.test.ts app/api/team-details/route.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` (pass, 81 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 773 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - Browser verification at `http://localhost:3001` (pass; generated Great League roster rendered, assignment-bearing `/api/team-details` requests returned 200, and response moves/acquisition metadata matched the assignment)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/algorithm.test.ts app/api/generate-team/route.test.ts app/api/team-details/route.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` after review fixes (pass, 86 tests)
+  - Final `npx tsc --noEmit`, `npm run lint`, `npm test`, and `npm run build` after review fixes (pass, 778 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `fullstack-developer`, `test-automator`
+  - Used: `fullstack-developer`, `test-automator`; both fit the standard-mode complex-story budget and provided non-overlapping cross-layer propagation and regression-test guidance
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer`, `qa-expert`, and `security-engineer` passes. UI/UX specialists skipped under the one-domain-specialist high-risk budget because the rendered UI is unchanged and the client flow received direct browser verification
+  - Findings: fixed five deduplicated initial medium findings by preserving diagnostic-enabled final GBL scoring, validating canonical move IDs/distinct charged moves/move slots, exercising the fingerprint boundary directly, using roster-complete generation fixtures, and bounding parsed assignment structures. Targeted re-review found one deduplicated medium request-size blocker because omitted or untrusted `Content-Length` can bypass the pre-parse byte check; one low client error-state hardening suggestion is deferred with the blocker.
+- Decisions (why):
+  - Reused the per-run lineup-aware fitness context to resolve one GBL assignment and score all six ordered GBL lineups against it, matching PlayPokemon's fixed-assignment output without introducing another scoring path.
+  - Kept GBL evolution's cached threat-free scorer in the hot path, but used the same assignment-bound data context with direct diagnostic-enabled scoring for the final six permutations so Threat Score and downstream analyses remain populated.
+  - Validated the client-round-tripped assignment against its format, exact canonical roster, canonical variant IDs, and deterministic fingerprint before projection because TypeScript response casts do not validate untrusted JSON.
+  - Bounded the public request before JSON parsing when content length is available and again bounded parsed roster, variant, and string structures so a small generated roster cannot carry an unbounded assignment map.
+  - Reclassified acquisition requirements from the exact assigned move IDs without changing move selection or scoring; excluded moves fail the team-details request rather than being displayed as buildable.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, `test-runner`, and `dev-browser` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - The final GBL branch previously created a new unbound lineup context and discarded assignment identity; final GBL recommendations should reuse the same per-run team-aware context with one resolved assignment.
+  - Browser testing must confirm the worktree server port when another repository server is already running; port 3000 served an older checkout while this worktree correctly started on port 3001.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-022.
+  - Commit blocked after the one allowed targeted re-review: replace `request.json()` with an actual byte-counted request-stream reader that rejects bodies above 16 KiB even when `Content-Length` is omitted or false, reject invalid declared lengths, add omitted-length and oversized-stream regressions, and start a fresh review loop next iteration.
+  - After the blocking request reader is fixed, make `TeamDisplay` reject non-2xx or malformed team-details responses without assigning `undefined` to `pokemonData`.
+  - Export consumption of assignment acquisition metadata remains intentionally scoped to US-023.
+- Next iteration start:
+  - Resume US-022 with a byte-counted team-details request reader and client error-state hardening, rerun all checks, and complete a fresh staged review loop before marking the story passed.
+---
+
+## 2026-08-06 19:58:13 MST - US-022
+- Resumed the assignment propagation candidate and enforced the 16 KiB team-details boundary by validating declared lengths and counting actual request-stream bytes before JSON parsing; hardened `TeamDisplay` to reject non-2xx and malformed responses without corrupting team state.
+- Files changed: `app/AGENTS.md`, `app/api/generate-team/route.ts`, `app/api/generate-team/route.test.ts`, `app/api/team-details/route.ts`, `app/api/team-details/route.test.ts`, `components/AGENTS.md`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `components/organisms/ResultsPanel/ResultsPanel.tsx`, `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `lib/AGENTS.md`, `lib/types.ts`, `lib/data/movesetVariantManifest.ts`, `lib/genetic/moveset.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `progress.txt`
+- Commit message: `feat: US-022 - Propagate scored assignments through generation and team details APIs`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run app/api/team-details/route.test.ts` before the resumed fix (fail as expected: 5 omitted/underreported/invalid content-length regressions)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` before the resumed fix (fail as expected: 2 non-2xx/malformed response regressions and one unhandled render error)
+  - `npx vitest run app/api/team-details/route.test.ts` after the resumed fix (pass, 16 tests)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` after the resumed fix (pass, 8 tests)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/algorithm.test.ts app/api/generate-team/route.test.ts app/api/team-details/route.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` before review fixes (pass, 93 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` before review fixes (pass, 785 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` (pass)
+  - Browser verification at `http://localhost:3001` (pass; generated Great League roster rendered exact assigned moves and acquisition metadata, and generate-team/team-details requests returned 200; unrelated missing-site-icon 404 remained in the console)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` after the initial review test additions (fail as expected: 3 incomplete roster, mismatched moves, and invalid acquisition metadata regressions)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` after the review fix (pass, 11 tests)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/algorithm.test.ts app/api/generate-team/route.test.ts app/api/team-details/route.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` after the review fix (pass, 96 tests)
+  - Final `npx tsc --noEmit`, `npm run lint`, `npm test`, and `npm run build` after the review fix (pass, 788 tests; existing multiple-lockfile workspace-root warning only)
+  - Final browser verification at `http://localhost:3001` (pass; strict response validation accepted the generated six-member Great League roster and exact assigned moves, with generate-team/team-details returning 200; unrelated missing-site-icon 404 remained in the console)
+- Implementation agents:
+  - Recommended: `fullstack-developer`, `test-automator`
+  - Used: no new implementation agents in this resumed iteration; both recommended agents were used in the prior US-022 iteration, and the remaining review-prescribed regressions and fixes were exact enough that duplicate guidance would add no value
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` re-review
+  - Findings: `code-reviewer` found none; fixed one medium QA finding by requiring complete ordered roster entries, exact assignment move/variant fields, and eligible acquisition categories before client state mutation; targeted QA re-review found none. The security specialist's signing recommendation was discarded as out of scope because the unauthenticated endpoint returns only public repository data to its caller, has no persistence or protected action, and the deterministic fingerprint is a consistency/cache identity rather than an authentication claim.
+- Decisions (why):
+  - Counted `Uint8Array.byteLength` before decoding or retaining each chunk so the request limit applies to actual transferred bytes and oversized bodies are canceled without full buffering.
+  - Rejected malformed declared lengths with 400 and oversized declared or observed lengths with 413; underreported lengths remain safe because the stream boundary is authoritative.
+  - Validated `TeamDisplay` responses before state mutation and retained the prior empty array on failure, keeping the existing non-visual error behavior without adding UI outside the story.
+  - Compared every successful response entry with the expected team order and exact assignment variant before rendering or export so malformed public responses cannot desynchronize display from scored moves.
+  - Did not add HMAC or server-side assignment sessions because the route has no authorization boundary or protected state, and doing so would introduce secret/configuration and distributed-session requirements outside this public projection story.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, `test-runner`, and `dev-browser` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Fetch `Content-Length` is optional and caller-controlled; request size limits require a streaming byte counter even when a fast header rejection exists.
+  - Client response type casts do not validate JSON; check HTTP success and the minimum response structure before mutating React state.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-022.
+  - Export consumption of assignment acquisition metadata remains intentionally scoped to US-023.
+- Next iteration start:
+  - US-023 - Export assigned movesets and acquisition requirements.
 ---

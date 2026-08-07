@@ -31,7 +31,43 @@ const movesetAssignment: RosterMovesetAssignment = {
     policyVersion: 'ranking-evidence-v1',
   },
   fingerprint: 'route-assignment',
-  variantsBySpeciesId: {},
+  variantsBySpeciesId: {
+    azumarill: {
+      id: 'bubble--play_rough--ice_beam',
+      fastMove: 'BUBBLE',
+      chargedMove1: 'ICE_BEAM',
+      chargedMove2: 'PLAY_ROUGH',
+      isDefault: true,
+    },
+  },
+};
+
+const gblMovesetAssignment: RosterMovesetAssignment = {
+  ...movesetAssignment,
+  fingerprint: 'gbl-route-assignment',
+  variantsBySpeciesId: {
+    annihilape: {
+      id: 'counter--shadow_ball--night_slash',
+      fastMove: 'COUNTER',
+      chargedMove1: 'NIGHT_SLASH',
+      chargedMove2: 'SHADOW_BALL',
+      isDefault: true,
+    },
+    dewgong: {
+      id: 'ice_shard--water_pulse--icy_wind',
+      fastMove: 'ICE_SHARD',
+      chargedMove1: 'ICY_WIND',
+      chargedMove2: 'WATER_PULSE',
+      isDefault: true,
+    },
+    lanturn: {
+      id: 'spark--thunderbolt--surf',
+      fastMove: 'SPARK',
+      chargedMove1: 'SURF',
+      chargedMove2: 'THUNDERBOLT',
+      isDefault: true,
+    },
+  },
 };
 
 vi.mock('@/lib/data/battleFormats', async () => {
@@ -164,7 +200,7 @@ describe('POST /api/generate-team', () => {
         },
         score: 0.74,
       },
-      movesetAssignment,
+      movesetAssignment: gblMovesetAssignment,
     });
     vi.mocked(buildThreatAnalysis).mockReturnValue({
       evaluatedCount: 50,
@@ -416,7 +452,7 @@ describe('POST /api/generate-team', () => {
           },
         },
       },
-      movesetAssignment,
+      movesetAssignment: gblMovesetAssignment,
     });
 
     const request = new Request('http://localhost/api/generate-team', {
@@ -459,6 +495,7 @@ describe('POST /api/generate-team', () => {
         threatScore?: unknown;
       };
       recommendedLineups: unknown[];
+      movesetAssignment: RosterMovesetAssignment;
       analysis: {
         mode: string;
         teamSize: number;
@@ -720,7 +757,7 @@ describe('POST /api/generate-team', () => {
         },
       ],
       'great-league',
-      movesetAssignment,
+      gblMovesetAssignment,
     );
     expect(buildPokemonContributionAnalysis).toHaveBeenCalledWith(
       ['lanturn', 'dewgong', 'annihilape'],
@@ -734,9 +771,12 @@ describe('POST /api/generate-team', () => {
         },
       ],
       'great-league',
-      movesetAssignment,
+      gblMovesetAssignment,
     );
-    expect(payload).not.toHaveProperty('movesetAssignment');
+    expect(payload.movesetAssignment).toEqual(gblMovesetAssignment);
+    expect(
+      Object.keys(payload.movesetAssignment.variantsBySpeciesId).toSorted(),
+    ).toEqual(['annihilape', 'dewgong', 'lanturn']);
   });
 
   it('passes no algorithm into canonical team generation', async () => {
@@ -834,6 +874,7 @@ describe('POST /api/generate-team', () => {
           warnings: [],
         },
       ],
+      movesetAssignment,
     } as unknown as Awaited<ReturnType<typeof generateTeam>>;
 
     vi.mocked(generateTeam).mockResolvedValue(generatedTeamResult);
