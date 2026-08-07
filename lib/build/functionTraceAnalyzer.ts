@@ -1,8 +1,15 @@
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  loadRuntimeFunctionAssetPlan,
+  validateRuntimeFunctionTraceAssets,
+  type RuntimeFunctionAssetPlan,
+} from '@/lib/build/runtimeFunctionAssets';
 
 const DEFAULT_TRACE_PATH =
   '.next/server/app/api/generate-team/route.js.nft.json';
+const DEFAULT_POKEMON_LIST_TRACE_PATH =
+  '.next/server/app/api/pokemon-list/route.js.nft.json';
 const DEFAULT_LARGEST_FILE_LIMIT = 20;
 const TRACE_VERSION = 1;
 
@@ -53,6 +60,14 @@ export interface FunctionTraceAnalyzerCliOptions {
   cwd: string;
   stdout: (message: string) => void;
   stderr: (message: string) => void;
+  validateRuntimeAssets?: boolean;
+  runtimeAssetPlan?: RuntimeFunctionAssetPlan;
+}
+
+/** Exact resolved files and metadata referenced by one Next.js function trace. */
+export interface FunctionTraceInventory {
+  trace: string;
+  files: FunctionTraceFileReport[];
 }
 
 interface NextTrace {
@@ -176,14 +191,65 @@ async function readTraceFile(
 export async function analyzeFunctionTrace(
   options: AnalyzeFunctionTraceOptions,
 ): Promise<FunctionTraceReport> {
-  const projectRoot = path.resolve(options.projectRoot ?? process.cwd());
-  const tracePath = path.resolve(options.tracePath);
-  const traceDisplayPath = toDisplayPath(projectRoot, tracePath);
+  const inventory = await inspectFunctionTrace(options);
   const largestFileLimit =
     options.largestFileLimit ?? DEFAULT_LARGEST_FILE_LIMIT;
   if (!Number.isSafeInteger(largestFileLimit) || largestFileLimit < 0) {
     throw new Error('largestFileLimit must be a non-negative safe integer.');
   }
+
+  return createFunctionTraceReport(inventory, largestFileLimit);
+}
+
+function createFunctionTraceReport(
+  inventory: FunctionTraceInventory,
+  largestFileLimit: number,
+): FunctionTraceReport {
+  const files = inventory.files;
+
+  const categories = TRACE_CATEGORIES.map((category) => {
+    const categoryFiles = files.filter((file) => file.category === category);
+    return {
+      category,
+      files: categoryFiles.length,
+      uncompressedBytes: categoryFiles.reduce(
+        (total, file) => total + file.uncompressedBytes,
+        0,
+      ),
+    };
+  });
+  const uncompressedBytes = categories.reduce(
+    (total, category) => total + category.uncompressedBytes,
+    0,
+  );
+  if (!Number.isSafeInteger(uncompressedBytes)) {
+    throw new Error(
+      `Trace ${inventory.trace} exceeds the supported byte total.`,
+    );
+  }
+
+  return {
+    trace: inventory.trace,
+    uniqueTracedFiles: files.length,
+    uncompressedBytes,
+    categories,
+    largestFiles: [...files]
+      .sort(
+        (left, right) =>
+          right.uncompressedBytes - left.uncompressedBytes ||
+          compareText(left.path, right.path),
+      )
+      .slice(0, largestFileLimit),
+  };
+}
+
+/** Inspect and resolve every exact file referenced by a Next.js NFT trace. */
+export async function inspectFunctionTrace(
+  options: AnalyzeFunctionTraceOptions,
+): Promise<FunctionTraceInventory> {
+  const projectRoot = path.resolve(options.projectRoot ?? process.cwd());
+  const tracePath = path.resolve(options.tracePath);
+  const traceDisplayPath = toDisplayPath(projectRoot, tracePath);
 
   const contents = await readTraceFile(tracePath, traceDisplayPath);
   const trace = parseTrace(contents, traceDisplayPath);
@@ -218,39 +284,9 @@ export async function analyzeFunctionTrace(
     });
   }
 
-  const categories = TRACE_CATEGORIES.map((category) => {
-    const categoryFiles = files.filter((file) => file.category === category);
-    return {
-      category,
-      files: categoryFiles.length,
-      uncompressedBytes: categoryFiles.reduce(
-        (total, file) => total + file.uncompressedBytes,
-        0,
-      ),
-    };
-  });
-  const uncompressedBytes = categories.reduce(
-    (total, category) => total + category.uncompressedBytes,
-    0,
-  );
-  if (!Number.isSafeInteger(uncompressedBytes)) {
-    throw new Error(
-      `Trace ${traceDisplayPath} exceeds the supported byte total.`,
-    );
-  }
-
   return {
     trace: traceDisplayPath,
-    uniqueTracedFiles: files.length,
-    uncompressedBytes,
-    categories,
-    largestFiles: [...files]
-      .sort(
-        (left, right) =>
-          right.uncompressedBytes - left.uncompressedBytes ||
-          compareText(left.path, right.path),
-      )
-      .slice(0, largestFileLimit),
+    files,
   };
 }
 
@@ -276,11 +312,37 @@ export async function runFunctionTraceAnalyzerCli(
   options: FunctionTraceAnalyzerCliOptions,
 ): Promise<number> {
   try {
+    if (options.validateRuntimeAssets && options.args.length > 0) {
+      throw new Error(
+        'Runtime asset validation requires the canonical generate-team trace; omit --trace.',
+      );
+    }
     const tracePath = parseCliTracePath(options.args, options.cwd);
-    const report = await analyzeFunctionTrace({
+    const generateTeamInventory = await inspectFunctionTrace({
       tracePath,
       projectRoot: options.cwd,
     });
+    const report = createFunctionTraceReport(
+      generateTeamInventory,
+      DEFAULT_LARGEST_FILE_LIMIT,
+    );
+    if (options.validateRuntimeAssets) {
+      const pokemonListInventory = await inspectFunctionTrace({
+        tracePath: path.join(options.cwd, DEFAULT_POKEMON_LIST_TRACE_PATH),
+        projectRoot: options.cwd,
+      });
+      validateRuntimeFunctionTraceAssets({
+        plan:
+          options.runtimeAssetPlan ?? loadRuntimeFunctionAssetPlan(options.cwd),
+        generateTeamTracedFiles: generateTeamInventory.files.map(
+          (file) => file.path,
+        ),
+        pokemonListTracedFiles: pokemonListInventory.files.map(
+          (file) => file.path,
+        ),
+        generateTeamUncompressedBytes: report.uncompressedBytes,
+      });
+    }
     options.stdout(formatFunctionTraceReport(report));
     return 0;
   } catch (error) {

@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team and pokemon-list assets from the runtime index plus battle-format catalog, use exact route-specific excludes for automatically over-traced files, and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
 - Next.js NFT trace entries resolve relative to the trace file directory; deployment-size tooling must deduplicate resolved files, stat only trace-declared assets, and report deterministic project-relative paths and raw uncompressed bytes instead of scanning repository directories.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; local PvPoke execution remains isolated to sync tooling.
 - Moveset variant work must read `.opencode/skills/gbl-optimizer/SKILL.md` and the required optimizer documents before changing ranking inputs, simulation data, scoring, or diagnostics.
@@ -1564,4 +1565,42 @@
   - US-029 should use `data/simulations/runtime-asset-index.json` as the exact Next.js output-tracing allowlist; US-028 intentionally leaves tracing configuration unchanged.
 - Next iteration start:
   - US-029 - Trace only runtime-authorized function assets
+---
+
+## 2026-08-07 06:16:02 MST - US-029
+- Replaced recursive Next.js data tracing with a validated exact asset plan derived from the active runtime simulation index and battle-format catalog; narrowed pokemon-list to Pokemon data plus Overall rankings; added exact supporting-ranking exclusions for NFT automatic discovery; and upgraded the trace analyzer to enforce active-only assets, route data isolation, and the 200 MiB transition budget.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js.nft.json`, `lib/scripts/analyzeGenerateTeamTrace.ts`, `progress.txt`
+- Commit message: `feat: US-029 - Trace only runtime-authorized function assets`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts` (fail as expected before implementation: runtime asset-plan module missing; later fail as expected before exact pokemon-list exclusions were added)
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/data/runtimeSimulationAssetIndex.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 23 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (initial fail: import order; pass after fix)
+  - `npm run build` (initial fail: Next config helper project-alias resolution; pass after relative-import fix, existing multiple-lockfile warning only)
+  - `npm run analyze:generate-team-trace` (initial fail: pokemon-list NFT automatically retained 48 supporting ranking files; pass after exact exclusions with 6,901 files and 126,150,225 uncompressed bytes)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts lib/build/runtimeFunctionAssets.test.ts` after review regressions (fail as expected: validation mode accepted custom traces and lacked injectable route-pair coverage; pass after fixes, 14 tests)
+  - `npm test` (pass before review, 820 tests; pass after review fixes, 823 tests)
+  - `npx prettier --check "next.config.ts" "lib/build/runtimeFunctionAssets.ts" "lib/build/runtimeFunctionAssets.test.ts" "lib/build/functionTraceAnalyzer.ts" "lib/scripts/analyzeGenerateTeamTrace.ts"` (pass)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `build-engineer`, `deployment-engineer`
+  - Used: `build-engineer`; skipped `deployment-engineer` because the established local Next.js trace and analyzer boundaries made a second overlapping implementation advisor unnecessary
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` and `security-engineer` re-review
+  - Findings: code review found none; fixed medium QA and security findings by verifying every checked-in catalog asset, exercising both route traces through the CLI, and rejecting custom trace overrides in validation mode; also fixed the low CLI wiring coverage finding; targeted re-reviews found none
+- Decisions (why):
+  - Used the generated active index directly for simulation includes and the battle-format catalog for exact ranking paths so deployment authority cannot drift into a second hardcoded format list.
+  - Added exact pokemon-list supporting-category exclusions because Next includes are additive and broad exclusions are applied after includes, which would also remove required Overall rankings.
+  - Enforced 200 MiB as an analyzer failure threshold, preserving at least 20 percent headroom below the standard 250 MiB function limit without enabling Large Functions.
+  - Kept full manifests and inactive CSV evidence unchanged; only generated route traces were narrowed.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Next.js output tracing first merges automatic NFT files and manual includes, then applies route excludes; exact exclusions are required when static analysis over-traces dynamic filesystem paths.
+  - The active-only generate-team trace currently includes 6,788 simulation assets and totals about 120.3 MiB, down from the prior approximately 340.6 MiB recursive baseline.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - US-030 will compile active matchup data into compact per-format runtime snapshots; US-032 owns the final 100 MiB function and 50 MiB snapshot targets.
+- Next iteration start:
+  - US-030 - Generate compact per-format runtime simulation snapshots
 ---

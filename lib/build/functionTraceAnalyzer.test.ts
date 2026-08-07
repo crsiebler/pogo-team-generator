@@ -6,6 +6,7 @@ import {
   formatFunctionTraceReport,
   runFunctionTraceAnalyzerCli,
 } from '@/lib/build/functionTraceAnalyzer';
+import type { RuntimeFunctionAssetPlan } from '@/lib/build/runtimeFunctionAssets';
 
 const fixtureRoot = path.join(
   process.cwd(),
@@ -16,6 +17,18 @@ const validTracePath = path.join(
   validFixtureRoot,
   '.next/server/app/api/generate-team/route.js.nft.json',
 );
+const fixtureRuntimeAssetPlan: RuntimeFunctionAssetPlan = {
+  generateTeam: [
+    'data/pokemon.json',
+    'data/rankings/cp1500/all/overall_rankings.csv',
+    'data/simulations/cp1500/all/fixture_0-0.csv',
+  ],
+  pokemonList: [
+    'data/pokemon.json',
+    'data/rankings/cp1500/all/overall_rankings.csv',
+  ],
+  pokemonListExcludes: [],
+};
 
 describe('function trace analyzer', () => {
   it('reports unique traced bytes by category from an NFT trace', async () => {
@@ -227,5 +240,41 @@ describe('function trace analyzer', () => {
     expect(JSON.parse(stdout.join(''))).toMatchObject({
       uniqueTracedFiles: 5,
     });
+  });
+
+  it('validates both canonical route traces through the CLI', async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runFunctionTraceAnalyzerCli({
+      args: [],
+      cwd: validFixtureRoot,
+      stdout: (message) => stdout.push(message),
+      stderr: (message) => stderr.push(message),
+      validateRuntimeAssets: true,
+      runtimeAssetPlan: fixtureRuntimeAssetPlan,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(stderr).toEqual([]);
+    expect(JSON.parse(stdout.join(''))).toMatchObject({ uniqueTracedFiles: 5 });
+  });
+
+  it('rejects custom traces when runtime asset validation is enabled', async () => {
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+
+    const exitCode = await runFunctionTraceAnalyzerCli({
+      args: ['--trace', validTracePath],
+      cwd: validFixtureRoot,
+      stdout: (message) => stdout.push(message),
+      stderr: (message) => stderr.push(message),
+      validateRuntimeAssets: true,
+      runtimeAssetPlan: fixtureRuntimeAssetPlan,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(stdout).toEqual([]);
+    expect(stderr.join('')).toMatch(/canonical generate-team trace/i);
   });
 });

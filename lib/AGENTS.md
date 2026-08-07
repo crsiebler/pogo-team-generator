@@ -13,6 +13,8 @@ Runtime app, component, and optimizer code must not import, require, bundle, or 
 
 Next.js NFT trace entries are relative to the trace file directory, not the repository root. Build analyzers must resolve and deduplicate those exact entries before reading file metadata, avoid recursive repository estimates, and emit only deterministic project-relative paths and raw byte counts.
 
+Next.js output trace includes are additive to automatic NFT discovery. Build exact route asset plans from the active runtime simulation index and battle-format catalog, use exact route-specific excludes for automatically discovered files that the route does not consume, and validate both required and unauthorized data paths after every production build. Modules imported by `next.config.ts` must use relative imports internally because Next config transpilation does not reliably preserve project path aliases.
+
 When syncing gamemaster JSON, call adapter `readPokemonJson`/`readMovesJson`, validate with `lib/sync/validation.ts`, then write normalized JSON outputs to `data/`.
 
 When extending the synced `PokemonData` contract, update `validatePokemonJson(...)` to validate each new optional field and cover valid and malformed values in `lib/sync/gamemaster.test.ts`.

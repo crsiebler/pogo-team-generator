@@ -5,6 +5,7 @@ const exitCode = await runFunctionTraceAnalyzerCli({
   cwd: process.cwd(),
   stdout: (message: string) => process.stdout.write(message),
   stderr: (message: string) => process.stderr.write(message),
+  validateRuntimeAssets: true,
 });
 
 process.exitCode = exitCode;

@@ -516,7 +516,7 @@
         "Typecheck, lint, tests, and production build pass."
       ],
       "priority": 29,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @build-engineer, @deployment-engineer. Implementation notes: use the generated active asset index as the tracing allowlist and preserve at least 20 percent headroom under Vercel's standard limit."
     },
     {
