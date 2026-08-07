@@ -58,6 +58,7 @@ export function Switch({
       <button
         type="button"
         role="switch"
+        aria-label={label}
         aria-checked={checked}
         aria-disabled={disabled}
         disabled={disabled}

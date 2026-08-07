@@ -97,6 +97,12 @@ export interface RosterMovesetAssignmentEnumerationDependencies {
   getRankedDefault: (pokemon: Pokemon, formatId: BattleFormatId) => Moveset;
 }
 
+/** Injectable boundaries for ranked-default roster assignment resolution. */
+export interface RankedDefaultRosterMovesetAssignmentDependencies {
+  getPokemon: (speciesId: string) => Pokemon | undefined;
+  getRankedDefault: (pokemon: Pokemon, formatId: BattleFormatId) => Moveset;
+}
+
 /** Input used to create a validated immutable roster assignment value. */
 export interface CreateRosterMovesetAssignmentInput {
   readonly formatId: BattleFormatId;
@@ -603,7 +609,11 @@ export function enumerateRosterMovesetAssignments(
       error.code === 'manifest-missing'
     ) {
       return [
-        createRankedDefaultRosterAssignment(roster, formatId, dependencies),
+        resolveRankedDefaultRosterMovesetAssignment(
+          roster,
+          formatId,
+          dependencies,
+        ),
       ];
     }
     throw error;
@@ -674,13 +684,14 @@ export function enumerateRosterMovesetAssignments(
   );
 }
 
-function createRankedDefaultRosterAssignment(
+/** Resolve one immutable PvPoke ranking-recommended assignment for a roster. */
+export function resolveRankedDefaultRosterMovesetAssignment(
   roster: readonly string[],
   formatId: BattleFormatId,
-  dependencies: Pick<
-    RosterMovesetAssignmentEnumerationDependencies,
-    'getPokemon' | 'getRankedDefault'
-  >,
+  dependencies: RankedDefaultRosterMovesetAssignmentDependencies = {
+    getPokemon: getPokemonBySpeciesId,
+    getRankedDefault: getRecommendedMovesetForPokemon,
+  },
 ): RosterMovesetAssignment {
   const variantsBySpeciesId: Record<string, MovesetVariant> = {};
   for (const requestedSpeciesId of roster) {

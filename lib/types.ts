@@ -319,6 +319,8 @@ export interface Chromosome {
 export interface GenerationOptions {
   formatId?: BattleFormatId;
   mode: TournamentMode;
+  /** Enables simulation-backed alternatives instead of ranked default movesets. */
+  simulateMovesetVariants?: boolean;
   anchorPokemon?: string[];
   excludedPokemon?: string[];
   populationSize?: number;

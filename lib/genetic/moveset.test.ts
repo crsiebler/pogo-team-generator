@@ -5,6 +5,7 @@ import {
   getRecommendedMovesetForPokemon,
   getSimulationBackedMovesetForTeam,
   getSimulationBackedMovesetVariantForTeam,
+  resolveRankedDefaultRosterMovesetAssignment,
   resolveRosterMovesetAssignment,
 } from './moveset';
 import { MovesetVariantSimulationDataError } from '@/lib/data/movesetVariantSimulations';
@@ -404,6 +405,42 @@ describe('roster moveset assignments', () => {
     expect(assignment.policyIdentity.source).toBe('ranked-default-fallback');
     expect(assignment.variantsBySpeciesId.golisopod.fastMove).toBe('WATERFALL');
     expect(assignment.variantsBySpeciesId.milotic.fastMove).toBe('DRAGON_TAIL');
+  });
+
+  it('resolves a deterministic ranked-default assignment without manifest access', () => {
+    const roster = ['golisopod', 'milotic'];
+    const pokemonById = new Map(
+      roster.map((speciesId) => [
+        speciesId,
+        { speciesId, speciesName: speciesId } as Pokemon,
+      ]),
+    );
+    const requestedSpeciesIds: string[] = [];
+
+    const assignment = resolveRankedDefaultRosterMovesetAssignment(
+      roster,
+      'great-league',
+      {
+        getPokemon: (speciesId) => pokemonById.get(speciesId),
+        getRankedDefault: (pokemon) => {
+          requestedSpeciesIds.push(pokemon.speciesId);
+          return {
+            fastMove: 'WATERFALL',
+            chargedMove1: 'SURF',
+            chargedMove2: 'BLIZZARD',
+          };
+        },
+      },
+    );
+
+    expect(requestedSpeciesIds).toEqual(roster);
+    expect(assignment.policyIdentity.source).toBe('ranked-default-fallback');
+    expect(Object.values(assignment.variantsBySpeciesId)).toEqual([
+      expect.objectContaining({ isDefault: true }),
+      expect.objectContaining({ isDefault: true }),
+    ]);
+    expect(Object.isFrozen(assignment)).toBe(true);
+    expect(Object.isFrozen(assignment.variantsBySpeciesId)).toBe(true);
   });
 
   it.each<MovesetVariantSimulationDataErrorCode>([

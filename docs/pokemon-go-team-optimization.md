@@ -59,15 +59,18 @@ ten canonical, deduplicated default-scored finalists. Canonical identity
 preserves explicit anchor order, sorts flexible roster members, and uses the
 canonical roster key for deterministic ties.
 
-After evolution, enumerate each finalist's manifest-backed moveset assignments,
-or its single ranked-default fallback when the manifest is absent. Each roster
-member can expose at most three active variants, so a six-member roster has at
-most `3^6 = 729` assignments. A `RosterMovesetAssignment` fixes one variant per
-species before lineup scoring and includes the format, manifest or fallback
-policy identity, and a deterministic fingerprint. The same species therefore
-uses the same assigned moveset across all 120 ordered lead, switch, and closer
-permutations. Assignment-dependent cache keys include that fingerprint so
-different variants or policies cannot collide.
+Moveset variant simulation is opt-in. By default, generation creates one
+ranked-default assignment for the complete roster so anchors and flexible roster
+members use the PvPoke ranking-recommended movesets consistently during scoring,
+diagnostics, display, and export. When enabled, PlayPokemon generation enumerates
+each finalist's manifest-backed moveset assignments, or its single ranked-default
+fallback when the manifest is absent. Each roster member can expose at most three
+active variants, so a six-member roster has at most `3^6 = 729` assignments. A
+`RosterMovesetAssignment` fixes one variant per species before lineup scoring and
+includes the format, manifest or fallback policy identity, and a deterministic
+fingerprint. The same species therefore uses the same assigned moveset across all
+120 ordered lead, switch, and closer permutations. Assignment-dependent cache
+keys include that fingerprint so different variants or policies cannot collide.
 
 A lightweight aggregate-matrix objective prefilters assignments before full
 lineup scoring. It weights top-meta and full-meta evidence `0.7/0.3` and the best

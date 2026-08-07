@@ -326,6 +326,58 @@ describe('POST /api/generate-team', () => {
     );
   });
 
+  it('defaults moveset variant simulations to disabled when omitted', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'PlayPokemon' }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(200);
+    expect(generateTeam).toHaveBeenCalledWith(
+      expect.objectContaining({ simulateMovesetVariants: false }),
+    );
+  });
+
+  it('passes enabled moveset variant simulations to generation', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        simulateMovesetVariants: true,
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(200);
+    expect(generateTeam).toHaveBeenCalledWith(
+      expect.objectContaining({ simulateMovesetVariants: true }),
+    );
+  });
+
+  it('rejects non-boolean moveset variant simulation settings', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        simulateMovesetVariants: 'true',
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: 'simulateMovesetVariants must be a boolean',
+    });
+    expect(generateTeam).not.toHaveBeenCalled();
+  });
+
   it('returns team, fitness, lineup-aware fields, and top-level analysis without algorithm labels', async () => {
     vi.mocked(generateTeam).mockResolvedValue({
       team: ['lanturn', 'dewgong', 'annihilape'],

@@ -50,9 +50,16 @@ function resolveRecommendedLineupLabels(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mode, formatId, anchorPokemon, excludedPokemon } = body as {
+    const {
+      mode,
+      formatId,
+      simulateMovesetVariants,
+      anchorPokemon,
+      excludedPokemon,
+    } = body as {
       mode: TournamentMode;
       formatId?: string;
+      simulateMovesetVariants?: unknown;
       anchorPokemon?: string[];
       excludedPokemon?: string[];
     };
@@ -69,6 +76,16 @@ export async function POST(request: NextRequest) {
     if (!mode || (mode !== 'PlayPokemon' && mode !== 'GBL')) {
       return NextResponse.json(
         { error: 'Invalid tournament mode' },
+        { status: 400 },
+      );
+    }
+
+    if (
+      simulateMovesetVariants !== undefined &&
+      typeof simulateMovesetVariants !== 'boolean'
+    ) {
+      return NextResponse.json(
+        { error: 'simulateMovesetVariants must be a boolean' },
         { status: 400 },
       );
     }
@@ -157,6 +174,7 @@ export async function POST(request: NextRequest) {
     const result = await generateTeam({
       formatId: resolvedFormatId,
       mode,
+      simulateMovesetVariants: simulateMovesetVariants ?? false,
       anchorPokemon: anchorSpeciesIds,
       excludedPokemon: excludedSpeciesIds,
       populationSize: 150,

@@ -52,6 +52,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
     useState<string[]>(pokemonList);
   const [anchorPokemon, setAnchorPokemon] = useState<string[]>([]);
   const [excludedPokemon, setExcludedPokemon] = useState<string[]>([]);
+  const [simulateMovesetVariants, setSimulateMovesetVariants] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   const eligiblePokemonSet = useMemo(() => {
@@ -219,6 +220,7 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         body: JSON.stringify({
           formatId: currentFormatId,
           mode: currentMode,
+          simulateMovesetVariants,
           anchorPokemon: selectedAnchors,
           excludedPokemon: excludedPokemon,
         }),
@@ -272,6 +274,8 @@ export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
         onFormatChange={handleFormatChange}
         mode={currentMode}
         onModeChange={handleModeChange}
+        simulateMovesetVariants={simulateMovesetVariants}
+        onSimulateMovesetVariantsChange={setSimulateMovesetVariants}
         onAnchorsChange={handleAnchorsChange}
         onExclusionsChange={handleExclusionsChange}
         onGenerate={handleGenerate}

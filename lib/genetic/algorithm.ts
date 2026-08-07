@@ -51,7 +51,10 @@ import {
   scorePlayPokemonRoster,
 } from './fitness';
 import { rerankRosterFinalists } from './fitness/finalistReranking';
-import { enumerateRosterMovesetAssignments } from './moveset';
+import {
+  enumerateRosterMovesetAssignments,
+  resolveRankedDefaultRosterMovesetAssignment,
+} from './moveset';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
 const DEFAULT_SCORED_FINALIST_LIMIT = 10;
@@ -198,14 +201,20 @@ export async function generateTeam(
     populationSize = 150,
     generations = 75,
     formatId = DEFAULT_BATTLE_FORMAT_ID,
+    simulateMovesetVariants = false,
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
   ensureSimulationDataAvailable(formatId);
-  const fitnessContext = createLineupAwareFitnessContext(
-    formatId,
-    mode === 'PlayPokemon' ? 'ranked-default' : 'team-aware',
-  );
+  const movesetPolicy =
+    mode === 'GBL' && simulateMovesetVariants ? 'team-aware' : 'ranked-default';
+  const fitnessContext =
+    mode === 'GBL' && !simulateMovesetVariants
+      ? createLineupAwareFitnessContext(formatId, movesetPolicy, {
+          resolveMovesetAssignment: (roster) =>
+            resolveRankedDefaultRosterMovesetAssignment(roster, formatId),
+        })
+      : createLineupAwareFitnessContext(formatId, movesetPolicy);
 
   let candidateNames = getAutomaticCandidatePokemonNames(formatId);
   let availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);
@@ -451,7 +460,7 @@ export async function generateTeam(
   } else {
     const rerankingContext = createLineupAwareFitnessContext(
       formatId,
-      'team-aware',
+      simulateMovesetVariants ? 'team-aware' : 'ranked-default',
       { threatCount: 100 },
     );
     const reranking = rerankRosterFinalists(
@@ -466,7 +475,9 @@ export async function generateTeam(
           rerankingContext.scoringContext.fullMetaThreats ??
           rerankingContext.scoringContext.threats,
         getAssignments: (roster) =>
-          enumerateRosterMovesetAssignments(roster, formatId),
+          simulateMovesetVariants
+            ? enumerateRosterMovesetAssignments(roster, formatId)
+            : [resolveRankedDefaultRosterMovesetAssignment(roster, formatId)],
         getMatchupRating: (speciesId, opponentSpeciesId, variantId) =>
           getMatchupResult(speciesId, opponentSpeciesId, formatId, variantId),
         scoreAssignment: (finalist, assignment) =>

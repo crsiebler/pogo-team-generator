@@ -46,6 +46,10 @@ import {
   scorePlayPokemonRoster,
 } from './fitness';
 import { rerankRosterFinalists } from './fitness/finalistReranking';
+import {
+  enumerateRosterMovesetAssignments,
+  resolveRankedDefaultRosterMovesetAssignment,
+} from './moveset';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
 vi.mock('@lib/data/rankings', () => ({
@@ -104,6 +108,11 @@ vi.mock('./fitness', () => ({
 
 vi.mock('./fitness/finalistReranking', () => ({
   rerankRosterFinalists: vi.fn(),
+}));
+
+vi.mock('./moveset', () => ({
+  enumerateRosterMovesetAssignments: vi.fn(),
+  resolveRankedDefaultRosterMovesetAssignment: vi.fn(),
 }));
 
 vi.mock('./operators', () => ({
@@ -256,6 +265,12 @@ describe('generateTeam format-aware candidate selection', () => {
         },
       };
     });
+    vi.mocked(enumerateRosterMovesetAssignments).mockImplementation(
+      (roster) => [createTestAssignment(roster)],
+    );
+    vi.mocked(resolveRankedDefaultRosterMovesetAssignment).mockImplementation(
+      (roster) => createTestAssignment(roster),
+    );
     vi.mocked(buildGblLineupRecommendation).mockReturnValue({
       lineup: { lead: 'mewtwo', switch: 'dragonite', closer: 'mew' },
       score: 0.88,
@@ -362,6 +377,7 @@ describe('generateTeam format-aware candidate selection', () => {
     await generateTeam({
       mode: 'GBL',
       formatId: 'battle-frontier-tsuki-cup',
+      simulateMovesetVariants: true,
       populationSize: 1,
       generations: 0,
     });
@@ -918,6 +934,35 @@ describe('generateTeam format-aware candidate selection', () => {
     ]);
   });
 
+  it('uses ranked-default scoring and assignment resolution for GBL by default', async () => {
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      new Set<string>(['Mew']),
+    );
+    vi.mocked(getRankedPokemonForFormat).mockReturnValue([
+      createPokemon('mew', 'Mew'),
+    ]);
+
+    await generateTeam({
+      mode: 'GBL',
+      formatId: 'great-league',
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(createLineupAwareFitnessContext).toHaveBeenCalledWith(
+      'great-league',
+      'ranked-default',
+      { resolveMovesetAssignment: expect.any(Function) },
+    );
+    const dependencies = vi.mocked(createLineupAwareFitnessContext).mock
+      .calls[0]?.[2];
+    dependencies?.resolveMovesetAssignment?.(['mew', 'mewtwo', 'dragonite']);
+    expect(resolveRankedDefaultRosterMovesetAssignment).toHaveBeenCalledWith(
+      ['mew', 'mewtwo', 'dragonite'],
+      'great-league',
+    );
+  });
+
   it('builds bounded full diagnostics for the final PlayPokemon roster only', async () => {
     vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
@@ -969,7 +1014,7 @@ describe('generateTeam format-aware candidate selection', () => {
     );
     expect(createLineupAwareFitnessContext).toHaveBeenCalledWith(
       'battle-frontier-tsuki-cup',
-      'team-aware',
+      'ranked-default',
       { threatCount: 100 },
     );
     expect(scorePlayPokemonRoster).toHaveBeenCalledWith(
@@ -1143,6 +1188,7 @@ describe('generateTeam format-aware candidate selection', () => {
     const result = await generateTeam({
       mode: 'PlayPokemon',
       formatId: 'great-league',
+      simulateMovesetVariants: true,
       populationSize: 2,
       generations: 0,
     });
@@ -1161,6 +1207,36 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(result.team).toEqual([...lowerDefault].sort());
     expect(result.movesetAssignment).toBe(selectedAssignment);
     expect(result.fitness).toBe(result.scoreBreakdown?.score);
+  });
+
+  it('supplies one ranked-default assignment including anchors by default', async () => {
+    const roster = ['a', 'b', 'c', 'd', 'e', 'f'];
+    configurePlayPokemonPool(roster);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam(roster, 0.9),
+    ]);
+    vi.mocked(getBestChromosome).mockImplementation(
+      (population) => population[0],
+    );
+
+    await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'great-league',
+      anchorPokemon: ['a'],
+      populationSize: 1,
+      generations: 0,
+    });
+
+    const rerankingDependencies = vi.mocked(rerankRosterFinalists).mock
+      .calls[0]?.[1];
+    const assignments = rerankingDependencies?.getAssignments(roster);
+
+    expect(assignments).toEqual([createTestAssignment(roster)]);
+    expect(resolveRankedDefaultRosterMovesetAssignment).toHaveBeenCalledWith(
+      roster,
+      'great-league',
+    );
+    expect(enumerateRosterMovesetAssignments).not.toHaveBeenCalled();
   });
 
   it('preserves explicit anchor order while canonicalizing flexible finalists', async () => {

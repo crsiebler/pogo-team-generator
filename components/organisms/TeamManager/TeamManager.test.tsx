@@ -13,8 +13,10 @@ const showToastMock = vi.fn();
 interface MockTeamConfigPanelProps {
   selectedFormatId: BattleFormatId;
   mode: string;
+  simulateMovesetVariants: boolean;
   onFormatChange: (formatId: BattleFormatId) => void;
   onModeChange: (mode: 'PlayPokemon' | 'GBL') => void;
+  onSimulateMovesetVariantsChange: (enabled: boolean) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onGenerate: () => void;
   errorMessage?: string | null;
@@ -68,8 +70,10 @@ vi.mock('@/components/organisms', () => ({
     const {
       selectedFormatId,
       mode,
+      simulateMovesetVariants,
       onFormatChange,
       onModeChange,
+      onSimulateMovesetVariantsChange,
       onAnchorsChange,
       onGenerate,
       errorMessage,
@@ -79,11 +83,18 @@ vi.mock('@/components/organisms', () => ({
       <div>
         <div>Selected Format: {selectedFormatId}</div>
         <div>Selected Mode: {mode}</div>
+        <div>Simulate Moveset Variants: {String(simulateMovesetVariants)}</div>
         <button type="button" onClick={() => onFormatChange('ultra-league')}>
           Set Ultra League
         </button>
         <button type="button" onClick={() => onModeChange('GBL')}>
           Set GBL Mode
+        </button>
+        <button
+          type="button"
+          onClick={() => onSimulateMovesetVariantsChange(true)}
+        >
+          Enable Moveset Variants
         </button>
         <button
           type="button"
@@ -347,6 +358,38 @@ describe('TeamManager', () => {
     };
 
     expect(payload.formatId).toBe('ultra-league');
+  });
+
+  it('keeps moveset variants opt-in and sends the selected policy', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Simulate Moveset Variants: false'),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Enable Moveset Variants'));
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/generate-team',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    const postCall = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/generate-team',
+    );
+    const [, options] = postCall as [string, RequestInit & { body: string }];
+    const payload = JSON.parse(options.body) as {
+      simulateMovesetVariants: boolean;
+    };
+
+    expect(payload.simulateMovesetVariants).toBe(true);
   });
 
   it('does not pass algorithm selection props to TeamConfigPanel or generate-team', async () => {

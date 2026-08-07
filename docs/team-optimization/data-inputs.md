@@ -316,9 +316,10 @@ equivalent Vercel Large Functions setting. Optimizer matchup lookups must remain
 synchronous after one format preparation and must not issue per-matchup network,
 database, KV, or object-storage requests.
 
-At an assignment-only boundary where a manifest is intentionally absent,
-resolution may return one `ranked-default-fallback` assignment. That fallback
-does not scan variant files or activate alternates. Snapshot-backed scoring still
+When moveset variant simulation is disabled, or at an assignment-only boundary
+where a manifest is intentionally absent, resolution returns one
+`ranked-default-fallback` assignment for the complete roster. That fallback does
+not scan variant files or activate alternates. Snapshot-backed scoring still
 fails closed when its snapshot is missing or incompatible and never falls back
 to manifests or CSVs. Malformed, incompatible, incomplete, or explicitly
 unavailable manifest data remains an actionable typed error in sync and tooling.

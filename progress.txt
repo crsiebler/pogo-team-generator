@@ -1767,3 +1767,19 @@
 - Next iteration start:
   - All PRD stories are complete after US-033 passes review and metadata consistency checks.
 ---
+
+## 2026-08-07 11:57:30 MST - Opt-in moveset variant simulations
+- Added an off-by-default team configuration toggle for simulation-backed moveset variants under a divided Moveset Options section after Pokemon exclusions; disabled generation uses one PvPoke ranked-default assignment for the complete roster in both GBL and PlayPokemon, while enabled generation preserves team-aware selection and bounded finalist reranking.
+- Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+- Checks:
+  - `npx vitest run components/organisms/TeamManager/TeamManager.test.tsx components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx app/api/generate-team/route.test.ts lib/genetic/moveset.test.ts` (fail as expected before implementation: UI state/control, API validation/default, and ranked-default resolver missing)
+  - `npx vitest run lib/genetic/algorithm.test.ts` (fail as expected before implementation: default GBL and PlayPokemon assignment policies remained variant-aware)
+  - `npx vitest run components/organisms/TeamManager/TeamManager.test.tsx components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx app/api/generate-team/route.test.ts lib/genetic/moveset.test.ts lib/genetic/algorithm.test.ts` (pass, 83 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 852 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npx prettier --check` for all changed supported source and documentation files (pass)
+  - `git diff --check` (pass)
+  - Chrome desktop and 390x844 mobile accessibility snapshots (pass; switch starts unchecked, toggles checked, and has the accessible name `Simulate moveset variants`; existing missing `favicon.ico` remains the only console error)
+---
