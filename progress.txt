@@ -37,6 +37,7 @@
 - Memoize production lineup-context ranking, aggregate matchup, shield-scenario, and matchup-quality reads by every result-affecting input, including variant identity; keep these caches per run while retaining the complete assignment fingerprint in assignment-aware lineup cache keys.
 - Validate checked-in generated variant data through the battle-format catalog: parse every manifest, check every active scenario CSV and default opponent parity, enforce move availability, and cover representative variants plus forbidden synthesized forms.
 - Publish `data/simulations/runtime-asset-index.json` from reparsed manifests for every catalog format, including each manifest and only active candidate scenario paths; install it after manifests in the rollback-capable batch while retaining inactive CSVs as sync evidence.
+- Compact runtime snapshots use canonical dictionaries plus little-endian `uint16` Base64 ratings in variant/opponent/scenario order, reserve `0xffff` for missing rows, overlay deferred CSV bytes before reused files, and retain every validated active CSV row because manifest `evaluationCounts` describe bounded selection pools rather than full matrix sizes.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1603,4 +1604,44 @@
   - US-030 will compile active matchup data into compact per-format runtime snapshots; US-032 owns the final 100 MiB function and 50 MiB snapshot targets.
 - Next iteration start:
   - US-030 - Generate compact per-format runtime simulation snapshots
+---
+
+## 2026-08-07 06:50:44 MST - US-030
+- Implemented a versioned per-format compact simulation snapshot with canonical species, opponent, move, and variant dictionaries; active default mappings; manifest and source digest identity; deterministic little-endian `uint16` Base64 Battle Ratings; explicit `0xffff` missing values; active-only manifest storage reads; prepared-CSV overlays; full source-row parity; and rollback-capable publication after manifests. Generated all eight checked-in snapshots from the authoritative active CSV set.
+- Files changed: `lib/AGENTS.md`, `lib/data/runtimeSimulationSnapshot.ts`, `lib/data/runtimeSimulationSnapshot.test.ts`, `lib/sync/runtimeSimulationSnapshots.ts`, `lib/sync/runtimeSimulationSnapshots.test.ts`, `lib/sync/index.ts`, `lib/sync/index.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `docs/team-optimization/data-inputs.md`, `data/simulations/cp{cp}/{cup}/runtime-snapshot.json` for all eight supported formats, `prd.json`, `progress.txt`
+- Commit message: `feat: US-030 - Generate compact per-format runtime simulation snapshots`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/runtimeSimulationSnapshot.test.ts lib/sync/runtimeSimulationSnapshots.test.ts` (fail as expected before implementation: snapshot contract and generator modules were absent)
+  - `npx vitest run lib/sync/runtimeSimulationSnapshots.test.ts -t "keeps every checked-in format snapshot"` (fail as expected before generated publication: all active CSVs prepared successfully and snapshot files were absent)
+  - `bun -e "...prepareRuntimeSimulationSnapshots...publishSimulationGeneration..."` (pass; atomically generated 8 snapshots totaling 9,588,374 bytes)
+  - focused snapshot, orchestration, publication, and PvPoke boundary suite (pass, 36 tests before final edge-case additions)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (initial fail: import order and one unused type; pass after fixes)
+  - `npm test` (pass, 831 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - targeted `npx prettier --check ... && git diff --check` (pass)
+  - final `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, and format/diff checks after review fixes (pass, 834 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `data-engineer`, `performance-engineer`
+  - Used: `data-engineer`, `performance-engineer`; both fit the standard-mode complex-story budget and provided complementary schema, source-authority, fixed-width encoding, sentinel, digest, publication, size, and parity guidance
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` and `security-engineer` re-review. `documentation-engineer` skipped because the standard-mode high-risk budget allows one domain specialist and security review is more material for strict parsing and rollback behavior
+  - Findings: initial code review found none; fixed four deduplicated medium findings by binding `activeRatingsDigest` to canonical dictionaries/variants/rating bytes, bounding JSON/dictionaries/variants/decoded Base64 before allocation, requiring one manifest-matched snapshot with exact policy/source/active moveset/default identity during publication, and adding generated missing-sentinel plus mixed prepared/resume overlay coverage; targeted QA and security re-review found none. One low malformed-input coverage cluster is deferred because the validator already covers each structural layer and the full catalog parity test validates every checked-in payload
+- Decisions (why):
+  - Used minified JSON with padded Base64 `uint16` ratings because it preserves exact integer Battle Ratings while reducing the current active CSV payload to about 9.1 MiB and remains simple to validate and hydrate synchronously in US-031.
+  - Chose variant/opponent/scenario layout so one variant-opponent lookup stores `0-0`, `1-1`, and `2-2` contiguously; reserved `0xffff` for missing rows and rejected `1001..65534` so missing alternates can never silently become default results.
+  - Kept the existing runtime asset index unchanged because runtime still consumes active CSVs in US-030; US-031 owns snapshot-backed loading and US-032 owns removing CSVs from function traces.
+  - Derived opponent aliases from the current sync Pokemon snapshot instead of module-cached checked-in data so a same-process gamemaster refresh cannot generate stale identities.
+  - Treated manifest `evaluationCounts` as minimum selection-completeness evidence rather than exact CSV lengths after checked-in data showed 100-count selection pools alongside 1,139-row full matrices; snapshots retain every validated active source row.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Snapshot preparation must overlay deferred CSV bytes before filesystem reads so new data wins over stale reused files during resume publication.
+  - Candidate order in valid manifest JSON is not an authority boundary; locate the active default explicitly before checking alternate opponent parity.
+  - Current snapshots total 9,588,374 bytes across eight formats and preserve every active CSV Battle Rating through a catalog-wide byte-synchronization regression.
+- Known issues / follow-ups:
+  - US-031 must prepare and validate snapshots before scoring, preserve synchronous lookup APIs, and fail closed without CSV fallback.
+  - US-032 must switch tracing to snapshots, remove simulation CSVs from runtime function traces, and enforce the final size/performance/memory budgets.
+- Next iteration start:
+  - US-031 - Load matchups from compact runtime snapshots
 ---

@@ -27,6 +27,11 @@ import {
   RUNTIME_SIMULATION_ASSET_INDEX_PATH,
   parseRuntimeSimulationAssetIndexJson,
 } from '@/lib/data/runtimeSimulationAssetIndex';
+import {
+  getRuntimeSimulationSnapshotPath,
+  parseRuntimeSimulationSnapshotJson,
+  type RuntimeSimulationSnapshot,
+} from '@/lib/data/runtimeSimulationSnapshot';
 import { scoreMatchupRating } from '@/lib/genetic/fitness/matchupScoring';
 import {
   MAX_EXPANSION_CHARGED_MOVES,
@@ -35,6 +40,7 @@ import {
 } from '@/lib/sync/movesetCandidates';
 import { RANKING_CATEGORY_WEIGHTS } from '@/lib/sync/rankings';
 import type { PreparedRuntimeSimulationAssetIndex } from '@/lib/sync/runtimeSimulationAssetIndex';
+import type { PreparedRuntimeSimulationSnapshot } from '@/lib/sync/runtimeSimulationSnapshots';
 import type { PreparedSimulationCsv } from '@/lib/sync/simulations';
 import type { MovesetVariantId, ShieldScenarioKey } from '@/lib/types';
 
@@ -848,14 +854,143 @@ function validatePreparedRuntimeAssetIndexTarget(
   parseRuntimeSimulationAssetIndexJson(index.contents);
 }
 
+function validatePreparedRuntimeSnapshotTarget(
+  snapshot: PreparedRuntimeSimulationSnapshot,
+): RuntimeSimulationSnapshot {
+  const format = getBattleFormatById(snapshot.formatId);
+  const expectedTargetPath = format
+    ? getRuntimeSimulationSnapshotPath(format)
+    : null;
+  if (!expectedTargetPath || snapshot.targetPath !== expectedTargetPath) {
+    throw new Error(
+      `[sync-manifest] Runtime snapshot target must match ${snapshot.formatId}: ${expectedTargetPath ?? 'unsupported format'}`,
+    );
+  }
+  const parsed = parseRuntimeSimulationSnapshotJson(snapshot.contents);
+  if (parsed.format.id !== snapshot.formatId) {
+    throw new Error(
+      `[sync-manifest] Runtime snapshot contents must match ${snapshot.formatId}`,
+    );
+  }
+  return parsed;
+}
+
+function validateRuntimeSnapshotManifestBindings(
+  manifests: readonly PreparedMovesetVariantManifest[],
+  snapshots: readonly PreparedRuntimeSimulationSnapshot[],
+): void {
+  if (manifests.length !== snapshots.length) {
+    throw new Error(
+      '[sync-manifest] Every prepared manifest must have exactly one runtime snapshot',
+    );
+  }
+  const snapshotsByFormatId = new Map<
+    BattleFormatId,
+    PreparedRuntimeSimulationSnapshot
+  >();
+  for (const snapshot of snapshots) {
+    if (snapshotsByFormatId.has(snapshot.formatId)) {
+      throw new Error(
+        `[sync-manifest] Duplicate runtime snapshot for ${snapshot.formatId}`,
+      );
+    }
+    snapshotsByFormatId.set(snapshot.formatId, snapshot);
+  }
+  for (const preparedManifest of manifests) {
+    validatePreparedManifestTarget(preparedManifest);
+    const snapshotFile = snapshotsByFormatId.get(preparedManifest.formatId);
+    if (!snapshotFile) {
+      throw new Error(
+        `[sync-manifest] Missing runtime snapshot for ${preparedManifest.formatId}`,
+      );
+    }
+    const manifest = parseMovesetVariantManifestJson(preparedManifest.contents);
+    const snapshot = validatePreparedRuntimeSnapshotTarget(snapshotFile);
+    const manifestDigest = createHash('sha256')
+      .update(serializeMovesetVariantManifest(manifest))
+      .digest('hex');
+    if (
+      snapshot.manifest.schemaVersion !== manifest.metadata.schemaVersion ||
+      snapshot.manifest.policyVersion !== manifest.metadata.policyVersion ||
+      snapshot.manifest.digest !== manifestDigest ||
+      JSON.stringify(snapshot.manifest.sourceDigests) !==
+        JSON.stringify(manifest.metadata.sourceDigests)
+    ) {
+      throw new Error(
+        `[sync-manifest] Runtime snapshot manifest identity does not match ${preparedManifest.formatId}`,
+      );
+    }
+    const expectedVariants = manifest.species
+      .flatMap((species) =>
+        species.candidates
+          .filter(({ active }) => active)
+          .map((candidate) => ({
+            speciesId: species.speciesId,
+            variantId: candidate.id,
+            fastMove: candidate.fastMove,
+            chargedMove1: candidate.chargedMove1,
+            chargedMove2: candidate.chargedMove2,
+          })),
+      )
+      .sort(
+        (left, right) =>
+          compareAscii(left.speciesId, right.speciesId) ||
+          compareAscii(left.variantId, right.variantId),
+      );
+    const actualVariants = snapshot.variants.map(
+      ([
+        speciesIndex,
+        variantIdIndex,
+        fastMoveIndex,
+        charged1Index,
+        charged2Index,
+      ]) => ({
+        speciesId: snapshot.dictionaries.species[speciesIndex],
+        variantId: snapshot.dictionaries.variantIds[variantIdIndex],
+        fastMove: snapshot.dictionaries.moves[fastMoveIndex],
+        chargedMove1: snapshot.dictionaries.moves[charged1Index],
+        chargedMove2: snapshot.dictionaries.moves[charged2Index],
+      }),
+    );
+    const expectedDefaults = [...manifest.species]
+      .sort((left, right) => compareAscii(left.speciesId, right.speciesId))
+      .map(({ speciesId, defaultVariantId }) => ({
+        speciesId,
+        variantId: defaultVariantId,
+      }));
+    const actualDefaults = snapshot.defaultVariantBySpecies.map(
+      (variantIndex, speciesIndex) => ({
+        speciesId: snapshot.dictionaries.species[speciesIndex],
+        variantId:
+          snapshot.dictionaries.variantIds[snapshot.variants[variantIndex]![1]],
+      }),
+    );
+    if (
+      JSON.stringify(actualVariants) !== JSON.stringify(expectedVariants) ||
+      JSON.stringify(actualDefaults) !== JSON.stringify(expectedDefaults)
+    ) {
+      throw new Error(
+        `[sync-manifest] Runtime snapshot active movesets do not match ${preparedManifest.formatId}`,
+      );
+    }
+    snapshotsByFormatId.delete(preparedManifest.formatId);
+  }
+  if (snapshotsByFormatId.size > 0) {
+    throw new Error(
+      `[sync-manifest] Runtime snapshot has no prepared manifest: ${snapshotsByFormatId.keys().next().value}`,
+    );
+  }
+}
+
 /**
- * Publish validated simulation CSVs, authoritative manifests, and the runtime
- * asset index as one recoverable batch. The index is replaced last and every
- * prior target is restored when any replacement fails.
+ * Publish simulation CSVs, authoritative manifests, compact snapshots, and the
+ * runtime asset index as one recoverable batch. The index is replaced last and
+ * every prior target is restored when any replacement fails.
  */
 export async function publishSimulationGeneration(
   csvFiles: readonly PreparedSimulationCsv[],
   manifests: readonly PreparedMovesetVariantManifest[],
+  runtimeSnapshots: readonly PreparedRuntimeSimulationSnapshot[],
   runtimeAssetIndex: PreparedRuntimeSimulationAssetIndex,
   dependencies: Partial<SimulationGenerationPublicationDependencies> = {},
 ): Promise<void> {
@@ -863,9 +998,14 @@ export async function publishSimulationGeneration(
     ...defaultSimulationGenerationPublicationDependencies,
     ...dependencies,
   };
+  validateRuntimeSnapshotManifestBindings(manifests, runtimeSnapshots);
   const targets = [
     ...csvFiles.map((file) => ({ ...file, kind: 'simulation' as const })),
     ...manifests.map((file) => ({ ...file, kind: 'manifest' as const })),
+    ...runtimeSnapshots.map((file) => ({
+      ...file,
+      kind: 'runtime-snapshot' as const,
+    })),
     { ...runtimeAssetIndex, kind: 'runtime-asset-index' as const },
   ];
   const targetPaths = new Set<string>();
@@ -884,6 +1024,8 @@ export async function publishSimulationGeneration(
         validatePreparedSimulationCsvTarget(target);
       } else if (target.kind === 'manifest') {
         validatePreparedManifestTarget(target);
+      } else if (target.kind === 'runtime-snapshot') {
+        validatePreparedRuntimeSnapshotTarget(target);
       } else {
         validatePreparedRuntimeAssetIndexTarget(target);
       }

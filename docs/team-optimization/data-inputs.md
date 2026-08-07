@@ -251,6 +251,28 @@ Top-meta improvement receives `0.7` weight and full-meta improvement receives
 positive marginal coverage beyond the default and primary. Ties, incomplete
 evidence, or insufficient improvement preserve the default.
 
+Each supported format also has an active-only compact snapshot at:
+
+```text
+data/simulations/cp{cp}/{cup}/runtime-snapshot.json
+```
+
+The versioned snapshot retains the manifest policy, canonical manifest digest,
+source digests, active-rating digest, canonical species/opponent/move/variant
+dictionaries, active default mapping, and only manifest-declared active
+matchups. Battle Ratings are unsigned 16-bit little-endian integers encoded as
+padded Base64. Valid ratings are `0..1000`; `65535` (`0xffff`) is the explicit
+missing-row sentinel, and values `1001..65534` are reserved. Values use
+variant/opponent/scenario order, where scenario order is `0-0`, `1-1`, `2-2`:
+
+```text
+byte_offset = ((variant_index * opponent_count + opponent_index) * 3 + scenario_index) * 2
+```
+
+A missing alternate value remains missing and must never substitute the default
+variant's value. Source CSVs and full manifests remain sync and validation
+evidence; compact snapshots contain only runtime-consumed active Battle Ratings.
+
 If a manifest is entirely absent, assignment resolution may return one
 `ranked-default-fallback` assignment. That fallback does not scan variant files
 or activate alternates. Malformed, incompatible, incomplete, or explicitly
@@ -259,15 +281,15 @@ unavailable manifest data remains an actionable typed error.
 ## Atomic Publication And Stale Cleanup
 
 The simulation and manifest phase completes cross-validation, simulation
-generation, active selection, and in-memory validation for every supported
-format before publishing those outputs. It stages simulation CSVs and manifests
-in exclusive same-directory temporary files, moves existing targets to backup
-paths, installs CSVs first, and replaces manifests last so a manifest cannot
-advertise unpublished files. If this batch replacement fails, its prior
-simulation and manifest targets are restored and staged files are removed. This
-is a rollback-capable batch of atomic file replacements, not one filesystem-wide
-or full-sync transaction. Earlier gamemaster and ranking writes are outside this
-rollback boundary.
+generation, active selection, snapshot generation, and in-memory validation for
+every supported format before publishing those outputs. It stages simulation
+CSVs, manifests, compact snapshots, and the runtime asset index in exclusive
+same-directory temporary files, moves existing targets to backup paths, then
+installs CSVs, manifests, snapshots, and the index in that order. If this batch
+replacement fails, its prior targets are restored and staged files are removed.
+This is a rollback-capable batch of atomic file replacements, not one
+filesystem-wide or full-sync transaction. Earlier gamemaster and ranking writes
+are outside this rollback boundary.
 
 Stale cleanup runs only after successful publication and is not part of the
 rollback transaction. It considers only regular files accepted by the strict

@@ -8,6 +8,11 @@ import {
 } from './movesetVariantManifest';
 import { scrapeRankings, type RankingSyncResult } from './rankings';
 import { prepareRuntimeSimulationAssetIndex } from './runtimeSimulationAssetIndex';
+import {
+  createRuntimeSimulationSnapshotOpponentResolver,
+  prepareRuntimeSimulationSnapshots,
+  readRuntimeSimulationSnapshotSource,
+} from './runtimeSimulationSnapshots';
 import { deleteStaleVariantSimulationFiles } from './simulationCleanup';
 import { generateSimulations, type SimulationSyncResult } from './simulations';
 import { resolvePvpokeSourcePath, validatePhase1SourceFiles } from './source';
@@ -43,6 +48,7 @@ interface CompleteSimulationManifestSyncDependencies {
   readonly crossValidate: typeof crossValidateRankingsVsPokemon;
   readonly generate: typeof generateSimulations;
   readonly prepare: typeof prepareMovesetVariantManifests;
+  readonly prepareRuntimeSnapshots: typeof prepareRuntimeSimulationSnapshots;
   readonly prepareRuntimeAssetIndex: typeof prepareRuntimeSimulationAssetIndex;
   readonly publish: typeof publishSimulationGeneration;
   readonly cleanup: typeof deleteStaleVariantSimulationFiles;
@@ -54,6 +60,7 @@ const defaultCompleteSimulationManifestSyncDependencies: CompleteSimulationManif
     crossValidate: crossValidateRankingsVsPokemon,
     generate: generateSimulations,
     prepare: prepareMovesetVariantManifests,
+    prepareRuntimeSnapshots: prepareRuntimeSimulationSnapshots,
     prepareRuntimeAssetIndex: prepareRuntimeSimulationAssetIndex,
     publish: publishSimulationGeneration,
     cleanup: deleteStaleVariantSimulationFiles,
@@ -62,7 +69,8 @@ const defaultCompleteSimulationManifestSyncDependencies: CompleteSimulationManif
 
 /**
  * Validate synchronized inputs, complete every simulation, then publish CSVs,
- * manifests, and the runtime asset index as one recoverable authority switch.
+ * manifests, compact snapshots, and the runtime asset index as one recoverable
+ * authority switch.
  */
 export async function completeSimulationManifestSync(
   input: CompleteSimulationManifestSyncInput,
@@ -104,11 +112,22 @@ export async function completeSimulationManifestSync(
     variantSelections: simulationResult.variantSelections,
     getMoveAvailability: createMoveAvailabilityResolver(input.pokemonData),
   });
+  const preparedRuntimeSnapshots = resolvedDependencies.prepareRuntimeSnapshots(
+    preparedManifests,
+    simulationResult.preparedCsvFiles,
+    {
+      readText: readRuntimeSimulationSnapshotSource,
+      resolveOpponentSpeciesId: createRuntimeSimulationSnapshotOpponentResolver(
+        input.pokemonData,
+      ),
+    },
+  );
   const preparedRuntimeAssetIndex =
     resolvedDependencies.prepareRuntimeAssetIndex(preparedManifests);
   await resolvedDependencies.publish(
     simulationResult.preparedCsvFiles,
     preparedManifests,
+    preparedRuntimeSnapshots,
     preparedRuntimeAssetIndex,
   );
   await resolvedDependencies.cleanup(preparedManifests, {

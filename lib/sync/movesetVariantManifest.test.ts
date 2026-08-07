@@ -10,13 +10,22 @@ import {
   serializeBuiltMovesetVariantManifest,
   type MovesetVariantSimulationEvidence,
 } from './movesetVariantManifest';
-import { getBattleFormats } from '@/lib/data/battleFormats';
+import {
+  getBattleFormatById,
+  getBattleFormats,
+  type BattleFormatId,
+} from '@/lib/data/battleFormats';
 import {
   MAX_ACTIVE_MOVESET_VARIANTS,
   MAX_MOVESET_CANDIDATES,
   parseMovesetVariantManifestJson,
   type MovesetVariantManifestSpecies,
 } from '@/lib/data/movesetVariantManifest';
+import {
+  RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
+  createRuntimeSimulationSnapshotActiveRatingsDigest,
+  serializeRuntimeSimulationSnapshot,
+} from '@/lib/data/runtimeSimulationSnapshot';
 import type { ShieldScenarioKey } from '@/lib/types';
 
 function createSpecies(
@@ -556,6 +565,87 @@ describe('moveset variant manifest construction', () => {
 
 describe('moveset variant manifest publication', () => {
   const runtimeAssetIndexContents = '{"schemaVersion":1,"assets":[]}\n';
+
+  function createPublicationBundle(formatId: BattleFormatId): {
+    readonly manifest: {
+      readonly formatId: BattleFormatId;
+      readonly targetPath: string;
+      readonly contents: string;
+    };
+    readonly snapshot: {
+      readonly formatId: BattleFormatId;
+      readonly targetPath: string;
+      readonly contents: string;
+    };
+  } {
+    const format = getBattleFormatById(formatId)!;
+    const manifestValue = buildMovesetVariantManifest({
+      format,
+      policyVersion: 'ranking-evidence-v1',
+      sourceDigests: [
+        createMovesetVariantSourceDigest('fixture', 'fixture bytes'),
+      ],
+      derivationSettings,
+      species: [createSpecies('bulbasaur', 'VINE_WHIP')],
+    });
+    const manifestContents =
+      serializeBuiltMovesetVariantManifest(manifestValue);
+    const dictionaries = {
+      species: ['bulbasaur'],
+      opponents: ['ivysaur'],
+      moves: ['AQUA_JET', 'VINE_WHIP', 'X_SCISSOR'],
+      variantIds: ['vine_whip--x_scissor--aqua_jet'] as const,
+    };
+    const variants = [[0, 0, 1, 2, 0]] as const;
+    const ratings = Buffer.from(
+      new Uint16Array([400, 500, 600]).buffer,
+    ).toString('base64');
+    return {
+      manifest: {
+        formatId,
+        targetPath: `data/simulations/cp${format.cp}/${format.cup}/moveset-variants.json`,
+        contents: manifestContents,
+      },
+      snapshot: {
+        formatId,
+        targetPath: `data/simulations/cp${format.cp}/${format.cup}/runtime-snapshot.json`,
+        contents: serializeRuntimeSimulationSnapshot({
+          schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
+          format: { id: format.id, cup: format.cup, cp: format.cp },
+          manifest: {
+            schemaVersion: manifestValue.metadata.schemaVersion,
+            policyVersion: manifestValue.metadata.policyVersion,
+            digest: createMovesetVariantSourceDigest(
+              'manifest',
+              manifestContents,
+            ).digest,
+            sourceDigests: manifestValue.metadata.sourceDigests,
+          },
+          activeRatingsDigest:
+            createRuntimeSimulationSnapshotActiveRatingsDigest({
+              dictionaries,
+              variants,
+              ratings,
+            }),
+          encoding: {
+            kind: 'uint16-le-base64',
+            widthBytes: 2,
+            byteOrder: 'little-endian',
+            minimum: 0,
+            maximum: 1000,
+            missing: 65535,
+            scenarios: ['0-0', '1-1', '2-2'],
+            layout: 'variant-opponent-scenario',
+          },
+          dictionaries,
+          variants,
+          defaultVariantBySpecies: [0],
+          shape: [1, 1, 3],
+          ratings,
+        }),
+      },
+    };
+  }
   const defaultId = 'vine_whip--sludge_bomb--power_whip' as const;
   const alternateId = 'tackle--sludge_bomb--power_whip' as const;
   const candidateSet = {
@@ -789,7 +879,8 @@ describe('moveset variant manifest publication', () => {
 
   it('restores prior CSVs and manifests after a late publication failure', async () => {
     const csvPath = 'data/simulations/cp1500/all/bulbasaur_1-1.csv';
-    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const bundle = createPublicationBundle('great-league');
+    const manifestPath = bundle.manifest.targetPath;
     const files = new Map<string, string>([
       [csvPath, 'prior simulation bytes'],
       [manifestPath, 'prior manifest bytes'],
@@ -824,13 +915,8 @@ describe('moveset variant manifest publication', () => {
             contents: 'new simulation bytes',
           },
         ],
-        [
-          {
-            formatId: 'great-league',
-            targetPath: manifestPath,
-            contents: 'new manifest bytes',
-          },
-        ],
+        [bundle.manifest],
+        [bundle.snapshot],
         {
           targetPath: 'data/simulations/runtime-asset-index.json',
           contents: runtimeAssetIndexContents,
@@ -881,6 +967,7 @@ describe('moveset variant manifest publication', () => {
           },
         ],
         [],
+        [],
         {
           targetPath: 'data/simulations/runtime-asset-index.json',
           contents: runtimeAssetIndexContents,
@@ -909,9 +996,10 @@ describe('moveset variant manifest publication', () => {
 
   it('installs the runtime asset index after every manifest', async () => {
     const csvPath = 'data/simulations/cp1500/all/bulbasaur_0-0.csv';
-    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
-    const secondManifestPath =
-      'data/simulations/cp2500/all/moveset-variants.json';
+    const firstBundle = createPublicationBundle('great-league');
+    const secondBundle = createPublicationBundle('ultra-league');
+    const manifestPath = firstBundle.manifest.targetPath;
+    const secondManifestPath = secondBundle.manifest.targetPath;
     const indexPath = 'data/simulations/runtime-asset-index.json';
     const rename = vi.fn().mockResolvedValue(undefined);
 
@@ -923,18 +1011,8 @@ describe('moveset variant manifest publication', () => {
           contents: 'simulation bytes',
         },
       ],
-      [
-        {
-          formatId: 'great-league',
-          targetPath: manifestPath,
-          contents: 'manifest bytes',
-        },
-        {
-          formatId: 'ultra-league',
-          targetPath: secondManifestPath,
-          contents: 'second manifest bytes',
-        },
-      ],
+      [firstBundle.manifest, secondBundle.manifest],
+      [firstBundle.snapshot, secondBundle.snapshot],
       { targetPath: indexPath, contents: runtimeAssetIndexContents },
       {
         mkdir: vi.fn().mockResolvedValue(undefined),
@@ -954,20 +1032,33 @@ describe('moveset variant manifest publication', () => {
       [`${csvPath}.tmp-test`, csvPath],
       [`${manifestPath}.tmp-test`, manifestPath],
       [`${secondManifestPath}.tmp-test`, secondManifestPath],
+      [
+        'data/simulations/cp1500/all/runtime-snapshot.json.tmp-test',
+        'data/simulations/cp1500/all/runtime-snapshot.json',
+      ],
+      [
+        'data/simulations/cp2500/all/runtime-snapshot.json.tmp-test',
+        'data/simulations/cp2500/all/runtime-snapshot.json',
+      ],
       [`${indexPath}.tmp-test`, indexPath],
     ]);
   });
 
   it('restores prior manifests and index when index installation fails', async () => {
     const csvPath = 'data/simulations/cp1500/all/bulbasaur_0-0.csv';
-    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
-    const secondManifestPath =
-      'data/simulations/cp2500/all/moveset-variants.json';
+    const firstBundle = createPublicationBundle('great-league');
+    const secondBundle = createPublicationBundle('ultra-league');
+    const manifestPath = firstBundle.manifest.targetPath;
+    const secondManifestPath = secondBundle.manifest.targetPath;
     const indexPath = 'data/simulations/runtime-asset-index.json';
+    const snapshotPath = firstBundle.snapshot.targetPath;
+    const secondSnapshotPath = secondBundle.snapshot.targetPath;
     const files = new Map<string, string>([
       [csvPath, 'prior simulation bytes'],
       [manifestPath, 'prior manifest bytes'],
       [secondManifestPath, 'prior second manifest bytes'],
+      [snapshotPath, 'prior snapshot bytes'],
+      [secondSnapshotPath, 'prior second snapshot bytes'],
       [indexPath, 'prior index bytes'],
     ]);
     const restoredTargets: string[] = [];
@@ -981,18 +1072,8 @@ describe('moveset variant manifest publication', () => {
             contents: 'new simulation bytes',
           },
         ],
-        [
-          {
-            formatId: 'great-league',
-            targetPath: manifestPath,
-            contents: 'new manifest bytes',
-          },
-          {
-            formatId: 'ultra-league',
-            targetPath: secondManifestPath,
-            contents: 'new second manifest bytes',
-          },
-        ],
+        [firstBundle.manifest, secondBundle.manifest],
+        [firstBundle.snapshot, secondBundle.snapshot],
         { targetPath: indexPath, contents: runtimeAssetIndexContents },
         {
           mkdir: vi.fn().mockResolvedValue(undefined),
@@ -1028,6 +1109,8 @@ describe('moveset variant manifest publication', () => {
         [csvPath, 'prior simulation bytes'],
         [manifestPath, 'prior manifest bytes'],
         [secondManifestPath, 'prior second manifest bytes'],
+        [snapshotPath, 'prior snapshot bytes'],
+        [secondSnapshotPath, 'prior second snapshot bytes'],
         [indexPath, 'prior index bytes'],
       ]),
     );
@@ -1035,12 +1118,15 @@ describe('moveset variant manifest publication', () => {
       csvPath,
       manifestPath,
       secondManifestPath,
+      snapshotPath,
+      secondSnapshotPath,
       indexPath,
     ]);
   });
 
   it('does not restore from a backup that was never created', async () => {
-    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const bundle = createPublicationBundle('great-league');
+    const manifestPath = bundle.manifest.targetPath;
     const indexPath = 'data/simulations/runtime-asset-index.json';
     const backupPath = `${manifestPath}.backup-test`;
     const rename = vi.fn(async (sourcePath: string, targetPath: string) => {
@@ -1052,13 +1138,8 @@ describe('moveset variant manifest publication', () => {
     await expect(
       publishSimulationGeneration(
         [],
-        [
-          {
-            formatId: 'great-league',
-            targetPath: manifestPath,
-            contents: 'new manifest bytes',
-          },
-        ],
+        [bundle.manifest],
+        [bundle.snapshot],
         { targetPath: indexPath, contents: runtimeAssetIndexContents },
         {
           mkdir: vi.fn().mockResolvedValue(undefined),
@@ -1074,5 +1155,26 @@ describe('moveset variant manifest publication', () => {
 
     expect(rename).toHaveBeenCalledWith(manifestPath, backupPath);
     expect(rename).not.toHaveBeenCalledWith(backupPath, manifestPath);
+  });
+
+  it('rejects a snapshot whose identity does not match its manifest', async () => {
+    const bundle = createPublicationBundle('great-league');
+    const snapshot = JSON.parse(bundle.snapshot.contents) as {
+      manifest: { digest: string };
+    };
+    snapshot.manifest.digest =
+      'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+
+    await expect(
+      publishSimulationGeneration(
+        [],
+        [bundle.manifest],
+        [{ ...bundle.snapshot, contents: JSON.stringify(snapshot) }],
+        {
+          targetPath: 'data/simulations/runtime-asset-index.json',
+          contents: runtimeAssetIndexContents,
+        },
+      ),
+    ).rejects.toThrow(/snapshot.*manifest identity/i);
   });
 });

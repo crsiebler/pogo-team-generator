@@ -104,6 +104,7 @@ describe('completeSimulationManifestSync', () => {
           preparedCsvFiles: [],
         }),
         prepare: vi.fn(() => []),
+        prepareRuntimeSnapshots: vi.fn(() => []),
         prepareRuntimeAssetIndex: vi.fn(() => ({
           targetPath: 'data/simulations/runtime-asset-index.json' as const,
           contents: '{}\n',
@@ -135,6 +136,13 @@ describe('completeSimulationManifestSync', () => {
       targetPath: 'data/simulations/runtime-asset-index.json' as const,
       contents: '{"schemaVersion":1,"assets":[]}\n',
     };
+    const preparedRuntimeSnapshots = [
+      {
+        formatId: 'great-league' as const,
+        targetPath: 'data/simulations/cp1500/all/runtime-snapshot.json',
+        contents: '{"schemaVersion":1}\n',
+      },
+    ];
     const publish = vi.fn().mockResolvedValue(undefined);
     const deletedPath =
       'data/simulations/cp1500/all/stale--fast--charged_a--charged_b_1-1.csv';
@@ -153,6 +161,7 @@ describe('completeSimulationManifestSync', () => {
       crossValidate: () => ({ valid: true, errors: [] }),
       generate,
       prepare: vi.fn(() => preparedManifests),
+      prepareRuntimeSnapshots: vi.fn(() => preparedRuntimeSnapshots),
       prepareRuntimeAssetIndex: vi.fn(() => preparedRuntimeAssetIndex),
       publish,
       cleanup,
@@ -165,6 +174,7 @@ describe('completeSimulationManifestSync', () => {
     expect(publish).toHaveBeenCalledWith(
       preparedCsvFiles,
       preparedManifests,
+      preparedRuntimeSnapshots,
       preparedRuntimeAssetIndex,
     );
     expect(cleanup).toHaveBeenCalledWith(
