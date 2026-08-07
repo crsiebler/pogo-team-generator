@@ -238,10 +238,11 @@ data/simulations/cp{cp}/{cup}/moveset-variants.json
 The manifest records format and policy identity, source digests, derivation
 settings, species defaults, bounded candidates, evidence, acquisition
 requirements, scenario storage keys, completeness, evaluation counts, and
-active status. It is the sole runtime authority for alternate availability:
-runtime loaders expose only declared active candidates and read their exact
-`0-0`, `1-1`, and `2-2` storage keys. They must not discover alternates by
-scanning CSV filenames or substitute default rows for an unavailable alternate.
+active status. It is the sync authority from which runtime availability is
+compiled: snapshot generation includes only declared active candidates and reads
+their exact `0-0`, `1-1`, and `2-2` storage keys. Neither sync nor runtime may
+discover alternates by scanning CSV filenames or substitute default rows for an
+unavailable alternate.
 
 A manifest can retain up to eight candidates while exposing at most three active
 variants: one default and two simulation-backed alternatives. Active selection
@@ -273,10 +274,54 @@ A missing alternate value remains missing and must never substitute the default
 variant's value. Source CSVs and full manifests remain sync and validation
 evidence; compact snapshots contain only runtime-consumed active Battle Ratings.
 
-If a manifest is entirely absent, assignment resolution may return one
-`ranked-default-fallback` assignment. That fallback does not scan variant files
-or activate alternates. Malformed, incompatible, incomplete, or explicitly
-unavailable manifest data remains an actionable typed error.
+## Runtime Artifact And Deployment Contract
+
+The simulation pipeline intentionally maintains separate source-evidence and
+runtime artifacts:
+
+- Full scenario CSVs contain default, active, and inactive candidate evidence
+  used by sync, parity checks, active selection, and validation.
+- Full moveset manifests declare bounded candidates, active variants, storage
+  keys, policy identity, and completeness. They remain the authority used to
+  generate deployment artifacts.
+- `data/simulations/runtime-asset-index.json` is a versioned active-only tooling
+  index derived from validated manifests. It lists every format manifest and the
+  exact active scenario CSV storage keys, including active defaults; inactive
+  candidate CSVs cannot appear in it.
+- Each format's `runtime-snapshot.json` compiles only the manifest-declared active
+  scenario values required by optimizer lookups. Production runtime consumes
+  these snapshots instead of simulation CSVs, manifests, or the tooling index.
+
+Snapshot generation validates every active manifest storage key and source CSV
+before encoding the compact format. Publication is rollback-capable: after all
+formats validate in memory, sync atomically installs simulation CSVs, manifests,
+snapshots, and finally the runtime asset index. A failed replacement restores the
+prior published artifacts. The runtime repository then validates snapshot schema,
+format, manifest policy, source digests, active digest, dictionary bounds,
+defaults, variants, rating bounds, and missing-value sentinels before caching any
+format. It fails closed and never falls back to manifests or simulation CSVs.
+
+Next.js output tracing uses the battle-format catalog to include exactly one
+compact snapshot per supported format. Source simulation CSVs, full manifests,
+and the runtime asset index remain checked-in tooling evidence but are excluded
+from `/api/generate-team`'s generated NFT trace. The deployment budgets are:
+
+- `200 MiB` uncompressed for the active-CSV transition trace.
+- `100 MiB` uncompressed for the final compact-snapshot function trace.
+- `50 MiB` uncompressed for all traced compact snapshots combined.
+
+The compact-snapshot budgets are enforced by the trace analyzer. This design
+must not enable, require, or depend on `VERCEL_SUPPORT_LARGE_FUNCTIONS` or any
+equivalent Vercel Large Functions setting. Optimizer matchup lookups must remain
+synchronous after one format preparation and must not issue per-matchup network,
+database, KV, or object-storage requests.
+
+At an assignment-only boundary where a manifest is intentionally absent,
+resolution may return one `ranked-default-fallback` assignment. That fallback
+does not scan variant files or activate alternates. Snapshot-backed scoring still
+fails closed when its snapshot is missing or incompatible and never falls back
+to manifests or CSVs. Malformed, incompatible, incomplete, or explicitly
+unavailable manifest data remains an actionable typed error in sync and tooling.
 
 ## Atomic Publication And Stale Cleanup
 
@@ -341,9 +386,24 @@ npx prettier --check docs/pokemon-go-team-optimization.md \
 npx tsc --noEmit
 ```
 
+Build the production application, then inspect and validate the canonical
+`/api/generate-team` Next.js NFT trace with:
+
+```bash
+npm run build
+npm run analyze:generate-team-trace
+```
+
+The analyzer reports deterministic unique file counts, uncompressed byte totals
+by asset category, and the largest traced files. It exits non-zero for missing or
+malformed traces, unauthorized runtime data, missing required snapshots,
+simulation CSV or manifest leakage, or either compact-snapshot size-budget
+violation.
+
 Local PvPoke engine JavaScript executes only inside isolated sync/tooling
-workflows. Runtime application, component, and optimizer code consume only the
-repository-owned normalized JSON and CSV outputs.
+workflows. Runtime application, component, and optimizer code consume only
+repository-owned normalized application data and compact simulation snapshots;
+source simulation CSVs and PvPoke vendor JavaScript remain tooling-only.
 
 ## Threat Pools
 

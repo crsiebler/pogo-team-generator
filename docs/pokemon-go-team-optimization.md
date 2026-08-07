@@ -85,6 +85,21 @@ informational and do not change weighted fitness. See
 [Data Inputs](team-optimization/data-inputs.md) for availability, candidate,
 manifest, publication, and sync semantics.
 
+### Runtime Simulation Artifacts
+
+Full simulation CSVs and moveset manifests are sync and validation evidence, not
+optimizer runtime inputs. Sync publishes one compact active-only simulation
+snapshot per supported format after validating the manifest-declared active
+scenarios. Runtime prepares and validates that repository-owned snapshot once per
+format, then keeps matchup lookups synchronous and local throughout scoring.
+
+Deployment tracing must include the compact snapshots and exclude source
+simulation CSVs and manifests from the generated function. Optimizer hot-path
+lookups must not perform per-matchup network, database, KV, or object-storage
+requests. See [Data Inputs](team-optimization/data-inputs.md#runtime-artifact-and-deployment-contract)
+for asset indexing, publication order, validation, size budgets, and build
+commands.
+
 For ordered lineups, use one of these models depending on project requirements:
 
 - Lead ordered, back pair unordered: `6 * C(5, 2) = 60` lineups.

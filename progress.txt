@@ -1732,3 +1732,38 @@
 - Next iteration start:
   - US-033 - Document runtime artifact and Vercel size contracts
 ---
+
+## 2026-08-07 08:39:34 MST - US-033
+- Documented the distinction between full simulation CSV/manifest evidence and compact runtime snapshots; active-only tooling index semantics; snapshot generation, atomic publication, and fail-closed runtime validation; production build and NFT trace analysis commands; deployment-size budgets; and the constraints against Large Functions and remote optimizer hot-path lookups.
+- Files changed: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-033 - Document runtime artifact and Vercel size contracts`
+- Auto approval: `enabled`
+- Checks:
+  - `npx prettier --write "docs/pokemon-go-team-optimization.md" "docs/team-optimization/data-inputs.md"` (pass; unchanged)
+  - `npx prettier --check "docs/pokemon-go-team-optimization.md" "docs/team-optimization/data-inputs.md"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 844 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; 121 files and 19,055,267 uncompressed bytes, including 8 snapshots totaling 12,019,584 bytes)
+  - `git diff --check` (pass)
+  - `npx prettier --check "docs/pokemon-go-team-optimization.md" "docs/team-optimization/data-inputs.md"` after review fix (pass)
+  - `git diff --check` after review fix (pass)
+- Implementation agents:
+  - Recommended: `documentation-engineer`
+  - Used: skipped because standard mode budgets zero implementation agents for this focused trivial documentation story and the existing architecture guidance was complete
+- Specialist review:
+  - Agents used: Ralph self-review under the standard-mode trivial-diff budget
+  - Findings: fixed one medium documentation inconsistency by replacing the legacy direct-manifest runtime-loader description with snapshot-generation authority and explicit snapshot-only fail-closed scoring semantics; final targeted self-review found none
+- Decisions (why):
+  - Consolidated deployment details in the existing data-input documentation and added only a concise optimizer entry-point summary, avoiding duplicate architecture guidance.
+  - Described `runtime-asset-index.json` as active-only tooling evidence rather than a production runtime dependency because compact snapshots are now the deployed simulation authority.
+  - Recorded the 200 MiB active-CSV transition budget separately from the enforced 100 MiB compact function and 50 MiB snapshot-data targets so historical and final contracts remain clear.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` skill plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Production trace validation is the executable deployment contract: it verifies exact catalog snapshots, rejects simulation CSV and manifest leakage, and enforces compact artifact budgets.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+- Next iteration start:
+  - All PRD stories are complete after US-033 passes review and metadata consistency checks.
+---
