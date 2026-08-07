@@ -104,6 +104,10 @@ describe('completeSimulationManifestSync', () => {
           preparedCsvFiles: [],
         }),
         prepare: vi.fn(() => []),
+        prepareRuntimeAssetIndex: vi.fn(() => ({
+          targetPath: 'data/simulations/runtime-asset-index.json' as const,
+          contents: '{}\n',
+        })),
         publish: vi.fn().mockRejectedValue(new Error('publication failed')),
         cleanup,
       }),
@@ -127,6 +131,10 @@ describe('completeSimulationManifestSync', () => {
         contents: '{}\n',
       },
     ];
+    const preparedRuntimeAssetIndex = {
+      targetPath: 'data/simulations/runtime-asset-index.json' as const,
+      contents: '{"schemaVersion":1,"assets":[]}\n',
+    };
     const publish = vi.fn().mockResolvedValue(undefined);
     const deletedPath =
       'data/simulations/cp1500/all/stale--fast--charged_a--charged_b_1-1.csv';
@@ -145,6 +153,7 @@ describe('completeSimulationManifestSync', () => {
       crossValidate: () => ({ valid: true, errors: [] }),
       generate,
       prepare: vi.fn(() => preparedManifests),
+      prepareRuntimeAssetIndex: vi.fn(() => preparedRuntimeAssetIndex),
       publish,
       cleanup,
       log,
@@ -153,7 +162,11 @@ describe('completeSimulationManifestSync', () => {
     expect(generate).toHaveBeenCalledWith(
       expect.objectContaining({ deferPublication: true }),
     );
-    expect(publish).toHaveBeenCalledWith(preparedCsvFiles, preparedManifests);
+    expect(publish).toHaveBeenCalledWith(
+      preparedCsvFiles,
+      preparedManifests,
+      preparedRuntimeAssetIndex,
+    );
     expect(cleanup).toHaveBeenCalledWith(
       preparedManifests,
       expect.objectContaining({ reportDeleted: expect.any(Function) }),

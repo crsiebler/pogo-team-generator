@@ -555,6 +555,7 @@ describe('moveset variant manifest construction', () => {
 });
 
 describe('moveset variant manifest publication', () => {
+  const runtimeAssetIndexContents = '{"schemaVersion":1,"assets":[]}\n';
   const defaultId = 'vine_whip--sludge_bomb--power_whip' as const;
   const alternateId = 'tackle--sludge_bomb--power_whip' as const;
   const candidateSet = {
@@ -831,6 +832,10 @@ describe('moveset variant manifest publication', () => {
           },
         ],
         {
+          targetPath: 'data/simulations/runtime-asset-index.json',
+          contents: runtimeAssetIndexContents,
+        },
+        {
           mkdir: vi.fn().mockResolvedValue(undefined),
           writeFile,
           rename,
@@ -877,6 +882,10 @@ describe('moveset variant manifest publication', () => {
         ],
         [],
         {
+          targetPath: 'data/simulations/runtime-asset-index.json',
+          contents: runtimeAssetIndexContents,
+        },
+        {
           mkdir: vi.fn().mockResolvedValue(undefined),
           writeFile,
           rename: vi.fn().mockResolvedValue(undefined),
@@ -896,5 +905,174 @@ describe('moveset variant manifest publication', () => {
         [secondCsvPath, 'prior one-shield bytes'],
       ]),
     );
+  });
+
+  it('installs the runtime asset index after every manifest', async () => {
+    const csvPath = 'data/simulations/cp1500/all/bulbasaur_0-0.csv';
+    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const secondManifestPath =
+      'data/simulations/cp2500/all/moveset-variants.json';
+    const indexPath = 'data/simulations/runtime-asset-index.json';
+    const rename = vi.fn().mockResolvedValue(undefined);
+
+    await publishSimulationGeneration(
+      [
+        {
+          formatId: 'great-league',
+          targetPath: csvPath,
+          contents: 'simulation bytes',
+        },
+      ],
+      [
+        {
+          formatId: 'great-league',
+          targetPath: manifestPath,
+          contents: 'manifest bytes',
+        },
+        {
+          formatId: 'ultra-league',
+          targetPath: secondManifestPath,
+          contents: 'second manifest bytes',
+        },
+      ],
+      { targetPath: indexPath, contents: runtimeAssetIndexContents },
+      {
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+        rename,
+        unlink: vi.fn().mockResolvedValue(undefined),
+        fileExists: vi.fn().mockResolvedValue(false),
+        createTemporaryPath: (targetPath) => `${targetPath}.tmp-test`,
+        createBackupPath: (targetPath) => `${targetPath}.backup-test`,
+      },
+    );
+
+    const installs = rename.mock.calls.filter(([sourcePath]) =>
+      String(sourcePath).endsWith('.tmp-test'),
+    );
+    expect(installs).toEqual([
+      [`${csvPath}.tmp-test`, csvPath],
+      [`${manifestPath}.tmp-test`, manifestPath],
+      [`${secondManifestPath}.tmp-test`, secondManifestPath],
+      [`${indexPath}.tmp-test`, indexPath],
+    ]);
+  });
+
+  it('restores prior manifests and index when index installation fails', async () => {
+    const csvPath = 'data/simulations/cp1500/all/bulbasaur_0-0.csv';
+    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const secondManifestPath =
+      'data/simulations/cp2500/all/moveset-variants.json';
+    const indexPath = 'data/simulations/runtime-asset-index.json';
+    const files = new Map<string, string>([
+      [csvPath, 'prior simulation bytes'],
+      [manifestPath, 'prior manifest bytes'],
+      [secondManifestPath, 'prior second manifest bytes'],
+      [indexPath, 'prior index bytes'],
+    ]);
+    const restoredTargets: string[] = [];
+
+    await expect(
+      publishSimulationGeneration(
+        [
+          {
+            formatId: 'great-league',
+            targetPath: csvPath,
+            contents: 'new simulation bytes',
+          },
+        ],
+        [
+          {
+            formatId: 'great-league',
+            targetPath: manifestPath,
+            contents: 'new manifest bytes',
+          },
+          {
+            formatId: 'ultra-league',
+            targetPath: secondManifestPath,
+            contents: 'new second manifest bytes',
+          },
+        ],
+        { targetPath: indexPath, contents: runtimeAssetIndexContents },
+        {
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile: async (filePath, contents) => {
+            files.set(filePath, contents);
+          },
+          rename: async (sourcePath, targetPath) => {
+            if (sourcePath === `${indexPath}.tmp-test`) {
+              throw new Error('index rename failed');
+            }
+            const contents = files.get(sourcePath);
+            if (contents === undefined) {
+              throw new Error(`missing source: ${sourcePath}`);
+            }
+            files.set(targetPath, contents);
+            files.delete(sourcePath);
+            if (sourcePath.endsWith('.backup-test')) {
+              restoredTargets.push(targetPath);
+            }
+          },
+          unlink: async (filePath) => {
+            files.delete(filePath);
+          },
+          fileExists: async (filePath) => files.has(filePath),
+          createTemporaryPath: (targetPath) => `${targetPath}.tmp-test`,
+          createBackupPath: (targetPath) => `${targetPath}.backup-test`,
+        },
+      ),
+    ).rejects.toThrow('index rename failed');
+
+    expect(files).toEqual(
+      new Map([
+        [csvPath, 'prior simulation bytes'],
+        [manifestPath, 'prior manifest bytes'],
+        [secondManifestPath, 'prior second manifest bytes'],
+        [indexPath, 'prior index bytes'],
+      ]),
+    );
+    expect(restoredTargets).toEqual([
+      csvPath,
+      manifestPath,
+      secondManifestPath,
+      indexPath,
+    ]);
+  });
+
+  it('does not restore from a backup that was never created', async () => {
+    const manifestPath = 'data/simulations/cp1500/all/moveset-variants.json';
+    const indexPath = 'data/simulations/runtime-asset-index.json';
+    const backupPath = `${manifestPath}.backup-test`;
+    const rename = vi.fn(async (sourcePath: string, targetPath: string) => {
+      if (sourcePath === manifestPath && targetPath === backupPath) {
+        throw new Error('backup rename failed');
+      }
+    });
+
+    await expect(
+      publishSimulationGeneration(
+        [],
+        [
+          {
+            formatId: 'great-league',
+            targetPath: manifestPath,
+            contents: 'new manifest bytes',
+          },
+        ],
+        { targetPath: indexPath, contents: runtimeAssetIndexContents },
+        {
+          mkdir: vi.fn().mockResolvedValue(undefined),
+          writeFile: vi.fn().mockResolvedValue(undefined),
+          rename,
+          unlink: vi.fn().mockResolvedValue(undefined),
+          fileExists: async (filePath) => filePath === manifestPath,
+          createTemporaryPath: (targetPath) => `${targetPath}.tmp-test`,
+          createBackupPath: (targetPath) => `${targetPath}.backup-test`,
+        },
+      ),
+    ).rejects.toThrow('backup rename failed');
+
+    expect(rename).toHaveBeenCalledWith(manifestPath, backupPath);
+    expect(rename).not.toHaveBeenCalledWith(backupPath, manifestPath);
   });
 });

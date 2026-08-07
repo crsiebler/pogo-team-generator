@@ -35,6 +35,7 @@
 - Export move IDs and preferred charged-move order directly from the scored `RosterMovesetAssignment`; pass validated acquisition requirements separately as informational text and omit regular requirements.
 - Memoize production lineup-context ranking, aggregate matchup, shield-scenario, and matchup-quality reads by every result-affecting input, including variant identity; keep these caches per run while retaining the complete assignment fingerprint in assignment-aware lineup cache keys.
 - Validate checked-in generated variant data through the battle-format catalog: parse every manifest, check every active scenario CSV and default opponent parity, enforce move availability, and cover representative variants plus forbidden synthesized forms.
+- Publish `data/simulations/runtime-asset-index.json` from reparsed manifests for every catalog format, including each manifest and only active candidate scenario paths; install it after manifests in the rollback-capable batch while retaining inactive CSVs as sync evidence.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1485,4 +1486,41 @@
   - The current generated trace is about 340.6 MiB and intentionally exceeds later transition targets; US-027 through US-032 own active asset indexing, trace narrowing, compact snapshots, and final size enforcement.
 - Next iteration start:
   - US-027 - Publish an active runtime simulation asset index
+---
+
+## 2026-08-07 05:31:27 MST - US-027
+- Implemented a versioned canonical runtime simulation asset index derived from reparsed manifests for all eight supported formats; included every format manifest and the exact three scenario paths for active defaults and alternatives only; published the index last in the existing rollback-capable transaction; retained inactive candidate evidence and stale-cleanup semantics; and hardened rollback state tracking when a backup rename fails.
+- Files changed: `lib/AGENTS.md`, `lib/data/runtimeSimulationAssetIndex.ts`, `lib/data/runtimeSimulationAssetIndex.test.ts`, `lib/sync/runtimeSimulationAssetIndex.ts`, `lib/sync/runtimeSimulationAssetIndex.test.ts`, `lib/sync/index.ts`, `lib/sync/index.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `data/simulations/runtime-asset-index.json`, `progress.txt`
+- Commit message: `feat: US-027 - Publish an active runtime simulation asset index`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/runtimeSimulationAssetIndex.test.ts lib/sync/runtimeSimulationAssetIndex.test.ts lib/sync/index.test.ts lib/sync/movesetVariantManifest.test.ts` (fail as expected before implementation: index contract, derivation, orchestration, and publication behavior were missing)
+  - `npx vitest run lib/sync/runtimeSimulationAssetIndex.test.ts` before generated artifact publication (fail as expected: checked-in runtime index was absent)
+  - `npx vitest run lib/sync/movesetVariantManifest.test.ts -t "does not restore from a backup"` before rollback fix (fail as expected: rollback attempted to restore a backup whose rename had failed)
+  - Focused runtime-index, publication, cleanup, and PvPoke-boundary suite before review (pass, 47 tests; pass after review fixes, 48 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 815 tests before review; pass after review fixes, 816 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - Reverse-order checked-manifest index regeneration comparison (pass; byte-identical with 6,788 unique assets)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `data-engineer`, `security-engineer`
+  - Used: `data-engineer`, `security-engineer`; both fit the standard-mode complex-story budget and provided complementary manifest derivation, deterministic serialization, path-confinement, atomic-ordering, and rollback guidance
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` and `security-engineer` re-review
+  - Findings: code review found none; fixed two medium QA findings by asserting all scenarios for active/default/inactive candidates and exercising multi-manifest plus CSV ordering/rollback; also added the low schema, filename, malformed/content-mismatch, and nested-order regressions and fixed the low security finding by restoring CSVs and manifests sequentially before the prior authority index; targeted re-review found none
+- Decisions (why):
+  - Used one flat sorted `assets` allowlist because later tracing needs exact repository paths rather than another runtime availability model; manifests remain the richer per-format authority.
+  - Reparses every prepared manifest and requires exactly one catalog-matching target per format before deriving paths, preventing source ordering, stale directories, or unsupported formats from influencing the index.
+  - Installed the index after CSVs and manifests inside the same transaction so readers see either the prior complete authority set or the new one, while a late index failure rolls manifests and CSVs back.
+  - Left stale cleanup based on all manifest candidates rather than active-only index paths so inactive simulation CSVs remain available as sync and validation evidence.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - The active checked-in manifest set currently authorizes 6,788 runtime assets: eight manifests plus 6,780 active candidate scenario CSVs.
+  - Publication rollback must distinguish an existing target from a successfully created backup; setting rollback state before the backup rename can turn the original failure into an incomplete-rollback error.
+- Known issues / follow-ups:
+  - US-029 should consume the generated flat allowlist for exact Next.js output tracing; US-027 intentionally does not change `next.config.ts`.
+- Next iteration start:
+  - US-028 - Remove runtime simulation directory scanning
 ---

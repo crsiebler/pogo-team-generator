@@ -7,6 +7,7 @@ import {
   publishSimulationGeneration,
 } from './movesetVariantManifest';
 import { scrapeRankings, type RankingSyncResult } from './rankings';
+import { prepareRuntimeSimulationAssetIndex } from './runtimeSimulationAssetIndex';
 import { deleteStaleVariantSimulationFiles } from './simulationCleanup';
 import { generateSimulations, type SimulationSyncResult } from './simulations';
 import { resolvePvpokeSourcePath, validatePhase1SourceFiles } from './source';
@@ -42,6 +43,7 @@ interface CompleteSimulationManifestSyncDependencies {
   readonly crossValidate: typeof crossValidateRankingsVsPokemon;
   readonly generate: typeof generateSimulations;
   readonly prepare: typeof prepareMovesetVariantManifests;
+  readonly prepareRuntimeAssetIndex: typeof prepareRuntimeSimulationAssetIndex;
   readonly publish: typeof publishSimulationGeneration;
   readonly cleanup: typeof deleteStaleVariantSimulationFiles;
   readonly log: (message: string) => void;
@@ -52,14 +54,15 @@ const defaultCompleteSimulationManifestSyncDependencies: CompleteSimulationManif
     crossValidate: crossValidateRankingsVsPokemon,
     generate: generateSimulations,
     prepare: prepareMovesetVariantManifests,
+    prepareRuntimeAssetIndex: prepareRuntimeSimulationAssetIndex,
     publish: publishSimulationGeneration,
     cleanup: deleteStaleVariantSimulationFiles,
     log: console.log,
   };
 
 /**
- * Validate synchronized inputs, complete every simulation, then publish CSVs
- * and manifests as one recoverable batch with manifests replaced last.
+ * Validate synchronized inputs, complete every simulation, then publish CSVs,
+ * manifests, and the runtime asset index as one recoverable authority switch.
  */
 export async function completeSimulationManifestSync(
   input: CompleteSimulationManifestSyncInput,
@@ -101,9 +104,12 @@ export async function completeSimulationManifestSync(
     variantSelections: simulationResult.variantSelections,
     getMoveAvailability: createMoveAvailabilityResolver(input.pokemonData),
   });
+  const preparedRuntimeAssetIndex =
+    resolvedDependencies.prepareRuntimeAssetIndex(preparedManifests);
   await resolvedDependencies.publish(
     simulationResult.preparedCsvFiles,
     preparedManifests,
+    preparedRuntimeAssetIndex,
   );
   await resolvedDependencies.cleanup(preparedManifests, {
     reportDeleted: (filePath) =>

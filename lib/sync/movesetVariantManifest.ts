@@ -23,6 +23,10 @@ import {
   type MovesetVariantScenarioRecord,
   type MovesetVariantSourceDigest,
 } from '@/lib/data/movesetVariantManifest';
+import {
+  RUNTIME_SIMULATION_ASSET_INDEX_PATH,
+  parseRuntimeSimulationAssetIndexJson,
+} from '@/lib/data/runtimeSimulationAssetIndex';
 import { scoreMatchupRating } from '@/lib/genetic/fitness/matchupScoring';
 import {
   MAX_EXPANSION_CHARGED_MOVES,
@@ -30,6 +34,7 @@ import {
   type DerivedMovesetCandidateSet,
 } from '@/lib/sync/movesetCandidates';
 import { RANKING_CATEGORY_WEIGHTS } from '@/lib/sync/rankings';
+import type { PreparedRuntimeSimulationAssetIndex } from '@/lib/sync/runtimeSimulationAssetIndex';
 import type { PreparedSimulationCsv } from '@/lib/sync/simulations';
 import type { MovesetVariantId, ShieldScenarioKey } from '@/lib/types';
 
@@ -832,14 +837,26 @@ function validatePreparedSimulationCsvTarget(
   }
 }
 
+function validatePreparedRuntimeAssetIndexTarget(
+  index: PreparedRuntimeSimulationAssetIndex,
+): void {
+  if (index.targetPath !== RUNTIME_SIMULATION_ASSET_INDEX_PATH) {
+    throw new Error(
+      `[sync-manifest] Runtime asset index target must match ${RUNTIME_SIMULATION_ASSET_INDEX_PATH}`,
+    );
+  }
+  parseRuntimeSimulationAssetIndexJson(index.contents);
+}
+
 /**
- * Publish validated simulation CSVs and their authoritative manifests as one
- * recoverable batch. Manifests are replaced last and every prior target is
- * restored when any replacement fails.
+ * Publish validated simulation CSVs, authoritative manifests, and the runtime
+ * asset index as one recoverable batch. The index is replaced last and every
+ * prior target is restored when any replacement fails.
  */
 export async function publishSimulationGeneration(
   csvFiles: readonly PreparedSimulationCsv[],
   manifests: readonly PreparedMovesetVariantManifest[],
+  runtimeAssetIndex: PreparedRuntimeSimulationAssetIndex,
   dependencies: Partial<SimulationGenerationPublicationDependencies> = {},
 ): Promise<void> {
   const resolvedDependencies = {
@@ -849,6 +866,7 @@ export async function publishSimulationGeneration(
   const targets = [
     ...csvFiles.map((file) => ({ ...file, kind: 'simulation' as const })),
     ...manifests.map((file) => ({ ...file, kind: 'manifest' as const })),
+    { ...runtimeAssetIndex, kind: 'runtime-asset-index' as const },
   ];
   const targetPaths = new Set<string>();
   const staged: Array<{
@@ -856,6 +874,7 @@ export async function publishSimulationGeneration(
     readonly backupPath: string;
     readonly targetPath: string;
     hadOriginal: boolean;
+    backupCreated: boolean;
     installed: boolean;
   }> = [];
 
@@ -863,8 +882,10 @@ export async function publishSimulationGeneration(
     for (const target of targets) {
       if (target.kind === 'simulation') {
         validatePreparedSimulationCsvTarget(target);
-      } else {
+      } else if (target.kind === 'manifest') {
         validatePreparedManifestTarget(target);
+      } else {
+        validatePreparedRuntimeAssetIndexTarget(target);
       }
       if (targetPaths.has(target.targetPath)) {
         throw new Error(
@@ -894,6 +915,7 @@ export async function publishSimulationGeneration(
         backupPath,
         targetPath: target.targetPath,
         hadOriginal: false,
+        backupCreated: false,
         installed: false,
       });
       await resolvedDependencies.writeFile(temporaryPath, target.contents);
@@ -905,6 +927,7 @@ export async function publishSimulationGeneration(
       );
       if (target.hadOriginal) {
         await resolvedDependencies.rename(target.targetPath, target.backupPath);
+        target.backupCreated = true;
       }
       await resolvedDependencies.rename(
         target.temporaryPath,
@@ -913,9 +936,10 @@ export async function publishSimulationGeneration(
       target.installed = true;
     }
   } catch (error) {
-    const rollbackResults = await Promise.allSettled(
-      [...staged].reverse().map(async (target) => {
-        if (target.hadOriginal) {
+    const rollbackErrors: unknown[] = [];
+    for (const target of staged) {
+      try {
+        if (target.backupCreated) {
           await resolvedDependencies.rename(
             target.backupPath,
             target.targetPath,
@@ -923,15 +947,14 @@ export async function publishSimulationGeneration(
         } else if (target.installed) {
           await resolvedDependencies.unlink(target.targetPath);
         }
-      }),
-    );
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
     await Promise.allSettled(
       staged.map(({ temporaryPath }) =>
         resolvedDependencies.unlink(temporaryPath),
       ),
-    );
-    const rollbackErrors = rollbackResults.flatMap((result) =>
-      result.status === 'rejected' ? [result.reason] : [],
     );
     if (rollbackErrors.length > 0) {
       throw new AggregateError(
@@ -944,7 +967,7 @@ export async function publishSimulationGeneration(
 
   await Promise.allSettled(
     staged
-      .filter(({ hadOriginal }) => hadOriginal)
+      .filter(({ backupCreated }) => backupCreated)
       .map(({ backupPath }) => resolvedDependencies.unlink(backupPath)),
   );
 }
