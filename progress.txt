@@ -1,5 +1,6 @@
 ## Codebase Patterns
 - `RosterMovesetAssignment` authority is per species in `authorityBySpeciesId`; its keys must exactly match the canonical assigned roster and variant map, every authority belongs in the fingerprint, manifest defaults use qualified simulation lookups, and ranked-default fallbacks remain unqualified through `getAssignedMovesetVariantId(...)`.
+- Variant-enabled resolution may use a per-species ranked default only when `MovesetVariantSimulationDataError` is an unqualified `variant-unavailable` failure matching the current format and canonical species; singleton fallback slots preserve assignment bounds, while missing or corrupt authority and mismatched/specific-variant failures propagate.
 - Turbopack compiles `outputFileTracingExcludes` into glob regexes and can panic when thousands of generated paths are listed individually; use narrow non-overlapping semantic exclusions for source simulation CSVs/manifests, explicitly include catalog snapshots, and let post-build trace validation reject every unauthorized data asset.
 - Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team snapshot/ranking assets and pokemon-list assets from the battle-format catalog, use route-specific excludes for automatically over-traced files, and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
 - Next.js NFT trace entries resolve relative to the trace file directory; deployment-size tooling must deduplicate resolved files, stat only trace-declared assets, and report deterministic project-relative paths and raw uncompressed bytes instead of scanning repository directories.
@@ -1818,4 +1819,42 @@
   - Browser verification was not required because the component change only validates the existing non-visual API contract and adds no rendered UI or interaction change.
 - Next iteration start:
   - US-035 - Fall back unsupported variant anchors to default movesets
+---
+
+## 2026-08-07 14:30:51 MST - US-035
+- Implemented strict per-species ranked-default fallback for snapshot-unsupported roster members while retaining manifest-backed variants for supported teammates; added mixed-authority GBL assignment binding before lineup scoring, singleton fallback slots in bounded PlayPokemon finalist enumeration, and a real Great League Gyarados anchor regression.
+- Files changed: `lib/AGENTS.md`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/algorithm.performance.test.ts`, `progress.txt`
+- Commit message: `feat: US-035 - Fall back unsupported variant anchors to default movesets`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/fitness/index.test.ts` (fail as expected before implementation: 5 mixed fallback, fail-closed, and GBL assignment-binding regressions)
+  - `npx vitest run lib/genetic/algorithm.performance.test.ts -t "unsupported explicit anchor"` (fail as expected before implementation: Gyarados variant-unavailable failure escaped generation)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/fitness/index.test.ts lib/genetic/algorithm.performance.test.ts` (pass, 38 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after removing one unused test import)
+  - `npm test` (pass, 863 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/genetic/moveset.test.ts lib/genetic/fitness/index.test.ts lib/genetic/algorithm.performance.test.ts` after review fixes (pass, 51 tests)
+  - `npx tsc --noEmit` and `npm run lint` after review fixes (pass)
+- Implementation agents:
+  - Recommended: `backend-developer`, `debugger`
+  - Used: `backend-developer`, `debugger`; both fit the standard-mode complex-story budget and provided complementary mixed-authority structure, strict error filtering, early GBL scoring, assignment-bound, and regression-fixture guidance
+- Specialist review:
+  - Agents used: initial staged `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: fixed one medium QA finding by exercising fail-closed errors and mismatched unavailable identities inside both per-species catch boundaries; also fixed low findings by correcting resolver TSDoc and binding the real Gyarados fixture to ranking-pool, top-150, and exact ranked-default expectations; targeted re-review found no blocking issues and deferred one low documentation update to US-037, which explicitly owns mixed-authority and fail-closed documentation
+- Decisions (why):
+  - Required `variant-unavailable` to match the selected format and canonical species and to omit a specific variant ID, because mismatched or variant-qualified errors indicate authority inconsistency rather than an unsupported roster species.
+  - Kept `getSimulationBackedMovesetVariantForTeam(...)` strict and applied fallback in roster resolution or the unbound moveset adapter, because swallowing the error in the variant selector would mislabel a ranked default as manifest-backed.
+  - Bound one resolved assignment before GBL lineup enumeration so mixed authority controls matchup, shield, consistency, move typing, diagnostics, and cache identity throughout scoring rather than only in final output.
+  - Represented each unsupported PlayPokemon roster member as one fallback enumeration slot, preserving deterministic Cartesian ordering and reducing the six-member upper bound from `3^6` to `1 * 3^5` when one species is unsupported.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Great League `gyarados` is currently an eligible explicit ranking-pool anchor without an active compact-snapshot variant, making it a useful end-to-end mixed-authority regression fixture.
+  - A fallback moveset value alone cannot communicate lookup authority; the outer resolver must observe the typed unavailable-species error and set `authorityBySpeciesId` before scoring.
+- Known issues / follow-ups:
+  - US-036 must validate returned transient assignment values against current ranking and compact-snapshot authorities; deterministic fingerprints remain identity rather than authenticity.
+  - US-037 must replace the optimizer guide's pre-US-035 missing-manifest fallback description with mixed per-species authority and fail-closed snapshot semantics.
+- Next iteration start:
+  - US-036 - Validate returned moveset assignments against runtime authorities
 ---

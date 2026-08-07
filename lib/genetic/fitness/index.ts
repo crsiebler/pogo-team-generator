@@ -225,8 +225,9 @@ export function calculateLineupAwareFitness(
     ).fitness;
   }
 
+  const assignment = context.resolveMovesetAssignment(chromosome.team);
   return buildGblLineupRecommendation(chromosome.team, {
-    scoreLineup: context.scoreLineup,
+    scoreLineup: (lineup) => context.scoreLineup(lineup, assignment),
   }).score;
 }
 

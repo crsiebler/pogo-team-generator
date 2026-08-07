@@ -362,18 +362,59 @@ describe('lineup-aware fitness entry point', () => {
 
   it('scores GBL chromosomes through the canonical role-ordered lineup helper', () => {
     const chromosome = createChromosome(['a', 'b', 'c']);
+    const assignment = createAssignment('mixed-assignment');
+    const resolveMovesetAssignment = vi.fn(() => assignment);
+    const context = createLineupAwareFitnessContext(
+      'battle-frontier-tsuki-cup',
+      'team-aware',
+      { resolveMovesetAssignment },
+    );
+    vi.mocked(buildGblLineupRecommendation).mockImplementationOnce(
+      (roster, options) => {
+        options!.scoreLineup!({
+          lead: roster[0],
+          switch: roster[1],
+          closer: roster[2],
+        });
+        return {
+          lineup: { lead: roster[0], switch: roster[1], closer: roster[2] },
+          score: 0.82,
+          coverageMetrics: {
+            coverageRate: 1,
+            dominatingMatchupCount: 1,
+            overwhelmingLossCount: 0,
+            singleAnswerThreatCount: 0,
+          },
+          coveredThreats: ['azumarill'],
+          weaknesses: [],
+          diagnosticLabel: 'ABC',
+        };
+      },
+    );
 
-    const fitness = calculateLineupAwareFitness(chromosome, 'GBL');
+    const fitness = calculateLineupAwareFitness(
+      chromosome,
+      'GBL',
+      'battle-frontier-tsuki-cup',
+      context,
+    );
 
     expect(fitness).toBe(0.82);
+    expect(resolveMovesetAssignment).toHaveBeenCalledOnce();
+    expect(resolveMovesetAssignment).toHaveBeenCalledWith(chromosome.team);
     expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
-      'great-league',
+      'battle-frontier-tsuki-cup',
       50,
       'team-aware',
     );
     expect(buildGblLineupRecommendation).toHaveBeenCalledWith(
       chromosome.team,
       expect.objectContaining({ scoreLineup: expect.any(Function) }),
+    );
+    expect(scoreOrderedLineup).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ movesetAssignment: assignment }),
+      { includeThreatScore: false },
     );
   });
 

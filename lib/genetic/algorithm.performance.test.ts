@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { generateTeam } from './algorithm';
+import {
+  getAssignedMovesetVariantId,
+  getRecommendedMovesetForPokemon,
+} from './moveset';
+import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
+import { getOverallRankings, getRankedPokemonNames } from '@/lib/data/rankings';
 
 function createSeededRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -11,6 +17,51 @@ function createSeededRandom(seed: number): () => number {
 }
 
 describe('generateTeam performance safeguards', () => {
+  it('generates with an unsupported explicit anchor and manifest-backed teammates', async () => {
+    const result = await generateTeam({
+      mode: 'GBL',
+      formatId: 'great-league',
+      anchorPokemon: ['gyarados'],
+      simulateMovesetVariants: true,
+      populationSize: 2,
+      generations: 1,
+    });
+    const assignment = result.movesetAssignment;
+    const gyarados = getPokemonBySpeciesId('gyarados');
+
+    expect(getRankedPokemonNames('great-league').has('Gyarados')).toBe(true);
+    expect(
+      getOverallRankings('great-league').findIndex(
+        ({ Pokemon }) => Pokemon === 'Gyarados',
+      ),
+    ).toBeGreaterThanOrEqual(150);
+    expect(gyarados).toBeDefined();
+    expect(result.team[0]).toBe('gyarados');
+    expect(assignment).toBeDefined();
+    expect(assignment?.authorityBySpeciesId.gyarados.source).toBe(
+      'ranked-default-fallback',
+    );
+    expect(
+      Object.entries(assignment?.authorityBySpeciesId ?? {}).some(
+        ([speciesId, authority]) =>
+          speciesId !== 'gyarados' && authority.source === 'manifest',
+      ),
+    ).toBe(true);
+    expect(getAssignedMovesetVariantId(assignment, 'gyarados')).toBeUndefined();
+    expect(assignment?.variantsBySpeciesId.gyarados).toMatchObject({
+      ...getRecommendedMovesetForPokemon(gyarados!, 'great-league'),
+      isDefault: true,
+    });
+    expect(
+      result.team
+        .slice(1)
+        .some(
+          (speciesId) =>
+            getAssignedMovesetVariantId(assignment, speciesId) !== undefined,
+        ),
+    ).toBe(true);
+  }, 70_000);
+
   it('completes a representative PlayPokemon generation under one minute', async () => {
     const startedAt = performance.now();
 

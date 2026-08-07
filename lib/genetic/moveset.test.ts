@@ -5,7 +5,6 @@ import {
   getAssignedMovesetVariantId,
   getRecommendedMovesetForPokemon,
   getSimulationBackedMovesetForTeam,
-  getSimulationBackedMovesetVariantForTeam,
   resolveRankedDefaultRosterMovesetAssignment,
   resolveRosterMovesetAssignment,
 } from './moveset';
@@ -290,7 +289,7 @@ describe('roster moveset assignments', () => {
     expect(golisopod).toBeDefined();
 
     expect(
-      getSimulationBackedMovesetVariantForTeam(
+      getSimulationBackedMovesetForTeam(
         golisopod!,
         ['golisopod', 'milotic'],
         'great-league',
@@ -304,10 +303,14 @@ describe('roster moveset assignments', () => {
           },
         },
       ),
-    ).toEqual(defaultVariant);
+    ).toEqual({
+      fastMove: defaultVariant.fastMove,
+      chargedMove1: defaultVariant.chargedMove1,
+      chargedMove2: defaultVariant.chargedMove2,
+    });
   });
 
-  it('uses the injected ranked default only when the manifest is missing', () => {
+  it('uses the injected ranked default only when the species has no active variants', () => {
     const golisopod = getPokemonBySpeciesId('golisopod');
     expect(golisopod).toBeDefined();
     const fallbackMoveset = {
@@ -317,16 +320,17 @@ describe('roster moveset assignments', () => {
     };
 
     expect(
-      getSimulationBackedMovesetVariantForTeam(
+      getSimulationBackedMovesetForTeam(
         golisopod!,
         ['golisopod', 'milotic'],
         'great-league',
         {
           getVariants: () => {
             throw new MovesetVariantSimulationDataError(
-              'manifest-missing',
+              'variant-unavailable',
               'great-league',
-              'moveset-variants.json',
+              'runtime-snapshot.json',
+              'golisopod',
             );
           },
           getThreats: () => [],
@@ -335,11 +339,7 @@ describe('roster moveset assignments', () => {
           getRankedDefault: () => fallbackMoveset,
         },
       ),
-    ).toEqual({
-      ...fallbackMoveset,
-      id: 'waterfall--x_scissor--aqua_jet',
-      isDefault: true,
-    });
+    ).toEqual(fallbackMoveset);
   });
 
   it('resolves every roster species once against the complete roster', () => {
@@ -422,7 +422,7 @@ describe('roster moveset assignments', () => {
     );
   });
 
-  it('uses the injected ranked default for every species only when policy authority is missing', () => {
+  it('resolves unsupported species through ranked defaults without changing supported teammates', () => {
     const roster = ['golisopod', 'milotic'];
     const pokemonById = new Map(
       roster.map((speciesId) => [
@@ -434,15 +434,20 @@ describe('roster moveset assignments', () => {
 
     const assignment = resolveRosterMovesetAssignment(roster, 'great-league', {
       getPokemon: (speciesId) => pokemonById.get(speciesId),
-      getManifestPolicyIdentity: () => {
-        throw new MovesetVariantSimulationDataError(
-          'manifest-missing',
-          'great-league',
-          'moveset-variants.json',
-        );
-      },
-      getMovesetVariantForTeam: () => {
-        throw new Error('manifest selection must not run during fallback');
+      getManifestPolicyIdentity: () => ({
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      }),
+      getMovesetVariantForTeam: (pokemon) => {
+        if (pokemon.speciesId === 'golisopod') {
+          throw new MovesetVariantSimulationDataError(
+            'variant-unavailable',
+            'great-league',
+            'runtime-snapshot.json',
+            'golisopod',
+          );
+        }
+        return alternateVariant;
       },
       getRankedDefault: (pokemon) => {
         requestedSpeciesIds.push(pokemon.speciesId);
@@ -455,15 +460,97 @@ describe('roster moveset assignments', () => {
       },
     });
 
-    expect(requestedSpeciesIds).toEqual(roster);
+    expect(requestedSpeciesIds).toEqual(['golisopod']);
     expect(assignment.authorityBySpeciesId.golisopod.source).toBe(
       'ranked-default-fallback',
     );
-    expect(assignment.authorityBySpeciesId.milotic.source).toBe(
-      'ranked-default-fallback',
-    );
+    expect(assignment.authorityBySpeciesId.milotic).toEqual(manifestPolicy);
     expect(assignment.variantsBySpeciesId.golisopod.fastMove).toBe('WATERFALL');
-    expect(assignment.variantsBySpeciesId.milotic.fastMove).toBe('DRAGON_TAIL');
+    expect(assignment.variantsBySpeciesId.milotic).toEqual(alternateVariant);
+    expect(
+      getAssignedMovesetVariantId(assignment, 'golisopod'),
+    ).toBeUndefined();
+    expect(getAssignedMovesetVariantId(assignment, 'milotic')).toBe(
+      alternateVariant.id,
+    );
+  });
+
+  it('enumerates deterministic mixed-authority assignments for unsupported species', () => {
+    const roster = ['anchor', 'a', 'b', 'c', 'd', 'e'];
+    const pokemonById = new Map(
+      roster.map((speciesId) => [
+        speciesId,
+        { speciesId, speciesName: speciesId } as Pokemon,
+      ]),
+    );
+    const variants = [
+      defaultVariant,
+      alternateVariant,
+      {
+        ...alternateVariant,
+        id: 'waterfall--x_scissor--aqua_jet' as const,
+        fastMove: 'WATERFALL',
+      },
+    ];
+    const getActiveVariants = (
+      speciesId: string,
+    ): readonly MovesetVariant[] => {
+      if (speciesId === 'anchor') {
+        throw new MovesetVariantSimulationDataError(
+          'variant-unavailable',
+          'great-league',
+          'runtime-snapshot.json',
+          'anchor',
+        );
+      }
+      return [...variants].reverse();
+    };
+    const dependencies = {
+      getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+      getManifestPolicyIdentity: () => ({
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      }),
+      getActiveVariants,
+      getRankedDefault: () => ({
+        fastMove: 'WATERFALL',
+        chargedMove1: 'SURF',
+        chargedMove2: 'BLIZZARD',
+      }),
+    };
+
+    const first = enumerateRosterMovesetAssignments(
+      roster,
+      'great-league',
+      dependencies,
+    );
+    const second = enumerateRosterMovesetAssignments(roster, 'great-league', {
+      ...dependencies,
+      getActiveVariants: (speciesId) =>
+        speciesId === 'anchor' ? getActiveVariants(speciesId) : [...variants],
+    });
+
+    expect(first).toHaveLength(3 ** 5);
+    expect(first.map(({ fingerprint }) => fingerprint)).toEqual(
+      second.map(({ fingerprint }) => fingerprint),
+    );
+    expect(
+      first.every(
+        (assignment) =>
+          assignment.authorityBySpeciesId.anchor.source ===
+            'ranked-default-fallback' &&
+          getAssignedMovesetVariantId(assignment, 'anchor') === undefined &&
+          roster
+            .slice(1)
+            .every(
+              (speciesId) =>
+                assignment.authorityBySpeciesId[speciesId]?.source ===
+                  'manifest' &&
+                getAssignedMovesetVariantId(assignment, speciesId) !==
+                  undefined,
+            ),
+      ),
+    ).toBe(true);
   });
 
   it('resolves a deterministic ranked-default assignment without manifest access', () => {
@@ -508,9 +595,11 @@ describe('roster moveset assignments', () => {
   });
 
   it.each<MovesetVariantSimulationDataErrorCode>([
+    'manifest-missing',
     'manifest-malformed',
     'manifest-incompatible',
     'manifest-incomplete',
+    'snapshot-not-prepared',
   ])('propagates %s policy failures without ranked fallback', (code) => {
     let fallbackCallCount = 0;
 
@@ -534,7 +623,13 @@ describe('roster moveset assignments', () => {
     expect(fallbackCallCount).toBe(0);
   });
 
-  it('propagates unavailable manifest variants without ranked fallback', () => {
+  it.each<MovesetVariantSimulationDataErrorCode>([
+    'manifest-missing',
+    'manifest-malformed',
+    'manifest-incompatible',
+    'manifest-incomplete',
+    'snapshot-not-prepared',
+  ])('propagates %s species-resolution failures without fallback', (code) => {
     let fallbackCallCount = 0;
 
     expect(() =>
@@ -546,9 +641,9 @@ describe('roster moveset assignments', () => {
         }),
         getMovesetVariantForTeam: () => {
           throw new MovesetVariantSimulationDataError(
-            'variant-unavailable',
+            code,
             'great-league',
-            'moveset-variants.json',
+            'runtime-snapshot.json',
             'golisopod',
           );
         },
@@ -557,7 +652,118 @@ describe('roster moveset assignments', () => {
           return defaultVariant;
         },
       }),
-    ).toThrowError(expect.objectContaining({ code: 'variant-unavailable' }));
+    ).toThrowError(expect.objectContaining({ code }));
     expect(fallbackCallCount).toBe(0);
   });
+
+  it.each<MovesetVariantSimulationDataErrorCode>([
+    'manifest-missing',
+    'manifest-malformed',
+    'manifest-incompatible',
+    'manifest-incomplete',
+    'snapshot-not-prepared',
+  ])('propagates %s active-variant failures without fallback', (code) => {
+    let fallbackCallCount = 0;
+
+    expect(() =>
+      enumerateRosterMovesetAssignments(['golisopod'], 'great-league', {
+        getPokemon: getPokemonBySpeciesId,
+        getManifestPolicyIdentity: () => ({
+          schemaVersion: 1,
+          policyVersion: 'ranking-evidence-v1',
+        }),
+        getActiveVariants: () => {
+          throw new MovesetVariantSimulationDataError(
+            code,
+            'great-league',
+            'runtime-snapshot.json',
+            'golisopod',
+          );
+        },
+        getRankedDefault: () => {
+          fallbackCallCount++;
+          return defaultVariant;
+        },
+      }),
+    ).toThrowError(expect.objectContaining({ code }));
+    expect(fallbackCallCount).toBe(0);
+  });
+
+  it.each([
+    { formatId: 'ultra-league' as const, speciesId: 'golisopod' },
+    { formatId: 'great-league' as const, speciesId: 'milotic' },
+    {
+      formatId: 'great-league' as const,
+      speciesId: 'golisopod',
+      variantId: defaultVariant.id,
+    },
+  ])(
+    'propagates mismatched unavailable variant errors without ranked fallback',
+    ({ formatId, speciesId, variantId }) => {
+      let fallbackCallCount = 0;
+
+      expect(() =>
+        resolveRosterMovesetAssignment(['golisopod'], 'great-league', {
+          getPokemon: getPokemonBySpeciesId,
+          getManifestPolicyIdentity: () => ({
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          }),
+          getMovesetVariantForTeam: () => {
+            throw new MovesetVariantSimulationDataError(
+              'variant-unavailable',
+              formatId,
+              'runtime-snapshot.json',
+              speciesId,
+              variantId,
+            );
+          },
+          getRankedDefault: () => {
+            fallbackCallCount++;
+            return defaultVariant;
+          },
+        }),
+      ).toThrowError(expect.objectContaining({ code: 'variant-unavailable' }));
+      expect(fallbackCallCount).toBe(0);
+    },
+  );
+
+  it.each([
+    { formatId: 'ultra-league' as const, speciesId: 'golisopod' },
+    { formatId: 'great-league' as const, speciesId: 'milotic' },
+    {
+      formatId: 'great-league' as const,
+      speciesId: 'golisopod',
+      variantId: defaultVariant.id,
+    },
+  ])(
+    'propagates mismatched unavailable active variants without ranked fallback',
+    ({ formatId, speciesId, variantId }) => {
+      let fallbackCallCount = 0;
+
+      expect(() =>
+        enumerateRosterMovesetAssignments(['golisopod'], 'great-league', {
+          getPokemon: getPokemonBySpeciesId,
+          getManifestPolicyIdentity: () => ({
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          }),
+          getActiveVariants: () => {
+            throw new MovesetVariantSimulationDataError(
+              'variant-unavailable',
+              formatId,
+              'runtime-snapshot.json',
+              speciesId,
+              variantId,
+            );
+          },
+          getRankedDefault: () => {
+            fallbackCallCount++;
+            return defaultVariant;
+          },
+        }),
+      ).toThrowError(expect.objectContaining({ code: 'variant-unavailable' }));
+      expect(fallbackCallCount).toBe(0);
+    },
+  );
 });
