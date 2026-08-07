@@ -6,12 +6,12 @@ import {
   getMovesetVariantId,
   selectBestMovesetVariant,
 } from '@lib/data/movesetVariants';
-import { MovesetVariantSimulationDataError } from '@lib/data/movesetVariantSimulations';
 import { getPokemonBySpeciesId } from '@lib/data/pokemon';
 import {
   getOptimalMoveset,
   getRoleBasedThreatSpeciesIds,
 } from '@lib/data/rankings';
+import { MovesetVariantSimulationDataError } from '@lib/data/runtimeSimulationRepository';
 import {
   getActiveMovesetVariants,
   getMatchupResult,

@@ -380,6 +380,11 @@ describe('generateTeam format-aware candidate selection', () => {
       'battle-frontier-tsuki-cup',
       'team-aware',
     );
+    expect(
+      vi.mocked(ensureSimulationDataAvailable).mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      vi.mocked(createLineupAwareFitnessContext).mock.invocationCallOrder[0]!,
+    );
     expect(buildCandidateProfiles).toHaveBeenCalledWith(
       expect.objectContaining({
         rankingBands: expect.any(Object),

@@ -13,6 +13,7 @@ import {
   MAX_ACTIVE_MOVESET_VARIANTS,
   MAX_MOVESET_CANDIDATES,
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_POLICY_VERSION,
   MOVESET_VARIANT_SCENARIOS,
   parseMovesetVariantManifestJson,
   serializeMovesetVariantManifest,
@@ -47,7 +48,6 @@ import type { MovesetVariantId, ShieldScenarioKey } from '@/lib/types';
 const TOP_META_WEIGHT = 0.7;
 const FULL_META_WEIGHT = 0.3;
 const IMPROVEMENT_EPSILON = 1e-12;
-const MOVESET_VARIANT_POLICY_VERSION = 'ranking-evidence-v1';
 
 /** One finite battle rating for a canonical opponent. */
 export interface MovesetVariantSimulationMatchup {

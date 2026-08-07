@@ -24,6 +24,7 @@ import {
 import {
   RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
   createRuntimeSimulationSnapshotActiveRatingsDigest,
+  parseRuntimeSimulationSnapshotJson,
   serializeRuntimeSimulationSnapshot,
 } from '@/lib/data/runtimeSimulationSnapshot';
 import type { ShieldScenarioKey } from '@/lib/types';
@@ -597,6 +598,27 @@ describe('moveset variant manifest publication', () => {
       variantIds: ['vine_whip--x_scissor--aqua_jet'] as const,
     };
     const variants = [[0, 0, 1, 2, 0]] as const;
+    const snapshotFormat = { id: format.id, cup: format.cup, cp: format.cp };
+    const snapshotManifest = {
+      schemaVersion: manifestValue.metadata.schemaVersion,
+      policyVersion: manifestValue.metadata.policyVersion,
+      digest: createMovesetVariantSourceDigest('manifest', manifestContents)
+        .digest,
+      sourceDigests: manifestValue.metadata.sourceDigests,
+    };
+    const defaultVariantBySpecies = [0] as const;
+    const opponentIterationOrderBySpecies = [[0]] as const;
+    const encoding = {
+      kind: 'uint16-le-base64',
+      widthBytes: 2,
+      byteOrder: 'little-endian',
+      minimum: 0,
+      maximum: 1000,
+      missing: 65535,
+      scenarios: ['0-0', '1-1', '2-2'],
+      layout: 'variant-opponent-scenario',
+    } as const;
+    const shape = [1, 1, 3] as const;
     const ratings = Buffer.from(
       new Uint16Array([400, 500, 600]).buffer,
     ).toString('base64');
@@ -611,36 +633,27 @@ describe('moveset variant manifest publication', () => {
         targetPath: `data/simulations/cp${format.cp}/${format.cup}/runtime-snapshot.json`,
         contents: serializeRuntimeSimulationSnapshot({
           schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
-          format: { id: format.id, cup: format.cup, cp: format.cp },
-          manifest: {
-            schemaVersion: manifestValue.metadata.schemaVersion,
-            policyVersion: manifestValue.metadata.policyVersion,
-            digest: createMovesetVariantSourceDigest(
-              'manifest',
-              manifestContents,
-            ).digest,
-            sourceDigests: manifestValue.metadata.sourceDigests,
-          },
+          format: snapshotFormat,
+          manifest: snapshotManifest,
           activeRatingsDigest:
             createRuntimeSimulationSnapshotActiveRatingsDigest({
+              schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
+              format: snapshotFormat,
+              manifest: snapshotManifest,
+              encoding,
               dictionaries,
               variants,
+              defaultVariantBySpecies,
+              opponentIterationOrderBySpecies,
+              shape,
               ratings,
             }),
-          encoding: {
-            kind: 'uint16-le-base64',
-            widthBytes: 2,
-            byteOrder: 'little-endian',
-            minimum: 0,
-            maximum: 1000,
-            missing: 65535,
-            scenarios: ['0-0', '1-1', '2-2'],
-            layout: 'variant-opponent-scenario',
-          },
+          encoding,
           dictionaries,
           variants,
-          defaultVariantBySpecies: [0],
-          shape: [1, 1, 3],
+          defaultVariantBySpecies,
+          opponentIterationOrderBySpecies,
+          shape,
           ratings,
         }),
       },
@@ -1159,17 +1172,28 @@ describe('moveset variant manifest publication', () => {
 
   it('rejects a snapshot whose identity does not match its manifest', async () => {
     const bundle = createPublicationBundle('great-league');
-    const snapshot = JSON.parse(bundle.snapshot.contents) as {
-      manifest: { digest: string };
+    const snapshot = parseRuntimeSimulationSnapshotJson(
+      bundle.snapshot.contents,
+    );
+    const changedSnapshot = {
+      ...snapshot,
+      manifest: {
+        ...snapshot.manifest,
+        digest:
+          'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      },
     };
-    snapshot.manifest.digest =
-      'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+    const changedContents = serializeRuntimeSimulationSnapshot({
+      ...changedSnapshot,
+      activeRatingsDigest:
+        createRuntimeSimulationSnapshotActiveRatingsDigest(changedSnapshot),
+    });
 
     await expect(
       publishSimulationGeneration(
         [],
         [bundle.manifest],
-        [{ ...bundle.snapshot, contents: JSON.stringify(snapshot) }],
+        [{ ...bundle.snapshot, contents: changedContents }],
         {
           targetPath: 'data/simulations/runtime-asset-index.json',
           contents: runtimeAssetIndexContents,

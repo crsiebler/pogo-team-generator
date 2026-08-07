@@ -350,6 +350,12 @@ function buildSnapshot(
     }
     return index;
   });
+  const opponentIterationOrderBySpecies = defaultVariantBySpecies.map(
+    (variantIndex) =>
+      [...activeVariants[variantIndex]!.scenarios['0-0'].keys()].map(
+        (opponentId) => getRequiredIndex(opponentIndexes, opponentId),
+      ),
+  );
   const ratings = new Array<number>(
     variants.length * opponents.length * MOVESET_VARIANT_SCENARIOS.length,
   ).fill(RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING);
@@ -370,36 +376,48 @@ function buildSnapshot(
   });
   const dictionaries = { species, opponents, moves, variantIds };
   const encodedRatings = encodeRatings(ratings);
+  const snapshotFormat = { id: format.id, cup: format.cup, cp: format.cp };
+  const snapshotManifest = {
+    schemaVersion: manifest.metadata.schemaVersion,
+    policyVersion: manifest.metadata.policyVersion,
+    digest: sha256(serializeMovesetVariantManifest(manifest)),
+    sourceDigests: [...manifest.metadata.sourceDigests].sort((left, right) =>
+      compareAscii(left.key, right.key),
+    ),
+  };
+  const encoding = {
+    kind: 'uint16-le-base64',
+    widthBytes: 2,
+    byteOrder: 'little-endian',
+    minimum: RUNTIME_SIMULATION_SNAPSHOT_MIN_RATING,
+    maximum: RUNTIME_SIMULATION_SNAPSHOT_MAX_RATING,
+    missing: RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,
+    scenarios: MOVESET_VARIANT_SCENARIOS,
+    layout: 'variant-opponent-scenario',
+  } as const;
+  const shape = [variants.length, opponents.length, 3] as const;
   return {
     schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
-    format: { id: format.id, cup: format.cup, cp: format.cp },
-    manifest: {
-      schemaVersion: manifest.metadata.schemaVersion,
-      policyVersion: manifest.metadata.policyVersion,
-      digest: sha256(serializeMovesetVariantManifest(manifest)),
-      sourceDigests: [...manifest.metadata.sourceDigests].sort((left, right) =>
-        compareAscii(left.key, right.key),
-      ),
-    },
+    format: snapshotFormat,
+    manifest: snapshotManifest,
     activeRatingsDigest: createRuntimeSimulationSnapshotActiveRatingsDigest({
+      schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
+      format: snapshotFormat,
+      manifest: snapshotManifest,
+      encoding,
       dictionaries,
       variants,
+      defaultVariantBySpecies,
+      opponentIterationOrderBySpecies,
+      shape,
       ratings: encodedRatings,
     }),
-    encoding: {
-      kind: 'uint16-le-base64',
-      widthBytes: 2,
-      byteOrder: 'little-endian',
-      minimum: RUNTIME_SIMULATION_SNAPSHOT_MIN_RATING,
-      maximum: RUNTIME_SIMULATION_SNAPSHOT_MAX_RATING,
-      missing: RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,
-      scenarios: MOVESET_VARIANT_SCENARIOS,
-      layout: 'variant-opponent-scenario',
-    },
+    encoding,
     dictionaries,
     variants,
     defaultVariantBySpecies,
-    shape: [variants.length, opponents.length, 3],
+    opponentIterationOrderBySpecies,
+    shape,
     ratings: encodedRatings,
   };
 }

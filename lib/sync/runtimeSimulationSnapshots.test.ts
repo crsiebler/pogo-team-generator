@@ -181,6 +181,7 @@ describe('runtime simulation snapshot preparation', () => {
       [0, 1, 3, 0, 1],
     ]);
     expect(snapshot.defaultVariantBySpecies).toEqual([1]);
+    expect(snapshot.opponentIterationOrderBySpecies).toEqual([[1, 0]]);
     expect([...decodeRuntimeSimulationSnapshotRatings(snapshot)]).toEqual([
       600, 600, 600, 500, 501, 502, 400, 400, 400, 500, 501, 502,
     ]);
@@ -218,6 +219,28 @@ describe('runtime simulation snapshot preparation', () => {
     );
 
     expect(shuffled).toEqual(ordered);
+  });
+
+  it('uses each default CSV order when an alternate row order differs', () => {
+    const input = createPreparedInput();
+    const reorderedCsvFiles = input.csvFiles.map((file) => {
+      if (!file.targetPath.includes('bulbasaur--tackle')) {
+        return file;
+      }
+      const [header, ...rows] = file.contents.split('\n');
+      return {
+        ...file,
+        contents: [header, ...rows.reverse()].join('\n'),
+      };
+    });
+    const prepared = prepareRuntimeSimulationSnapshots(
+      input.manifests,
+      reorderedCsvFiles,
+      dependencies,
+    ).find(({ formatId }) => formatId === 'great-league')!;
+    const snapshot = parseRuntimeSimulationSnapshotJson(prepared.contents);
+
+    expect(snapshot.opponentIterationOrderBySpecies).toEqual([[1, 0]]);
   });
 
   it('overlays prepared CSVs while reading reused resume files', () => {
@@ -333,6 +356,7 @@ describe('runtime simulation snapshot preparation', () => {
     expect(snapshot.defaultVariantBySpecies[charmanderSpeciesIndex]).toBe(
       charmanderVariantIndex,
     );
+    expect(snapshot.opponentIterationOrderBySpecies).toEqual([[1, 0], [1]]);
     expect([...ratings.slice(offset, offset + 3)]).toEqual([
       RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,
       RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,

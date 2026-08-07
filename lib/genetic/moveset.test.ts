@@ -10,6 +10,7 @@ import {
 import { MovesetVariantSimulationDataError } from '@/lib/data/movesetVariantSimulations';
 import type { MovesetVariantSimulationDataErrorCode } from '@/lib/data/movesetVariantSimulations';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
+import { ensureSimulationDataAvailable } from '@/lib/data/simulations';
 import type {
   MovesetAssignmentPolicyIdentity,
   MovesetVariant,
@@ -53,6 +54,7 @@ describe('getSimulationBackedMovesetForTeam', () => {
   it('keeps the ranked default until a format manifest is published', () => {
     const golisopod = getPokemonBySpeciesId('golisopod');
     expect(golisopod).toBeDefined();
+    ensureSimulationDataAvailable('great-league');
 
     expect(
       getSimulationBackedMovesetForTeam(

@@ -201,12 +201,11 @@ export async function generateTeam(
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
+  ensureSimulationDataAvailable(formatId);
   const fitnessContext = createLineupAwareFitnessContext(
     formatId,
     mode === 'PlayPokemon' ? 'ranked-default' : 'team-aware',
   );
-
-  ensureSimulationDataAvailable(formatId);
 
   let candidateNames = getAutomaticCandidatePokemonNames(formatId);
   let availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);

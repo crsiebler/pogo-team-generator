@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'csv-parse/sync';
+import { beforeAll } from 'vitest';
 import { getBattleFormats } from './battleFormats';
 import { getMovesetAvailability } from './moveAvailability';
 import {
@@ -8,8 +9,10 @@ import {
   MOVESET_VARIANT_SCENARIOS,
   parseMovesetVariantManifestJson,
 } from './movesetVariantManifest';
+import { speciesNameToChoosableId } from './pokemon';
 import {
   ensureSimulationDataAvailable,
+  extractSpeciesNameFromSimulationCell,
   getActiveMovesetVariants,
   getMatchupMatrix,
   getMatchupResult,
@@ -19,6 +22,12 @@ import {
 } from './simulations';
 
 describe('format-aware simulation loading', () => {
+  beforeAll(() => {
+    for (const format of getBattleFormats()) {
+      ensureSimulationDataAvailable(format.id);
+    }
+  });
+
   it('supports default and explicit Great League lookups', () => {
     const defaultMatrix = getMatchupMatrix();
     const explicitMatrix = getMatchupMatrix('great-league');
@@ -201,11 +210,17 @@ describe('format-aware simulation loading', () => {
           ({ id }) => id === species.defaultVariantId,
         );
         expect(defaultCandidate).toBeDefined();
-        expect(
-          getActiveMovesetVariants(species.speciesId, format.id).map(
-            ({ id }) => id,
+        expect(getActiveMovesetVariants(species.speciesId, format.id)).toEqual(
+          activeCandidates.map(
+            ({ id, fastMove, chargedMove1, chargedMove2, isDefault }) => ({
+              id,
+              fastMove,
+              chargedMove1,
+              chargedMove2,
+              isDefault,
+            }),
           ),
-        ).toEqual(activeCandidates.map(({ id }) => id));
+        );
 
         const loadedDefaultMatchups = defaultMatrix.get(species.speciesId);
         expect(loadedDefaultMatchups).toBeDefined();
@@ -254,31 +269,95 @@ describe('format-aware simulation loading', () => {
           ).toBe(matchup.shields2.battleRating);
         }
 
-        const defaultOpponents = Object.fromEntries(
+        const defaultRows = Object.fromEntries(
           MOVESET_VARIANT_SCENARIOS.map((scenario) => [
             scenario,
-            readValidSimulationOpponents(
+            readValidSimulationRows(
               manifestResourcePath,
               defaultCandidate!.storageKeys[scenario],
             ),
           ]),
         );
+        expect([...loadedDefaultMatchups.keys()]).toEqual(
+          defaultRows['0-0'].map(({ opponentSpeciesId }) => opponentSpeciesId),
+        );
 
         for (const candidate of activeCandidates) {
+          const candidateRows = Object.fromEntries(
+            MOVESET_VARIANT_SCENARIOS.map((scenario) => [
+              scenario,
+              readValidSimulationRows(
+                manifestResourcePath,
+                candidate.storageKeys[scenario],
+              ),
+            ]),
+          );
+          const candidateRatings = Object.fromEntries(
+            MOVESET_VARIANT_SCENARIOS.map((scenario) => [
+              scenario,
+              new Map(
+                candidateRows[scenario].map(
+                  ({ opponentSpeciesId, battleRating }) => [
+                    opponentSpeciesId,
+                    battleRating,
+                  ],
+                ),
+              ),
+            ]),
+          );
           for (const scenario of MOVESET_VARIANT_SCENARIOS) {
-            const opponents = readValidSimulationOpponents(
-              manifestResourcePath,
-              candidate.storageKeys[scenario],
-            );
+            const rows = candidateRows[scenario];
+            const defaultScenarioRows = defaultRows[scenario];
             if (
-              opponents.length !== defaultOpponents[scenario].length ||
-              opponents.some(
-                (opponent, index) =>
-                  opponent !== defaultOpponents[scenario][index],
+              rows.length !== defaultScenarioRows.length ||
+              rows.some(
+                (row, index) =>
+                  row.opponentSpeciesId !==
+                  defaultScenarioRows[index]?.opponentSpeciesId,
               )
             ) {
               throw new Error(
                 `${format.id}/${species.speciesId}/${candidate.id}/${scenario} does not match its default opponent set`,
+              );
+            }
+            const shields = Number(scenario[0]) as 0 | 1 | 2;
+            for (const row of rows) {
+              const loaded = getMovesetVariantShieldScenarioMatchupResult(
+                species.speciesId,
+                candidate.id,
+                row.opponentSpeciesId,
+                shields,
+                format.id,
+              );
+              if (loaded !== row.battleRating) {
+                throw new Error(
+                  `${format.id}/${species.speciesId}/${candidate.id}/${scenario}/${row.opponentSpeciesId} snapshot rating ${loaded} does not match CSV ${row.battleRating}`,
+                );
+              }
+            }
+          }
+          for (const row of candidateRows['0-0']) {
+            const expectedAggregate =
+              row.battleRating * 0.3 +
+              getRequiredCsvRating(
+                candidateRatings['1-1'],
+                row.opponentSpeciesId,
+              ) *
+                0.5 +
+              getRequiredCsvRating(
+                candidateRatings['2-2'],
+                row.opponentSpeciesId,
+              ) *
+                0.2;
+            const loadedAggregate = getMatchupResult(
+              species.speciesId,
+              row.opponentSpeciesId,
+              format.id,
+              candidate.id,
+            );
+            if (loadedAggregate !== expectedAggregate) {
+              throw new Error(
+                `${format.id}/${species.speciesId}/${candidate.id}/${row.opponentSpeciesId} snapshot aggregate ${loadedAggregate} does not match CSV ${expectedAggregate}`,
               );
             }
           }
@@ -303,10 +382,26 @@ describe('format-aware simulation loading', () => {
   });
 });
 
-function readValidSimulationOpponents(
+interface ValidSimulationRow {
+  readonly opponentSpeciesId: string;
+  readonly battleRating: number;
+}
+
+function getRequiredCsvRating(
+  ratings: ReadonlyMap<string, number>,
+  opponentSpeciesId: string,
+): number {
+  const rating = ratings.get(opponentSpeciesId);
+  if (rating === undefined) {
+    throw new Error(`Missing CSV rating for ${opponentSpeciesId}`);
+  }
+  return rating;
+}
+
+function readValidSimulationRows(
   manifestResourcePath: string,
   storageKey: string,
-): string[] {
+): ValidSimulationRow[] {
   const simulationPath = path.join(
     process.cwd(),
     path.dirname(manifestResourcePath),
@@ -322,7 +417,7 @@ function readValidSimulationOpponents(
     throw new Error(`${simulationPath} has an invalid or empty CSV header`);
   }
 
-  const opponents: string[] = [];
+  const rows: ValidSimulationRow[] = [];
   for (const line of lines) {
     const [opponent, battleRating, energyRemaining, hpRemaining, extra] =
       line.split(',');
@@ -335,11 +430,25 @@ function readValidSimulationOpponents(
     ) {
       throw new Error(`${simulationPath} contains an invalid row: ${line}`);
     }
-    opponents.push(opponent);
+    const opponentSpeciesId = speciesNameToChoosableId(
+      extractSpeciesNameFromSimulationCell(opponent),
+    );
+    if (!opponentSpeciesId) {
+      throw new Error(
+        `${simulationPath} contains unknown opponent ${opponent}`,
+      );
+    }
+    rows.push({
+      opponentSpeciesId,
+      battleRating: Number(battleRating),
+    });
   }
 
-  if (new Set(opponents).size !== opponents.length) {
+  if (
+    new Set(rows.map(({ opponentSpeciesId }) => opponentSpeciesId)).size !==
+    rows.length
+  ) {
     throw new Error(`${simulationPath} contains duplicate opponents`);
   }
-  return opponents;
+  return rows;
 }

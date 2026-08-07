@@ -14,7 +14,7 @@ import { getMovesetVariantId } from './movesetVariants';
 import type { MovesetVariantId } from '@/lib/types';
 
 /** Current repository-owned compact simulation snapshot schema version. */
-export const RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION = 1 as const;
+export const RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION = 2 as const;
 
 /** Sentinel used when an explicit variant/opponent/scenario row is unavailable. */
 export const RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING = 0xffff;
@@ -90,6 +90,7 @@ export interface RuntimeSimulationSnapshot {
   readonly dictionaries: RuntimeSimulationSnapshotDictionaries;
   readonly variants: readonly RuntimeSimulationSnapshotVariant[];
   readonly defaultVariantBySpecies: readonly number[];
+  readonly opponentIterationOrderBySpecies: readonly (readonly number[])[];
   readonly shape: readonly [
     variantCount: number,
     opponentCount: number,
@@ -101,7 +102,16 @@ export interface RuntimeSimulationSnapshot {
 /** Inputs whose canonical bytes define active compact-rating identity. */
 export type RuntimeSimulationSnapshotActiveRatingsIdentity = Pick<
   RuntimeSimulationSnapshot,
-  'dictionaries' | 'variants' | 'ratings'
+  | 'schemaVersion'
+  | 'format'
+  | 'manifest'
+  | 'encoding'
+  | 'dictionaries'
+  | 'variants'
+  | 'defaultVariantBySpecies'
+  | 'opponentIterationOrderBySpecies'
+  | 'shape'
+  | 'ratings'
 >;
 
 /** Typed failure raised for malformed compact simulation snapshot data. */
@@ -167,8 +177,16 @@ export function createRuntimeSimulationSnapshotActiveRatingsDigest(
   return createHash('sha256')
     .update(
       JSON.stringify({
+        schemaVersion: identity.schemaVersion,
+        format: identity.format,
+        manifest: identity.manifest,
+        encoding: identity.encoding,
         dictionaries: identity.dictionaries,
         variants: identity.variants,
+        defaultVariantBySpecies: identity.defaultVariantBySpecies,
+        opponentIterationOrderBySpecies:
+          identity.opponentIterationOrderBySpecies,
+        shape: identity.shape,
         ratings: identity.ratings,
       }),
     )
@@ -429,6 +447,61 @@ function readDefaults(
   });
 }
 
+function readOpponentIterationOrderBySpecies(
+  value: unknown,
+  speciesCount: number,
+  opponentCount: number,
+): number[][] {
+  if (!Array.isArray(value) || value.length !== speciesCount) {
+    fail(
+      'snapshot.opponentIterationOrderBySpecies',
+      'must contain one order per species',
+    );
+  }
+  return value.map((order, speciesIndex) => {
+    const path = `snapshot.opponentIterationOrderBySpecies[${speciesIndex}]`;
+    if (!Array.isArray(order) || order.length > opponentCount) {
+      fail(path, 'must be an opponent index array');
+    }
+    const indexes = order.map((entry, index) =>
+      readBoundedIndex(entry, `${path}[${index}]`, opponentCount),
+    );
+    if (new Set(indexes).size !== indexes.length) {
+      fail(path, 'must contain unique opponent indexes');
+    }
+    return indexes;
+  });
+}
+
+function validateOpponentIterationOrderPresence(
+  orders: readonly (readonly number[])[],
+  defaults: readonly number[],
+  ratings: string,
+  opponentCount: number,
+): void {
+  const bytes = Buffer.from(ratings, 'base64');
+  orders.forEach((order, speciesIndex) => {
+    const orderedIndexes = new Set(order);
+    const defaultVariantIndex = defaults[speciesIndex]!;
+    for (
+      let opponentIndex = 0;
+      opponentIndex < opponentCount;
+      opponentIndex += 1
+    ) {
+      const offset = (defaultVariantIndex * opponentCount + opponentIndex) * 6;
+      const present =
+        bytes.readUInt16LE(offset) !==
+        RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING;
+      if (orderedIndexes.has(opponentIndex) !== present) {
+        fail(
+          `snapshot.opponentIterationOrderBySpecies[${speciesIndex}]`,
+          'must contain exactly the default variant opponents',
+        );
+      }
+    }
+  });
+}
+
 function readShape(
   value: unknown,
   variantCount: number,
@@ -508,12 +581,23 @@ export function parseRuntimeSimulationSnapshot(
     dictionaries.species.length,
     variants,
   );
+  const opponentIterationOrderBySpecies = readOpponentIterationOrderBySpecies(
+    record.opponentIterationOrderBySpecies,
+    dictionaries.species.length,
+    dictionaries.opponents.length,
+  );
   const shape = readShape(
     record.shape,
     variants.length,
     dictionaries.opponents.length,
   );
   const ratings = readRatings(record.ratings, shape[0] * shape[1] * shape[2]);
+  validateOpponentIterationOrderPresence(
+    opponentIterationOrderBySpecies,
+    defaultVariantBySpecies,
+    ratings,
+    dictionaries.opponents.length,
+  );
   const activeRatingsDigest = readDigest(
     record.activeRatingsDigest,
     'snapshot.activeRatingsDigest',
@@ -521,8 +605,15 @@ export function parseRuntimeSimulationSnapshot(
   if (
     activeRatingsDigest !==
     createRuntimeSimulationSnapshotActiveRatingsDigest({
+      schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
+      format,
+      manifest,
+      encoding,
       dictionaries,
       variants,
+      defaultVariantBySpecies,
+      opponentIterationOrderBySpecies,
+      shape,
       ratings,
     })
   ) {
@@ -540,6 +631,7 @@ export function parseRuntimeSimulationSnapshot(
     dictionaries,
     variants,
     defaultVariantBySpecies,
+    opponentIterationOrderBySpecies,
     shape,
     ratings,
   };

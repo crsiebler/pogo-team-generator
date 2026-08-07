@@ -30,35 +30,49 @@ function createSnapshot(): RuntimeSimulationSnapshot {
     variantIds: ['vine_whip--sludge_bomb--power_whip'] as const,
   };
   const variants = [[0, 0, 2, 0, 1]] as const;
+  const format = { id: 'great-league', cup: 'all', cp: 1500 } as const;
+  const manifest = {
+    schemaVersion: 1 as const,
+    policyVersion: 'ranking-evidence-v1',
+    digest,
+    sourceDigests: [{ key: 'fixture', algorithm: 'sha256' as const, digest }],
+  };
+  const defaultVariantBySpecies = [0] as const;
+  const opponentIterationOrderBySpecies = [[0]] as const;
+  const encoding = {
+    kind: 'uint16-le-base64',
+    widthBytes: 2,
+    byteOrder: 'little-endian',
+    minimum: 0,
+    maximum: 1000,
+    missing: RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,
+    scenarios: ['0-0', '1-1', '2-2'],
+    layout: 'variant-opponent-scenario',
+  } as const;
+  const shape = [1, 2, 3] as const;
   const encodedRatings = Buffer.from(ratings.buffer).toString('base64');
   return {
     schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
-    format: { id: 'great-league', cup: 'all', cp: 1500 },
-    manifest: {
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-      digest,
-      sourceDigests: [{ key: 'fixture', algorithm: 'sha256', digest }],
-    },
+    format,
+    manifest,
     activeRatingsDigest: createRuntimeSimulationSnapshotActiveRatingsDigest({
+      schemaVersion: RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
+      format,
+      manifest,
+      encoding,
       dictionaries,
       variants,
+      defaultVariantBySpecies,
+      opponentIterationOrderBySpecies,
+      shape,
       ratings: encodedRatings,
     }),
-    encoding: {
-      kind: 'uint16-le-base64',
-      widthBytes: 2,
-      byteOrder: 'little-endian',
-      minimum: 0,
-      maximum: 1000,
-      missing: RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,
-      scenarios: ['0-0', '1-1', '2-2'],
-      layout: 'variant-opponent-scenario',
-    },
+    encoding,
     dictionaries,
     variants,
-    defaultVariantBySpecies: [0],
-    shape: [1, 2, 3],
+    defaultVariantBySpecies,
+    opponentIterationOrderBySpecies,
+    shape,
     ratings: encodedRatings,
   };
 }
@@ -127,6 +141,25 @@ describe('runtime simulation snapshot contract', () => {
         }),
       ),
     ).toThrow(/canonical species id/i);
+  });
+
+  it('binds the schema and encoding contract into active rating identity', () => {
+    const snapshot = createSnapshot();
+    const changedEncoding = {
+      ...snapshot,
+      encoding: { ...snapshot.encoding, layout: 'scenario-variant-opponent' },
+    } as unknown as RuntimeSimulationSnapshot;
+    const changedSchema = {
+      ...snapshot,
+      schemaVersion: 3,
+    } as unknown as RuntimeSimulationSnapshot;
+
+    expect(
+      createRuntimeSimulationSnapshotActiveRatingsDigest(changedEncoding),
+    ).not.toBe(snapshot.activeRatingsDigest);
+    expect(
+      createRuntimeSimulationSnapshotActiveRatingsDigest(changedSchema),
+    ).not.toBe(snapshot.activeRatingsDigest);
   });
 
   it('derives one fixed snapshot path from the battle-format catalog', () => {

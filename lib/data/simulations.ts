@@ -1,20 +1,20 @@
-import { readFileSync } from 'fs';
 import type { BattleFormatId } from './battleFormats';
 import { DEFAULT_BATTLE_FORMAT_ID, getBattleFormatById } from './battleFormats';
 import {
-  createMovesetVariantSimulationLoader,
-  type RuntimeMatchupMatrix,
-  type RuntimeMatchupResult,
-} from './movesetVariantSimulations';
-import {
   normalizeToChoosableSpeciesId,
   speciesIdToSpeciesName,
-  speciesNameToChoosableId,
 } from './pokemon';
 import {
   getAllRankingsForPokemon,
   getRoleBasedThreatSpeciesIds,
 } from './rankings';
+import {
+  createRuntimeSimulationRepository,
+  MovesetVariantSimulationDataError,
+  type RuntimeMatchupMatrix,
+  type RuntimeMatchupResult,
+} from './runtimeSimulationRepository';
+import { readRuntimeSimulationSnapshotFile } from './runtimeSimulationSnapshotFile';
 import type { MovesetVariant, MovesetVariantId } from '@/lib/types';
 
 /**
@@ -81,11 +81,9 @@ function resolveFormatId(formatId?: BattleFormatId): BattleFormatId {
   return formatId ?? DEFAULT_BATTLE_FORMAT_ID;
 }
 
-const movesetVariantSimulationLoader = createMovesetVariantSimulationLoader({
+const runtimeSimulationRepository = createRuntimeSimulationRepository({
   rootPath: process.cwd(),
-  readText: (filePath: string): string => readFileSync(filePath, 'utf8'),
-  resolveOpponentSpeciesId: (value: string): string | undefined =>
-    speciesNameToChoosableId(extractSpeciesNameFromSimulationCell(value)),
+  readText: readRuntimeSimulationSnapshotFile,
 });
 
 /** Return manifest-declared active movesets for one species and format. */
@@ -93,7 +91,7 @@ export function getActiveMovesetVariants(
   speciesId: string,
   formatId?: BattleFormatId,
 ): readonly MovesetVariant[] {
-  return movesetVariantSimulationLoader.getActiveVariants(
+  return runtimeSimulationRepository.getActiveVariants(
     speciesId,
     resolveFormatId(formatId),
   );
@@ -103,7 +101,7 @@ export function getActiveMovesetVariants(
 export function getMovesetVariantManifestPolicyIdentity(
   formatId?: BattleFormatId,
 ): Readonly<{ schemaVersion: number; policyVersion: string }> {
-  return movesetVariantSimulationLoader.getManifestPolicyIdentity(
+  return runtimeSimulationRepository.getManifestPolicyIdentity(
     resolveFormatId(formatId),
   );
 }
@@ -113,9 +111,7 @@ export function getMovesetVariantManifestPolicyIdentity(
  */
 export function getMatchupMatrix(formatId?: BattleFormatId): MatchupMatrix {
   const resolvedFormatId = resolveFormatId(formatId);
-  return movesetVariantSimulationLoader.getDefaultMatchupMatrix(
-    resolvedFormatId,
-  );
+  return runtimeSimulationRepository.getDefaultMatchupMatrix(resolvedFormatId);
 }
 
 /**
@@ -123,6 +119,17 @@ export function getMatchupMatrix(formatId?: BattleFormatId): MatchupMatrix {
  */
 export function ensureSimulationDataAvailable(formatId?: BattleFormatId): void {
   const resolvedFormatId = resolveFormatId(formatId);
+  try {
+    runtimeSimulationRepository.prepare(resolvedFormatId);
+  } catch (error) {
+    if (
+      error instanceof MovesetVariantSimulationDataError &&
+      error.code === 'manifest-missing'
+    ) {
+      throw new MissingSimulationDataError(resolvedFormatId);
+    }
+    throw error;
+  }
   const matrix = getMatchupMatrix(resolvedFormatId);
 
   if (matrix.size === 0) {
@@ -141,7 +148,7 @@ export function getMatchupResult(
   movesetVariantId?: MovesetVariantId,
 ): number | null {
   if (movesetVariantId) {
-    return movesetVariantSimulationLoader.getMatchupResult(
+    return runtimeSimulationRepository.getMatchupResult(
       speciesId,
       movesetVariantId,
       opponentSpeciesId,
@@ -205,7 +212,7 @@ export function getShieldScenarioMatchupResult(
   movesetVariantId?: MovesetVariantId,
 ): number | null {
   if (movesetVariantId) {
-    return movesetVariantSimulationLoader.getShieldScenarioMatchupResult(
+    return runtimeSimulationRepository.getShieldScenarioMatchupResult(
       speciesId,
       movesetVariantId,
       opponentSpeciesId,

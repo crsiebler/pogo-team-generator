@@ -11,6 +11,7 @@ import {
   type MovesetVariantManifestCandidate,
   type MovesetVariantManifestSpecies,
 } from './movesetVariantManifest';
+import { MovesetVariantSimulationDataError } from './runtimeSimulationRepository';
 import type {
   MovesetVariant,
   MovesetVariantId,
@@ -18,31 +19,10 @@ import type {
 } from '@/lib/types';
 
 /** Stable categories for actionable runtime variant-data failures. */
-export type MovesetVariantSimulationDataErrorCode =
-  | 'manifest-missing'
-  | 'manifest-malformed'
-  | 'manifest-incompatible'
-  | 'manifest-incomplete'
-  | 'variant-unavailable';
-
-/** Typed failure raised when authoritative runtime variant data cannot be used. */
-export class MovesetVariantSimulationDataError extends Error {
-  constructor(
-    public readonly code: MovesetVariantSimulationDataErrorCode,
-    public readonly formatId: BattleFormatId,
-    public readonly resourcePath: string,
-    public readonly speciesId?: string,
-    public readonly variantId?: MovesetVariantId,
-    cause?: unknown,
-  ) {
-    const target = [speciesId, variantId].filter(Boolean).join(' / ');
-    super(
-      `Moveset variant data ${code.replaceAll('-', ' ')} for ${formatId}${target ? ` (${target})` : ''} at ${resourcePath}. Run simulation sync to regenerate the format manifest and declared CSV files.`,
-      cause === undefined ? undefined : { cause },
-    );
-    this.name = 'MovesetVariantSimulationDataError';
-  }
-}
+export {
+  MovesetVariantSimulationDataError,
+  type MovesetVariantSimulationDataErrorCode,
+} from './runtimeSimulationRepository';
 
 /** Filesystem and species-resolution boundaries used by the runtime loader. */
 export interface MovesetVariantSimulationLoaderDependencies {

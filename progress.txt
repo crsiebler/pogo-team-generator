@@ -38,6 +38,7 @@
 - Validate checked-in generated variant data through the battle-format catalog: parse every manifest, check every active scenario CSV and default opponent parity, enforce move availability, and cover representative variants plus forbidden synthesized forms.
 - Publish `data/simulations/runtime-asset-index.json` from reparsed manifests for every catalog format, including each manifest and only active candidate scenario paths; install it after manifests in the rollback-capable batch while retaining inactive CSVs as sync evidence.
 - Compact runtime snapshots use canonical dictionaries plus little-endian `uint16` Base64 ratings in variant/opponent/scenario order, reserve `0xffff` for missing rows, overlay deferred CSV bytes before reused files, and retain every validated active CSV row because manifest `evaluationCounts` describe bounded selection pools rather than full matrix sizes.
+- Prepare compact runtime snapshots once per format before optimizer context construction; keep warm matchup, active-variant, and policy lookups synchronous and snapshot-only, preserve the default variant plus source opponent iteration order, bind behavior-affecting identity to the active digest, and fail closed without manifest or CSV fallback.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1644,4 +1645,47 @@
   - US-032 must switch tracing to snapshots, remove simulation CSVs from runtime function traces, and enforce the final size/performance/memory budgets.
 - Next iteration start:
   - US-031 - Load matchups from compact runtime snapshots
+---
+
+## 2026-08-07 07:28:46 MST - US-031
+- Implemented a format-scoped compact snapshot repository with explicit transactional preparation, validated schema/format/policy/source digest/dictionary/variant/default/per-species order/rating/sentinel identity before caching, synchronous typed-array aggregate and shield lookups, default-first active movesets, source-order virtual default matrices, bounded no-follow regular-file reads, and fail-closed behavior with no runtime manifest or CSV fallback; moved preparation before optimizer context construction and shared the authoritative policy version across sync/runtime.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantManifest.ts`, `lib/data/movesetVariantSimulations.ts`, `lib/data/runtimeSimulationRepository.ts`, `lib/data/runtimeSimulationRepository.test.ts`, `lib/data/runtimeSimulationSnapshot.ts`, `lib/data/runtimeSimulationSnapshot.test.ts`, `lib/data/runtimeSimulationSnapshotFile.ts`, `lib/data/runtimeSimulationSnapshotFile.test.ts`, `lib/data/simulations.ts`, `lib/data/simulations.test.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `lib/sync/runtimeSimulationSnapshots.ts`, `lib/sync/runtimeSimulationSnapshots.test.ts`, `data/simulations/cp{cp}/{cup}/runtime-snapshot.json` for all eight supported formats, `prd.json`, `progress.txt`
+- Commit message: `feat(simulations): load US-031 matchups from compact snapshots`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/runtimeSimulationRepository.test.ts lib/genetic/algorithm.test.ts -t "prepares one format once|preserves missing alternate|fails closed on missing|loads top-ranked names"` (fail as expected before implementation: repository module missing and preparation ran after context construction)
+  - focused snapshot, simulation, moveset, algorithm, lineup-scoring, calibration, and PvPoke boundary suites (pass, including catalog-wide active snapshot/CSV parity)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (initial fail: four import-order/unused-type errors; pass after fixes)
+  - `npm test` (initial fail: five direct scoring-context tests lacked explicit preparation; pass after preparing in production context construction, 837 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - targeted `npx prettier --check ... && git diff --check` (pass)
+  - review regression tests for digest-bound schema/encoding/default/source identity, bounded stable reads, symlink refusal, per-species source opponent iteration, independent format preparation, complete active moveset parity, and opponent-keyed aggregate parity (fail as expected before review fixes; pass after fixes)
+  - rollback-capable snapshot publication command (pass; regenerated all eight schema-v2 snapshots)
+  - repeated final snapshot publication produced identical data diff SHA-256 `f947a0d7123ed192ff1eb4cb69973d0e1cc8fb32f7fccbd519bbfb9536c910d4` (pass)
+  - final `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, and format/diff checks after review fixes (pass, 843 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `backend-developer`, `performance-engineer`
+  - Used: `backend-developer`, `performance-engineer`; both fit the standard-mode complex-story budget and provided complementary repository/error-contract, hydration, cache, missing-sentinel, no-fallback, hot-path, and parity guidance
+- Specialist review:
+  - Agents used: initial and targeted `code-reviewer`, `qa-expert`, and `security-engineer` review because the runtime data-path replacement affected correctness, parity, deterministic behavior, and filesystem-backed snapshot parsing
+  - Findings: fixed all deduplicated findings by preserving each species default CSV opponent order instead of one global alternate-derived order; binding schema, encoding, shape, format, manifest/source identity, defaults, per-species order, dictionaries, variants, and ratings into the active digest; reading at most the opened file's validated size plus one byte with no-follow flags; adding isolated cross-format cache/failure coverage; comparing complete active movesets; keying aggregate parity by opponent; preparing every test format explicitly; and clarifying snapshot versus legacy CSV authority
+- Decisions (why):
+  - Retained one decoded `Uint16Array` plus canonical indexes per prepared format and exposed virtual default matchup maps so warm lookups remain synchronous without rebuilding the old CSV object graph.
+  - Re-exported the shared typed data error from the legacy CSV reference loader so existing test/tooling consumers retain `instanceof` behavior while production imports no CSV parser or loader.
+  - Preserved default-first active variant order before lexical alternates because assignment enumeration, fingerprints, diagnostics, API output, and export must not drift from manifest-era behavior.
+  - Added one explicit opponent iteration permutation per species default instead of changing canonical sorted dictionaries, preserving previous tie and floating-point accumulation semantics even when valid source CSV row order differs by species or alternate.
+  - Bumped the compact snapshot schema to v2 and regenerated every checked-in snapshot because defaults, manifest/source identity, and opponent order affect runtime behavior and must be covered by the verified active digest.
+  - Opened snapshots with `O_NOFOLLOW`, validated the opened descriptor as a bounded regular file, and rejected growth or truncation during a size-limited read so preparation cannot follow a redirected final path or allocate beyond the configured limit.
+  - Kept runtime snapshot tracing changes out of this story because US-032 owns removing CSV assets from generated function traces and enforcing deployment size/performance/memory budgets.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Snapshot preparation must finish validation and hydration in local state before publishing the format cache; failed reads, incompatible policy, invalid presence masks, and malformed payloads must leave the format unprepared.
+  - Optimizer contexts can be constructed directly outside `generateTeam(...)`, so production context construction also calls the idempotent preparation boundary before threat or matchup reads.
+  - Catalog-wide parity now checks every manifest-active species, variant, opponent, and shield rating plus weighted aggregates against source CSV evidence.
+  - Default matrix iteration order is observable optimizer behavior: loss ties and floating-point means can change even when every point lookup has exact rating parity.
+- Known issues / follow-ups:
+  - US-032 must trace compact snapshots instead of simulation CSVs and validate the final function-size, snapshot-size, generation-time, and peak-memory budgets.
+- Next iteration start:
+  - US-032 - Remove simulation CSVs from runtime function traces
 ---

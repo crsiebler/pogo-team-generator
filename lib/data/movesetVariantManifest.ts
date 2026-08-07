@@ -15,6 +15,9 @@ import type {
 /** Current repository-owned moveset variant manifest schema version. */
 export const MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION = 1 as const;
 
+/** Current moveset derivation policy accepted by sync and runtime artifacts. */
+export const MOVESET_VARIANT_POLICY_VERSION = 'ranking-evidence-v1' as const;
+
 /** Hard maximum number of derived candidates for one species and format. */
 export const MAX_MOVESET_CANDIDATES = 8;
 

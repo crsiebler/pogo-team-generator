@@ -15,6 +15,7 @@ import {
   MissingRankingDataError,
 } from '@/lib/data/rankings';
 import {
+  ensureSimulationDataAvailable,
   getMatchupQualityScore,
   getMatchupResult,
   getShieldScenarioMatchupResult,
@@ -204,6 +205,7 @@ export function createDefaultLineupScoringContext(
   movesetPolicy: LineupMovesetPolicy = 'team-aware',
   dataDependencies: LineupScoringDataDependencies = defaultLineupScoringDataDependencies,
 ): LineupScoringContext {
+  ensureSimulationDataAvailable(formatId);
   const recommendedMovesetCache = new Map<string, LineupMoveset>();
   const rankingScoreCache = new Map<string, number>();
   const roleScoreCache = new Map<string, number>();
