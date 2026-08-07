@@ -43,6 +43,8 @@ Pass ranking-derived candidate sets and sanitized top-150 species ids directly f
 
 Checked-in moveset-specific simulation variants must include complete `0-0`, `1-1`, and `2-2` files with matching opponent sets for every applicable format.
 
+Keep the catalog-driven checked-in manifest regression in `lib/data/simulations.test.ts` aligned with generated data policy: parse every supported format manifest, validate every active scenario CSV and default opponent parity, reject excluded moves and synthesized forbidden forms, and require representative evidence-backed alternates.
+
 Simulation projection must bypass the destructive `runSync(...)` pipeline, derive candidates through read-only sync dependencies, limit alternate output to sanitized top-150 Overall targets with multiple candidates, and recognize stale files only through the strict canonical variant filename parser.
 
 Keep moveset variant manifest types, unknown-input validation, and canonical serialization in `lib/data/movesetVariantManifest.ts`; keep source hashing and generated manifest construction in `lib/sync/movesetVariantManifest.ts`. Import candidate and active caps from the data-layer manifest contract so derivation, projection, and validation cannot drift. Reject known species and move aliases at the manifest boundary, and require uppercase ASCII move IDs in manifest fields, so alternate representations cannot create parallel storage or variant identities.
@@ -90,6 +92,8 @@ For simulation-backed scoring, call `ensureSimulationDataAvailable(formatId)` be
 For PlayPokemon lineup-aware fitness, enumerate bring-6 rosters through `lib/genetic/fitness/lineupEnumeration.ts`; preserve roster input order for lead iteration, evaluate ordered switch and closer assignments for each remaining Pokemon pair, and reject species ids containing the lineup key delimiter (`|`).
 
 For lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, prefer `LineupScoringContext` injection in tests and `createDefaultLineupScoringContext(...)` for production wiring so ranking, move, Pokemon, and simulation lookups stay deterministic and cacheable by callers.
+
+Memoize production lineup-context ranking, aggregate matchup, shield-scenario, and matchup-quality lookups by every result-affecting input, including variant identity. Keep those caches per context/run and retain the complete assignment fingerprint in assignment-aware lineup cache keys.
 
 Lineup scoring contexts may provide separate `topThreats` and `fullMetaThreats`; keep `context.threats` as the union/default threat list for compatibility, canonicalize, dedupe, and bound threat pools before scoring, expose split diagnostics through `LineupCoverageMetrics`, and weight evaluated top-threat coverage more heavily than full-meta coverage.
 

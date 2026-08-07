@@ -112,6 +112,123 @@ describe('createDefaultLineupScoringContext', () => {
     );
     expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
   });
+
+  test('memoizes every result-affecting lookup input including null results', () => {
+    const getAverageRankingScore = vi.fn(() => 90);
+    const getRankingScore = vi.fn(() => 80);
+    const getMatchupResult = vi.fn(() => null);
+    const getShieldScenarioMatchupResult = vi.fn(() => 500);
+    const getMatchupQualityScore = vi.fn(() => 0.5);
+    const context = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+      {
+        getAverageRankingScore,
+        getRankingScore,
+        getMatchupResult,
+        getShieldScenarioMatchupResult,
+        getMatchupQualityScore,
+      },
+    );
+    const variantA = 'bubble--ice_beam--play_rough' as MovesetVariantId;
+    const variantB = 'bubble--hydro_pump--play_rough' as MovesetVariantId;
+
+    context.getRankingScore('azumarill');
+    context.getRankingScore('azumarill');
+    context.getRankingScore('skarmory');
+    expect(getAverageRankingScore).toHaveBeenCalledTimes(2);
+
+    context.getRoleScore('azumarill', 'lead');
+    context.getRoleScore('azumarill', 'lead');
+    context.getRoleScore('azumarill', 'switch');
+    context.getRoleScore('skarmory', 'lead');
+    context.getRankingCategoryScore?.('azumarill', 'chargers');
+    context.getRankingCategoryScore?.('azumarill', 'chargers');
+    context.getRankingCategoryScore?.('azumarill', 'attackers');
+    context.getRankingCategoryScore?.('skarmory', 'chargers');
+    expect(getRankingScore).toHaveBeenCalledTimes(6);
+
+    context.getMatchupRating('azumarill', 'lanturn', variantA);
+    context.getMatchupRating('azumarill', 'lanturn', variantA);
+    context.getMatchupRating('azumarill', 'skarmory', variantA);
+    context.getMatchupRating('azumarill', 'lanturn', variantB);
+    context.getMatchupRating('skarmory', 'lanturn', variantA);
+    expect(getMatchupResult).toHaveBeenCalledTimes(4);
+
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      1,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      1,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      2,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'skarmory',
+      1,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      1,
+      variantB,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'skarmory',
+      'lanturn',
+      1,
+      variantA,
+    );
+    expect(getShieldScenarioMatchupResult).toHaveBeenCalledTimes(5);
+
+    context.getMatchupQualityScore?.('azumarill', variantA);
+    context.getMatchupQualityScore?.('azumarill', variantA);
+    context.getMatchupQualityScore?.('azumarill', variantB);
+    context.getMatchupQualityScore?.('skarmory', variantA);
+    expect(getMatchupQualityScore).toHaveBeenCalledTimes(3);
+  });
+
+  test('keeps production lookup caches isolated between contexts', () => {
+    const getAverageRankingScore = vi.fn(() => 90);
+    const dependencies = {
+      getAverageRankingScore,
+      getRankingScore: vi.fn(() => 80),
+      getMatchupResult: vi.fn(() => 500),
+      getShieldScenarioMatchupResult: vi.fn(() => 500),
+      getMatchupQualityScore: vi.fn(() => 0.5),
+    };
+    const first = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+      dependencies,
+    );
+    const second = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+      dependencies,
+    );
+
+    first.getRankingScore('azumarill');
+    first.getRankingScore('azumarill');
+    second.getRankingScore('azumarill');
+
+    expect(getAverageRankingScore).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('scoreOrderedLineup', () => {

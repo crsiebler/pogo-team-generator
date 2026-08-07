@@ -32,6 +32,8 @@
 - Retain the exact scored roster assignment in generation output for both tournament modes; pass it unchanged through the client, bound and validate its format, canonical roster, move slots, variant identities, and fingerprint on return, and project move/acquisition details without selecting movesets in API adapters.
 - Enforce public JSON payload limits by validating any declared `Content-Length` and counting bytes from the request stream; headers may be absent or inaccurate and are not an authoritative size boundary.
 - Export move IDs and preferred charged-move order directly from the scored `RosterMovesetAssignment`; pass validated acquisition requirements separately as informational text and omit regular requirements.
+- Memoize production lineup-context ranking, aggregate matchup, shield-scenario, and matchup-quality reads by every result-affecting input, including variant identity; keep these caches per run while retaining the complete assignment fingerprint in assignment-aware lineup cache keys.
+- Validate checked-in generated variant data through the battle-format catalog: parse every manifest, check every active scenario CSV and default opponent parity, enforce move availability, and cover representative variants plus forbidden synthesized forms.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1357,4 +1359,60 @@
   - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-023.
 - Next iteration start:
   - US-024 - Regenerate and validate variant data for all supported formats.
+---
+
+## 2026-08-06 22:33:35 MST - US-024
+- Regenerated deterministic ranking and simulation data from the pinned PvPoke submodule; published valid authoritative manifests for all eight supported formats; generated every bounded candidate scenario; validated active scenario parity and move availability; retained evidence-backed variants for all nine representative species where supported; excluded synthesized Furret and Florges shadows; and restored sub-minute finalist reranking with per-context data lookup memoization.
+- Files changed: `lib/AGENTS.md`, `lib/data/simulations.test.ts`, `lib/genetic/fitness/greatLeagueCalibrationFixtures.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, 16 `data/rankings/**/{chargers,consistency}_rankings.csv` files, `data/sync-metadata.json`, 8 `data/simulations/**/moveset-variants.json` manifests, 16,578 new alternate simulation CSVs, 906 normalized existing simulation CSVs, `progress.txt`
+- Commit message: `feat: US-024 - Regenerate and validate variant data for all supported formats`
+- Auto approval: `enabled`
+- Checks:
+  - `env -u PVPOKE_PATH npm run sync -- --project-simulations` (pass; 8 formats, 1,186 candidate species, 6,719 candidates, 16,599 alternate scenario CSVs, 0 stale files, no worktree changes)
+  - `env -u PVPOKE_PATH npm run sync` (pass; 10,887,888 simulation entries validated and 8 manifests atomically published)
+  - manifest/runtime integrity audit (pass; 2,260 active candidates, 6,780 active scenario files, exact default opponent parity, no excluded moves or synthesized Furret/Florges shadows, 439 Elite defaults, and 23 event-exclusive candidate moves)
+  - post-generation projection (pass; identical totals and 0 stale files)
+  - second non-resume `env -u PVPOKE_PATH npm run sync` with before/after ranking CSV, simulation CSV, and manifest SHA-256 digest comparison (pass; byte-identical)
+  - `npx vitest run lib/data/simulations.test.ts lib/data/movesetVariantSimulations.test.ts lib/data/movesetVariantManifest.test.ts` before transition test update (fail as expected: checked-in manifest replaced the prior manifest-missing state)
+  - `npx vitest run lib/data/simulations.test.ts lib/data/movesetVariantSimulations.test.ts lib/data/movesetVariantManifest.test.ts` after transition test update (pass, 56 tests)
+  - first `npm test` after manifest publication (fail: two performance safeguards exceeded one minute and calibration fixtures included Skarmory outside the sanitized top-150 manifest target set)
+  - `npx vitest run lib/genetic/fitness/greatLeagueCalibrationFixtures.test.ts lib/genetic/algorithm.performance.test.ts` after fixes (pass; representative generation about 3.1 seconds and two deterministic seeded runs about 7.3 seconds)
+  - focused sync/data suite (pass, 171 tests)
+  - focused scoring/data/performance suite (pass, 121 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 790 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts -t "memoizes every|keeps production lookup caches"` before review fix (fail as expected: injected data boundaries were not yet accepted or used)
+  - `npx vitest run lib/data/simulations.test.ts -t "validates every checked-in manifest"` before test optimization (timeout: per-row matcher overhead made the first integrity-test implementation impractical)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts -t "memoizes every|keeps production lookup caches"` after review fix (pass, 2 tests)
+  - `npx vitest run lib/data/simulations.test.ts -t "validates every checked-in manifest"` after test optimization (pass, 1 test in about 2.2 seconds)
+  - `npx vitest run lib/data/simulations.test.ts lib/data/movesetVariantSimulations.test.ts lib/data/movesetVariantManifest.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/greatLeagueCalibrationFixtures.test.ts lib/genetic/algorithm.performance.test.ts` after review fixes (pass, 99 tests)
+  - `npx tsc --noEmit` after review fixes (pass)
+  - `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 793 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `data-engineer`, `test-automator`
+  - Used: `data-engineer`, `test-automator`; both fit the standard-mode complex-story budget and provided non-overlapping generation, integrity-audit, representative-coverage, and idempotence guidance
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `data-engineer`; targeted `qa-expert` re-review. Optional security, documentation, compliance, and UI specialists skipped because the change is local generated repository data plus internal scoring-cache behavior with no relevant external surface.
+  - Findings: initial code and data reviews found none; fixed two medium QA findings by adding catalog-driven integrity coverage for all checked-in manifests and active scenarios and deterministic per-context memoization key/isolation regressions; targeted re-review found none.
+- Decisions (why):
+  - Used the pinned `vendor/pvpoke` source with `PVPOKE_PATH` unset and a non-resume initial run so every candidate was regenerated through the tested atomic publication and stale-cleanup path rather than reusing unverified files.
+  - Included deterministic line-ending normalization in ranking and existing simulation CSVs because omitting sync side effects would make the committed state differ on the next unchanged full sync.
+  - Kept broad historical calibration fixtures on explicit ranked-default scoring because they intentionally include species outside the current sanitized top-150 simulation target set; production team-aware manifest selection continues to fail closed for absent species.
+  - Memoized immutable per-context ranking and variant-qualified simulation reads instead of reducing finalist or assignment scoring bounds, preserving all existing variant-aware scoring and assignment cache isolation while reducing representative generation from more than 80 seconds to about 3 seconds.
+  - Injected only the five memoized data-loading boundaries into the production context factory so tests can prove cache behavior without module patching while existing callers retain unchanged defaults.
+  - Used direct deterministic CSV validation inside the catalog-driven integrity test because millions of per-cell matcher calls obscured the same invariant behind test-framework overhead.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Publishing manifests activates real finalist assignment enumeration and makes repeated low-level ranking and simulation reads a hot path; cache those immutable reads inside the production scoring context by every result-affecting input.
+  - Generated manifests cover sanitized top-150 simulation targets, not every species retained in broader historical calibration fixtures or category rankings.
+  - Full sync normalizes checked-in ranking and simulation CSV line endings; include that deterministic output if the committed state must remain clean after the next unchanged sync.
+  - Generated-data regressions should traverse `getBattleFormats()` and manifest storage keys instead of hardcoding one species or directory, so newly supported formats and active variants enter the same validation automatically.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-024.
+- Next iteration start:
+  - US-025 - Document moveset variant generation and runtime semantics.
 ---

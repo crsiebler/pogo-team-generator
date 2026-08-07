@@ -180,13 +180,37 @@ export interface LineupScoringOptions {
 /** Moveset policy used when constructing a production lineup context. */
 export type LineupMovesetPolicy = 'team-aware' | 'ranked-default';
 
+/** Data-loading boundaries memoized by one production lineup context. */
+export interface LineupScoringDataDependencies {
+  readonly getAverageRankingScore: typeof getAverageRankingScore;
+  readonly getRankingScore: typeof getRankingScore;
+  readonly getMatchupResult: typeof getMatchupResult;
+  readonly getShieldScenarioMatchupResult: typeof getShieldScenarioMatchupResult;
+  readonly getMatchupQualityScore: typeof getMatchupQualityScore;
+}
+
+const defaultLineupScoringDataDependencies: LineupScoringDataDependencies = {
+  getAverageRankingScore,
+  getRankingScore,
+  getMatchupResult,
+  getShieldScenarioMatchupResult,
+  getMatchupQualityScore,
+};
+
 /** Builds the production data context for lineup scoring. */
 export function createDefaultLineupScoringContext(
   formatId?: BattleFormatId,
   threatCount: number = 100,
   movesetPolicy: LineupMovesetPolicy = 'team-aware',
+  dataDependencies: LineupScoringDataDependencies = defaultLineupScoringDataDependencies,
 ): LineupScoringContext {
   const recommendedMovesetCache = new Map<string, LineupMoveset>();
+  const rankingScoreCache = new Map<string, number>();
+  const roleScoreCache = new Map<string, number>();
+  const rankingCategoryScoreCache = new Map<string, number>();
+  const matchupRatingCache = new Map<string, number | null>();
+  const shieldMatchupRatingCache = new Map<string, number | null>();
+  const matchupQualityScoreCache = new Map<string, number>();
   const boundedThreatCount = clampInteger(
     threatCount,
     0,
@@ -205,36 +229,80 @@ export function createDefaultLineupScoringContext(
     formatId,
     getPokemon: getPokemonBySpeciesId,
     getRankingScore: (speciesId) =>
-      getAverageRankingScore(speciesIdToSpeciesName(speciesId), formatId),
+      getCachedValue(rankingScoreCache, speciesId, () =>
+        dataDependencies.getAverageRankingScore(
+          speciesIdToSpeciesName(speciesId),
+          formatId,
+        ),
+      ),
     getRoleScore: (speciesId, role) =>
-      getRankingScore(
-        speciesIdToSpeciesName(speciesId),
-        ROLE_RANKING_BY_LINEUP_ROLE[role],
-        formatId,
-      ) / 100,
+      getCachedValue(
+        roleScoreCache,
+        `${speciesId}:${role}`,
+        () =>
+          dataDependencies.getRankingScore(
+            speciesIdToSpeciesName(speciesId),
+            ROLE_RANKING_BY_LINEUP_ROLE[role],
+            formatId,
+          ) / 100,
+      ),
     getRankingCategoryScore: (speciesId, category) =>
-      getRankingScore(
-        speciesIdToSpeciesName(speciesId),
-        category as Parameters<typeof getRankingScore>[1],
-        formatId,
-      ) / 100,
+      getCachedValue(
+        rankingCategoryScoreCache,
+        `${speciesId}:${category}`,
+        () =>
+          dataDependencies.getRankingScore(
+            speciesIdToSpeciesName(speciesId),
+            category as Parameters<typeof getRankingScore>[1],
+            formatId,
+          ) / 100,
+      ),
     getMatchupRating: (speciesId, threatSpeciesId, movesetVariantId) =>
-      getMatchupResult(speciesId, threatSpeciesId, formatId, movesetVariantId),
+      getCachedValue(
+        matchupRatingCache,
+        JSON.stringify([speciesId, threatSpeciesId, movesetVariantId ?? null]),
+        () =>
+          dataDependencies.getMatchupResult(
+            speciesId,
+            threatSpeciesId,
+            formatId,
+            movesetVariantId,
+          ),
+      ),
     getShieldScenarioMatchupRating: (
       speciesId,
       threatSpeciesId,
       shields,
       movesetVariantId,
     ) =>
-      getShieldScenarioMatchupResult(
-        speciesId,
-        threatSpeciesId,
-        shields,
-        formatId,
-        movesetVariantId,
+      getCachedValue(
+        shieldMatchupRatingCache,
+        JSON.stringify([
+          speciesId,
+          threatSpeciesId,
+          shields,
+          movesetVariantId ?? null,
+        ]),
+        () =>
+          dataDependencies.getShieldScenarioMatchupResult(
+            speciesId,
+            threatSpeciesId,
+            shields,
+            formatId,
+            movesetVariantId,
+          ),
       ),
     getMatchupQualityScore: (speciesId, movesetVariantId) =>
-      getMatchupQualityScore(speciesId, formatId, movesetVariantId),
+      getCachedValue(
+        matchupQualityScoreCache,
+        JSON.stringify([speciesId, movesetVariantId ?? null]),
+        () =>
+          dataDependencies.getMatchupQualityScore(
+            speciesId,
+            formatId,
+            movesetVariantId,
+          ),
+      ),
     getMove: getMoveByMoveId,
     getRecommendedMoveset: (speciesId, teamSpeciesIds) => {
       const pokemon = getPokemonBySpeciesId(speciesId);
@@ -262,6 +330,19 @@ export function createDefaultLineupScoringContext(
     },
     getPressureScore: calculatePressureScore,
   };
+}
+
+function getCachedValue<T>(
+  cache: Map<string, T>,
+  key: string,
+  load: () => T,
+): T {
+  if (cache.has(key)) {
+    return cache.get(key)!;
+  }
+  const value = load();
+  cache.set(key, value);
+  return value;
 }
 
 /** Scores one ordered pick-3 lineup while preserving legacy quality signals. */
