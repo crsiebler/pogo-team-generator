@@ -183,11 +183,7 @@ function createTestAssignment(
 ): RosterMovesetAssignment {
   return {
     formatId: 'great-league',
-    policyIdentity: {
-      source: 'ranked-default-fallback',
-      schemaVersion: 0,
-      policyVersion: 'ranked-default-v1',
-    },
+    authorityBySpeciesId: {},
     variantsBySpeciesId: {},
     fingerprint: `assignment:${team.join(',')}`,
   };
@@ -221,11 +217,7 @@ describe('generateTeam format-aware candidate selection', () => {
       scoringContext: { threats: ['azumarill'] },
       resolveMovesetAssignment: vi.fn(() => ({
         formatId: 'great-league',
-        policyIdentity: {
-          source: 'ranked-default-fallback',
-          schemaVersion: 0,
-          policyVersion: 'ranked-default-v1',
-        },
+        authorityBySpeciesId: {},
         variantsBySpeciesId: {},
         fingerprint: 'test-assignment',
       })),

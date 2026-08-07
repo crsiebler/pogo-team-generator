@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createRosterMovesetAssignment,
   enumerateRosterMovesetAssignments,
+  getAssignedMovesetVariantId,
   getRecommendedMovesetForPokemon,
   getSimulationBackedMovesetForTeam,
   getSimulationBackedMovesetVariantForTeam,
@@ -171,7 +172,10 @@ describe('roster moveset assignments', () => {
   it('creates a deeply immutable assignment with stable canonical identity', () => {
     const first = createRosterMovesetAssignment({
       formatId: 'great-league',
-      policyIdentity: manifestPolicy,
+      authorityBySpeciesId: {
+        milotic: manifestPolicy,
+        golisopod: manifestPolicy,
+      },
       variantsBySpeciesId: {
         milotic: defaultVariant,
         golisopod: alternateVariant,
@@ -179,7 +183,10 @@ describe('roster moveset assignments', () => {
     });
     const reordered = createRosterMovesetAssignment({
       formatId: 'great-league',
-      policyIdentity: manifestPolicy,
+      authorityBySpeciesId: {
+        golisopod: manifestPolicy,
+        milotic: manifestPolicy,
+      },
       variantsBySpeciesId: {
         golisopod: alternateVariant,
         milotic: defaultVariant,
@@ -188,7 +195,8 @@ describe('roster moveset assignments', () => {
 
     expect(first.fingerprint).toBe(reordered.fingerprint);
     expect(Object.isFrozen(first)).toBe(true);
-    expect(Object.isFrozen(first.policyIdentity)).toBe(true);
+    expect(Object.isFrozen(first.authorityBySpeciesId)).toBe(true);
+    expect(Object.isFrozen(first.authorityBySpeciesId.golisopod)).toBe(true);
     expect(Object.isFrozen(first.variantsBySpeciesId)).toBe(true);
     expect(Object.isFrozen(first.variantsBySpeciesId.golisopod)).toBe(true);
   });
@@ -201,7 +209,9 @@ describe('roster moveset assignments', () => {
     ): string =>
       createRosterMovesetAssignment({
         formatId,
-        policyIdentity: { ...manifestPolicy, policyVersion },
+        authorityBySpeciesId: {
+          golisopod: { ...manifestPolicy, policyVersion },
+        },
         variantsBySpeciesId: { golisopod: variant },
       }).fingerprint;
     const baseline = createFingerprint(
@@ -229,6 +239,50 @@ describe('roster moveset assignments', () => {
         isDefault: false,
       }),
     ).not.toBe(baseline);
+  });
+
+  it('includes each species authority in mixed-assignment fingerprints', () => {
+    const fallbackPolicy: MovesetAssignmentPolicyIdentity = {
+      source: 'ranked-default-fallback',
+      schemaVersion: 0,
+      policyVersion: 'ranked-default-v1',
+    };
+    const createMixedAssignment = (
+      golisopodAuthority: MovesetAssignmentPolicyIdentity,
+    ) =>
+      createRosterMovesetAssignment({
+        formatId: 'great-league',
+        authorityBySpeciesId: {
+          milotic: fallbackPolicy,
+          golisopod: golisopodAuthority,
+        },
+        variantsBySpeciesId: {
+          golisopod: defaultVariant,
+          milotic: defaultVariant,
+        },
+      });
+
+    const mixed = createMixedAssignment(manifestPolicy);
+    const allFallback = createMixedAssignment(fallbackPolicy);
+
+    expect(mixed.fingerprint).not.toBe(allFallback.fingerprint);
+    expect(getAssignedMovesetVariantId(mixed, 'golisopod')).toBe(
+      defaultVariant.id,
+    );
+    expect(getAssignedMovesetVariantId(mixed, 'milotic')).toBeUndefined();
+  });
+
+  it('rejects authority keys that do not exactly match assigned variants', () => {
+    expect(() =>
+      createRosterMovesetAssignment({
+        formatId: 'great-league',
+        authorityBySpeciesId: { golisopod: manifestPolicy },
+        variantsBySpeciesId: {
+          golisopod: defaultVariant,
+          milotic: defaultVariant,
+        },
+      }),
+    ).toThrow('authority species do not match assigned variants');
   });
 
   it('does not require a ranked fallback when manifest variants are available', () => {
@@ -402,7 +456,12 @@ describe('roster moveset assignments', () => {
     });
 
     expect(requestedSpeciesIds).toEqual(roster);
-    expect(assignment.policyIdentity.source).toBe('ranked-default-fallback');
+    expect(assignment.authorityBySpeciesId.golisopod.source).toBe(
+      'ranked-default-fallback',
+    );
+    expect(assignment.authorityBySpeciesId.milotic.source).toBe(
+      'ranked-default-fallback',
+    );
     expect(assignment.variantsBySpeciesId.golisopod.fastMove).toBe('WATERFALL');
     expect(assignment.variantsBySpeciesId.milotic.fastMove).toBe('DRAGON_TAIL');
   });
@@ -434,7 +493,12 @@ describe('roster moveset assignments', () => {
     );
 
     expect(requestedSpeciesIds).toEqual(roster);
-    expect(assignment.policyIdentity.source).toBe('ranked-default-fallback');
+    expect(assignment.authorityBySpeciesId.golisopod.source).toBe(
+      'ranked-default-fallback',
+    );
+    expect(assignment.authorityBySpeciesId.milotic.source).toBe(
+      'ranked-default-fallback',
+    );
     expect(Object.values(assignment.variantsBySpeciesId)).toEqual([
       expect.objectContaining({ isDefault: true }),
       expect.objectContaining({ isDefault: true }),

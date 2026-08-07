@@ -10,6 +10,7 @@ import {
   getSimulationBackedMovesetForTeam,
 } from '@/lib/genetic/moveset';
 import type {
+  MovesetAssignmentPolicyIdentity,
   MovesetVariantId,
   OrderedLineup,
   Pokemon,
@@ -1339,11 +1340,16 @@ describe('scoreOrderedLineup', () => {
       );
     const assignment: RosterMovesetAssignment = {
       formatId: 'great-league',
-      policyIdentity: {
-        source: 'manifest',
-        schemaVersion: 1,
-        policyVersion: 'ranking-evidence-v1',
-      },
+      authorityBySpeciesId: Object.fromEntries(
+        Object.values(lineup).map((speciesId) => [
+          speciesId,
+          {
+            source: 'manifest' as const,
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          },
+        ]),
+      ),
       fingerprint: 'assignment-fingerprint',
       variantsBySpeciesId,
     };
@@ -1573,10 +1579,12 @@ describe('scoreOrderedLineup', () => {
       formatId: 'great-league',
       movesetAssignment: {
         formatId: 'great-league',
-        policyIdentity: {
-          source: 'manifest',
-          schemaVersion: 1,
-          policyVersion: 'ranking-evidence-v1',
+        authorityBySpeciesId: {
+          bulky: {
+            source: 'manifest',
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          },
         },
         fingerprint: 'incomplete-assignment',
         variantsBySpeciesId: {
@@ -1835,15 +1843,16 @@ function uniformMovesets(
 
 function createLineupAssignment(
   lineup: OrderedLineup,
-  source: RosterMovesetAssignment['policyIdentity']['source'] = 'manifest',
+  source: MovesetAssignmentPolicyIdentity['source'] = 'manifest',
 ): RosterMovesetAssignment {
   return {
     formatId: 'great-league',
-    policyIdentity: {
-      source,
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-    },
+    authorityBySpeciesId: Object.fromEntries(
+      Object.values(lineup).map((speciesId) => [
+        speciesId,
+        { source, schemaVersion: 1, policyVersion: 'ranking-evidence-v1' },
+      ]),
+    ),
     fingerprint: 'variant-aware-lineup',
     variantsBySpeciesId: Object.fromEntries(
       Object.values(lineup).map((speciesId) => [

@@ -133,11 +133,7 @@ function createChromosome(team: string[]): Chromosome {
 function createAssignment(fingerprint: string): RosterMovesetAssignment {
   return {
     formatId: 'battle-frontier-tsuki-cup',
-    policyIdentity: {
-      source: 'manifest',
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-    },
+    authorityBySpeciesId: {},
     variantsBySpeciesId: {},
     fingerprint,
   };

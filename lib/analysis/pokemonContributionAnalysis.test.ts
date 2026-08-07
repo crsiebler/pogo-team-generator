@@ -3,7 +3,11 @@ import {
   buildPokemonContributionAnalysis,
   getFragilityRiskTier,
 } from '@/lib/analysis/pokemonContributionAnalysis';
-import type { RosterMovesetAssignment, ThreatAnalysisEntry } from '@/lib/types';
+import type {
+  MovesetAssignmentPolicyIdentity,
+  RosterMovesetAssignment,
+  ThreatAnalysisEntry,
+} from '@/lib/types';
 
 const getMatchupResultMock = vi.fn();
 
@@ -158,15 +162,16 @@ describe('buildPokemonContributionAnalysis', () => {
 
 function createAssignment(
   speciesIds: readonly string[],
-  source: RosterMovesetAssignment['policyIdentity']['source'] = 'manifest',
+  source: MovesetAssignmentPolicyIdentity['source'] = 'manifest',
 ): RosterMovesetAssignment {
   return {
     formatId: 'great-league',
-    policyIdentity: {
-      source,
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-    },
+    authorityBySpeciesId: Object.fromEntries(
+      speciesIds.map((speciesId) => [
+        speciesId,
+        { source, schemaVersion: 1, policyVersion: 'ranking-evidence-v1' },
+      ]),
+    ),
     fingerprint: 'analysis-assignment',
     variantsBySpeciesId: Object.fromEntries(
       speciesIds.map((speciesId) => [

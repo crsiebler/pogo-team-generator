@@ -50,8 +50,9 @@ function isTeamDetailsResponse(
       }
 
       const variant = assignment.variantsBySpeciesId[team[index]!];
+      const authority = assignment.authorityBySpeciesId[team[index]!];
       const recommendedMoveset = pokemon.recommendedMoveset;
-      if (!variant || !isUnknownRecord(recommendedMoveset)) {
+      if (!variant || !authority || !isUnknownRecord(recommendedMoveset)) {
         return false;
       }
 
@@ -62,6 +63,12 @@ function isTeamDetailsResponse(
         recommendedMoveset.chargedMove1 === variant.chargedMove1 &&
         recommendedMoveset.chargedMove2 === variant.chargedMove2 &&
         recommendedMoveset.isDefault === variant.isDefault &&
+        isUnknownRecord(recommendedMoveset.authority) &&
+        recommendedMoveset.authority.source === authority.source &&
+        recommendedMoveset.authority.schemaVersion ===
+          authority.schemaVersion &&
+        recommendedMoveset.authority.policyVersion ===
+          authority.policyVersion &&
         isUnknownRecord(requirements) &&
         isEligibleAcquisitionRequirement(requirements.fastMove) &&
         isEligibleAcquisitionRequirement(requirements.chargedMove1) &&

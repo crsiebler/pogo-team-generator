@@ -9,10 +9,12 @@ const { exportButtonMock } = vi.hoisted(() => ({
 
 const movesetAssignment: RosterMovesetAssignment = {
   formatId: 'battle-frontier-liga-ultra',
-  policyIdentity: {
-    source: 'manifest',
-    schemaVersion: 1,
-    policyVersion: 'ranking-evidence-v1',
+  authorityBySpeciesId: {
+    decidueye: {
+      source: 'manifest',
+      schemaVersion: 1,
+      policyVersion: 'ranking-evidence-v1',
+    },
   },
   variantsBySpeciesId: {
     decidueye: {
@@ -35,6 +37,12 @@ function assignmentForFormat(
   return {
     ...movesetAssignment,
     formatId,
+    authorityBySpeciesId: Object.fromEntries(
+      speciesIds.map((speciesId) => [
+        speciesId,
+        movesetAssignment.authorityBySpeciesId.decidueye,
+      ]),
+    ),
     variantsBySpeciesId: Object.fromEntries(
       speciesIds.map((speciesId) => [speciesId, variant]),
     ),
@@ -52,6 +60,7 @@ function createPokemonDetails(
     speciesName,
     recommendedMoveset: {
       ...assignment.variantsBySpeciesId[speciesId],
+      authority: assignment.authorityBySpeciesId[speciesId],
       acquisitionRequirements: {
         fastMove: { kind: 'regular' },
         chargedMove1: { kind: 'regular' },
@@ -181,6 +190,32 @@ describe('TeamDisplay', () => {
               recommendedMoveset: {
                 ...movesetAssignment.variantsBySpeciesId.decidueye,
                 fastMove: 'ASTONISH',
+                acquisitionRequirements: {
+                  fastMove: { kind: 'regular' },
+                  chargedMove1: { kind: 'regular' },
+                  chargedMove2: { kind: 'regular' },
+                },
+              },
+            },
+          ],
+        }),
+      },
+    ],
+    [
+      'authority that differs from the scored assignment',
+      {
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          pokemon: [
+            {
+              speciesId: 'decidueye',
+              recommendedMoveset: {
+                ...movesetAssignment.variantsBySpeciesId.decidueye,
+                authority: {
+                  source: 'ranked-default-fallback',
+                  schemaVersion: 0,
+                  policyVersion: 'ranked-default-v1',
+                },
                 acquisitionRequirements: {
                   fastMove: { kind: 'regular' },
                   chargedMove1: { kind: 'regular' },

@@ -127,6 +127,8 @@ Lineup-aware fitness caches in `lib/genetic/fitness/index.ts` are per-run contex
 
 Resolve one immutable `RosterMovesetAssignment` against the complete bring-six roster before ordered lineup enumeration. Bind that assignment into lineup and roster scoring contexts, and include its format- and manifest-policy-sensitive fingerprint in every assignment-dependent cache key; do not select movesets independently inside `scoreOrderedLineup(...)`.
 
+Track moveset authority per species in `authorityBySpeciesId`, require its keys to match the canonical assigned roster, and include each authority in the assignment fingerprint. Use `getAssignedMovesetVariantId(...)` for simulation lookups so manifest defaults remain variant-qualified while ranked-default fallbacks remain unqualified.
+
 Retain the final scored `RosterMovesetAssignment` for both PlayPokemon and GBL output. When a serialized assignment returns through an API, bound its input size and validate its format, exact canonical roster, canonical move slots, variant identities, and deterministic fingerprint before projecting the assigned moves and acquisition metadata; never select a replacement moveset in an output adapter.
 
 Team export must read move IDs and preferred charged-move order directly from the scored `RosterMovesetAssignment`. Pass validated acquisition requirements as an informational sidecar, omit regular requirements from text, and never reconstruct or select export moves from display data.

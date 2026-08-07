@@ -25,10 +25,12 @@ import type { RosterMovesetAssignment } from '@/lib/types';
 
 const movesetAssignment: RosterMovesetAssignment = {
   formatId: 'great-league',
-  policyIdentity: {
-    source: 'manifest',
-    schemaVersion: 1,
-    policyVersion: 'ranking-evidence-v1',
+  authorityBySpeciesId: {
+    azumarill: {
+      source: 'manifest',
+      schemaVersion: 1,
+      policyVersion: 'ranking-evidence-v1',
+    },
   },
   fingerprint: 'route-assignment',
   variantsBySpeciesId: {
@@ -45,6 +47,12 @@ const movesetAssignment: RosterMovesetAssignment = {
 const gblMovesetAssignment: RosterMovesetAssignment = {
   ...movesetAssignment,
   fingerprint: 'gbl-route-assignment',
+  authorityBySpeciesId: Object.fromEntries(
+    ['annihilape', 'dewgong', 'lanturn'].map((speciesId) => [
+      speciesId,
+      movesetAssignment.authorityBySpeciesId.azumarill,
+    ]),
+  ),
   variantsBySpeciesId: {
     annihilape: {
       id: 'counter--shadow_ball--night_slash',

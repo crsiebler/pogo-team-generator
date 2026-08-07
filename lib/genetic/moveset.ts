@@ -106,12 +106,15 @@ export interface RankedDefaultRosterMovesetAssignmentDependencies {
 /** Input used to create a validated immutable roster assignment value. */
 export interface CreateRosterMovesetAssignmentInput {
   readonly formatId: BattleFormatId;
-  readonly policyIdentity: MovesetAssignmentPolicyIdentity;
+  readonly authorityBySpeciesId: Readonly<
+    Record<string, MovesetAssignmentPolicyIdentity>
+  >;
   readonly variantsBySpeciesId: Readonly<Record<string, MovesetVariant>>;
 }
 
 /** Assigned moveset projected for API display without selecting another variant. */
 export interface AssignedMovesetDetails extends MovesetVariant {
+  readonly authority: MovesetAssignmentPolicyIdentity;
   readonly acquisitionRequirements: MovesetAcquisitionRequirements;
 }
 
@@ -251,10 +254,31 @@ export function getSimulationBackedMovesetVariantForTeam(
 export function createRosterMovesetAssignment(
   input: CreateRosterMovesetAssignmentInput,
 ): RosterMovesetAssignment {
-  const policyIdentity = Object.freeze({ ...input.policyIdentity });
   const sortedVariants = Object.entries(input.variantsBySpeciesId).toSorted(
     ([firstSpeciesId], [secondSpeciesId]) =>
       firstSpeciesId.localeCompare(secondSpeciesId),
+  );
+  const variantSpeciesIds = sortedVariants.map(([speciesId]) => speciesId);
+  const authoritySpeciesIds = Object.keys(
+    input.authorityBySpeciesId,
+  ).toSorted();
+  if (
+    authoritySpeciesIds.length !== variantSpeciesIds.length ||
+    authoritySpeciesIds.some(
+      (speciesId, index) => speciesId !== variantSpeciesIds[index],
+    )
+  ) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment authority species do not match assigned variants.',
+    );
+  }
+  const authorityBySpeciesId = Object.freeze(
+    Object.fromEntries(
+      variantSpeciesIds.map((speciesId) => [
+        speciesId,
+        Object.freeze({ ...input.authorityBySpeciesId[speciesId] }),
+      ]),
+    ),
   );
   const variantsBySpeciesId = Object.freeze(
     Object.fromEntries(
@@ -265,13 +289,13 @@ export function createRosterMovesetAssignment(
     ),
   );
   const fingerprint = JSON.stringify([
-    'roster-moveset-assignment-v1',
+    'roster-moveset-assignment-v2',
     input.formatId,
-    policyIdentity.source,
-    policyIdentity.schemaVersion,
-    policyIdentity.policyVersion,
     ...sortedVariants.map(([speciesId, variant]) => [
       speciesId,
+      authorityBySpeciesId[speciesId]!.source,
+      authorityBySpeciesId[speciesId]!.schemaVersion,
+      authorityBySpeciesId[speciesId]!.policyVersion,
       variant.id,
       variant.fastMove,
       variant.chargedMove1,
@@ -282,7 +306,7 @@ export function createRosterMovesetAssignment(
 
   return Object.freeze({
     formatId: input.formatId,
-    policyIdentity,
+    authorityBySpeciesId,
     variantsBySpeciesId,
     fingerprint,
   });
@@ -362,22 +386,10 @@ export function parseRosterMovesetAssignment(
     );
   }
 
-  const policy = value.policyIdentity;
-  if (!isUnknownRecord(policy)) {
+  const authorities = value.authorityBySpeciesId;
+  if (!isUnknownRecord(authorities)) {
     throw new RosterMovesetAssignmentValidationError(
-      'Roster moveset assignment policy identity is invalid.',
-    );
-  }
-  const source = policy.source;
-  if (source !== 'manifest' && source !== 'ranked-default-fallback') {
-    throw new RosterMovesetAssignmentValidationError(
-      'Roster moveset assignment policy source is invalid.',
-    );
-  }
-  const schemaVersion = policy.schemaVersion;
-  if (!Number.isSafeInteger(schemaVersion) || Number(schemaVersion) < 0) {
-    throw new RosterMovesetAssignmentValidationError(
-      'Roster moveset assignment schema version is invalid.',
+      'Roster moveset assignment authorities are invalid.',
     );
   }
 
@@ -422,8 +434,49 @@ export function parseRosterMovesetAssignment(
     );
   }
 
+  const authoritySpeciesIds = Object.keys(authorities).toSorted();
+  if (
+    authoritySpeciesIds.length !== expectedSpeciesIds.length ||
+    authoritySpeciesIds.some(
+      (speciesId, index) => speciesId !== expectedSpeciesIds[index],
+    )
+  ) {
+    throw new RosterMovesetAssignmentValidationError(
+      'Roster moveset assignment authority species do not match the requested team.',
+    );
+  }
+
   const variantsBySpeciesId: Record<string, MovesetVariant> = {};
+  const authorityBySpeciesId: Record<string, MovesetAssignmentPolicyIdentity> =
+    {};
   for (const speciesId of expectedSpeciesIds) {
+    const authority = authorities[speciesId];
+    if (!isUnknownRecord(authority)) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment authority for ${speciesId} is invalid.`,
+      );
+    }
+    const source = authority.source;
+    if (source !== 'manifest' && source !== 'ranked-default-fallback') {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment authority source for ${speciesId} is invalid.`,
+      );
+    }
+    const schemaVersion = authority.schemaVersion;
+    if (!Number.isSafeInteger(schemaVersion) || Number(schemaVersion) < 0) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment schema version for ${speciesId} is invalid.`,
+      );
+    }
+    authorityBySpeciesId[speciesId] = {
+      source,
+      schemaVersion: Number(schemaVersion),
+      policyVersion: readBoundedString(
+        authority.policyVersion,
+        `authorityBySpeciesId.${speciesId}.policyVersion`,
+      ),
+    };
+
     const candidate = variants[speciesId];
     if (!isUnknownRecord(candidate)) {
       throw new RosterMovesetAssignmentValidationError(
@@ -470,14 +523,7 @@ export function parseRosterMovesetAssignment(
 
   const assignment = createRosterMovesetAssignment({
     formatId,
-    policyIdentity: {
-      source,
-      schemaVersion: Number(schemaVersion),
-      policyVersion: readBoundedString(
-        policy.policyVersion,
-        'policyIdentity.policyVersion',
-      ),
-    },
+    authorityBySpeciesId,
     variantsBySpeciesId,
   });
   const fingerprint = readBoundedString(
@@ -508,7 +554,8 @@ export function getAssignedMovesetDetails(
   speciesId: string,
 ): AssignedMovesetDetails {
   const variant = assignment.variantsBySpeciesId[speciesId];
-  if (!variant) {
+  const authority = assignment.authorityBySpeciesId[speciesId];
+  if (!variant || !authority) {
     throw new RosterMovesetAssignmentValidationError(
       `Roster moveset assignment is missing ${speciesId}.`,
     );
@@ -521,6 +568,7 @@ export function getAssignedMovesetDetails(
 
   return {
     ...variant,
+    authority,
     acquisitionRequirements: {
       fastMove: requireEligibleMoveAvailability(availability.fastMove),
       chargedMove1: requireEligibleMoveAvailability(availability.chargedMove1),
@@ -558,6 +606,8 @@ export function resolveRosterMovesetAssignment(
   }
 
   const variantsBySpeciesId: Record<string, MovesetVariant> = {};
+  const authorityBySpeciesId: Record<string, MovesetAssignmentPolicyIdentity> =
+    {};
   for (const requestedSpeciesId of roster) {
     const pokemon = dependencies.getPokemon(requestedSpeciesId);
     if (!pokemon) {
@@ -577,11 +627,12 @@ export function resolveRosterMovesetAssignment(
         : toDefaultMovesetVariant(
             dependencies.getRankedDefault(pokemon, formatId),
           );
+    authorityBySpeciesId[pokemon.speciesId] = policyIdentity;
   }
 
   return createRosterMovesetAssignment({
     formatId,
-    policyIdentity,
+    authorityBySpeciesId,
     variantsBySpeciesId,
   });
 }
@@ -634,6 +685,12 @@ export function enumerateRosterMovesetAssignments(
       'Cannot enumerate assignments for duplicate roster species.',
     );
   }
+  const authorityBySpeciesId = Object.fromEntries(
+    canonicalSpeciesIds.map((speciesId) => [
+      speciesId,
+      { source: 'manifest' as const, ...manifestPolicy },
+    ]),
+  );
 
   const variantsByRosterSlot = pokemon.map(({ speciesId }) => {
     const variants = [
@@ -678,7 +735,7 @@ export function enumerateRosterMovesetAssignments(
   return assignments.map((variantsBySpeciesId) =>
     createRosterMovesetAssignment({
       formatId,
-      policyIdentity: { source: 'manifest', ...manifestPolicy },
+      authorityBySpeciesId,
       variantsBySpeciesId,
     }),
   );
@@ -694,6 +751,8 @@ export function resolveRankedDefaultRosterMovesetAssignment(
   },
 ): RosterMovesetAssignment {
   const variantsBySpeciesId: Record<string, MovesetVariant> = {};
+  const authorityBySpeciesId: Record<string, MovesetAssignmentPolicyIdentity> =
+    {};
   for (const requestedSpeciesId of roster) {
     const pokemon = dependencies.getPokemon(requestedSpeciesId);
     if (!pokemon) {
@@ -709,11 +768,12 @@ export function resolveRankedDefaultRosterMovesetAssignment(
     variantsBySpeciesId[pokemon.speciesId] = toDefaultMovesetVariant(
       dependencies.getRankedDefault(pokemon, formatId),
     );
+    authorityBySpeciesId[pokemon.speciesId] = RANKED_DEFAULT_POLICY_IDENTITY;
   }
 
   return createRosterMovesetAssignment({
     formatId,
-    policyIdentity: RANKED_DEFAULT_POLICY_IDENTITY,
+    authorityBySpeciesId,
     variantsBySpeciesId,
   });
 }
@@ -727,13 +787,12 @@ export function getAssignedMovesetVariantId(
     return undefined;
   }
   const variant = assignment.variantsBySpeciesId[speciesId];
-  if (!variant) {
+  const authority = assignment.authorityBySpeciesId[speciesId];
+  if (!variant || !authority) {
     throw new Error(`Bound roster moveset assignment is missing ${speciesId}.`);
   }
 
-  return assignment.policyIdentity.source === 'manifest'
-    ? variant.id
-    : undefined;
+  return authority.source === 'manifest' ? variant.id : undefined;
 }
 
 /**

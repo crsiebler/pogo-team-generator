@@ -593,6 +593,80 @@
       "priority": 33,
       "passes": true,
       "notes": "Recommended agents: @documentation-engineer. Implementation notes: update existing optimizer data-input and generation documentation instead of creating duplicate architecture guidance."
+    },
+    {
+      "id": "US-034",
+      "title": "Track moveset assignment authority per roster species",
+      "description": "As a runtime developer, I want each assigned moveset to record whether it came from the compact snapshot or the ranked default so one roster can safely contain both authorities.",
+      "acceptanceCriteria": [
+        "Extend RosterMovesetAssignment with a canonical per-species authority that distinguishes manifest-backed variants from ranked-default fallbacks.",
+        "Require the authority keys to match variantsBySpeciesId and the canonical roster exactly.",
+        "Include every per-species authority in the deterministic assignment fingerprint.",
+        "Manifest defaults remain variant-qualified, while ranked-default fallback entries remain unqualified for aggregate and shield-scenario matchup lookup.",
+        "Update assignment parsing, API serialization, analysis, team-details projection, and export consumers to preserve the authority without independently selecting moves.",
+        "Tests cover mixed-authority fingerprint determinism, malformed authority maps, manifest-default qualification, ranked-default non-qualification, and immutable assignment values.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 34,
+      "passes": true,
+      "notes": "Recommended agents: @typescript-pro, @refactoring-specialist. Implementation notes: replace the global-policy shortcut used for simulation qualification with explicit per-species authority. No backward-compatibility parser is required because assignments are transient response data, not persisted records. Read the gbl-optimizer skill and required optimizer docs before editing."
+    },
+    {
+      "id": "US-035",
+      "title": "Fall back unsupported variant anchors to default movesets",
+      "description": "As a player, I want an eligible anchor outside the compact variant snapshot to use its default moveset so variant-enabled generation still succeeds for my selected roster.",
+      "acceptanceCriteria": [
+        "When variant simulation is enabled and one roster species has no active snapshot variants, assign that species its ranked-default moveset without disabling variants for supported teammates.",
+        "GBL team-aware assignment resolution and PlayPokemon finalist assignment enumeration both support mixed manifest and ranked-default roster assignments.",
+        "Only variant-unavailable species data triggers the per-species fallback; malformed, incompatible, incomplete, missing, or unprepared snapshot failures still propagate as typed errors.",
+        "The fallback species uses unqualified default matchup lookups and never substitutes another species or variant row.",
+        "A regression fixture with an eligible explicit anchor outside the top-150 snapshot completes generation while at least one supported teammate retains manifest-backed variant candidates.",
+        "Deterministic assignment ordering, finalist bounds, anchor order, diagnostics, API output, and export remain intact.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 35,
+      "passes": false,
+      "notes": "Recommended agents: @backend-developer, @debugger. Implementation notes: implement the user-selected per-species fallback rather than rejecting the request or falling back the entire roster. Preserve fail-closed behavior for snapshot integrity failures. Read the gbl-optimizer skill and required optimizer docs before editing."
+    },
+    {
+      "id": "US-036",
+      "title": "Validate returned moveset assignments against runtime authorities",
+      "description": "As an API consumer, I want team details to accept only assignments matching current ranking and snapshot authorities so caller-recomputed fingerprints cannot present an unscored moveset as authoritative output.",
+      "acceptanceCriteria": [
+        "Add a testable authority validator that runs after structural assignment parsing and before team-details projection.",
+        "For each manifest-backed species, require the assignment policy identity to match the prepared compact snapshot and require the complete assigned variant to match one current active snapshot variant.",
+        "For each ranked-default fallback species, require the assigned fast move, charged moves, variant identity, default status, and fallback policy identity to match the current format ranking recommendation.",
+        "Reject legal but inactive movesets, stale manifest policies, false authority labels, modified defaults, and caller-recomputed fingerprints with HTTP 400 responses.",
+        "Prepare snapshot data only when an assignment contains manifest-backed species, and propagate malformed, incompatible, or incomplete authority data without silently accepting the assignment.",
+        "The team-details route continues to project the validated assignment exactly and does not perform team-aware reselection.",
+        "Unit and route tests cover valid manifest, valid fallback, valid mixed, tampered active, tampered fallback, and stale-policy assignments.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 36,
+      "passes": false,
+      "notes": "Recommended agents: @security-engineer, @backend-developer. Implementation notes: deterministic fingerprints provide identity, not authenticity; establish authenticity by comparing each transient assignment with repository-owned runtime authorities. Keep validation dependencies injectable in unit tests."
+    },
+    {
+      "id": "US-037",
+      "title": "Guard assignment authority deployment and documentation contracts",
+      "description": "As a maintainer, I want authority validation covered by tracing, architecture, and documentation checks so the team-details fix remains deployable and does not cross the PvPoke runtime boundary.",
+      "acceptanceCriteria": [
+        "Next.js output tracing includes every compact snapshot required by /api/team-details authority validation and excludes simulation CSVs, full manifests, and PvPoke vendor JavaScript.",
+        "Trace planning and analysis validate both /api/generate-team and /api/team-details route assets without broad recursive data includes.",
+        "Each generated function remains under the existing 100 MiB uncompressed compact-runtime budget and all traced compact snapshots remain under the existing 50 MiB aggregate budget.",
+        "Runtime boundary tests prove that assignment validation consumes only repository-owned rankings, Pokemon and move data, and compact snapshots.",
+        "Optimizer documentation explains mixed per-species authority, unsupported-species default fallback, team-details authority validation, and fail-closed snapshot integrity behavior.",
+        "Documentation formatting passes.",
+        "Trace analyzer tests pass.",
+        "The full test suite and production build pass.",
+        "Typecheck passes."
+      ],
+      "priority": 37,
+      "passes": false,
+      "notes": "Recommended agents: @build-engineer, @documentation-engineer. Implementation notes: extend the existing catalog-derived compact snapshot tracing and analyzer contracts; do not enable Large Functions, trace source simulation evidence, or add runtime PvPoke dependencies."
     }
   ]
 }

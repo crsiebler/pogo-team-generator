@@ -7,11 +7,16 @@ import type {
 
 const assignment: RosterMovesetAssignment = {
   formatId: 'great-league',
-  policyIdentity: {
-    source: 'manifest',
-    schemaVersion: 1,
-    policyVersion: 'ranking-evidence-v1',
-  },
+  authorityBySpeciesId: Object.fromEntries(
+    ['altaria', 'scizor_shadow'].map((speciesId) => [
+      speciesId,
+      {
+        source: 'manifest' as const,
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      },
+    ]),
+  ),
   variantsBySpeciesId: {
     altaria: {
       id: 'dragon_breath--moonblast--sky_attack',

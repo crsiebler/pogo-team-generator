@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- `RosterMovesetAssignment` authority is per species in `authorityBySpeciesId`; its keys must exactly match the canonical assigned roster and variant map, every authority belongs in the fingerprint, manifest defaults use qualified simulation lookups, and ranked-default fallbacks remain unqualified through `getAssignedMovesetVariantId(...)`.
 - Turbopack compiles `outputFileTracingExcludes` into glob regexes and can panic when thousands of generated paths are listed individually; use narrow non-overlapping semantic exclusions for source simulation CSVs/manifests, explicitly include catalog snapshots, and let post-build trace validation reject every unauthorized data asset.
 - Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team snapshot/ranking assets and pokemon-list assets from the battle-format catalog, use route-specific excludes for automatically over-traced files, and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
 - Next.js NFT trace entries resolve relative to the trace file directory; deployment-size tooling must deduplicate resolved files, stat only trace-declared assets, and report deterministic project-relative paths and raw uncompressed bytes instead of scanning repository directories.
@@ -1782,4 +1783,39 @@
   - `npx prettier --check` for all changed supported source and documentation files (pass)
   - `git diff --check` (pass)
   - Chrome desktop and 390x844 mobile accessibility snapshots (pass; switch starts unchecked, toggles checked, and has the accessible name `Simulate moveset variants`; existing missing `favicon.ico` remains the only console error)
+---
+
+## 2026-08-07 14:10:44 MST - US-034
+- Replaced the roster-wide assignment policy shortcut with a canonical immutable `authorityBySpeciesId` map; bound every per-species authority into deterministic fingerprints; validated authority, variant, and canonical roster key parity; kept manifest defaults variant-qualified and ranked-default fallbacks unqualified across lineup, finalist, shield, and contribution lookups; and projected exact authority through generation, team details, client validation, analysis, and export pass-through boundaries.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `lib/genetic/fitness/finalistReranking.ts`, `lib/genetic/fitness/finalistReranking.test.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/algorithm.test.ts`, `lib/analysis/shieldScenarioAnalysis.test.ts`, `lib/analysis/pokemonContributionAnalysis.test.ts`, `app/api/generate-team/route.test.ts`, `app/api/team-details/route.test.ts`, `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `lib/export/exportTeam.test.ts`, `lib/export/copyTeamToClipboard.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-034 - Track moveset assignment authority per roster species`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/genetic/moveset.test.ts app/api/team-details/route.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx` (fail as expected before implementation: mixed fingerprints, authority key validation, API projection, and client authority checks were missing)
+  - focused assignment, finalist, lineup, analysis, API, client, export, and clipboard suite (pass, 141 tests after the TeamDisplay multi-species fixture was corrected)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 857 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `refactoring-specialist`
+  - Used: `typescript-pro`; skipped `refactoring-specialist` because one TypeScript contract specialist plus established assignment boundaries covered the standard-mode complex-story budget without overlapping guidance
+- Specialist review:
+  - Agents used: initial staged `code-reviewer` and `qa-expert` pass
+  - Findings: none; both specialists returned empty actionable finding lists and noted only the intentionally deferred US-035 mixed-resolution and US-036 authority-authenticity work
+- Decisions (why):
+  - Removed the global assignment policy field instead of retaining a compatibility shortcut because transient assignments are not persisted and a roster-wide source cannot represent mixed authority safely.
+  - Kept the existing policy identity shape for each species so manifest schema/policy identity and ranked-default fallback identity remain explicit without adding another parallel contract.
+  - Centralized simulation qualification in `getAssignedMovesetVariantId(...)` so `isDefault` does not incorrectly make manifest defaults unqualified and consumers do not repeat authority logic.
+  - Added authority to team-details move projection and client response validation while leaving export text unchanged because authority is control metadata, not an acquisition requirement or move selection input.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Manifest-backed default variants still require their canonical variant ID for aggregate and shield-scenario snapshot lookup; only ranked-default fallback species use unqualified lookup.
+  - Assignment fingerprints are deterministic identity, not authenticity; repository-authority validation remains the responsibility of US-036.
+- Known issues / follow-ups:
+  - US-035 should create mixed assignments by applying ranked-default fallback only to snapshot-unsupported species while preserving fail-closed snapshot integrity errors.
+  - Browser verification was not required because the component change only validates the existing non-visual API contract and adds no rendered UI or interaction change.
+- Next iteration start:
+  - US-035 - Fall back unsupported variant anchors to default movesets
 ---

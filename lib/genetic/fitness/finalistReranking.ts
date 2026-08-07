@@ -1,6 +1,9 @@
 import { scoreMatchupRating } from './matchupScoring';
 import type { PlayPokemonRosterScoreResult } from './rosterScoring';
-import { MAX_ROSTER_MOVESET_ASSIGNMENTS } from '@/lib/genetic/moveset';
+import {
+  getAssignedMovesetVariantId,
+  MAX_ROSTER_MOVESET_ASSIGNMENTS,
+} from '@/lib/genetic/moveset';
 import type {
   Chromosome,
   FinalistRerankingStats,
@@ -203,13 +206,10 @@ function scoreThreatPool(
   const threatScores = threats.flatMap((threat) => {
     const answerScores = speciesIds
       .flatMap((speciesId) => {
-        const variant = assignment.variantsBySpeciesId[speciesId];
         const rating = getMatchupRating(
           speciesId,
           threat,
-          assignment.policyIdentity.source === 'manifest'
-            ? variant.id
-            : undefined,
+          getAssignedMovesetVariantId(assignment, speciesId),
         );
         return rating === null ? [] : [scoreMatchupRating(rating)];
       })

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
-import type { RosterMovesetAssignment, ThreatAnalysisEntry } from '@/lib/types';
+import type {
+  MovesetAssignmentPolicyIdentity,
+  RosterMovesetAssignment,
+  ThreatAnalysisEntry,
+} from '@/lib/types';
 
 const speciesIdToRankingNameMock = vi.fn();
 const getShieldScenarioMatchupResultMock = vi.fn();
@@ -242,15 +246,16 @@ describe('buildShieldScenarioAnalysis', () => {
 
 function createAssignment(
   speciesIds: readonly string[],
-  source: RosterMovesetAssignment['policyIdentity']['source'] = 'manifest',
+  source: MovesetAssignmentPolicyIdentity['source'] = 'manifest',
 ): RosterMovesetAssignment {
   return {
     formatId: 'great-league',
-    policyIdentity: {
-      source,
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-    },
+    authorityBySpeciesId: Object.fromEntries(
+      speciesIds.map((speciesId) => [
+        speciesId,
+        { source, schemaVersion: 1, policyVersion: 'ranking-evidence-v1' },
+      ]),
+    ),
     fingerprint: 'analysis-assignment',
     variantsBySpeciesId: Object.fromEntries(
       speciesIds.map((speciesId) => [

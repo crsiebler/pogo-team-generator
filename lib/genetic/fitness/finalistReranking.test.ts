@@ -15,6 +15,21 @@ import type {
 
 const roster = ['a', 'b', 'c', 'd', 'e', 'f'];
 
+function createManifestAuthorities(
+  speciesIds: readonly string[],
+): RosterMovesetAssignment['authorityBySpeciesId'] {
+  return Object.fromEntries(
+    speciesIds.map((speciesId) => [
+      speciesId,
+      {
+        source: 'manifest' as const,
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      },
+    ]),
+  );
+}
+
 function createVariant(index: number, isDefault = false): MovesetVariant {
   return {
     id: `fast_${index}--charged_b--charged_a`,
@@ -28,11 +43,7 @@ function createVariant(index: number, isDefault = false): MovesetVariant {
 function createAssignment(index: number): RosterMovesetAssignment {
   return createRosterMovesetAssignment({
     formatId: 'great-league',
-    policyIdentity: {
-      source: 'manifest',
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-    },
+    authorityBySpeciesId: createManifestAuthorities(roster),
     variantsBySpeciesId: Object.fromEntries(
       roster.map((speciesId) => [speciesId, createVariant(index, index === 0)]),
     ),
@@ -42,11 +53,7 @@ function createAssignment(index: number): RosterMovesetAssignment {
 function createCombinationAssignment(index: number): RosterMovesetAssignment {
   return createRosterMovesetAssignment({
     formatId: 'great-league',
-    policyIdentity: {
-      source: 'manifest',
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-    },
+    authorityBySpeciesId: createManifestAuthorities(roster),
     variantsBySpeciesId: Object.fromEntries(
       roster.map((speciesId, speciesIndex) => {
         const variantIndex = Math.floor(index / 3 ** speciesIndex) % 3;
@@ -99,6 +106,36 @@ describe('finalist assignment reranking', () => {
 
     expect(score).toBeGreaterThan(0.5);
     expect(score).toBeLessThan(1);
+  });
+
+  it('qualifies manifest defaults and leaves ranked fallbacks unqualified', () => {
+    const manifestAssignment = createAssignment(0);
+    const assignment = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      authorityBySpeciesId: {
+        ...manifestAssignment.authorityBySpeciesId,
+        b: {
+          source: 'ranked-default-fallback',
+          schemaVersion: 0,
+          policyVersion: 'ranked-default-v1',
+        },
+      },
+      variantsBySpeciesId: manifestAssignment.variantsBySpeciesId,
+    });
+    const qualifiers = new Map<string, string | undefined>();
+
+    scoreLightweightRosterAssignment(
+      assignment,
+      ['top_threat'],
+      [],
+      (speciesId, _threat, variantId) => {
+        qualifiers.set(speciesId, variantId);
+        return 500;
+      },
+    );
+
+    expect(qualifiers.get('a')).toBe(assignment.variantsBySpeciesId.a.id);
+    expect(qualifiers.get('b')).toBeUndefined();
   });
 
   it('prefilters every bounded assignment but fully scores only the top twelve', () => {
@@ -162,11 +199,7 @@ describe('finalist assignment reranking', () => {
         JSON.stringify(lowerDefault.team),
         createRosterMovesetAssignment({
           formatId: 'great-league',
-          policyIdentity: {
-            source: 'manifest',
-            schemaVersion: 1,
-            policyVersion: 'ranking-evidence-v1',
-          },
+          authorityBySpeciesId: createManifestAuthorities(lowerDefault.team),
           variantsBySpeciesId: Object.fromEntries(
             lowerDefault.team.map((speciesId) => [speciesId, createVariant(1)]),
           ),
@@ -245,11 +278,7 @@ describe('finalist assignment reranking', () => {
       getAssignments: (team) => [
         createRosterMovesetAssignment({
           formatId: 'great-league',
-          policyIdentity: {
-            source: 'manifest',
-            schemaVersion: 1,
-            policyVersion: 'ranking-evidence-v1',
-          },
+          authorityBySpeciesId: createManifestAuthorities(team),
           variantsBySpeciesId: Object.fromEntries(
             team.map((speciesId) => [speciesId, createVariant(0, true)]),
           ),
@@ -283,11 +312,7 @@ describe('finalist assignment reranking', () => {
       getAssignments: (team) => [
         createRosterMovesetAssignment({
           formatId: 'great-league',
-          policyIdentity: {
-            source: 'manifest',
-            schemaVersion: 1,
-            policyVersion: 'ranking-evidence-v1',
-          },
+          authorityBySpeciesId: createManifestAuthorities(team),
           variantsBySpeciesId: Object.fromEntries(
             team.map((speciesId) => [speciesId, createVariant(0, true)]),
           ),

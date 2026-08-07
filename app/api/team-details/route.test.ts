@@ -53,10 +53,17 @@ function createAssignment(
 
   return createRosterMovesetAssignment({
     formatId,
-    policyIdentity: {
-      source: 'manifest',
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
+    authorityBySpeciesId: {
+      mewtwo: {
+        source: 'manifest',
+        schemaVersion: 1,
+        policyVersion: 'ranking-evidence-v1',
+      },
+      sableye: {
+        source: 'ranked-default-fallback',
+        schemaVersion: 0,
+        policyVersion: 'ranked-default-v1',
+      },
     },
     variantsBySpeciesId: {
       mewtwo: {
@@ -153,6 +160,7 @@ describe('POST /api/team-details format-aware movesets', () => {
       chargedMove1: 'PSYSTRIKE',
       chargedMove2: 'PSYCHIC',
       isDefault: false,
+      authority: movesetAssignment.authorityBySpeciesId.mewtwo,
       acquisitionRequirements: {
         fastMove: { kind: 'eventExclusive' },
         chargedMove1: { kind: 'elite' },
@@ -169,6 +177,7 @@ describe('POST /api/team-details format-aware movesets', () => {
       chargedMove1: 'FOUL_PLAY',
       chargedMove2: 'RETURN',
       isDefault: true,
+      authority: movesetAssignment.authorityBySpeciesId.sableye,
       acquisitionRequirements: {
         fastMove: { kind: 'regular' },
         chargedMove1: { kind: 'regular' },
@@ -276,7 +285,7 @@ describe('POST /api/team-details format-aware movesets', () => {
     const baseAssignment = createAssignment();
     const movesetAssignment = createRosterMovesetAssignment({
       formatId: 'great-league',
-      policyIdentity: baseAssignment.policyIdentity,
+      authorityBySpeciesId: baseAssignment.authorityBySpeciesId,
       variantsBySpeciesId: {
         ...baseAssignment.variantsBySpeciesId,
         mewtwo: {
@@ -293,6 +302,28 @@ describe('POST /api/team-details format-aware movesets', () => {
         team: ['mewtwo', 'sableye'],
         formatId: 'great-league',
         movesetAssignment,
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects assignments with authority keys that differ from the roster', async () => {
+    const assignment = createAssignment();
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        formatId: 'great-league',
+        movesetAssignment: {
+          ...assignment,
+          authorityBySpeciesId: {
+            mewtwo: assignment.authorityBySpeciesId.mewtwo,
+          },
+        },
       }),
     });
 

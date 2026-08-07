@@ -44,10 +44,12 @@ interface MockResultsPanelProps {
 
 const movesetAssignment: RosterMovesetAssignment = {
   formatId: 'great-league',
-  policyIdentity: {
-    source: 'manifest',
-    schemaVersion: 1,
-    policyVersion: 'ranking-evidence-v1',
+  authorityBySpeciesId: {
+    azumarill: {
+      source: 'manifest',
+      schemaVersion: 1,
+      policyVersion: 'ranking-evidence-v1',
+    },
   },
   variantsBySpeciesId: {
     azumarill: {

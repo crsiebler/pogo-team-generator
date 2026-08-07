@@ -9,6 +9,7 @@ import { MissingRankingDataError } from '@/lib/data/rankings';
 import { createNormalizedScoreBreakdown } from '@/lib/genetic/fitness/scoreBreakdown';
 import { createRosterMovesetAssignment } from '@/lib/genetic/moveset';
 import type {
+  MovesetAssignmentPolicyIdentity,
   MovesetVariantId,
   OrderedLineup,
   Pokemon,
@@ -39,11 +40,16 @@ describe('scorePlayPokemonRoster', () => {
     const assignedMoveReads = new Map<string, number>();
     const movesetAssignment = createRosterMovesetAssignment({
       formatId: 'great-league',
-      policyIdentity: {
-        source: 'manifest',
-        schemaVersion: 1,
-        policyVersion: 'ranking-evidence-v1',
-      },
+      authorityBySpeciesId: Object.fromEntries(
+        roster.map((speciesId) => [
+          speciesId,
+          {
+            source: 'manifest' as const,
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          },
+        ]),
+      ),
       variantsBySpeciesId: Object.fromEntries(
         roster.map((speciesId) => [
           speciesId,
@@ -104,11 +110,16 @@ describe('scorePlayPokemonRoster', () => {
     );
     const movesetAssignment = createRosterMovesetAssignment({
       formatId: 'great-league',
-      policyIdentity: {
-        source: 'manifest',
-        schemaVersion: 1,
-        policyVersion: 'ranking-evidence-v1',
-      },
+      authorityBySpeciesId: Object.fromEntries(
+        roster.slice(0, 5).map((speciesId) => [
+          speciesId,
+          {
+            source: 'manifest' as const,
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          },
+        ]),
+      ),
       variantsBySpeciesId: Object.fromEntries(
         roster.slice(0, 5).map((speciesId) => [
           speciesId,
@@ -139,11 +150,16 @@ describe('scorePlayPokemonRoster', () => {
     );
     const movesetAssignment = createRosterMovesetAssignment({
       formatId: 'ultra-league',
-      policyIdentity: {
-        source: 'manifest',
-        schemaVersion: 1,
-        policyVersion: 'ranking-evidence-v1',
-      },
+      authorityBySpeciesId: Object.fromEntries(
+        roster.map((speciesId) => [
+          speciesId,
+          {
+            source: 'manifest' as const,
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          },
+        ]),
+      ),
       variantsBySpeciesId: Object.fromEntries(
         roster.map((speciesId) => [
           speciesId,
@@ -2237,15 +2253,16 @@ function createContext(
 
 function createTestAssignment(
   speciesIds: readonly string[],
-  source: RosterMovesetAssignment['policyIdentity']['source'] = 'manifest',
+  source: MovesetAssignmentPolicyIdentity['source'] = 'manifest',
 ): RosterMovesetAssignment {
   return {
     formatId: 'great-league',
-    policyIdentity: {
-      source,
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
-    },
+    authorityBySpeciesId: Object.fromEntries(
+      speciesIds.map((speciesId) => [
+        speciesId,
+        { source, schemaVersion: 1, policyVersion: 'ranking-evidence-v1' },
+      ]),
+    ),
     fingerprint: 'variant-aware-roster',
     variantsBySpeciesId: Object.fromEntries(
       speciesIds.map((speciesId) => [
