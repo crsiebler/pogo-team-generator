@@ -53,6 +53,7 @@ export interface MovesetVariantSimulationLoaderDependencies {
 
 /** Manifest-authoritative runtime moveset and simulation lookups. */
 export interface MovesetVariantSimulationLoader {
+  getDefaultMatchupMatrix(formatId: BattleFormatId): RuntimeMatchupMatrix;
   getManifestPolicyIdentity(formatId: BattleFormatId): Readonly<{
     schemaVersion: number;
     policyVersion: string;
@@ -76,11 +77,25 @@ export interface MovesetVariantSimulationLoader {
   ): number | null;
 }
 
-interface RuntimeMatchupResult {
+/** Parsed simulation result for one opponent and shield scenario. */
+export interface RuntimeMatchupResult {
   readonly battleRating: number;
   readonly energyRemaining: number;
   readonly hpRemaining: number;
 }
+
+/** Complete default matchup data for one opponent. */
+export interface RuntimeMatchupData {
+  readonly shields0: RuntimeMatchupResult;
+  readonly shields1: RuntimeMatchupResult;
+  readonly shields2: RuntimeMatchupResult;
+}
+
+/** Manifest-backed default matchup matrix keyed by species and opponent ids. */
+export type RuntimeMatchupMatrix = ReadonlyMap<
+  string,
+  ReadonlyMap<string, RuntimeMatchupData>
+>;
 
 type ScenarioMatchups = Readonly<
   Record<ShieldScenarioKey, ReadonlyMap<string, RuntimeMatchupResult>>
@@ -141,6 +156,10 @@ export function createMovesetVariantSimulationLoader(
 ): MovesetVariantSimulationLoader {
   const manifestCache = new Map<BattleFormatId, MovesetVariantManifest>();
   const matchupCache = new Map<string, ScenarioMatchups>();
+  const defaultMatchupMatrixCache = new Map<
+    BattleFormatId,
+    RuntimeMatchupMatrix
+  >();
 
   function getManifestResourcePath(formatId: BattleFormatId): string {
     const format = getBattleFormatById(formatId);
@@ -447,7 +466,64 @@ export function createMovesetVariantSimulationLoader(
     return candidateMatchups;
   }
 
+  function loadDefaultMatchupMatrix(
+    formatId: BattleFormatId,
+  ): RuntimeMatchupMatrix {
+    const cached = defaultMatchupMatrixCache.get(formatId);
+    if (cached) {
+      return cached;
+    }
+
+    const manifest = loadManifest(formatId);
+    const matrix = new Map<string, ReadonlyMap<string, RuntimeMatchupData>>();
+    for (const species of manifest.species) {
+      const defaultCandidate = species.candidates.find(
+        ({ id, active, isDefault }) =>
+          id === species.defaultVariantId && active && isDefault,
+      );
+      if (!defaultCandidate) {
+        throw new MovesetVariantSimulationDataError(
+          'manifest-incomplete',
+          formatId,
+          getManifestResourcePath(formatId),
+          species.speciesId,
+          species.defaultVariantId,
+        );
+      }
+
+      const scenarios = loadRawCandidateMatchups(
+        species.speciesId,
+        defaultCandidate,
+        formatId,
+      );
+      const speciesMatchups = new Map<string, RuntimeMatchupData>();
+      for (const [opponentSpeciesId, shields0] of scenarios['0-0']) {
+        const shields1 = scenarios['1-1'].get(opponentSpeciesId);
+        const shields2 = scenarios['2-2'].get(opponentSpeciesId);
+        if (!shields1 || !shields2) {
+          throw new MovesetVariantSimulationDataError(
+            'manifest-incomplete',
+            formatId,
+            getManifestResourcePath(formatId),
+            species.speciesId,
+            defaultCandidate.id,
+          );
+        }
+        speciesMatchups.set(opponentSpeciesId, {
+          shields0,
+          shields1,
+          shields2,
+        });
+      }
+      matrix.set(species.speciesId, speciesMatchups);
+    }
+
+    defaultMatchupMatrixCache.set(formatId, matrix);
+    return matrix;
+  }
+
   return {
+    getDefaultMatchupMatrix: loadDefaultMatchupMatrix,
     getManifestPolicyIdentity: (
       formatId: BattleFormatId,
     ): Readonly<{ schemaVersion: number; policyVersion: string }> => {

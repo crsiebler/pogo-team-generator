@@ -24,7 +24,7 @@
 - Parse TeamRanker opponent cells with `extractSpeciesNameFromSimulationCell(...)` before canonical lookup or opponent-set comparison because PvPoke appends compact moveset tokens after species and form names.
 - Prepare every supported format manifest in memory after simulation and cross-validation succeed; production simulation generation returns validated deferred CSVs, and one rollback-capable batch stages all files, replaces manifests last, and restores every prior CSV and manifest target on failure.
 - Stale simulation cleanup runs only after successful generation publication, requires physical directories to match workspace catalog paths before enumeration and each unlink, deletes only regular strict-parser variant files omitted by all manifest candidate storage keys, and reports each successful deletion immediately; default matrices and declared inactive candidates remain untouched.
-- Runtime variant availability comes only from each format manifest's active candidates and exact scenario storage keys; validate declared completeness, finite CSV rows, and candidate/default opponent parity before caching, never scan variant filenames, and never substitute default rows for an unavailable alternate.
+- Runtime simulation availability comes only from each format manifest: build default matrices from active default candidates and exact scenario storage keys, expose alternatives from the same authority, validate finite CSV rows and candidate/default opponent parity before caching, never enumerate runtime simulation directories or filenames, and never substitute default rows for unavailable alternates.
 - Resolve one deeply immutable roster moveset assignment against the complete bring-six roster before lineup enumeration; bind it into scoring contexts, normalize omitted scoring formats to the default before validation, and include its format, manifest policy identity, and canonical variants in every assignment-dependent cache fingerprint.
 - Route every roster-member aggregate matchup, shield scenario, matchup-quality, and move-typing read through the bound assignment's variant ID; ranked-default transition assignments remain unqualified, and missing shield rows remain unevaluated rather than synthetic neutral results.
 - Final threat analysis reuses the assignment-aware `scoreBreakdown.threatScore`; retain the exact final roster assignment for shield-scenario and Pokemon-contribution diagnostics rather than resolving or selecting movesets in analysis modules.
@@ -1523,4 +1523,45 @@
   - US-029 should consume the generated flat allowlist for exact Next.js output tracing; US-027 intentionally does not change `next.config.ts`.
 - Next iteration start:
   - US-028 - Remove runtime simulation directory scanning
+---
+
+## 2026-08-07 05:53:01 MST - US-028
+- Replaced runtime simulation directory enumeration and filename discovery with one manifest-backed default matrix loader that reads each species' active default candidate through its exact declared scenario storage keys; retained aggregate and shield-specific lookup behavior, explicit variant authority, typed failures, format-scoped caching, and default/alternate opponent parity validation across every supported format.
+- Files changed: `lib/AGENTS.md`, `lib/data/movesetVariantSimulations.ts`, `lib/data/movesetVariantSimulations.test.ts`, `lib/data/simulations.ts`, `lib/data/simulations.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-028 - Remove runtime simulation directory scanning`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts` (fail as expected before implementation: `getDefaultMatchupMatrix` was missing; 13 pass, 1 fail)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/data/simulations.test.ts` (pass, 22 tests)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/data/simulations.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 26 tests)
+  - `npx prettier --write "lib/AGENTS.md" "lib/data/movesetVariantSimulations.ts" "lib/data/movesetVariantSimulations.test.ts" "lib/data/simulations.ts" "lib/data/simulations.test.ts"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 816 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/data/movesetVariantSimulations.test.ts lib/data/simulations.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` after review fix (pass, 26 tests)
+  - `npx tsc --noEmit` after review fix (pass)
+  - `npm run lint` after review fix (pass)
+  - `npm test` after review fix (pass, 816 tests)
+  - `git diff --check && git diff --cached --check` after review fix (pass)
+- Implementation agents:
+  - Recommended: `backend-developer`, `architect-reviewer`
+  - Used: `backend-developer`; skipped `architect-reviewer` because one runtime data-loading specialist plus the established manifest boundary was sufficient for the standard-mode complex-story budget
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: code review found none; fixed one medium QA finding by validating implicit/explicit default aggregate parity and all three shield scenarios for every loaded opponent in every supported format; targeted re-review found none
+- Decisions (why):
+  - Extended the existing manifest-backed simulation loader instead of adding a second runtime index consumer because per-format manifests remain the runtime availability authority and the flat asset index belongs to later output-tracing work.
+  - Built and cached the complete default matrix only after every species default loaded and validated, preventing a late malformed CSV from publishing a partial format cache.
+  - Loaded only default candidate storage for default matrices; active alternatives remain lazy and are read only when availability or explicit-variant lookups require them.
+  - Removed the exported runtime filename parser with the scanning implementation because no consumer remained and filename discovery is no longer an authorized runtime behavior.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - `createMovesetVariantSimulationLoader(...)` now owns both default matrices and explicit variant reads, allowing the public simulation helpers to preserve synchronous interfaces without separate CSV parsing or filesystem enumeration.
+  - Calling `getActiveMovesetVariants(...)` validates every active alternate against its default opponent sets, while default matrix preparation reads only manifest-declared default storage.
+- Known issues / follow-ups:
+  - US-029 should use `data/simulations/runtime-asset-index.json` as the exact Next.js output-tracing allowlist; US-028 intentionally leaves tracing configuration unchanged.
+- Next iteration start:
+  - US-029 - Trace only runtime-authorized function assets
 ---

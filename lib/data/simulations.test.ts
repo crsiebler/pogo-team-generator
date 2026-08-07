@@ -10,26 +10,15 @@ import {
 } from './movesetVariantManifest';
 import {
   ensureSimulationDataAvailable,
+  getActiveMovesetVariants,
   getMatchupMatrix,
+  getMatchupResult,
   getMovesetVariantShieldScenarioMatchupResult,
   getShieldScenarioMatchupResult,
   getTopThreatsByRole,
-  parseSimulationFilename,
 } from './simulations';
 
 describe('format-aware simulation loading', () => {
-  it('parses moveset-specific simulation filenames separately from species ids', () => {
-    expect(
-      parseSimulationFilename(
-        'golisopod--shadow_claw--x_scissor--aqua_jet_1-1.csv',
-      ),
-    ).toEqual({
-      speciesId: 'golisopod',
-      movesetVariantId: 'shadow_claw--x_scissor--aqua_jet',
-      shieldCount: 1,
-    });
-  });
-
   it('supports default and explicit Great League lookups', () => {
     const defaultMatrix = getMatchupMatrix();
     const explicitMatrix = getMatchupMatrix('great-league');
@@ -167,6 +156,8 @@ describe('format-aware simulation loading', () => {
       );
 
       expect(manifest.metadata.formatId).toBe(format.id);
+      const defaultMatrix = getMatchupMatrix(format.id);
+      expect(defaultMatrix.size).toBe(manifest.species.length);
 
       for (const species of manifest.species) {
         expect(species.speciesId).not.toMatch(/^(furret|florges)_shadow$/);
@@ -210,6 +201,58 @@ describe('format-aware simulation loading', () => {
           ({ id }) => id === species.defaultVariantId,
         );
         expect(defaultCandidate).toBeDefined();
+        expect(
+          getActiveMovesetVariants(species.speciesId, format.id).map(
+            ({ id }) => id,
+          ),
+        ).toEqual(activeCandidates.map(({ id }) => id));
+
+        const loadedDefaultMatchups = defaultMatrix.get(species.speciesId);
+        expect(loadedDefaultMatchups).toBeDefined();
+        if (!loadedDefaultMatchups || loadedDefaultMatchups.size === 0) {
+          throw new Error(
+            `${format.id}/${species.speciesId} has no default opponents`,
+          );
+        }
+        for (const [opponentSpeciesId, matchup] of loadedDefaultMatchups) {
+          expect(
+            getMatchupResult(species.speciesId, opponentSpeciesId, format.id),
+          ).toBe(
+            getMatchupResult(
+              species.speciesId,
+              opponentSpeciesId,
+              format.id,
+              species.defaultVariantId,
+            ),
+          );
+          expect(
+            getMovesetVariantShieldScenarioMatchupResult(
+              species.speciesId,
+              species.defaultVariantId,
+              opponentSpeciesId,
+              0,
+              format.id,
+            ),
+          ).toBe(matchup.shields0.battleRating);
+          expect(
+            getMovesetVariantShieldScenarioMatchupResult(
+              species.speciesId,
+              species.defaultVariantId,
+              opponentSpeciesId,
+              1,
+              format.id,
+            ),
+          ).toBe(matchup.shields1.battleRating);
+          expect(
+            getMovesetVariantShieldScenarioMatchupResult(
+              species.speciesId,
+              species.defaultVariantId,
+              opponentSpeciesId,
+              2,
+              format.id,
+            ),
+          ).toBe(matchup.shields2.battleRating);
+        }
 
         const defaultOpponents = Object.fromEntries(
           MOVESET_VARIANT_SCENARIOS.map((scenario) => [

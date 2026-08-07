@@ -59,7 +59,7 @@ Derive `data/simulations/runtime-asset-index.json` only from reparsed prepared m
 
 After successful batch publication, delete only regular files accepted by the strict canonical variant filename parser and omitted by all manifest candidate storage keys. Derive each cleanup directory from the battle-format catalog, require its physical path to match the workspace catalog path before enumeration and each unlink, validate every manifest cleanup plan before deletion, preserve default matrices and declared inactive candidates, and report each successful deletion immediately in deterministic order.
 
-Runtime moveset variant availability comes only from the format manifest: expose active candidates, read their exact declared scenario storage keys, and validate finite CSV rows plus scenario/default opponent parity before caching. Never enumerate variant-qualified filenames as an availability source or substitute default rows for an unavailable alternate; direct manifest and explicit-variant failures must remain actionable typed errors.
+Runtime simulation availability comes only from the format manifest: build default matrices from each species' active default candidate and exact scenario storage keys, expose active alternatives from the same authority, and validate finite CSV rows plus scenario/default opponent parity before caching. Never enumerate runtime simulation directories or filenames, and never substitute default rows for an unavailable alternate; direct manifest and explicit-variant failures must remain actionable typed errors.
 
 Keep `lib/scraper` runtime options browser-agnostic (`resume`/`sourcePath`); do not reintroduce Playwright-specific helpers or flags in sync scripts.
 

@@ -1,8 +1,11 @@
-import { readFileSync, readdirSync } from 'fs';
-import { parse } from 'csv-parse/sync';
+import { readFileSync } from 'fs';
 import type { BattleFormatId } from './battleFormats';
 import { DEFAULT_BATTLE_FORMAT_ID, getBattleFormatById } from './battleFormats';
-import { createMovesetVariantSimulationLoader } from './movesetVariantSimulations';
+import {
+  createMovesetVariantSimulationLoader,
+  type RuntimeMatchupMatrix,
+  type RuntimeMatchupResult,
+} from './movesetVariantSimulations';
 import {
   normalizeToChoosableSpeciesId,
   speciesIdToSpeciesName,
@@ -17,26 +20,12 @@ import type { MovesetVariant, MovesetVariantId } from '@/lib/types';
 /**
  * Simulation matchup result for a specific shield scenario
  */
-export interface MatchupResult {
-  battleRating: number; // >500 = win, <500 = loss, =500 = tie
-  energyRemaining: number;
-  hpRemaining: number;
-}
-
-/**
- * Complete matchup data across all shield scenarios
- */
-interface MatchupData {
-  shields0: MatchupResult | null;
-  shields1: MatchupResult | null;
-  shields2: MatchupResult | null;
-}
+export type MatchupResult = RuntimeMatchupResult;
 
 /**
  * Matchup matrix keyed by speciesId.
  */
-type MatchupMatrix = Map<string, Map<string, MatchupData>>;
-const formatMatchupCache: Map<BattleFormatId, MatchupMatrix> = new Map();
+type MatchupMatrix = RuntimeMatchupMatrix;
 
 /**
  * Raised when requested format simulation files are unavailable.
@@ -56,16 +45,6 @@ export class MissingSimulationDataError extends Error {
     this.name = 'MissingSimulationDataError';
     this.formatId = formatId;
   }
-}
-
-/**
- * CSV record structure from simulation files
- */
-interface SimulationCSVRecord {
-  Pokemon: string;
-  'Battle Rating': number;
-  'Energy Remaining': number;
-  'HP Remaining': number;
 }
 
 /**
@@ -96,157 +75,10 @@ export function extractSpeciesNameFromSimulationCell(value: string): string {
 }
 
 /**
- * Parse a simulation CSV file and extract matchup results by opponent speciesId.
- */
-function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
-  const fileContent = readFileSync(filePath, 'utf-8');
-  const records = parse(fileContent, {
-    columns: true,
-    skip_empty_lines: true,
-    cast: (value, context) => {
-      if (
-        context.column &&
-        typeof context.column === 'string' &&
-        ['Battle Rating', 'Energy Remaining', 'HP Remaining'].includes(
-          context.column,
-        )
-      ) {
-        return parseFloat(value);
-      }
-      return value;
-    },
-  }) as SimulationCSVRecord[];
-
-  const matchups = new Map<string, MatchupResult>();
-
-  for (const record of records) {
-    const speciesDisplayName = extractSpeciesNameFromSimulationCell(
-      record.Pokemon,
-    );
-    const opponentSpeciesId = speciesNameToChoosableId(speciesDisplayName);
-    if (!opponentSpeciesId) {
-      continue;
-    }
-
-    matchups.set(opponentSpeciesId, {
-      battleRating: record['Battle Rating'],
-      energyRemaining: record['Energy Remaining'],
-      hpRemaining: record['HP Remaining'],
-    });
-  }
-
-  return matchups;
-}
-
-/**
  * Resolve selected format id with Great League fallback.
  */
 function resolveFormatId(formatId?: BattleFormatId): BattleFormatId {
   return formatId ?? DEFAULT_BATTLE_FORMAT_ID;
-}
-
-/**
- * Parsed simulation filename metadata.
- */
-export interface ParsedSimulationFilename {
-  speciesId: string;
-  movesetVariantId?: string;
-  shieldCount: number;
-}
-
-/**
- * Parse simulation CSV filename in format-specific directories.
- * Filename format: {speciesId}_{shields}.csv
- */
-export function parseSimulationFilename(
-  filename: string,
-): ParsedSimulationFilename | null {
-  const match = filename.match(/^(.+)_(\d+)-\d+\.csv$/);
-  if (!match) {
-    return null;
-  }
-
-  const [rawSpeciesId, ...movesetVariantParts] = match[1].split('--');
-  const speciesId = normalizeToChoosableSpeciesId(rawSpeciesId);
-  const movesetVariantId = movesetVariantParts.join('--') || undefined;
-  const shieldCount = parseInt(match[2]);
-
-  if (!speciesId) {
-    return null;
-  }
-
-  return {
-    speciesId,
-    ...(movesetVariantId ? { movesetVariantId } : {}),
-    shieldCount,
-  };
-}
-
-/**
- * Load all simulation data for a selected battle format.
- */
-function loadSimulationData(formatId?: BattleFormatId): MatchupMatrix {
-  const resolvedFormatId = resolveFormatId(formatId);
-  const matrix: MatchupMatrix = new Map();
-  const battleFormat = getBattleFormatById(resolvedFormatId);
-
-  if (!battleFormat) {
-    return matrix;
-  }
-
-  const simulationDir = `${process.cwd()}/data/simulations/cp${battleFormat.cp}/${battleFormat.cup}`;
-
-  try {
-    const files = readdirSync(simulationDir);
-
-    for (const filename of files) {
-      if (!filename.endsWith('.csv')) {
-        continue;
-      }
-
-      const parsedFilename = parseSimulationFilename(filename);
-      if (!parsedFilename) {
-        continue;
-      }
-
-      const { speciesId, movesetVariantId, shieldCount } = parsedFilename;
-      if (movesetVariantId) {
-        continue;
-      }
-      const filePath = `${simulationDir}/${filename}`;
-      const matchups = parseSimulationCSV(filePath);
-
-      if (!matrix.has(speciesId)) {
-        matrix.set(speciesId, new Map());
-      }
-
-      const pokemonMatchups = matrix.get(speciesId)!;
-
-      for (const [opponentSpeciesId, result] of matchups.entries()) {
-        if (!pokemonMatchups.has(opponentSpeciesId)) {
-          pokemonMatchups.set(opponentSpeciesId, {
-            shields0: null,
-            shields1: null,
-            shields2: null,
-          });
-        }
-
-        const matchupData = pokemonMatchups.get(opponentSpeciesId)!;
-
-        if (shieldCount === 0) {
-          matchupData.shields0 = result;
-        } else if (shieldCount === 1) {
-          matchupData.shields1 = result;
-        } else if (shieldCount === 2) {
-          matchupData.shields2 = result;
-        }
-      }
-    }
-  } catch {
-    return matrix;
-  }
-
-  return matrix;
 }
 
 const movesetVariantSimulationLoader = createMovesetVariantSimulationLoader({
@@ -281,15 +113,9 @@ export function getMovesetVariantManifestPolicyIdentity(
  */
 export function getMatchupMatrix(formatId?: BattleFormatId): MatchupMatrix {
   const resolvedFormatId = resolveFormatId(formatId);
-  const cachedMatrix = formatMatchupCache.get(resolvedFormatId);
-
-  if (cachedMatrix) {
-    return cachedMatrix;
-  }
-
-  const matrix = loadSimulationData(resolvedFormatId);
-  formatMatchupCache.set(resolvedFormatId, matrix);
-  return matrix;
+  return movesetVariantSimulationLoader.getDefaultMatchupMatrix(
+    resolvedFormatId,
+  );
 }
 
 /**

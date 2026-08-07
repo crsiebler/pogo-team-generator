@@ -249,6 +249,52 @@ describe('manifest-backed moveset variant simulation loading', () => {
     ).toBe(false);
   });
 
+  it('builds the default matrix from only manifest-declared default storage', () => {
+    const files = createFiles();
+    files.set(
+      path.join(path.dirname(manifestPath), 'unlisted-species_1-1.csv'),
+      createCsv(999),
+    );
+    const reads: string[] = [];
+    const loader = createLoader(files, reads);
+
+    expect(loader.getDefaultMatchupMatrix('great-league')).toEqual(
+      new Map([
+        [
+          'golisopod',
+          new Map([
+            [
+              'absol',
+              {
+                shields0: {
+                  battleRating: 400,
+                  energyRemaining: 10,
+                  hpRemaining: 20,
+                },
+                shields1: {
+                  battleRating: 400,
+                  energyRemaining: 10,
+                  hpRemaining: 20,
+                },
+                shields2: {
+                  battleRating: 400,
+                  energyRemaining: 10,
+                  hpRemaining: 20,
+                },
+              },
+            ],
+          ]),
+        ],
+      ]),
+    );
+    expect(reads).toEqual([
+      manifestPath,
+      path.join(path.dirname(manifestPath), 'golisopod_0-0.csv'),
+      path.join(path.dirname(manifestPath), 'golisopod_1-1.csv'),
+      path.join(path.dirname(manifestPath), 'golisopod_2-2.csv'),
+    ]);
+  });
+
   it('keeps the same active variant identity scoped to its format', () => {
     const greatFiles = createFiles();
     const ultraManifest: MovesetVariantManifest = {
@@ -449,9 +495,7 @@ describe('manifest-backed moveset variant simulation loading', () => {
     ({ files, code }) => {
       const loader = createLoader(files);
 
-      expect(() =>
-        loader.getActiveVariants('golisopod', 'great-league'),
-      ).toThrowError(
+      expect(() => loader.getDefaultMatchupMatrix('great-league')).toThrowError(
         expect.objectContaining({
           name: 'MovesetVariantSimulationDataError',
           code,
