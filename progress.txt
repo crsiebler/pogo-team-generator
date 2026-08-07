@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Next.js NFT trace entries resolve relative to the trace file directory; deployment-size tooling must deduplicate resolved files, stat only trace-declared assets, and report deterministic project-relative paths and raw uncompressed bytes instead of scanning repository directories.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; local PvPoke execution remains isolated to sync tooling.
 - Moveset variant work must read `.opencode/skills/gbl-optimizer/SKILL.md` and the required optimizer documents before changing ranking inputs, simulation data, scoring, or diagnostics.
 - Required optimizer docs: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
@@ -1448,4 +1449,40 @@
   - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-025.
 - Next iteration start:
   - All PRD stories pass.
+---
+
+## 2026-08-07 05:07:52 MST - US-026
+- Implemented a non-interactive analyzer for the generated `/api/generate-team` Next.js NFT trace with exact trace-relative path resolution, canonical deduplication, filesystem byte measurement, fixed simulation/ranking/application/dependency/other-data groups, deterministic largest-file ordering, stable JSON output, and actionable missing or malformed trace failures; added checked-in fixtures and package-script wiring.
+- Files changed: `lib/AGENTS.md`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/**`, `lib/scripts/analyzeGenerateTeamTrace.ts`, `package.json`, `progress.txt`
+- Commit message: `feat: US-026 - Measure generated function trace size`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts` (fail as expected before implementation: analyzer module missing)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 9 tests before review; 11 tests after review fixes)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail before fixture extension and import-order fixes; pass afterward)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts` after initial review regressions (fail as expected: missing traced-asset errors exposed an absolute host path)
+  - `npm test` (pass, 798 tests before review; 800 tests after review fixes)
+  - `npm run build` (pass before and after review fixes; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; 20,290 unique files and 357,096,998 uncompressed bytes, including 350,057,183 simulation bytes)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `build-engineer`, `test-automator`
+  - Used: `build-engineer`; skipped `test-automator` because one focused build advisor plus test-first analyzer, determinism, CLI, malformed-input, and runtime-boundary coverage fit the standard-mode implementation budget
+- Specialist review:
+  - Agents used: initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: code review found none; fixed two medium QA findings by sanitizing filesystem errors to stable codes and deriving fixture expectations from checked-in bytes instead of line-ending-sensitive literals; also added the low suggested structural malformed-trace CLI regression; targeted re-review found none
+- Decisions (why):
+  - Resolved every NFT entry against the trace directory because Next.js emits relative paths from the `.nft.json` location; resolving against the repository root would measure the wrong files.
+  - Reported stable machine-readable JSON with raw integer bytes and fixed category order so repeated builds can be compared without locale, color, timing, or human-formatting noise.
+  - Classified exact `data/simulations`, `data/rankings`, and `node_modules` path segments before broader data/application groups so similarly named directories cannot be misclassified.
+  - Measured the generated trace without imposing a size threshold because US-026 establishes visibility; later US-029 and US-032 own the 200 MiB and 100 MiB deployment limits.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - The current generated function trace is `.next/server/app/api/generate-team/route.js.nft.json`, and its entries may traverse to the workspace-level `node_modules` directory.
+  - The current trace baseline is dominated by simulation files, confirming later active-index and compact-snapshot stories should change tracing authority rather than optimizing application code first.
+- Known issues / follow-ups:
+  - The current generated trace is about 340.6 MiB and intentionally exceeds later transition targets; US-027 through US-032 own active asset indexing, trace narrowing, compact snapshots, and final size enforcement.
+- Next iteration start:
+  - US-027 - Publish an active runtime simulation asset index
 ---

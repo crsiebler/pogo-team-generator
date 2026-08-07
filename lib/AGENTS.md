@@ -11,6 +11,8 @@ For local PvPoke sync work, keep source-layout knowledge behind `lib/sync/adapte
 
 Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript. Keep local PvPoke engine execution isolated to sync tooling and cover the runtime boundary with `lib/architecture/pvpokeRuntimeBoundary.test.ts` when boundary rules change.
 
+Next.js NFT trace entries are relative to the trace file directory, not the repository root. Build analyzers must resolve and deduplicate those exact entries before reading file metadata, avoid recursive repository estimates, and emit only deterministic project-relative paths and raw byte counts.
+
 When syncing gamemaster JSON, call adapter `readPokemonJson`/`readMovesJson`, validate with `lib/sync/validation.ts`, then write normalized JSON outputs to `data/`.
 
 When extending the synced `PokemonData` contract, update `validatePokemonJson(...)` to validate each new optional field and cover valid and malformed values in `lib/sync/gamemaster.test.ts`.
