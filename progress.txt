@@ -1416,3 +1416,36 @@
 - Next iteration start:
   - US-025 - Document moveset variant generation and runtime semantics.
 ---
+
+## 2026-08-07 02:19:50 MST - US-025
+- Documented move acquisition policy, exact legacy exceptions, ranking evidence aggregation, mechanics filtering, bounded candidate derivation, invalid-default replacement, manifest authority and fallback, rollback-scoped publication, guarded stale cleanup, fixed roster assignments, bounded finalist reranking, and maintainer projection/generation/validation commands in the existing optimizer guides.
+- Files changed: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `prd.json`, `progress.txt`
+- Commit message: `docs(optimizer): US-025 - Document moveset variant generation and runtime semantics`
+- Auto approval: `enabled`
+- Checks:
+  - `npx prettier --check docs/pokemon-go-team-optimization.md docs/team-optimization/data-inputs.md` (pass)
+  - `npx vitest run lib/data/simulations.test.ts` (pass, 9 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 793 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `documentation-engineer`
+  - Used: `documentation-engineer` to audit acceptance coverage and implementation terminology before editing
+- Specialist review:
+  - Agents used: `documentation-engineer` and `qa-expert`; targeted re-review by both agents
+  - Findings: corrected incomplete-default rejection claims, removed unsupported fast-move effect filtering, clarified fallback assignments and capped exact-candidate priority, narrowed rollback semantics to the simulation/manifest publication batch, documented earlier full-sync writes and sync metadata, and completed deterministic assignment tie-breaking; final targeted reviews found no remaining issues.
+- Decisions (why):
+  - Expanded only the existing main optimizer and data-input guides so detailed repository policy has one discoverable source without duplicating it across unrelated scoring documents.
+  - Distinguished move eligibility from informational acquisition metadata because Elite, event-exclusive, and purified requirements must not alter battle fitness.
+  - Documented candidate, active-variant, assignment, and full-score caps separately so maintainers do not conflate derivation breadth with runtime availability or reranking work bounds.
+  - Described simulation and manifest replacement as a rollback-capable batch rather than claiming the entire sync is transactional, because gamemaster and ranking writes occur earlier and remain outside rollback.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` skill plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Documentation for generated data must distinguish full-sync side effects from the narrower rollback boundary used to publish simulations and manifests.
+  - Exact observed and override movesets receive evidence priority, but the hard eight-candidate cap can still truncate lower-priority exact sets.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-025.
+- Next iteration start:
+  - All PRD stories pass.
+---

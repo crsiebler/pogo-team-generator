@@ -51,6 +51,40 @@ code must not import, require, execute, bundle, or runtime-load PvPoke vendor
 JavaScript. Keep any local PvPoke engine execution isolated to sync or tooling
 workflows that generate repository-owned data.
 
+### Fixed Moveset Assignments And Bounded Finalist Reranking
+
+PlayPokemon evolution remains ranked-default-only so variant-aware full scoring
+does not enter the genetic algorithm hot path. Across generations, retain up to
+ten canonical, deduplicated default-scored finalists. Canonical identity
+preserves explicit anchor order, sorts flexible roster members, and uses the
+canonical roster key for deterministic ties.
+
+After evolution, enumerate each finalist's manifest-backed moveset assignments,
+or its single ranked-default fallback when the manifest is absent. Each roster
+member can expose at most three active variants, so a six-member roster has at
+most `3^6 = 729` assignments. A `RosterMovesetAssignment` fixes one variant per
+species before lineup scoring and includes the format, manifest or fallback
+policy identity, and a deterministic fingerprint. The same species therefore
+uses the same assigned moveset across all 120 ordered lead, switch, and closer
+permutations. Assignment-dependent cache keys include that fingerprint so
+different variants or policies cannot collide.
+
+A lightweight aggregate-matrix objective prefilters assignments before full
+lineup scoring. It weights top-meta and full-meta evidence `0.7/0.3` and the best
+three roster answers per threat `0.55/0.30/0.15`. Fully score at most twelve
+assignments per finalist across all 120 ordered lineups. The lightweight result
+is only a work bound. Assignment ties within a finalist use lightweight score,
+fewer alternates, then assignment fingerprint. Selection across finalists uses
+variant-aware full fitness, then default-only finalist fitness, then canonical
+roster key.
+
+The selected immutable assignment is retained for final diagnostics, API output,
+team details, and export. Those consumers must not independently reselect moves.
+Regular, Elite, event-exclusive, and purified acquisition classifications remain
+informational and do not change weighted fitness. See
+[Data Inputs](team-optimization/data-inputs.md) for availability, candidate,
+manifest, publication, and sync semantics.
+
 For ordered lineups, use one of these models depending on project requirements:
 
 - Lead ordered, back pair unordered: `6 * C(5, 2) = 60` lineups.
@@ -66,7 +100,7 @@ If a project has enough role data, fully ordered lead/switch/closer scoring is p
 - [Safety, Consistency, And Bulk](team-optimization/safety-consistency-bulk.md): hard-loss, bait-dependence, and bulk scoring.
 - [Type Effectiveness](team-optimization/type-effectiveness.md): Pokemon GO multipliers, dual-type calculation, and offensive/defensive ratios.
 - [Role Scoring](team-optimization/role-scoring.md): lead, switch, closer, charger, attacker, and consistency ranking use.
-- [Data Inputs](team-optimization/data-inputs.md): recommended PvPoke exports and normalized inputs.
+- [Data Inputs](team-optimization/data-inputs.md): move availability, ranking evidence, bounded candidates, manifest publication, and sync commands.
 - [Validation](team-optimization/validation.md): regression fixtures and expected edge cases.
 - OpenCode skill `gbl-optimizer`: project skill for agents implementing, refactoring, or reviewing GBL optimizer logic.
 
