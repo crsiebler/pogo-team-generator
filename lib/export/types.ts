@@ -1,9 +1,6 @@
-export interface Moveset {
-  fastMove: string | null;
-  chargedMove1: string | null;
-  chargedMove2: string | null;
-}
+import type { MovesetAcquisitionRequirements } from '@/lib/types';
 
-export interface TeamMovesets {
-  [speciesId: string]: Moveset;
-}
+/** Eligible acquisition metadata keyed by canonical roster species ID. */
+export type TeamAcquisitionRequirements = Readonly<
+  Record<string, MovesetAcquisitionRequirements>
+>;

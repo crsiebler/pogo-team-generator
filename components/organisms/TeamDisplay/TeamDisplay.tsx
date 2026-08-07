@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import { PokemonCard } from '@/components/molecules';
 import { ExportButton } from '@/components/molecules/ExportButton/ExportButton';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import type { TeamMovesets } from '@/lib/export';
 import type {
+  MovesetAcquisitionRequirements,
   Pokemon,
   RosterMovesetAssignment,
   TournamentMode,
@@ -117,15 +117,14 @@ export function TeamDisplay({
     );
   }
 
-  // Build movesets from pokemon data
-  const movesets: TeamMovesets = {};
+  const acquisitionRequirementsBySpeciesId: Record<
+    string,
+    MovesetAcquisitionRequirements
+  > = {};
   pokemonData.forEach((pokemon) => {
-    if (pokemon.recommendedMoveset) {
-      movesets[pokemon.speciesId] = {
-        fastMove: pokemon.recommendedMoveset.fastMove,
-        chargedMove1: pokemon.recommendedMoveset.chargedMove1,
-        chargedMove2: pokemon.recommendedMoveset.chargedMove2,
-      };
+    if (pokemon.recommendedMoveset?.acquisitionRequirements) {
+      acquisitionRequirementsBySpeciesId[pokemon.speciesId] =
+        pokemon.recommendedMoveset.acquisitionRequirements;
     }
   });
 
@@ -140,7 +139,14 @@ export function TeamDisplay({
           <h4 className="font-bold text-blue-900 dark:text-blue-100">
             💡 Team Notes
           </h4>
-          <ExportButton team={team} movesets={movesets} />
+          <ExportButton
+            team={team}
+            movesetAssignment={movesetAssignment}
+            acquisitionRequirementsBySpeciesId={
+              acquisitionRequirementsBySpeciesId
+            }
+            disabled={pokemonData.length !== team.length}
+          />
         </div>
         <ul className="space-y-1 text-xs text-blue-800 sm:text-sm dark:text-blue-200">
           <li>

@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import { copyTeamToClipboard, type TeamMovesets } from '@/lib/export';
+import { useState, type ReactElement } from 'react';
+import {
+  copyTeamToClipboard,
+  type TeamAcquisitionRequirements,
+} from '@/lib/export';
 import { useToast } from '@/lib/hooks/useToast';
+import type { RosterMovesetAssignment } from '@/lib/types';
 
 interface ExportButtonProps {
   team: string[];
-  movesets: TeamMovesets;
+  movesetAssignment: RosterMovesetAssignment;
+  acquisitionRequirementsBySpeciesId: TeamAcquisitionRequirements;
   disabled?: boolean;
 }
 
@@ -16,9 +21,10 @@ interface ExportButtonProps {
  */
 export function ExportButton({
   team,
-  movesets,
+  movesetAssignment,
+  acquisitionRequirementsBySpeciesId,
   disabled = false,
-}: ExportButtonProps) {
+}: ExportButtonProps): ReactElement {
   const [isCopying, setIsCopying] = useState(false);
   const { showToast } = useToast();
 
@@ -29,7 +35,11 @@ export function ExportButton({
 
     try {
       setIsCopying(true);
-      await copyTeamToClipboard(team, movesets);
+      await copyTeamToClipboard(
+        team,
+        movesetAssignment,
+        acquisitionRequirementsBySpeciesId,
+      );
       showToast('Team Copied');
     } catch (error) {
       console.error('Failed to copy team to clipboard:', error);

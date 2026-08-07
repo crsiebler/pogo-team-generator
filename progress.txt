@@ -31,6 +31,7 @@
 - Post-evolution PlayPokemon reranking enumerates at most `3^6` manifest assignments per finalist, caches aggregate matrix reads for a 70/30 top-meta/full-meta answer-depth prefilter, fully scores only the top twelve assignments across all 120 ordered lineups, and selects by variant-aware fitness, default-only fitness, then canonical roster key.
 - Retain the exact scored roster assignment in generation output for both tournament modes; pass it unchanged through the client, bound and validate its format, canonical roster, move slots, variant identities, and fingerprint on return, and project move/acquisition details without selecting movesets in API adapters.
 - Enforce public JSON payload limits by validating any declared `Content-Length` and counting bytes from the request stream; headers may be absent or inaccurate and are not an authoritative size boundary.
+- Export move IDs and preferred charged-move order directly from the scored `RosterMovesetAssignment`; pass validated acquisition requirements separately as informational text and omit regular requirements.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1318,4 +1319,42 @@
   - Export consumption of assignment acquisition metadata remains intentionally scoped to US-023.
 - Next iteration start:
   - US-023 - Export assigned movesets and acquisition requirements.
+---
+
+## 2026-08-06 20:31:29 MST - US-023
+- Made the scored `RosterMovesetAssignment` authoritative for export move IDs and preferred charged-move order; passed validated acquisition metadata separately through `TeamDisplay` and `ExportButton`; appended deterministic Elite Fast TM, Elite Charged TM, event-exclusive, and purified requirement comments while leaving regular-only exports unchanged.
+- Files changed: `lib/AGENTS.md`, `lib/export/types.ts`, `lib/export/exportTeam.ts`, `lib/export/exportTeam.test.ts`, `lib/export/copyTeamToClipboard.ts`, `lib/export/copyTeamToClipboard.test.ts`, `lib/export/index.ts`, `components/molecules/ExportButton/ExportButton.tsx`, `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-023 - Export assigned movesets and acquisition requirements`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/export/exportTeam.test.ts lib/export/copyTeamToClipboard.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx` before implementation (fail as expected: 7 tests exposed blank reconstructed moves, absent requirements, missing invariant errors, and old `ExportButton` props)
+  - `npx vitest run lib/export/exportTeam.test.ts lib/export/copyTeamToClipboard.test.ts components/organisms/TeamDisplay/TeamDisplay.test.tsx` after implementation (pass, 22 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail before correcting four import-order errors; pass afterward)
+  - `npm test` (pass, 790 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - Browser verification at `http://localhost:3001` (pass; generated a six-member Great League roster, generate-team and team-details requests returned 200, and the existing export button produced the `Team Copied` toast; unrelated missing-site-icon 404 remained in the console)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx` before review fix (fail as expected: 5 invalid-response cases left export enabled without acquisition metadata)
+  - `npx vitest run components/organisms/TeamDisplay/TeamDisplay.test.tsx lib/export/exportTeam.test.ts lib/export/copyTeamToClipboard.test.ts` after review fix (pass, 22 tests)
+  - `npx tsc --noEmit`, `npm run lint`, and `git diff --check` after review fix (pass)
+- Implementation agents:
+  - Recommended: `fullstack-developer`, `test-automator`
+  - Used: `fullstack-developer`; skipped `test-automator` because the standard-mode one-agent budget and direct pure-export, clipboard, and adapter regressions made overlapping test guidance unnecessary
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `ui-designer`; targeted `ui-designer` re-review
+  - Findings: code review found none; fixed one medium UI finding by disabling export when validated acquisition metadata is unavailable; targeted UI re-review found none. One low QA suggestion for a dedicated `ExportButton` integration test is deferred because exact formatting, clipboard delegation/errors, TeamDisplay prop wiring, and the live click/toast flow are covered at their current boundaries.
+- Decisions (why):
+  - Kept acquisition requirements outside `RosterMovesetAssignment` because they are informational output metadata and must not alter assignment fingerprints, cache identity, or battle scoring.
+  - Preserved the first roster lines as four-column PvPoke import rows and appended special requirements as `#` comments so regular exports remain byte-identical and acquisition text does not alter move fields.
+  - Failed closed when a non-empty roster lacks an assigned variant or acquisition metadata instead of restoring nullable moves or silently omitting build requirements.
+  - Disabled the export interaction after team-details validation failures so users cannot trigger a known incomplete export and receive only a generic clipboard failure toast.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, `test-runner`, and `dev-browser` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Canonical variant IDs normalize charged-move identity, so output adapters must use the assignment's explicit charged slots to preserve preferred simulation and display order.
+  - The validated team-details response is the acquisition-metadata source, but export move selection remains owned exclusively by the original scored assignment.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-023.
+- Next iteration start:
+  - US-024 - Regenerate and validate variant data for all supported formats.
 ---

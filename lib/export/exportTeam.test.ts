@@ -1,68 +1,95 @@
 import { describe, it, expect } from 'vitest';
 import { exportTeam } from './exportTeam';
+import type {
+  MovesetAcquisitionRequirements,
+  RosterMovesetAssignment,
+} from '@/lib/types';
+
+const assignment: RosterMovesetAssignment = {
+  formatId: 'great-league',
+  policyIdentity: {
+    source: 'manifest',
+    schemaVersion: 1,
+    policyVersion: 'ranking-evidence-v1',
+  },
+  variantsBySpeciesId: {
+    altaria: {
+      id: 'dragon_breath--moonblast--sky_attack',
+      fastMove: 'DRAGON_BREATH',
+      chargedMove1: 'SKY_ATTACK',
+      chargedMove2: 'MOONBLAST',
+      isDefault: false,
+    },
+    scizor_shadow: {
+      id: 'bullet_punch--trailblaze--night_slash',
+      fastMove: 'BULLET_PUNCH',
+      chargedMove1: 'NIGHT_SLASH',
+      chargedMove2: 'TRAILBLAZE',
+      isDefault: true,
+    },
+  },
+  fingerprint: 'export-assignment',
+};
+
+const regularRequirements: MovesetAcquisitionRequirements = {
+  fastMove: { kind: 'regular' },
+  chargedMove1: { kind: 'regular' },
+  chargedMove2: { kind: 'regular' },
+};
 
 describe('exportTeam', () => {
-  it('should export team with movesets in correct format', () => {
-    const team = ['altaria', 'scizor_shadow', 'sandslash_alolan'];
-    const movesets = {
+  it('exports exact assigned move order without regular acquisition text', () => {
+    const result = exportTeam(['altaria', 'scizor_shadow'], assignment, {
+      altaria: regularRequirements,
+      scizor_shadow: regularRequirements,
+    });
+
+    expect(result).toBe(
+      'altaria,DRAGON_BREATH,SKY_ATTACK,MOONBLAST\nscizor_shadow-shadow,BULLET_PUNCH,NIGHT_SLASH,TRAILBLAZE',
+    );
+  });
+
+  it('appends concise special acquisition requirements', () => {
+    const result = exportTeam(['altaria', 'scizor_shadow'], assignment, {
       altaria: {
-        fastMove: 'DRAGON_BREATH',
-        chargedMove1: 'SKY_ATTACK',
-        chargedMove2: 'FLAMETHROWER',
+        fastMove: { kind: 'elite' },
+        chargedMove1: { kind: 'eventExclusive' },
+        chargedMove2: { kind: 'purified' },
       },
       scizor_shadow: {
-        fastMove: 'BULLET_PUNCH',
-        chargedMove1: 'NIGHT_SLASH',
-        chargedMove2: 'TRAILBLAZE',
+        fastMove: { kind: 'regular' },
+        chargedMove1: { kind: 'elite' },
+        chargedMove2: { kind: 'regular' },
       },
-      sandslash_alolan: {
-        fastMove: 'POWDER_SNOW',
-        chargedMove1: 'ICE_PUNCH',
-        chargedMove2: 'DRILL_RUN',
-      },
-    };
+    });
 
-    const result = exportTeam(team, movesets);
-    const lines = result.split('\n');
-
-    expect(lines).toHaveLength(3);
-    expect(lines[0]).toBe('altaria,DRAGON_BREATH,SKY_ATTACK,FLAMETHROWER');
-    expect(lines[1]).toBe(
-      'scizor_shadow-shadow,BULLET_PUNCH,NIGHT_SLASH,TRAILBLAZE',
+    expect(result).toBe(
+      [
+        'altaria,DRAGON_BREATH,SKY_ATTACK,MOONBLAST',
+        'scizor_shadow-shadow,BULLET_PUNCH,NIGHT_SLASH,TRAILBLAZE',
+        '# Acquisition requirements',
+        '# altaria: DRAGON_BREATH (Elite Fast TM); SKY_ATTACK (event-exclusive); MOONBLAST (purified Pokemon required)',
+        '# scizor_shadow-shadow: NIGHT_SLASH (Elite Charged TM)',
+      ].join('\n'),
     );
-    expect(lines[2]).toBe('sandslash_alolan,POWDER_SNOW,ICE_PUNCH,DRILL_RUN');
   });
 
-  it('should handle missing moves with empty strings', () => {
-    const team = ['altaria'];
-    const movesets = {
-      altaria: {
-        fastMove: null,
-        chargedMove1: null,
-        chargedMove2: null,
-      },
-    };
-
-    const result = exportTeam(team, movesets);
-    expect(result).toBe('altaria,,,');
+  it('rejects a roster member missing from the scored assignment', () => {
+    expect(() =>
+      exportTeam(['sandslash_alolan'], assignment, {
+        sandslash_alolan: regularRequirements,
+      }),
+    ).toThrow('Missing assigned moveset for sandslash_alolan.');
   });
 
-  it('should handle partial moves', () => {
-    const team = ['scizor'];
-    const movesets = {
-      scizor: {
-        fastMove: 'BULLET_PUNCH',
-        chargedMove1: null,
-        chargedMove2: 'TRAILBLAZE',
-      },
-    };
-
-    const result = exportTeam(team, movesets);
-    expect(result).toBe('scizor,BULLET_PUNCH,,TRAILBLAZE');
+  it('rejects missing acquisition metadata', () => {
+    expect(() => exportTeam(['altaria'], assignment, {})).toThrow(
+      'Missing acquisition requirements for altaria.',
+    );
   });
 
-  it('should return empty string for empty team', () => {
-    const result = exportTeam([], {});
+  it('returns an empty string for an empty team', () => {
+    const result = exportTeam([], assignment, {});
     expect(result).toBe('');
   });
 });

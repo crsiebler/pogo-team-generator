@@ -115,6 +115,8 @@ Resolve one immutable `RosterMovesetAssignment` against the complete bring-six r
 
 Retain the final scored `RosterMovesetAssignment` for both PlayPokemon and GBL output. When a serialized assignment returns through an API, bound its input size and validate its format, exact canonical roster, canonical move slots, variant identities, and deterministic fingerprint before projecting the assigned moves and acquisition metadata; never select a replacement moveset in an output adapter.
 
+Team export must read move IDs and preferred charged-move order directly from the scored `RosterMovesetAssignment`. Pass validated acquisition requirements as an informational sidecar, omit regular requirements from text, and never reconstruct or select export moves from display data.
+
 In `lib/genetic/algorithm.ts`, keep returned `Chromosome.fitness` synchronized with the final diagnostics attached to the chromosome. PlayPokemon finalists should use recomputed full `scorePlayPokemonRoster(...).fitness`; GBL finalists should use the final lineup recommendation score so `fitness` matches `scoreBreakdown.score` before `generateMultipleTeams(...)` sorts results.
 
 For optimizer weighted scoring, import the canonical score contract from `lib/genetic/fitness/scoreBreakdown.ts`; keep components normalized to 0..1 before aggregation and treat only validity or legality as hard constraints.

@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamDisplay } from './TeamDisplay';
 import type { RosterMovesetAssignment } from '@/lib/types';
 
+const { exportButtonMock } = vi.hoisted(() => ({
+  exportButtonMock: vi.fn(),
+}));
+
 const movesetAssignment: RosterMovesetAssignment = {
   formatId: 'battle-frontier-liga-ultra',
   policyIdentity: {
@@ -62,7 +66,10 @@ vi.mock('@/components/molecules', () => ({
 }));
 
 vi.mock('@/components/molecules/ExportButton/ExportButton', () => ({
-  ExportButton: () => <button type="button">Export</button>,
+  ExportButton: (props: unknown) => {
+    exportButtonMock(props);
+    return <button type="button">Export</button>;
+  },
 }));
 
 describe('TeamDisplay', () => {
@@ -110,6 +117,32 @@ describe('TeamDisplay', () => {
       team: ['decidueye'],
       formatId: 'battle-frontier-liga-ultra',
       movesetAssignment,
+    });
+  });
+
+  it('forwards the scored assignment and acquisition-only export metadata', async () => {
+    render(
+      <TeamDisplay
+        team={['decidueye']}
+        mode="PlayPokemon"
+        formatId="battle-frontier-liga-ultra"
+        movesetAssignment={movesetAssignment}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(exportButtonMock).toHaveBeenCalledWith({
+        team: ['decidueye'],
+        movesetAssignment,
+        acquisitionRequirementsBySpeciesId: {
+          decidueye: {
+            fastMove: { kind: 'regular' },
+            chargedMove1: { kind: 'regular' },
+            chargedMove2: { kind: 'regular' },
+          },
+        },
+        disabled: false,
+      });
     });
   });
 
@@ -204,6 +237,9 @@ describe('TeamDisplay', () => {
 
     expect(screen.queryByText('Pokemon Card')).not.toBeInTheDocument();
     expect(screen.getByText(/Team Notes/)).toBeInTheDocument();
+    expect(exportButtonMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ disabled: true }),
+    );
   });
 
   it('does not show Battle Frontier Master point usage in the notes', async () => {
