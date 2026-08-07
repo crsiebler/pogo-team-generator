@@ -62,6 +62,9 @@ export interface FunctionTraceAnalyzerCliOptions {
   stderr: (message: string) => void;
   validateRuntimeAssets?: boolean;
   runtimeAssetPlan?: RuntimeFunctionAssetPlan;
+  inspectTrace?: (
+    options: AnalyzeFunctionTraceOptions,
+  ) => Promise<FunctionTraceInventory>;
 }
 
 /** Exact resolved files and metadata referenced by one Next.js function trace. */
@@ -318,7 +321,8 @@ export async function runFunctionTraceAnalyzerCli(
       );
     }
     const tracePath = parseCliTracePath(options.args, options.cwd);
-    const generateTeamInventory = await inspectFunctionTrace({
+    const inspectTrace = options.inspectTrace ?? inspectFunctionTrace;
+    const generateTeamInventory = await inspectTrace({
       tracePath,
       projectRoot: options.cwd,
     });
@@ -327,13 +331,12 @@ export async function runFunctionTraceAnalyzerCli(
       DEFAULT_LARGEST_FILE_LIMIT,
     );
     if (options.validateRuntimeAssets) {
-      const pokemonListInventory = await inspectFunctionTrace({
+      const pokemonListInventory = await inspectTrace({
         tracePath: path.join(options.cwd, DEFAULT_POKEMON_LIST_TRACE_PATH),
         projectRoot: options.cwd,
       });
       validateRuntimeFunctionTraceAssets({
-        plan:
-          options.runtimeAssetPlan ?? loadRuntimeFunctionAssetPlan(options.cwd),
+        plan: options.runtimeAssetPlan ?? loadRuntimeFunctionAssetPlan(),
         generateTeamTracedFiles: generateTeamInventory.files.map(
           (file) => file.path,
         ),
@@ -341,6 +344,14 @@ export async function runFunctionTraceAnalyzerCli(
           (file) => file.path,
         ),
         generateTeamUncompressedBytes: report.uncompressedBytes,
+        generateTeamSnapshotUncompressedBytes:
+          generateTeamInventory.files.reduce(
+            (total, file) =>
+              file.path.endsWith('/runtime-snapshot.json')
+                ? total + file.uncompressedBytes
+                : total,
+            0,
+          ),
       });
     }
     options.stdout(formatFunctionTraceReport(report));

@@ -3,34 +3,26 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   GENERATE_TEAM_TRACE_MAX_BYTES,
+  RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES,
   createRuntimeFunctionAssetPlan,
   loadRuntimeFunctionAssetPlan,
   validateRuntimeFunctionTraceAssets,
 } from '@/lib/build/runtimeFunctionAssets';
 import { getBattleFormats } from '@/lib/data/battleFormats';
-import {
-  RUNTIME_SIMULATION_ASSET_INDEX_SCHEMA_VERSION,
-  type RuntimeSimulationAssetIndex,
-} from '@/lib/data/runtimeSimulationAssetIndex';
-
-const runtimeIndex: RuntimeSimulationAssetIndex = {
-  schemaVersion: RUNTIME_SIMULATION_ASSET_INDEX_SCHEMA_VERSION,
-  assets: [
-    'data/simulations/cp1500/all/azumarill_0-0.csv',
-    'data/simulations/cp1500/all/moveset-variants.json',
-  ],
-};
+import { RUNTIME_SIMULATION_ASSET_INDEX_PATH } from '@/lib/data/runtimeSimulationAssetIndex';
 
 describe('runtime function assets', () => {
-  it('derives exact route assets from the runtime index and format catalog', () => {
-    const plan = createRuntimeFunctionAssetPlan(
-      runtimeIndex,
-      getBattleFormats(),
-    );
+  it('derives compact route assets from the format catalog', () => {
+    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
 
     expect(plan.generateTeam).toContain(
-      'data/simulations/cp1500/all/azumarill_0-0.csv',
+      'data/simulations/cp1500/all/runtime-snapshot.json',
     );
+    expect(plan.generateTeamExcludes).toEqual([
+      'data/simulations/**/*.csv',
+      'data/simulations/**/moveset-variants.json',
+      RUNTIME_SIMULATION_ASSET_INDEX_PATH,
+    ]);
     expect(plan.generateTeam).toContain('data/moves.json');
     expect(plan.generateTeam).toContain('data/type-effectiveness.json');
     expect(plan.pokemonList).toEqual(
@@ -71,16 +63,14 @@ describe('runtime function assets', () => {
 
     expect(plan.generateTeam.every((asset) => !asset.includes('*'))).toBe(true);
     expect(plan.pokemonList.every((asset) => !asset.includes('*'))).toBe(true);
+    expect(plan.generateTeamExcludes).toHaveLength(3);
     expect(
       plan.pokemonListExcludes.every((asset) => !asset.includes('*')),
     ).toBe(true);
   });
 
   it('accepts traces containing exactly the planned data assets', () => {
-    const plan = createRuntimeFunctionAssetPlan(
-      runtimeIndex,
-      getBattleFormats(),
-    );
+    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
 
     expect(() =>
       validateRuntimeFunctionTraceAssets({
@@ -95,17 +85,16 @@ describe('runtime function assets', () => {
           ...plan.pokemonList,
         ],
         generateTeamUncompressedBytes: GENERATE_TEAM_TRACE_MAX_BYTES,
+        generateTeamSnapshotUncompressedBytes:
+          RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES,
       }),
     ).not.toThrow();
   });
 
-  it('rejects missing active assets and inactive simulation files', () => {
-    const plan = createRuntimeFunctionAssetPlan(
-      runtimeIndex,
-      getBattleFormats(),
-    );
+  it('rejects missing snapshots and any simulation CSV', () => {
+    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
     const withoutActiveAsset = plan.generateTeam.filter(
-      (asset) => asset !== runtimeIndex.assets[0],
+      (asset) => asset !== 'data/simulations/cp1500/all/runtime-snapshot.json',
     );
 
     expect(() =>
@@ -114,8 +103,9 @@ describe('runtime function assets', () => {
         generateTeamTracedFiles: withoutActiveAsset,
         pokemonListTracedFiles: plan.pokemonList,
         generateTeamUncompressedBytes: 1,
+        generateTeamSnapshotUncompressedBytes: 1,
       }),
-    ).toThrow(/missing.*azumarill_0-0\.csv/i);
+    ).toThrow(/missing.*runtime-snapshot\.json/i);
 
     expect(() =>
       validateRuntimeFunctionTraceAssets({
@@ -126,15 +116,13 @@ describe('runtime function assets', () => {
         ],
         pokemonListTracedFiles: plan.pokemonList,
         generateTeamUncompressedBytes: 1,
+        generateTeamSnapshotUncompressedBytes: 1,
       }),
     ).toThrow(/unauthorized.*inactive_0-0\.csv/i);
   });
 
   it('rejects unrelated pokemon-list data and oversized generate-team traces', () => {
-    const plan = createRuntimeFunctionAssetPlan(
-      runtimeIndex,
-      getBattleFormats(),
-    );
+    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
 
     expect(() =>
       validateRuntimeFunctionTraceAssets({
@@ -142,6 +130,7 @@ describe('runtime function assets', () => {
         generateTeamTracedFiles: plan.generateTeam,
         pokemonListTracedFiles: [...plan.pokemonList, 'data/moves.json'],
         generateTeamUncompressedBytes: 1,
+        generateTeamSnapshotUncompressedBytes: 1,
       }),
     ).toThrow(/pokemon-list.*unauthorized.*moves\.json/i);
 
@@ -151,8 +140,20 @@ describe('runtime function assets', () => {
         generateTeamTracedFiles: plan.generateTeam,
         pokemonListTracedFiles: plan.pokemonList,
         generateTeamUncompressedBytes: GENERATE_TEAM_TRACE_MAX_BYTES + 1,
+        generateTeamSnapshotUncompressedBytes: 1,
       }),
-    ).toThrow(/209715201.*209715200/i);
+    ).toThrow(/104857601.*104857600/i);
+
+    expect(() =>
+      validateRuntimeFunctionTraceAssets({
+        plan,
+        generateTeamTracedFiles: plan.generateTeam,
+        pokemonListTracedFiles: plan.pokemonList,
+        generateTeamUncompressedBytes: 1,
+        generateTeamSnapshotUncompressedBytes:
+          RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES + 1,
+      }),
+    ).toThrow(/52428801.*52428800/i);
   });
 
   it('covers checked-in runtime assets for every supported format', () => {
@@ -165,7 +166,7 @@ describe('runtime function assets', () => {
 
     for (const format of getBattleFormats()) {
       expect(generateTeamAssets).toContain(
-        `data/simulations/cp${format.cp}/${format.cup}/moveset-variants.json`,
+        `data/simulations/cp${format.cp}/${format.cup}/runtime-snapshot.json`,
       );
       for (const category of [
         'overall',
@@ -181,5 +182,14 @@ describe('runtime function assets', () => {
         );
       }
     }
+
+    expect(plan.generateTeam.filter((asset) => asset.endsWith('.csv'))).toEqual(
+      plan.generateTeam.filter((asset) => asset.includes('/rankings/')),
+    );
+    expect(
+      plan.generateTeam.some((asset) =>
+        asset.endsWith('moveset-variants.json'),
+      ),
+    ).toBe(false);
   });
 });

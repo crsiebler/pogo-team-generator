@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     '/api/pokemon-list': runtimeFunctionAssets.pokemonList.map(toTraceInclude),
   },
   outputFileTracingExcludes: {
+    '/api/generate-team':
+      runtimeFunctionAssets.generateTeamExcludes.map(toTraceInclude),
     '/api/pokemon-list':
       runtimeFunctionAssets.pokemonListExcludes.map(toTraceInclude),
   },

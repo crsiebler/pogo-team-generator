@@ -1,12 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   analyzeFunctionTrace,
   formatFunctionTraceReport,
   runFunctionTraceAnalyzerCli,
 } from '@/lib/build/functionTraceAnalyzer';
 import type { RuntimeFunctionAssetPlan } from '@/lib/build/runtimeFunctionAssets';
+import { RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES } from '@/lib/build/runtimeFunctionAssets';
 
 const fixtureRoot = path.join(
   process.cwd(),
@@ -21,7 +22,11 @@ const fixtureRuntimeAssetPlan: RuntimeFunctionAssetPlan = {
   generateTeam: [
     'data/pokemon.json',
     'data/rankings/cp1500/all/overall_rankings.csv',
+    'data/simulations/cp1500/all/runtime-snapshot.json',
+  ],
+  generateTeamExcludes: [
     'data/simulations/cp1500/all/fixture_0-0.csv',
+    'data/simulations/cp1500/all/moveset-variants.json',
   ],
   pokemonList: [
     'data/pokemon.json',
@@ -42,7 +47,7 @@ describe('function trace analyzer', () => {
       readFile(
         path.join(
           validFixtureRoot,
-          'data/simulations/cp1500/all/fixture_0-0.csv',
+          'data/simulations/cp1500/all/runtime-snapshot.json',
         ),
       ).then((contents) => contents.byteLength),
       readFile(
@@ -104,7 +109,7 @@ describe('function trace analyzer', () => {
       ],
       largestFiles: [
         {
-          path: 'data/simulations/cp1500/all/fixture_0-0.csv',
+          path: 'data/simulations/cp1500/all/runtime-snapshot.json',
           category: 'simulations',
           uncompressedBytes: simulationBytes,
         },
@@ -258,6 +263,50 @@ describe('function trace analyzer', () => {
     expect(exitCode).toBe(0);
     expect(stderr).toEqual([]);
     expect(JSON.parse(stdout.join(''))).toMatchObject({ uniqueTracedFiles: 5 });
+  });
+
+  it('rejects aggregate snapshot bytes computed from the inspected trace', async () => {
+    const stderr: string[] = [];
+    const inspectTrace = vi
+      .fn()
+      .mockResolvedValueOnce({
+        trace: '.next/server/app/api/generate-team/route.js.nft.json',
+        files: fixtureRuntimeAssetPlan.generateTeam.map((filePath) => ({
+          path: filePath,
+          category: filePath.includes('/simulations/')
+            ? ('simulations' as const)
+            : filePath.includes('/rankings/')
+              ? ('rankings' as const)
+              : ('otherData' as const),
+          uncompressedBytes: filePath.endsWith('/runtime-snapshot.json')
+            ? RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES + 1
+            : 0,
+        })),
+      })
+      .mockResolvedValueOnce({
+        trace: '.next/server/app/api/pokemon-list/route.js.nft.json',
+        files: fixtureRuntimeAssetPlan.pokemonList.map((filePath) => ({
+          path: filePath,
+          category: filePath.includes('/rankings/')
+            ? ('rankings' as const)
+            : ('otherData' as const),
+          uncompressedBytes: 0,
+        })),
+      });
+
+    const exitCode = await runFunctionTraceAnalyzerCli({
+      args: [],
+      cwd: validFixtureRoot,
+      stdout: () => undefined,
+      stderr: (message) => stderr.push(message),
+      validateRuntimeAssets: true,
+      runtimeAssetPlan: fixtureRuntimeAssetPlan,
+      inspectTrace,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(inspectTrace).toHaveBeenCalledTimes(2);
+    expect(stderr.join('')).toMatch(/52428801.*52428800/i);
   });
 
   it('rejects custom traces when runtime asset validation is enabled', async () => {

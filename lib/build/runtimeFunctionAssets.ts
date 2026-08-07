@@ -1,12 +1,5 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import type { BattleFormat } from '../data/battleFormats';
 import { getBattleFormats } from '../data/battleFormats';
-import {
-  RUNTIME_SIMULATION_ASSET_INDEX_PATH,
-  parseRuntimeSimulationAssetIndexJson,
-  type RuntimeSimulationAssetIndex,
-} from '../data/runtimeSimulationAssetIndex';
 
 const RANKING_CATEGORIES = [
   'overall',
@@ -22,13 +15,22 @@ const GENERATE_TEAM_STATIC_DATA_ASSETS = [
   'data/pokemon.json',
   'data/type-effectiveness.json',
 ] as const;
+const GENERATE_TEAM_SIMULATION_EXCLUDES = [
+  'data/simulations/**/*.csv',
+  'data/simulations/**/moveset-variants.json',
+  'data/simulations/runtime-asset-index.json',
+] as const;
 
-/** Maximum uncompressed generate-team function trace size during active-only tracing. */
-export const GENERATE_TEAM_TRACE_MAX_BYTES = 200 * 1024 * 1024;
+/** Maximum uncompressed generate-team function trace size with compact snapshots. */
+export const GENERATE_TEAM_TRACE_MAX_BYTES = 100 * 1024 * 1024;
+
+/** Maximum aggregate uncompressed size of traced runtime simulation snapshots. */
+export const RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES = 50 * 1024 * 1024;
 
 /** Exact repository data assets required by traced runtime API functions. */
 export interface RuntimeFunctionAssetPlan {
   readonly generateTeam: readonly string[];
+  readonly generateTeamExcludes: readonly string[];
   readonly pokemonList: readonly string[];
   readonly pokemonListExcludes: readonly string[];
 }
@@ -39,6 +41,7 @@ export interface RuntimeFunctionTraceValidationInput {
   readonly generateTeamTracedFiles: readonly string[];
   readonly pokemonListTracedFiles: readonly string[];
   readonly generateTeamUncompressedBytes: number;
+  readonly generateTeamSnapshotUncompressedBytes: number;
 }
 
 function compareText(left: string, right: string): number {
@@ -54,6 +57,10 @@ function getRankingAsset(
   category: (typeof RANKING_CATEGORIES)[number],
 ): string {
   return `data/rankings/cp${format.cp}/${format.cup}/${category}_rankings.csv`;
+}
+
+function getRuntimeSnapshotAsset(format: BattleFormat): string {
+  return `data/simulations/cp${format.cp}/${format.cup}/runtime-snapshot.json`;
 }
 
 function getTracedDataAssets(files: readonly string[]): string[] {
@@ -89,9 +96,8 @@ function validateRouteDataAssets(
   }
 }
 
-/** Derive deterministic exact runtime function assets from index and catalog authority. */
+/** Derive deterministic exact runtime function assets from catalog authority. */
 export function createRuntimeFunctionAssetPlan(
-  runtimeIndex: RuntimeSimulationAssetIndex,
   formats: readonly BattleFormat[],
 ): RuntimeFunctionAssetPlan {
   const generateTeamRankings = formats.flatMap((format) =>
@@ -108,35 +114,19 @@ export function createRuntimeFunctionAssetPlan(
 
   return {
     generateTeam: uniqueSorted([
-      ...runtimeIndex.assets,
+      ...formats.map(getRuntimeSnapshotAsset),
       ...generateTeamRankings,
       ...GENERATE_TEAM_STATIC_DATA_ASSETS,
     ]),
+    generateTeamExcludes: [...GENERATE_TEAM_SIMULATION_EXCLUDES],
     pokemonList: uniqueSorted(['data/pokemon.json', ...pokemonListRankings]),
     pokemonListExcludes: uniqueSorted(pokemonListExcludes),
   };
 }
 
-/** Load the checked-in active simulation index and derive the build asset plan. */
-export function loadRuntimeFunctionAssetPlan(
-  projectRoot: string = process.cwd(),
-): RuntimeFunctionAssetPlan {
-  const indexPath = path.resolve(
-    projectRoot,
-    RUNTIME_SIMULATION_ASSET_INDEX_PATH,
-  );
-  let serializedIndex: string;
-  try {
-    serializedIndex = readFileSync(indexPath, 'utf8');
-  } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code ?? 'UNKNOWN';
-    throw new Error(
-      `Runtime simulation asset index ${RUNTIME_SIMULATION_ASSET_INDEX_PATH} could not be read (filesystem error ${code}). Run simulation sync before building.`,
-    );
-  }
-
-  const runtimeIndex = parseRuntimeSimulationAssetIndexJson(serializedIndex);
-  return createRuntimeFunctionAssetPlan(runtimeIndex, getBattleFormats());
+/** Derive the build asset plan from the checked-in battle-format catalog. */
+export function loadRuntimeFunctionAssetPlan(): RuntimeFunctionAssetPlan {
+  return createRuntimeFunctionAssetPlan(getBattleFormats());
 }
 
 /** Validate generated route traces against exact data authority and size limits. */
@@ -165,6 +155,22 @@ export function validateRuntimeFunctionTraceAssets(
   if (input.generateTeamUncompressedBytes > GENERATE_TEAM_TRACE_MAX_BYTES) {
     throw new Error(
       `generate-team trace is ${input.generateTeamUncompressedBytes} bytes; maximum is ${GENERATE_TEAM_TRACE_MAX_BYTES} bytes.`,
+    );
+  }
+  if (
+    !Number.isSafeInteger(input.generateTeamSnapshotUncompressedBytes) ||
+    input.generateTeamSnapshotUncompressedBytes < 0
+  ) {
+    throw new Error(
+      'generate-team snapshot byte total must be a non-negative safe integer.',
+    );
+  }
+  if (
+    input.generateTeamSnapshotUncompressedBytes >
+    RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES
+  ) {
+    throw new Error(
+      `generate-team snapshots total ${input.generateTeamSnapshotUncompressedBytes} bytes; maximum is ${RUNTIME_SIMULATION_SNAPSHOTS_MAX_BYTES} bytes.`,
     );
   }
 }

@@ -1,5 +1,6 @@
 ## Codebase Patterns
-- Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team and pokemon-list assets from the runtime index plus battle-format catalog, use exact route-specific excludes for automatically over-traced files, and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
+- Turbopack compiles `outputFileTracingExcludes` into glob regexes and can panic when thousands of generated paths are listed individually; use narrow non-overlapping semantic exclusions for source simulation CSVs/manifests, explicitly include catalog snapshots, and let post-build trace validation reject every unauthorized data asset.
+- Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team snapshot/ranking assets and pokemon-list assets from the battle-format catalog, use route-specific excludes for automatically over-traced files, and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
 - Next.js NFT trace entries resolve relative to the trace file directory; deployment-size tooling must deduplicate resolved files, stat only trace-declared assets, and report deterministic project-relative paths and raw uncompressed bytes instead of scanning repository directories.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; local PvPoke execution remains isolated to sync tooling.
 - Moveset variant work must read `.opencode/skills/gbl-optimizer/SKILL.md` and the required optimizer documents before changing ranking inputs, simulation data, scoring, or diagnostics.
@@ -1688,4 +1689,46 @@
   - US-032 must trace compact snapshots instead of simulation CSVs and validate the final function-size, snapshot-size, generation-time, and peak-memory budgets.
 - Next iteration start:
   - US-032 - Remove simulation CSVs from runtime function traces
+---
+
+## 2026-08-07 08:21:24 MST - US-032
+- Switched `/api/generate-team` tracing from active simulation CSVs and manifests to exactly one compact runtime snapshot per supported format; added non-overlapping source-evidence exclusions; enforced 100 MiB total trace and 50 MiB aggregate snapshot budgets; and retained all manifests, CSVs, and the runtime asset index for sync and validation tooling.
+- Files changed: `lib/AGENTS.md`, `next.config.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/shuffled.js.nft.json`, `lib/build/fixtures/functionTrace/valid/data/simulations/cp1500/all/runtime-snapshot.json`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-032 - Remove simulation CSVs from runtime function traces`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts` (fail as expected before implementation: 4 snapshot-plan and budget regressions; pass after implementation, 14 tests)
+  - `npm run build` before exclusion compaction (fail as expected: 6,788 exact exclusions exceeded Turbopack's 10 MiB compiled-regex limit)
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts` before exclusion compaction (fail as expected: compact catalog-only planner signature and exclusions missing; pass after fix, 5 tests)
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/data/runtimeSimulationRepository.test.ts lib/data/simulations.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts app/api/generate-team/route.test.ts` (pass, 53 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 843 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; 121 files, 19,055,267 bytes total, exactly 8 snapshots totaling 12,019,584 bytes, no simulation CSVs or manifests)
+  - Production-sized fixed-seed active-only baseline across all formats (pass; cold/warm each under 60 seconds; peak RSS by format: Great 714,129,408; Ultra 526,303,232; Master 309,379,072; Weather 430,522,368; Copa Diluvio 538,181,632; Tsuki 432,111,616; Liga Ultra 373,948,416; Coupe du Sillage 468,008,960 bytes, all below the standard 2 GiB Vercel function memory limit)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "rejects aggregate snapshot bytes"` after initial review (fail as expected before injectable trace inspection: CLI ignored the oversized synthetic inventory; pass after fix)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts lib/build/runtimeFunctionAssets.test.ts` after initial review fix (pass, 15 tests)
+  - `npm test` after initial review fixes (pass, 844 tests)
+  - Production-sized fixed-seed post-change comparison across all formats (pass; every cold/warm run remained within 10% of its active-only baseline and under 60 seconds; peak RSS by format: Great 713,555,968; Ultra 510,509,056; Master 305,676,288; Weather 439,058,432; Copa Diluvio 540,606,464; Tsuki 437,288,960; Liga Ultra 378,748,928; Coupe du Sillage 470,319,104 bytes, all below the standard 2 GiB Vercel function memory limit)
+- Implementation agents:
+  - Recommended: `performance-engineer`, `build-engineer`
+  - Used: `performance-engineer`, `build-engineer`; both fit the standard-mode complex-story budget and provided complementary benchmark/memory and Next.js tracing guidance
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` re-review
+  - Findings: security review found none; fixed two medium QA findings by exercising computed snapshot bytes through the analyzer CLI and recording post-change cold/warm timing plus peak RSS for every supported format; targeted QA re-review found none. Discarded the low commit-message suggestion because Ralph explicitly requires the unscoped story message.
+- Decisions (why):
+  - Derived snapshot runtime assets directly from `getBattleFormats()` and removed the tooling-only active CSV index from build-plan loading because runtime availability is now snapshot-authoritative.
+  - Replaced 6,788 exact source exclusions with three narrow patterns after Turbopack proved that expanding the generated index exceeded its compiled-regex limit; the CSV and manifest patterns cannot match required `runtime-snapshot.json` files.
+  - Kept analyzer validation strict over every traced `data/` path so a future automatic CSV, manifest, inactive candidate, or unrelated data dependency fails the build even if Next.js tracing behavior changes.
+  - Used the current standard 2 GiB Vercel function memory default because the repository has no explicit function memory override; no Large Functions setting or dependency was added.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Compact snapshot tracing reduces the current generate-team NFT inventory from the 126,150,225-byte active-CSV transition baseline to 19,055,267 bytes while retaining all source evidence in the repository.
+  - Build integration must validate exclusion cardinality as well as semantics; thousands of individually safe paths can still exceed Turbopack's compiled glob limit.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - US-033 should document the artifact split, build/analyzer workflow, size budgets, no-Large-Functions constraint, and no remote optimizer hot-path lookup requirement.
+- Next iteration start:
+  - US-033 - Document runtime artifact and Vercel size contracts
 ---

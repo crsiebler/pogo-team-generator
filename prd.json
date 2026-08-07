@@ -573,7 +573,7 @@
         "Typecheck, lint, tests, and production build pass."
       ],
       "priority": 32,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @performance-engineer, @build-engineer. Implementation notes: retain source CSVs for tooling while removing them from runtime traces; do not enable Vercel Large Functions."
     },
     {
