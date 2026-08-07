@@ -3,6 +3,7 @@ import {
   scoreOrderedLineup,
   type LineupScoreResult,
   type LineupScoringContext,
+  type LineupMovesetPolicy,
 } from './lineupScoring';
 import { buildGblLineupRecommendation } from './recommendations';
 import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
@@ -30,6 +31,7 @@ export {
   calculateLineupPatternLabel,
   scoreOrderedLineup,
   type LineupComponentScores,
+  type LineupMovesetPolicy,
   type LineupScoreResult,
   type LineupScoringContext,
   type LineupScoringOptions,
@@ -116,11 +118,12 @@ export interface LineupAwareFitnessDependencies {
 /** Creates a cacheable fitness context for one generation run. */
 export function createLineupAwareFitnessContext(
   formatId?: BattleFormatId,
+  movesetPolicy: LineupMovesetPolicy = 'team-aware',
   dependencies: LineupAwareFitnessDependencies = {},
 ): LineupAwareFitnessContext {
   const resolvedFormatId = formatId ?? DEFAULT_BATTLE_FORMAT_ID;
   const scoringContext = {
-    ...createDefaultLineupScoringContext(resolvedFormatId, 50),
+    ...createDefaultLineupScoringContext(resolvedFormatId, 50, movesetPolicy),
     formatId: resolvedFormatId,
   };
   const lineupScoreCache = new Map<string, LineupScoreResult>();
@@ -203,15 +206,15 @@ export function calculateLineupAwareFitness(
   formatId?: BattleFormatId,
   context: LineupAwareFitnessContext = createLineupAwareFitnessContext(
     formatId,
+    mode === 'PlayPokemon' ? 'ranked-default' : 'team-aware',
   ),
 ): number {
   if (mode === 'PlayPokemon') {
-    const assignment = context.resolveMovesetAssignment(chromosome.team);
     return scorePlayPokemonRoster(
       chromosome.team,
       {
-        ...bindRosterMovesetAssignment(context.scoringContext, assignment),
-        scoreLineup: (lineup) => context.scoreFastLineup(lineup, assignment),
+        ...context.scoringContext,
+        scoreLineup: (lineup) => context.scoreFastLineup(lineup),
       },
       FAST_LINEUP_AWARE_CONFIG,
     ).fitness;
@@ -229,6 +232,7 @@ export function evaluatePopulation(
   formatId?: BattleFormatId,
   context: LineupAwareFitnessContext = createLineupAwareFitnessContext(
     formatId,
+    mode === 'PlayPokemon' ? 'ranked-default' : 'team-aware',
   ),
 ): void {
   for (const chromosome of population) {

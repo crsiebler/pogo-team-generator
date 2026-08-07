@@ -177,10 +177,14 @@ export interface LineupScoringOptions {
   includeThreatScore?: boolean;
 }
 
+/** Moveset policy used when constructing a production lineup context. */
+export type LineupMovesetPolicy = 'team-aware' | 'ranked-default';
+
 /** Builds the production data context for lineup scoring. */
 export function createDefaultLineupScoringContext(
   formatId?: BattleFormatId,
   threatCount: number = 100,
+  movesetPolicy: LineupMovesetPolicy = 'team-aware',
 ): LineupScoringContext {
   const recommendedMovesetCache = new Map<string, LineupMoveset>();
   const boundedThreatCount = clampInteger(
@@ -237,12 +241,16 @@ export function createDefaultLineupScoringContext(
       if (!pokemon) {
         return undefined;
       }
-      const cacheKey = `${speciesId}:${teamSpeciesIds ? [...teamSpeciesIds].sort().join(',') : 'default'}`;
+      const useTeamAwareMoveset =
+        movesetPolicy === 'team-aware' && teamSpeciesIds !== undefined;
+      const cacheKey = useTeamAwareMoveset
+        ? `${speciesId}:${[...teamSpeciesIds].sort().join(',')}`
+        : speciesId;
       const cachedMoveset = recommendedMovesetCache.get(cacheKey);
       if (cachedMoveset) {
         return cachedMoveset;
       }
-      const moveset = teamSpeciesIds
+      const moveset = useTeamAwareMoveset
         ? getSimulationBackedMovesetForTeam(
             pokemon,
             teamSpeciesIds,

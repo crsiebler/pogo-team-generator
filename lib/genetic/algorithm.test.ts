@@ -157,6 +157,15 @@ function createChromosomeWithTeam(
   };
 }
 
+function configurePlayPokemonPool(speciesIds: readonly string[]): void {
+  vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+    new Set(speciesIds),
+  );
+  vi.mocked(getRankedPokemonForFormat).mockReturnValue(
+    speciesIds.map((speciesId) => createPokemon(speciesId, speciesId)),
+  );
+}
+
 describe('generateTeam format-aware candidate selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -306,6 +315,10 @@ describe('generateTeam format-aware candidate selection', () => {
     );
     expect(ensureSimulationDataAvailable).toHaveBeenCalledWith(
       'battle-frontier-tsuki-cup',
+    );
+    expect(createLineupAwareFitnessContext).toHaveBeenCalledWith(
+      'battle-frontier-tsuki-cup',
+      'team-aware',
     );
     expect(buildCandidateProfiles).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -847,6 +860,10 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 0,
     });
 
+    expect(createLineupAwareFitnessContext).toHaveBeenCalledWith(
+      'battle-frontier-tsuki-cup',
+      'ranked-default',
+    );
     expect(evaluatePopulation).toHaveBeenCalledWith(
       expect.any(Array),
       'PlayPokemon',
@@ -930,6 +947,125 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(result.fitness).toBe(0.91);
     expect(result.scoreBreakdown?.score).toBe(0.91);
     expect(result.fitness).toBe(result.scoreBreakdown?.score);
+  });
+
+  it('retains default-scored finalists across generations without replacing bestOverall', async () => {
+    const initialBestTeam = ['f', 'e', 'd', 'c', 'b', 'a'];
+    const reorderedInitialBest = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const initialRunnerUp = ['g', 'h', 'i', 'j', 'k', 'l'];
+    const evolvedRunnerUp = ['m', 'n', 'o', 'p', 'q', 'r'];
+    configurePlayPokemonPool([
+      ...initialBestTeam,
+      ...initialRunnerUp,
+      ...evolvedRunnerUp,
+    ]);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam(initialBestTeam, 0.9),
+      createChromosomeWithTeam(reorderedInitialBest, 0.88),
+      createChromosomeWithTeam(initialRunnerUp, 0.8),
+    ]);
+    vi.mocked(createNextGeneration).mockReturnValue([
+      createChromosomeWithTeam(evolvedRunnerUp, 0.85),
+    ]);
+    vi.mocked(getBestChromosome).mockImplementation(
+      (population) =>
+        [...population].sort(
+          (first, second) => second.fitness - first.fitness,
+        )[0],
+    );
+
+    const result = await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'great-league',
+      populationSize: 3,
+      generations: 1,
+    });
+
+    expect(result.team).toEqual(initialBestTeam);
+    expect(result.defaultScoredFinalists).toEqual([
+      createChromosomeWithTeam(reorderedInitialBest, 0.9),
+      createChromosomeWithTeam(evolvedRunnerUp, 0.85),
+      createChromosomeWithTeam(initialRunnerUp, 0.8),
+    ]);
+    expect(scorePlayPokemonRoster).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves explicit anchor order while canonicalizing flexible finalists', async () => {
+    const anchorPokemon = ['anchor_b', 'anchor_a'];
+    const flexibleMembers = ['flex_d', 'flex_c', 'flex_b', 'flex_a'];
+    configurePlayPokemonPool([...anchorPokemon, ...flexibleMembers]);
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam([...anchorPokemon, ...flexibleMembers], 0.9),
+      createChromosomeWithTeam(
+        [...anchorPokemon, ...[...flexibleMembers].reverse()],
+        0.8,
+      ),
+    ]);
+    vi.mocked(getBestChromosome).mockImplementation(
+      (population) =>
+        [...population].sort(
+          (first, second) => second.fitness - first.fitness,
+        )[0],
+    );
+
+    const result = await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'great-league',
+      anchorPokemon,
+      populationSize: 2,
+      generations: 0,
+    });
+
+    expect(result.defaultScoredFinalists).toEqual([
+      createChromosomeWithTeam(
+        [...anchorPokemon, ...[...flexibleMembers].sort()],
+        0.9,
+      ),
+    ]);
+  });
+
+  it('caps finalists at ten in deterministic order for shuffled populations', async () => {
+    const population = Array.from({ length: 12 }, (_, index) =>
+      createChromosomeWithTeam(
+        Array.from(
+          { length: 6 },
+          (_unused, memberIndex) => `team_${index}_member_${memberIndex}`,
+        ),
+        index === 10 ? 11 : index,
+      ),
+    );
+    configurePlayPokemonPool(population.flatMap(({ team }) => team));
+    vi.mocked(getBestChromosome).mockImplementation(
+      (candidatePopulation) =>
+        [...candidatePopulation].sort(
+          (first, second) => second.fitness - first.fitness,
+        )[0],
+    );
+    vi.mocked(initializeAnchorFirstPopulation)
+      .mockReturnValueOnce(population)
+      .mockReturnValueOnce([...population].reverse());
+
+    const first = await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'great-league',
+      populationSize: 12,
+      generations: 0,
+    });
+    const second = await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'great-league',
+      populationSize: 12,
+      generations: 0,
+    });
+
+    expect(first.defaultScoredFinalists).toHaveLength(10);
+    expect(first.defaultScoredFinalists?.map(({ fitness }) => fitness)).toEqual(
+      [11, 11, 9, 8, 7, 6, 5, 4, 3, 2],
+    );
+    expect(
+      first.defaultScoredFinalists?.slice(0, 2).map(({ team }) => team),
+    ).toEqual([population[10].team, population[11].team]);
+    expect(second.defaultScoredFinalists).toEqual(first.defaultScoredFinalists);
   });
 
   it('returns final GBL fitness from the final lineup recommendation score', async () => {

@@ -51,6 +51,66 @@ import {
 } from './fitness';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 
+const DEFAULT_SCORED_FINALIST_LIMIT = 10;
+
+function getCanonicalRoster(
+  team: readonly string[],
+  fixedAnchorCount: number,
+): string[] {
+  return [
+    ...team.slice(0, fixedAnchorCount),
+    ...team.slice(fixedAnchorCount).sort(),
+  ];
+}
+
+function getCanonicalRosterKey(
+  team: readonly string[],
+  fixedAnchorCount: number,
+): string {
+  return JSON.stringify(getCanonicalRoster(team, fixedAnchorCount));
+}
+
+function retainDefaultScoredFinalists(
+  retained: readonly Chromosome[],
+  population: readonly Chromosome[],
+  fixedAnchorCount: number,
+): Chromosome[] {
+  const finalistsByRoster = new Map<string, Chromosome>();
+
+  for (const chromosome of [...retained, ...population]) {
+    const team = getCanonicalRoster(chromosome.team, fixedAnchorCount);
+    const rosterKey = getCanonicalRosterKey(team, fixedAnchorCount);
+    const current = finalistsByRoster.get(rosterKey);
+
+    if (!current || chromosome.fitness > current.fitness) {
+      finalistsByRoster.set(rosterKey, {
+        team,
+        anchors: chromosome.anchors ? [...chromosome.anchors] : [],
+        fitness: chromosome.fitness,
+      });
+    }
+  }
+
+  return [...finalistsByRoster.entries()]
+    .sort(([firstKey, first], [secondKey, second]) => {
+      if (first.fitness !== second.fitness) {
+        return second.fitness - first.fitness;
+      }
+      return firstKey < secondKey ? -1 : firstKey > secondKey ? 1 : 0;
+    })
+    .slice(0, DEFAULT_SCORED_FINALIST_LIMIT)
+    .map(([, chromosome]) => chromosome);
+}
+
+function hasRequiredAnchors(
+  chromosome: Chromosome,
+  anchorPokemon: readonly string[],
+): boolean {
+  return anchorPokemon.every(
+    (anchorSpeciesId, index) => chromosome.team[index] === anchorSpeciesId,
+  );
+}
+
 function canBuildLegalUniqueTeam(
   pokemonPool: readonly Pokemon[],
   anchorPokemon: readonly string[],
@@ -138,7 +198,10 @@ export async function generateTeam(
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
-  const fitnessContext = createLineupAwareFitnessContext(formatId);
+  const fitnessContext = createLineupAwareFitnessContext(
+    formatId,
+    mode === 'PlayPokemon' ? 'ranked-default' : 'team-aware',
+  );
 
   ensureSimulationDataAvailable(formatId);
 
@@ -225,6 +288,16 @@ export async function generateTeam(
   evaluatePopulation(population, mode, formatId, fitnessContext);
 
   let bestOverall = getBestChromosome(population);
+  let defaultScoredFinalists =
+    mode === 'PlayPokemon'
+      ? retainDefaultScoredFinalists(
+          [],
+          population.filter((chromosome) =>
+            hasRequiredAnchors(chromosome, anchorPokemon),
+          ),
+          anchorPokemon.length,
+        )
+      : [];
 
   // Validate initial best has anchors
   if (anchorPokemon.length > 0) {
@@ -302,6 +375,14 @@ export async function generateTeam(
           evaluatePopulation(population, mode, formatId, fitnessContext);
         }
       }
+    }
+
+    if (mode === 'PlayPokemon') {
+      defaultScoredFinalists = retainDefaultScoredFinalists(
+        defaultScoredFinalists,
+        population,
+        anchorPokemon.length,
+      );
     }
 
     // Track best
@@ -405,6 +486,7 @@ export async function generateTeam(
     bestOverall = {
       ...bestOverall,
       fitness: rosterScore.fitness,
+      defaultScoredFinalists,
       movesetAssignment,
       scoreBreakdown: rosterScore.scoreBreakdown,
       recommendedLineups: recommendations.recommendedLineups,

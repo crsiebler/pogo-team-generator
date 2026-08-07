@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { scoreOrderedLineup } from './lineupScoring';
+import {
+  createDefaultLineupScoringContext,
+  scoreOrderedLineup,
+} from './lineupScoring';
 import { buildGblLineupRecommendation } from './recommendations';
 import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
 import {
@@ -144,12 +147,13 @@ describe('lineup-aware fitness entry point', () => {
     vi.clearAllMocks();
   });
 
-  it('scores PlayPokemon chromosomes through fast roster scoring with cached lineup scoring', () => {
+  it('scores PlayPokemon chromosomes through default-only fast roster scoring', () => {
     const chromosome = createChromosome(['a', 'b', 'c', 'd', 'e', 'f']);
     const assignment = createAssignment('assignment-a');
     const resolveMovesetAssignment = vi.fn(() => assignment);
     const context = createLineupAwareFitnessContext(
       'battle-frontier-tsuki-cup',
+      'ranked-default',
       { resolveMovesetAssignment },
     );
 
@@ -161,15 +165,25 @@ describe('lineup-aware fitness entry point', () => {
     );
 
     expect(fitness).toBe(0.91);
-    expect(resolveMovesetAssignment).toHaveBeenCalledOnce();
-    expect(resolveMovesetAssignment).toHaveBeenCalledWith(chromosome.team);
+    expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
+      'battle-frontier-tsuki-cup',
+      50,
+      'ranked-default',
+    );
+    expect(resolveMovesetAssignment).not.toHaveBeenCalled();
     expect(scorePlayPokemonRoster).toHaveBeenCalledWith(
       chromosome.team,
       expect.objectContaining({
-        movesetAssignment: assignment,
         scoreLineup: expect.any(Function),
       }),
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    expect(
+      vi.mocked(scorePlayPokemonRoster).mock.calls[0]?.[1],
+    ).not.toHaveProperty('movesetAssignment');
+    expect(scoreFastRosterLineup).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.not.objectContaining({ movesetAssignment: expect.anything() }),
     );
     expect(scoreFastRosterLineup).toHaveBeenCalledTimes(1);
     expect(scoreOrderedLineup).not.toHaveBeenCalled();
@@ -226,6 +240,7 @@ describe('lineup-aware fitness entry point', () => {
   it('isolates fast and full lineup caches by roster assignment', () => {
     const context = createLineupAwareFitnessContext(
       'battle-frontier-tsuki-cup',
+      'team-aware',
     );
     const lineup = { lead: 'a', switch: 'b', closer: 'c' };
     const firstAssignment = createAssignment('assignment-a');
@@ -285,9 +300,11 @@ describe('lineup-aware fitness entry point', () => {
   it('isolates lineup caches between generation contexts', () => {
     const firstContext = createLineupAwareFitnessContext(
       'battle-frontier-tsuki-cup',
+      'team-aware',
     );
     const secondContext = createLineupAwareFitnessContext(
       'battle-frontier-tsuki-cup',
+      'team-aware',
     );
     const lineup = { lead: 'a', switch: 'b', closer: 'c' };
 
@@ -313,6 +330,11 @@ describe('lineup-aware fitness entry point', () => {
     const fitness = calculateLineupAwareFitness(chromosome, 'GBL');
 
     expect(fitness).toBe(0.82);
+    expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
+      'great-league',
+      50,
+      'team-aware',
+    );
     expect(buildGblLineupRecommendation).toHaveBeenCalledWith(
       chromosome.team,
       expect.objectContaining({ scoreLineup: expect.any(Function) }),
@@ -327,6 +349,7 @@ describe('lineup-aware fitness entry point', () => {
 
     const context = createLineupAwareFitnessContext(
       'battle-frontier-tsuki-cup',
+      'ranked-default',
       {
         resolveMovesetAssignment: () => createAssignment('assignment-a'),
       },

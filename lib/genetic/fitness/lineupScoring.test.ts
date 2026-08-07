@@ -1,9 +1,14 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
   calculateLineupPatternLabel,
+  createDefaultLineupScoringContext,
   scoreOrderedLineup,
   type LineupScoringContext,
 } from './lineupScoring';
+import {
+  getRecommendedMovesetForPokemon,
+  getSimulationBackedMovesetForTeam,
+} from '@/lib/genetic/moveset';
 import type {
   MovesetVariantId,
   OrderedLineup,
@@ -11,6 +16,25 @@ import type {
   RosterMovesetAssignment,
   MovesetVariant,
 } from '@/lib/types';
+
+vi.mock('@/lib/genetic/moveset', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@/lib/genetic/moveset')>();
+
+  return {
+    ...original,
+    getRecommendedMovesetForPokemon: vi.fn(() => ({
+      fastMove: 'BUBBLE',
+      chargedMove1: 'ICE_BEAM',
+      chargedMove2: 'PLAY_ROUGH',
+    })),
+    getSimulationBackedMovesetForTeam: vi.fn(() => ({
+      fastMove: 'BUBBLE',
+      chargedMove1: 'HYDRO_PUMP',
+      chargedMove2: 'PLAY_ROUGH',
+    })),
+  };
+});
 
 const pokemonById: Record<string, Pokemon> = {
   bulky: makePokemon('bulky', ['water'], { atk: 100, def: 180, hp: 170 }),
@@ -45,6 +69,50 @@ const pokemonById: Record<string, Pokemon> = {
 };
 
 const defaultThreats = ['threat-a', 'threat-b', 'threat-c', 'threat-d'];
+
+describe('createDefaultLineupScoringContext', () => {
+  test('uses team-aware moveset selection when requested', () => {
+    vi.mocked(getRecommendedMovesetForPokemon).mockClear();
+    vi.mocked(getSimulationBackedMovesetForTeam).mockClear();
+    const team = ['azumarill', 'skarmory', 'lanturn'];
+    const context = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'team-aware',
+    );
+
+    context.getRecommendedMoveset?.('azumarill', team);
+
+    expect(getSimulationBackedMovesetForTeam).toHaveBeenCalledWith(
+      expect.objectContaining({ speciesId: 'azumarill' }),
+      team,
+      'great-league',
+    );
+    expect(getRecommendedMovesetForPokemon).not.toHaveBeenCalled();
+  });
+
+  test('uses ranked defaults without consulting team-aware selection', () => {
+    vi.mocked(getRecommendedMovesetForPokemon).mockClear();
+    vi.mocked(getSimulationBackedMovesetForTeam).mockClear();
+    const context = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+    );
+
+    context.getRecommendedMoveset?.('azumarill', [
+      'azumarill',
+      'skarmory',
+      'lanturn',
+    ]);
+
+    expect(getRecommendedMovesetForPokemon).toHaveBeenCalledWith(
+      expect.objectContaining({ speciesId: 'azumarill' }),
+      'great-league',
+    );
+    expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
+  });
+});
 
 describe('scoreOrderedLineup', () => {
   test('lead-specific matchup data changes score for the same three Pokemon', () => {

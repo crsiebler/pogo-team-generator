@@ -27,6 +27,7 @@
 - Resolve one deeply immutable roster moveset assignment against the complete bring-six roster before lineup enumeration; bind it into scoring contexts, normalize omitted scoring formats to the default before validation, and include its format, manifest policy identity, and canonical variants in every assignment-dependent cache fingerprint.
 - Route every roster-member aggregate matchup, shield scenario, matchup-quality, and move-typing read through the bound assignment's variant ID; ranked-default transition assignments remain unqualified, and missing shield rows remain unevaluated rather than synthetic neutral results.
 - Final threat analysis reuses the assignment-aware `scoreBreakdown.threatScore`; retain the exact final roster assignment for shield-scenario and Pokemon-contribution diagnostics rather than resolving or selecting movesets in analysis modules.
+- Only PlayPokemon evolution uses unqualified ranked-default fast scoring; GBL evolution remains team-aware. Retain a canonical, deduplicated top-ten PlayPokemon archive across generations, preserve explicit anchor order, sort flexible roster members, and use lexical canonical keys for equal-fitness ordering before assignment-aware finalist work.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -1104,4 +1105,85 @@
   - US-022 must expose the retained assignment through generation and team-details API contracts; this story keeps it internal while synchronizing existing analysis output.
 - Next iteration start:
   - US-020 - Retain a deterministic top-ten GA finalist set.
+---
+
+## 2026-08-06 18:13:28 MST - US-020
+- Implemented ranked-default-only PlayPokemon population scoring and a bounded cross-generation archive of the ten strongest default-scored rosters; canonicalized roster identity by preserving explicit anchor order and sorting flexible members; deduplicated reordered copies; and used canonical lexical keys for deterministic equal-fitness ordering while leaving `bestOverall` selection and one-roster full diagnostics unchanged.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/algorithm.performance.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `progress.txt`
+- Commit message: `feat: US-020 - Retain a deterministic top-ten GA finalist set`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` before implementation (fail as expected: three tests exposed assignment-backed GA scoring and the missing finalist archive)
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` after implementation (pass, 24 tests)
+  - `npx vitest run lib/genetic/algorithm.test.ts lib/genetic/algorithm.performance.test.ts lib/genetic/fitness/index.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass, 118 tests; representative generation completed under one minute)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (fail before removing one unused import; pass afterward)
+  - `npm test` (pass, 756 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/genetic/algorithm.test.ts lib/genetic/fitness/index.test.ts` after review regression (pass, 25 tests)
+  - `npx tsc --noEmit`, `npm run lint`, and staged/unstaged diff checks after review regression (pass)
+  - `npx vitest run lib/genetic/fitness/index.test.ts` before GA policy-scope fix (fail as expected: the fast context did not explicitly request ranked-default movesets)
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts lib/genetic/fitness/lineupScoring.test.ts` after GA policy-scope fix (pass, 60 tests)
+  - Final `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, and diff checks after GA policy-scope fix (pass, 757 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `performance-engineer`, `test-automator`
+  - Used: `performance-engineer`; skipped `test-automator` because one performance-focused advisor plus test-first algorithm, cache-boundary, deterministic-order, and representative-generation coverage fit the standard-mode complex-story budget
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`
+  - Findings: initial specialists found no blocking issues; applied the low QA suggestion with explicit multi-anchor canonicalization coverage; self-review narrowed ranked-default behavior to the per-run context; targeted code review found none, but targeted QA found one remaining medium blocker because that context is shared by GBL evolution and still changes GBL from team-aware scoring
+- Decisions (why):
+  - Stored canonical finalist chromosome snapshots instead of rerunning scoring because US-020 must retain default evidence without adding variant-aware or full diagnostic work to evolution.
+  - Preserved explicit anchor prefix order while sorting only flexible roster members because anchor positions are generation constraints but flexible bring-six order does not define a distinct roster.
+  - Kept the existing strict-improvement `bestOverall` update and final full-scoring path unchanged so the new archive is available for US-021 without changing the selected roster early.
+  - Removed assignment resolution and team-aware variant selection from fast population scoring so checked-in manifests cannot silently make the GA hot path variant-aware.
+  - Added an explicit lineup-context moveset policy instead of globally changing default context behavior so final GBL and other non-GA consumers retain their existing team-aware selection semantics.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - A deterministic finalist archive needs a canonical stored team representation as well as a canonical key; otherwise deduplication can preserve encounter-order differences in the retained chromosome.
+  - `LineupAwareFitnessContext.resolveMovesetAssignment` remains available for post-evolution full scoring, but fast PlayPokemon population evaluation must keep its lineup cache in the unassigned ranked-default namespace.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-020.
+  - Commit blocked after the one allowed targeted re-review: make lineup-context moveset policy mode-specific so only PlayPokemon evolution requests `ranked-default`, retain `team-aware` GBL evolution, and add a direct GBL policy regression before starting a fresh review loop.
+  - US-021 should consume `defaultScoredFinalists` for bounded assignment prefiltering and full variant-aware reranking without changing the GA population-scoring path.
+- Next iteration start:
+  - Resume US-020 by making GA moveset policy mode-specific, rerunning checks, and completing a fresh staged review loop before marking the story passed.
+---
+
+## 2026-08-06 18:31:05 MST - US-020
+- Resumed the deterministic finalist candidate by making the GA scoring context moveset policy explicit per tournament mode: PlayPokemon evolution remains ranked-default-only, while GBL evolution retains team-aware moveset selection. Added direct mode-policy regressions without changing finalist retention, `bestOverall`, or final diagnostics behavior.
+- Files changed: `lib/AGENTS.md`, `lib/types.ts`, `lib/genetic/algorithm.ts`, `lib/genetic/algorithm.test.ts`, `lib/genetic/fitness/index.ts`, `lib/genetic/fitness/index.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `progress.txt`
+- Commit message: `feat: US-020 - Retain a deterministic top-ten GA finalist set`
+- Auto approval: `enabled`
+- Checks:
+  - `npx vitest run lib/genetic/algorithm.test.ts -t "loads top-ranked names|builds bounded full diagnostics"` before implementation (fail as expected: both modes created a context without an explicit mode policy)
+  - `npx vitest run lib/genetic/fitness/index.test.ts lib/genetic/algorithm.test.ts` after implementation (pass, 25 tests)
+  - `npx prettier --write "lib/genetic/algorithm.ts" "lib/genetic/algorithm.test.ts" "lib/genetic/fitness/index.ts" "lib/genetic/fitness/index.test.ts"` (pass)
+  - `npx vitest run lib/genetic/algorithm.test.ts lib/genetic/algorithm.performance.test.ts lib/genetic/fitness/index.test.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.test.ts` (pass, 119 tests; representative generation completed under one minute)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 757 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check && git diff --cached --check` (pass)
+  - `npx vitest run lib/genetic/fitness/lineupScoring.test.ts lib/genetic/algorithm.performance.test.ts` after initial review fixes (fail before correcting an invalid exact-ten fixture assumption; pass afterward, 39 tests)
+  - Final `npx tsc --noEmit`, `npm run lint`, `npm test`, `npm run build`, and diff checks after review fixes (pass, 760 tests; existing multiple-lockfile workspace-root warning only)
+- Implementation agents:
+  - Recommended: `performance-engineer`, `test-automator`
+  - Used: no new agent in this resumed iteration; prior `performance-engineer` guidance was already incorporated, and the remaining explicit mode-policy blocker did not justify overlapping implementation advice
+- Specialist review:
+  - Agents used: fresh initial `code-reviewer` and `qa-expert`; targeted `qa-expert` re-review
+  - Findings: code review found none; fixed two medium QA findings by testing moveset policy at the production provider boundary and running complete generation twice with a reset fixed random sequence to compare bounded finalist identities, fitnesses, and ordering; targeted QA re-review found none
+- Decisions (why):
+  - Added an explicit `LineupMovesetPolicy` argument to per-run context creation so callers cannot accidentally make every tournament mode ranked-default-only.
+  - Selected `ranked-default` only for PlayPokemon evolution because US-020 requires default-scored bring-six finalists; retained `team-aware` for GBL because GBL has no finalist reranking boundary and must preserve existing assignment-aware scoring.
+  - Kept one context per GA run and left post-evolution full diagnostics unchanged so cache behavior and existing final output remain stable.
+  - Asserted the fixed-seed archive is non-empty and bounded rather than exactly ten because small populations can legitimately produce fewer than ten unique canonical rosters.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - A scoring policy intended for finalist reranking must be scoped to the tournament mode that owns that reranking boundary; applying it in a shared context factory can silently regress another mode.
+- Known issues / follow-ups:
+  - The unrelated existing `.opencode/package-lock.json` modification remains unstaged and is not part of US-020.
+  - US-021 should consume `defaultScoredFinalists` for bounded assignment prefiltering and full variant-aware reranking without changing the PlayPokemon GA population-scoring path.
+- Next iteration start:
+  - US-021 - Prefilter assignments and rerank roster finalists.
 ---

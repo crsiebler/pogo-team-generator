@@ -277,6 +277,8 @@ export interface Chromosome {
   team: string[];
   anchors?: number[];
   fitness: number;
+  /** Canonical top GA rosters scored with ranked-default movesets. */
+  defaultScoredFinalists?: readonly Chromosome[];
   movesetAssignment?: RosterMovesetAssignment;
   scoreBreakdown?: OptimizerScoreBreakdown;
   recommendedLineups?: RecommendedLineup[];

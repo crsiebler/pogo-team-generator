@@ -105,6 +105,8 @@ For GBL recommendation output in `lib/genetic/fitness/recommendations.ts`, pass 
 
 For GA evaluation in `lib/genetic/fitness/index.ts`, call `evaluatePopulation(population, mode, formatId)` without an algorithm selector. It creates a per-run `LineupAwareFitnessContext`, caches `scoreFastRosterLineup(...)` for hot PlayPokemon evaluation, and leaves full PlayPokemon diagnostics to the final output pass in `lib/genetic/algorithm.ts`.
 
+Keep only PlayPokemon evolution ranked-default-only: do not resolve or bind simulation-backed moveset assignments in fast population scoring, while GBL evolution remains team-aware. Retain the canonical top ten default-scored rosters across generations by preserving explicit anchor order, sorting flexible members, deduplicating canonical identities, and using lexical roster keys after fitness for deterministic ties; assignment-aware full scoring belongs after evolution.
+
 Lineup-aware fitness caches in `lib/genetic/fitness/index.ts` are per-run context caches; keep cache keys versioned and format-scoped, and use `cacheStats` counters in tests when validating cache behavior instead of timing-only assertions.
 
 Resolve one immutable `RosterMovesetAssignment` against the complete bring-six roster before ordered lineup enumeration. Bind that assignment into lineup and roster scoring contexts, and include its format- and manifest-policy-sensitive fingerprint in every assignment-dependent cache key; do not select movesets independently inside `scoreOrderedLineup(...)`.
