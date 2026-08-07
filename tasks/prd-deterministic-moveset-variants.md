@@ -439,6 +439,208 @@ flow documented so that sync and optimizer behavior remain deterministic.
 
 **Recommended Agents:** @documentation-engineer
 
+### US-026: Measure Generated Function Trace Size
+
+**Description:** As a maintainer, I want a deterministic report of the files
+traced into the generate-team function so deployment size regressions are
+visible before Vercel rejects a build.
+
+**Acceptance Criteria:**
+
+- [ ] Add a non-interactive analyzer for the generated
+      `/api/generate-team` Next.js NFT trace.
+- [ ] The analyzer reports unique traced file count and uncompressed bytes.
+- [ ] The analyzer groups traced bytes by simulations, rankings, application
+      code, dependencies, and other data.
+- [ ] The analyzer reports the largest traced files in deterministic order.
+- [ ] Missing or malformed trace files produce an actionable non-zero failure.
+- [ ] Analyzer tests use checked-in fixtures and do not require a Vercel
+      deployment.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @build-engineer, @test-automator
+
+### US-027: Publish an Active Runtime Simulation Asset Index
+
+**Description:** As a runtime developer, I want sync to publish an exact list of
+runtime-authorized simulation assets so deployment tracing does not include
+inactive candidate evidence.
+
+**Acceptance Criteria:**
+
+- [ ] Sync derives a versioned runtime asset index from every supported format's
+      validated moveset manifest.
+- [ ] The index includes each format manifest and only scenario storage keys for
+      manifest-declared active candidates, including active defaults.
+- [ ] Inactive candidate CSVs never appear in the runtime asset index.
+- [ ] Every indexed path is repository-relative, canonical, unique, and confined
+      to its catalog-derived simulation format directory.
+- [ ] The runtime asset index is written atomically after successful manifest
+      publication.
+- [ ] Identical inputs produce a byte-identical index.
+- [ ] Existing full manifests and inactive candidate CSVs remain unchanged as
+      sync and validation evidence.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @data-engineer, @security-engineer
+
+### US-028: Remove Runtime Simulation Directory Scanning
+
+**Description:** As a runtime developer, I want default matrices loaded through
+manifest-declared storage keys so Next.js tracing does not conservatively retain
+entire simulation directories.
+
+**Acceptance Criteria:**
+
+- [ ] Runtime default matrix loading uses each species' active default candidate
+      and exact manifest storage keys.
+- [ ] Runtime simulation loading no longer calls `readdirSync` or discovers
+      default matrices by scanning filenames.
+- [ ] Default aggregate and shield-scenario lookup behavior remains unchanged.
+- [ ] Alternate lookup remains manifest-authoritative and never falls back to a
+      default row.
+- [ ] Missing, malformed, incompatible, or incomplete default data produces the
+      existing actionable typed error contract.
+- [ ] Runtime loader tests cover all supported formats and default/alternate
+      opponent parity.
+- [ ] The PvPoke runtime boundary test passes.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @backend-developer, @architect-reviewer
+
+### US-029: Trace Only Runtime-Authorized Function Assets
+
+**Description:** As a maintainer, I want Next.js output tracing scoped to exact
+runtime assets so the standard Vercel function remains within its deployment
+limit.
+
+**Acceptance Criteria:**
+
+- [ ] Replace recursive `data/**/*.csv` and `data/**/*.json` tracing for
+      `/api/generate-team` with paths from the generated runtime asset index and
+      the exact non-simulation data required by the route.
+- [ ] Narrow `/api/pokemon-list` tracing to only the files that route consumes.
+- [ ] No inactive candidate CSV appears in the generated
+      `/api/generate-team` NFT trace.
+- [ ] Every runtime-indexed active simulation asset appears in the generated
+      trace.
+- [ ] A production build followed by the trace analyzer reports no more than
+      `200 MiB` uncompressed for `/api/generate-team`.
+- [ ] Deployment correctness does not depend on
+      `VERCEL_SUPPORT_LARGE_FUNCTIONS` or any equivalent Large Functions setting.
+- [ ] All supported formats pass generate-team route tests using traced assets.
+- [ ] Typecheck, lint, tests, and production build pass.
+
+**Recommended Agents:** @build-engineer, @deployment-engineer
+
+### US-030: Generate Compact Per-Format Runtime Simulation Snapshots
+
+**Description:** As a maintainer, I want active matchup data compiled into one
+compact deterministic snapshot per format so runtime does not ship thousands of
+CSV files.
+
+**Acceptance Criteria:**
+
+- [ ] Define a versioned repository-owned snapshot schema containing format,
+      manifest policy, and source digest identity.
+- [ ] Each snapshot contains canonical species and opponent dictionaries,
+      active moveset identities, active default mappings, and all required
+      `0-0`, `1-1`, and `2-2` Battle Ratings.
+- [ ] Ratings use a documented fixed-width encoding with an explicit missing-row
+      sentinel and no silent default substitution.
+- [ ] Snapshot generation consumes validated manifests and active scenario CSVs
+      only.
+- [ ] Every encoded rating has exact parity with its source CSV value.
+- [ ] Repeating generation from identical inputs produces byte-identical
+      snapshots.
+- [ ] Snapshot publication is atomic and occurs after source manifest
+      publication succeeds.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @data-engineer, @performance-engineer
+
+### US-031: Load Matchups From Compact Runtime Snapshots
+
+**Description:** As a runtime developer, I want optimizer lookups backed by a
+prepared compact snapshot so scoring remains synchronous, deterministic, and
+independent of runtime CSV parsing.
+
+**Acceptance Criteria:**
+
+- [ ] Add a format-scoped snapshot repository with an explicit preparation step
+      before optimizer scoring begins.
+- [ ] Aggregate and shield-scenario lookups preserve the existing synchronous
+      scoring interfaces after preparation.
+- [ ] Active moveset availability and manifest policy identity come from the
+      validated snapshot.
+- [ ] Schema, format, policy, source digest, bounds, and missing-value sentinels
+      are validated before a snapshot is cached.
+- [ ] Snapshot lookup results match the CSV-backed loader for every active
+      species, variant, opponent, and scenario in regression fixtures.
+- [ ] Runtime never falls back to CSV data when a snapshot is missing or
+      incompatible.
+- [ ] Assignment fingerprints, finalist ordering, diagnostics, API output, and
+      export remain unchanged for deterministic fixtures.
+- [ ] The PvPoke runtime boundary test passes.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @backend-developer, @performance-engineer
+
+### US-032: Remove Simulation CSVs From Runtime Function Traces
+
+**Description:** As a maintainer, I want deployed functions to include compact
+snapshots instead of source simulations so future candidate growth does not
+consume the Vercel bundle budget.
+
+**Acceptance Criteria:**
+
+- [ ] `/api/generate-team` traces compact per-format snapshots and no simulation
+      CSV files.
+- [ ] Full candidate manifests and inactive simulation evidence remain available
+      to sync and validation tooling but are not runtime function dependencies.
+- [ ] The trace analyzer reports no more than `100 MiB` uncompressed for
+      `/api/generate-team`.
+- [ ] All compact runtime simulation snapshots total no more than `50 MiB`
+      uncompressed.
+- [ ] Representative cold and warm generation remain under one minute and do not
+      regress by more than 10 percent from the recorded active-only baseline.
+- [ ] Peak runtime memory is recorded for each supported format and remains
+      within the configured Vercel function memory limit.
+- [ ] The standard Vercel function size limit is met without enabling Large
+      Functions support.
+- [ ] Typecheck, lint, tests, and production build pass.
+
+**Recommended Agents:** @performance-engineer, @build-engineer
+
+### US-033: Document Runtime Artifact and Vercel Size Contracts
+
+**Description:** As a future contributor, I want the simulation artifact and
+deployment-size workflow documented so generated data growth cannot silently
+break production deployments.
+
+**Acceptance Criteria:**
+
+- [ ] Documentation distinguishes full CSV and manifest sync evidence from
+      compact runtime snapshots.
+- [ ] Documentation explains active-only asset indexing, snapshot generation,
+      atomic publication, and runtime validation.
+- [ ] Documentation includes production build and NFT trace analyzer commands.
+- [ ] Documentation records the `200 MiB` active-only transition budget, the
+      `100 MiB` compact-snapshot target, and the `50 MiB` snapshot-data target.
+- [ ] Documentation states that this feature must not enable or depend on Vercel
+      Large Functions support.
+- [ ] Documentation states that optimizer hot-path lookups must not perform
+      per-matchup network, database, KV, or object-storage requests.
+- [ ] Documentation formatting passes.
+- [ ] Typecheck passes.
+
+**Recommended Agents:** @documentation-engineer
+
 ## Functional Requirements
 
 - **FR-1:** The system must derive moveset variants for all ranked species and
