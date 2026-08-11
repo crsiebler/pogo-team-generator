@@ -3,8 +3,16 @@
 - Returned assignments require two gates before projection: structural parsing/fingerprint validation, then repository-authority validation. Prepare compact snapshots only when a species claims manifest authority, require exact policy and complete active-variant equality, compare fallback species with current format rankings, and propagate snapshot integrity failures without fallback.
 - Variant-enabled resolution may use a per-species ranked default only when `MovesetVariantSimulationDataError` is an unqualified `variant-unavailable` failure matching the current format and canonical species; singleton fallback slots preserve assignment bounds, while missing or corrupt authority and mismatched/specific-variant failures propagate.
 - Turbopack compiles `outputFileTracingExcludes` into glob regexes and can panic when thousands of generated paths are listed individually; use narrow non-overlapping semantic exclusions for source simulation CSVs/manifests, explicitly include catalog snapshots, and let post-build trace validation reject every unauthorized data asset.
-- Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team snapshot/ranking assets and pokemon-list assets from the battle-format catalog, use route-specific excludes for automatically over-traced files, and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
-- Next.js NFT trace entries resolve relative to the trace file directory; deployment-size tooling must deduplicate resolved files, stat only trace-declared assets, and report deterministic project-relative paths and raw uncompressed bytes instead of scanning repository directories.
+- Next.js `outputFileTracingIncludes` is additive to NFT discovery: derive exact generate-team assets plus team-details snapshots, Overall rankings, Pokemon, and moves from the battle-format catalog; use route-specific excludes for automatically over-traced files; validate both runtime route traces and their deduplicated snapshot budget; and keep imports inside `next.config.ts` build helpers relative because config transpilation does not preserve project aliases correctly.
+- Route-rooted runtime dependency checks must use TypeScript syntax context to distinguish executable imports from erased type imports and exports, preserve mixed default-plus-type-only clauses and mixed named-export siblings, track global and `node:process` process owners plus Node module namespaces from namespace, named `default`/`Module`, dynamic, CommonJS, import-equals, destructured, direct/aliased/supported `call`/`apply` `process.getBuiltinModule('module')`, direct-loader, and supported `call`/`apply` loader-alias loads, track `createRequire` from both Node module specifiers through named, namespace, import-equals, CommonJS, destructured, assigned, reassigned, chained-assignment, indirect sequence, `call`/`apply`, and `module.require` alias bindings, track aliases of CommonJS and global loader owners, traverse loader-factory arguments plus every assignment/comma callee and indirect-loader receiver operand, reject computed members, unsupported destructuring assignment/parameter flows, defaults, class/parameter initializers, loop or aggregate containers, unsupported assignment operators, returned/yielded/thrown provenance, unknown call/new/tagged wrappers, recursively wrapped exports, unsupported nested static factory/loader indirection, exported provenance, and symlinked entrypoints that cannot be followed safely, follow runtime JavaScript instead of declaration-only resolutions, consistently exclude TypeScript-classified external packages from the project-local graph, fail closed on every non-literal executable dynamic import or builtin-module lookup, and validate the transitive source graph plus exact catalog data set.
+- Resolve `node:process` namespaces through the same tracked loader predicate used for direct, CommonJS alias, `module.require`, destructured, supported `call`/`apply`, and literal `process.getBuiltinModule('process')` forms; apply complete namespace predicates when rejecting computed access on inline builtin-module results.
+- Treat static `process.mainModule` access as unresolved CommonJS loader provenance so its `.require(...)` path cannot bypass route-rooted dependency validation.
+- Thread the complete recursive process-namespace predicate through CommonJS loader recognition so fully inline builtin-process to builtin-module to `createRequire` chains, including supported `call`/`apply`, remain extractable.
+- CommonJS dependency extraction must track static `globalThis`/`global` require members plus direct, static `.global`, and supported object-destructured aliases of those global loader owners; treat global owners as tracked provenance in unsupported flows; track `module.require` owner aliases and supported variable-declaration destructuring aliases; reject unknown computed access on a tracked loader owner; traverse every recognized loader argument subtree and assignment/sequence-wrapped loader-factory callee after extracting its own specifier; and preserve every validated lexical `node_modules/<package>` authority identity plus the canonical target when trusted roots, individual packages, project-targeting packages, or canonical duplicates are symlinked so vendor classification cannot be erased while canonical bytes remain deduplicated.
+- Follow chained symlink targets within trusted dependency roots and retain every intermediate package identity that resolves to the same canonical traced file; canonical containment and byte accounting remain deduplicated by the final target.
+- Before recursive dependency symlink traversal, project traced canonical paths through every matching lexical trusted-root alias; resolve target components physically in order so `..` applies after preceding symlinks, and retain every intermediate package identity for policy checks.
+- Extract executable ESM and CommonJS module specifiers from decoded TypeScript AST literals rather than source regexes, fail closed on unresolved executable loaders, resolve local modules with parsed project compiler options, and canonicalize the project root before deriving trusted ancestor dependency roots.
+- Next.js NFT trace entries resolve relative to the trace file directory; deployment-size tooling must include emitted route entrypoints, reject symbolic links in every lexical repository-data path component, allow external files only under explicit canonical ancestor `node_modules` roots that neither equal the filesystem root nor contain the project, retain every traced in-project lexical alias and any validated intermediate package-symlink authority for policy, fail closed when a project symlink erases package dependency authority, classify and count project aliases by canonical target, validate recognizable CSV, manifest, index, snapshot, Pokemon, move, and type-effectiveness evidence against exact route plans regardless of project directory, deduplicate canonical targets, and report deterministic project-relative paths and raw uncompressed bytes.
 - Runtime app, component, and optimizer code must not import, require, bundle, or load PvPoke vendor JavaScript; local PvPoke execution remains isolated to sync tooling.
 - Moveset variant work must read `.opencode/skills/gbl-optimizer/SKILL.md` and the required optimizer documents before changing ranking inputs, simulation data, scoring, or diagnostics.
 - Required optimizer docs: `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
@@ -1895,4 +1903,800 @@
   - US-037 must add `/api/team-details` compact snapshot trace planning, route trace analysis, runtime-boundary coverage, and mixed-authority documentation for the new runtime dependency.
 - Next iteration start:
   - US-037 - Guard assignment authority deployment and documentation contracts
+---
+
+## 2026-08-07 15:18:55 MST - US-037
+- Added an exact catalog-derived `/api/team-details` trace plan containing compact snapshots, Overall rankings, Pokemon, and move data; excluded source simulation evidence, unrelated ranking categories, type-effectiveness data, and PvPoke vendor assets; extended the analyzer to validate generate-team and team-details independently against the 100 MiB function budget and one deduplicated 50 MiB snapshot budget; added focused NFT and runtime-boundary coverage; and documented mixed per-species authority, strict fallback, repository-authority validation, and fail-closed snapshot behavior.
+- Files changed: `next.config.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts` before implementation (fail as expected: 6 tests exposed the missing team-details plan, trace inspection, budgets, and vendor gate)
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts` (pass, 15 tests)
+  - `npx vitest run lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 99 tests)
+  - `npx prettier --write` for all changed TypeScript, JSON fixture, and optimizer documentation files (pass)
+  - `npx prettier --check` for all changed TypeScript and optimizer documentation files (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 901 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 121 files and 19,058,643 bytes, team-details 71 files and 16,218,483 bytes, 8 unique snapshots totaling 12,019,584 bytes)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` during review remediation (fail as expected: route-rooted transitive dependency graph helper was missing)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts` after review remediation (pass, 20 tests)
+  - `npx tsc --noEmit` and `npm run lint` after review remediation (pass)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: `build-engineer`, `documentation-engineer`; both fit the standard-mode complex-story budget and provided complementary route-tracing, budget, runtime-boundary, mixed-authority, and stale-documentation guidance
+- Specialist review:
+  - Agents used: initial staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `qa-expert` and `security-engineer` re-review
+  - Findings: fixed the initial medium QA finding by replacing a manually maintained source list with a route-rooted transitive runtime module graph, but targeted re-review found four remaining medium boundary gaps; commit blocked after the single allowed targeted re-review
+- Decisions (why):
+  - Kept `analyze:generate-team-trace` as the established command while making its validation cover both runtime routes, avoiding package-script churn and documenting the retained name explicitly.
+  - Gave team-details only catalog snapshots, Overall rankings, Pokemon, and move data because those are the repository authorities used by structural parsing, acquisition projection, and authority validation; unrelated ranking categories and type-effectiveness data are excluded.
+  - Counted compact snapshots once across both route inventories because both functions trace the same catalog-derived files and the 50 MiB contract applies to the unique deployed snapshot set.
+  - Added explicit PvPoke vendor path rejection because data-only allowlisting cannot detect vendor JavaScript outside `data/`, while the source architecture test continues to guard runtime imports and loads.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - `/api/team-details` needs every format snapshot at deployment even though fallback-only requests skip preparation, because any valid returned mixed or manifest assignment can select any supported format.
+  - Route trace validation must combine exact repository-data allowlists with a separate vendor-path gate; unauthorized `data/` checks alone do not cover PvPoke JavaScript.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - Commit blocked: the runtime dependency walker can omit value-level `typeof import(...)`, no-substitution template-literal imports, and `.js` specifiers resolved by TypeScript to `.ts`; the boundary predicate also needs to reject direct source simulation manifests, CSVs, the runtime asset index JSON, and equivalent non-compact data authorities.
+  - US-037 remains `passes: false`; no commit was created because blocking medium findings remain after the targeted re-review.
+- Next iteration start:
+  - Resume US-037 by adding failing dependency-graph fixtures for the four bypasses, fix resolution and forbidden source-data assertions, rerun all checks, and complete a fresh staged review loop.
+---
+
+## 2026-08-07 15:40:03 MST - US-037
+- Resumed the blocked deployment-contract candidate; closed all four boundary bypasses by following executable value-level `typeof import(...)`, no-substitution template imports, and JavaScript specifiers resolved to TypeScript source, while applying one team-details authority predicate to the transitive route graph and exact traced data plan so legacy loaders, source manifests, simulation CSVs, the runtime asset index, and unrelated ranking data are rejected.
+- Files changed: `lib/AGENTS.md`, `next.config.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` before remediation (fail as expected: missing authority predicate and executable specifier forms produced two failures)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 6 tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 100 tests)
+  - `npx prettier --check` for all changed TypeScript, JSON fixture, AGENTS, and optimizer documentation files (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` before import-order fix (fail: one `import/order` error in `lib/architecture/pvpokeRuntimeBoundary.test.ts`)
+  - `npm run lint` after import-order fix (pass)
+  - `npm test` (pass, 902 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 121 files and 19,058,643 bytes; both route asset plans and budgets validated; 8 unique snapshots total 12,019,584 bytes)
+  - `git diff --check && git diff --cached --check` (pass)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/functionTraceAnalyzer.test.ts` during review remediation (fail as expected: 5 tests exposed executable object-value imports, type-only forms, extension precedence, route entrypoint undercounting, and symlinked data authority)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 96 tests)
+  - `npx tsc --noEmit`, `npm run lint`, and changed-file Prettier checks after review remediation (pass)
+  - `npm test` after review remediation (pass, 903 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; generate-team 122 files and 19,058,698 bytes including its emitted route entrypoint; both route plans and budgets validated; 8 unique snapshots total 12,019,584 bytes)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: `build-engineer`, `documentation-engineer`; both fit the standard-mode complex-story budget and confirmed the route-specific plan, shared budgets, fail-closed authority semantics, existing documentation locations, and required checks
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer` high-risk pass; targeted re-review pending for the same affected domains
+  - Findings: fixed merged blocking findings by replacing textual type-only heuristics with TypeScript AST ranges, preferring TypeScript extension substitutions, binding data authority to the exact catalog plan, removing the unreferenced type-effectiveness-dependent legacy moveset optimizer, canonicalizing and containing traced paths, rejecting symlinked repository data, and counting emitted route entrypoints; skipped one low shuffled-format suggestion as non-blocking and unrelated to the fixed root causes
+- Decisions (why):
+  - Extended the existing route-rooted dependency helper rather than adding a parallel scanner so module resolution and type-only filtering remain one reusable boundary.
+  - Used TypeScript AST source ranges for erased import forms and kept JavaScript-specifier mapping narrow (`.js`, `.jsx`, `.mjs`, and `.cjs`) with TypeScript candidates first, matching compilation without guessing arbitrary extensions.
+  - Bound the team-details authority predicate to the exact catalog-derived asset set rather than CP/cup-shaped path patterns, and removed unused `getOptimalMovesetForTeam(...)`/cache code so team-details no longer reaches type-effectiveness data through its moveset module.
+  - Counted each emitted canonical `route.js`, rejected symlinked repository data, confined project paths physically, and allowed external trace targets only under canonical `node_modules` dependency roots before deduplication.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - A preceding `typeof` does not by itself make `import(...)` type-only; value-level `typeof import(...)` executes a runtime import and must remain in the transitive graph.
+  - TypeScript commonly resolves emitted `.js` module specifiers to `.ts`, `.tsx`, `.mts`, or `.cts` source, so source-level architecture walkers must model that mapping.
+  - NFT `files` arrays omit the emitted route entrypoint, so deployment budgets must add the canonical `route.js` and canonicalize physical targets before deduplicating bytes.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+- Next iteration start:
+  - Complete the one targeted specialist re-review, mark US-037 passing, and commit if no blocking findings remain.
+---
+
+## 2026-08-07 19:40:38 MST - US-037
+- Completed the single targeted specialist re-review of the staged deployment-contract candidate; three deduplicated medium boundary findings remain, so the story stays blocked and uncommitted under the bounded review-loop rules.
+- Files changed: `progress.txt` (review result only; the prior staged US-037 candidate remains unchanged)
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - Prior staged candidate checks remain recorded in the preceding US-037 entry; no checks were rerun because this iteration made no implementation, test, or documentation changes.
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed review-only iteration because both recommended agents had already advised the staged implementation and no new implementation was permitted after the bounded targeted review
+- Specialist review:
+  - Agents used: targeted `qa-expert` and `security-engineer`
+  - Findings: three deduplicated medium blockers remain: preserve executable default imports paired with type-only named bindings, reject or resolve interpolated dynamic imports instead of omitting them, and constrain trace canonicalization against symlinked path components plus arbitrary external `node_modules` roots
+- Decisions (why):
+  - Stopped without fixing or committing because Ralph permits at most one targeted specialist re-review after substantive remediation and requires unresolved medium findings after that pass to block the story.
+  - Merged duplicate QA and security findings for symlink traversal and external dependency roots into one containment remediation area.
+- **Learnings for future iterations:**
+  - Import-graph erasure must inspect the complete import clause: `import Default, { type T }` still has a runtime dependency.
+  - Unresolved local dynamic import templates must fail closed; omitting them from a runtime authority graph creates a boundary bypass.
+  - Trace containment must reject symlinks in protected path components and accept external files only beneath explicitly trusted canonical dependency roots.
+- Known issues / follow-ups:
+  - `US-037` remains `passes: false`; no commit was created.
+  - Add failing fixtures for the three blocker areas, remediate them, rerun all required checks, and begin a fresh staged review loop in the next iteration.
+- Next iteration start:
+  - Resume US-037 with test-first fixes for mixed import clauses, interpolated local dynamic imports, and canonical trace containment.
+---
+
+## 2026-08-07 19:50:20 MST - US-037
+- Resumed the blocked deployment-contract candidate and closed the three remaining boundary findings: mixed default-plus-type-only imports remain executable dependencies, unresolved local dynamic-import templates fail closed, repository-data symlinks are rejected at every path component, and external trace files are accepted only beneath explicit canonical ancestor dependency roots. Tightened the route-plan documentation and rejected absolute or parent-traversal authority paths.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` before implementation (fail as expected: mixed imports and unresolved local template imports produced 2 failures)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts` before implementation (fail as expected: symlinked path components and arbitrary external dependency roots produced 2 failures)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "keeps team-details authority validation"` before adjacent boundary fix (fail as expected: absolute and parent-traversal paths were allowed)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 104 tests)
+  - `npx prettier --check docs/pokemon-go-team-optimization.md docs/team-optimization/data-inputs.md` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 906 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both runtime route plans and budgets validated; 8 unique snapshots total 12,019,584 bytes)
+  - `git diff --check && git diff --cached --check` (pass)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` during review remediation (fail as expected: computed imports and extensionless TypeScript precedence produced 5 failures)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts` during review remediation (fail as expected: canonical project aliases and trusted dependency symlinks produced 2 failures)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 109 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review remediation (pass)
+  - `npm test` after review remediation (pass, 911 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; generate-team 122 files and 19,058,698 bytes; both runtime route plans and budgets validated; 8 unique snapshots total 12,019,584 bytes)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: `build-engineer`, `documentation-engineer`; both fit the standard-mode complex-story budget and identified the exact import-graph, canonical containment, route-plan, analyzer-scope, and documentation checks needed to complete the resumed candidate
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer` high-risk pass; targeted `code-reviewer` and `security-engineer` re-review
+  - Findings: QA found none; fixed the initial merged findings, but targeted re-review found three deduplicated medium blockers: replace regex module-specifier extraction with TypeScript AST extraction for all executable literal imports, check every direct extensionless file candidate before directory indexes, and canonicalize the project root before deriving trusted dependency ancestors
+- Decisions (why):
+  - Removed the redundant text-based named-import heuristic because the existing TypeScript AST ranges correctly erase pure type imports while preserving a default value import in the same clause.
+  - Rejected every unresolved executable dynamic import instead of guessing possible files because an incomplete runtime graph would make the route authority boundary fail open.
+  - Trusted only canonical `node_modules` directories on the project-to-filesystem ancestor chain, preserving workspace dependencies without accepting arbitrary external paths that merely contain a `node_modules` segment.
+  - Checked every repository-data path component for symlinks before canonicalization so an intermediate linked directory cannot bypass exact traced-data authority.
+  - Reported and categorized canonical targets after containment so a project-local alias cannot hide source simulation data or PvPoke vendor assets behind an application-code path.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - A named binding list containing only `type` specifiers does not make the complete import type-only when the clause also has a default value binding.
+  - Checking only the final traced path with `lstat` misses symbolic links in parent data directories; containment must be established before canonical byte accounting.
+  - Extensionless source-graph resolution must prefer TypeScript candidates before JavaScript files to match the application's compiler behavior.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because medium findings remain after the single targeted re-review.
+  - Literal imports containing comments, dollar characters, or escaped delimiters can still evade the regex dependency graph even though non-literal imports fail closed.
+  - Extensionless resolution currently interleaves direct and index candidates, and trusted dependency roots are derived before canonicalizing a symlinked project root.
+- Next iteration start:
+  - Resume US-037 test-first with AST module-specifier extraction, direct-file-before-index extensionless precedence, and canonical project-root trust derivation; rerun checks and begin a fresh staged review loop.
+---
+
+## 2026-08-07 20:10:04 MST - US-037
+- Resumed the blocked deployment-contract candidate and closed the final three boundary gaps: executable imports now come from decoded TypeScript AST literals, direct extensionless source files precede directory indexes, and NFT trace containment derives trusted dependency roots from the canonical project path while retaining lexical diagnostics and data-symlink checks.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "discovers executable TypeScript imports"` before implementation (fail as expected: dollar-containing template and escaped static imports were omitted, and a directory index displaced a direct source file)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "canonical project path"` before implementation (fail as expected: the canonical route entrypoint was rejected before the lexical dependency trust bypass could be evaluated)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "team-details authority|discovers executable TypeScript imports|rejects unresolved executable|resolve outside"` during review remediation (fail as expected: normalized traversal, Windows absolutes, CommonJS loaders, compiler-resolution collisions, and local containment were not fail-closed)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 114 tests)
+  - Changed-file `npx prettier --check` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` after review remediation (pass, 916 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both runtime route plans and budgets validated; 8 unique snapshots total 12,019,584 bytes)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents had already advised the existing US-037 candidate and the remaining remediations were exact review findings with focused regressions
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed normalized traversal, Windows absolutes, direct CommonJS loaders, compiler-option resolution, and local containment; targeted code review found none, but QA and security found two deduplicated remaining medium blockers: incomplete `createRequire` alias coverage and declaration-file resolution that can inspect `.d.ts` instead of the runtime `.js` implementation
+- Decisions (why):
+  - Replaced dependency regex extraction with TypeScript AST traversal so comments, dollar characters, escaped delimiters, import/export declarations, import-equals declarations, dynamic imports, and `require(...)` literals share compiler-decoded semantics.
+  - Kept all non-literal executable ESM and CommonJS loads fail-closed and preserved pure type erasure because the route authority graph must model runtime dependencies without retaining compile-time-only modules.
+  - Replaced manual local-module candidate ordering with `ts.resolveModuleName(...)` and parsed project compiler options because Bundler resolution can legitimately prefer JavaScript over `.mts` and the boundary must inspect the same source the application bundles.
+  - Kept lexical project paths for trace diagnostics and repository-data symlink inspection, but used the canonical project root for physical containment, dependency trust ancestry, categorization, and canonical reporting.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - TypeScript AST string-literal text is already decoded, avoiding regex blind spots for escaped quotes and no-substitution templates containing dollar characters.
+  - CommonJS graph extraction must unwrap transparent TypeScript expressions and track `require.resolve`, `module.require`, and `createRequire` aliases; every remaining computed loader expression fails closed.
+  - Local compiler resolution failures and symlink escapes are boundary violations, not optional unresolved dependencies.
+  - Canonicalizing only traced targets is insufficient when the project root itself is a symlink; trusted ancestor dependency roots must originate from the canonical project root.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because medium findings remain after the single targeted re-review.
+  - Track `createRequire` from both `node:module` and `module`, namespace imports, and CommonJS destructuring, with literal and computed-loader regressions.
+  - Reject declaration-only executable resolutions or resolve and contain the corresponding runtime implementation; add a `.d.ts` plus `.js` collision regression.
+- Next iteration start:
+  - Resume US-037 test-first with complete `createRequire` alias provenance and runtime implementation resolution, rerun checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-07 20:38:29 MST - US-037
+- Resumed the blocked deployment-contract candidate; completed `createRequire` provenance across `node:module` and `module` named, namespace, CommonJS, destructured, direct-member, and assigned bindings, and made executable local imports follow adjacent runtime JavaScript instead of declaration-only TypeScript resolutions.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|runtime JavaScript"` before implementation (fail as expected: four aliased loaders were omitted and the graph followed only `runtimeAuthority.d.ts`)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories"` during implementation (fail as expected: direct CommonJS, namespace-destructured, and assigned member factories remained omitted)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|computed reassigned"` during review remediation (fail as expected: reassignment, indirect factory, and `module.require` aliases were omitted and computed reassigned loaders did not fail closed)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "shared runtime snapshot|distinct aggregate"` during review remediation (pass, proving the existing production deduplication with discriminating fixtures)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 118 tests)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` after review remediation (pass, 920 tests)
+  - Changed-file `npx prettier --check` (pass)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both runtime route plans and budgets validated; 8 unique snapshots total 12,019,584 bytes)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised the existing US-037 candidate and the remaining work consisted of exact prior review findings with focused regressions
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed two initial deduplicated medium areas by following assignment expressions, indirect factories, and `module.require` aliases with literal/computed regressions, and by adding discriminating shared-versus-distinct snapshot budget tests; targeted QA and security found none, but targeted code review found one remaining medium chained-assignment provenance bypass
+- Decisions (why):
+  - Extended the existing TypeScript AST provenance pass instead of adding another textual scanner so ESM and CommonJS `createRequire` forms share one fail-closed graph.
+  - Mapped local `.d.ts`, `.d.mts`, and `.d.cts` resolutions only to adjacent JavaScript runtime forms and rejected declaration-only local modules, preventing compile-time declarations from hiding executable dependencies.
+  - Kept the snapshot byte implementation unchanged because it already canonicalizes by path and rejects inconsistent duplicate sizes; the review gap was test discrimination, not production behavior.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - `createRequire` is a loader factory rather than a loader itself; graph extraction must retain its source-module namespace and factory provenance until the produced require function is invoked.
+  - Loader provenance can cross both declaration initializers and later assignment expressions; sequence expressions use their rightmost value, while aliases of `module.require` remain executable loaders.
+  - `ts.resolveModuleName(...)` can select a declaration file for an executable local import, so architecture walkers must inspect the corresponding runtime implementation rather than treating the declaration as executable authority.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because a medium finding remains after the single targeted re-review.
+  - Chained assignments such as `a = b = nodeModule.createRequire` leave the outer identifier bound to an unhandled assignment expression; unwrap simple assignment expressions to their right-hand value and add literal and computed chained-assignment regressions.
+- Next iteration start:
+  - Resume US-037 test-first with chained-assignment loader provenance, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-07 21:07:03 MST - US-037
+- Resumed the blocked deployment-contract candidate and closed the final chained-assignment provenance bypass: outer factory and loader aliases now inherit the right-hand runtime value, literal chained aliases enter the dependency graph, and computed chained loads fail closed.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|computed chained"` before implementation (fail as expected: literal and computed outer chained aliases were omitted)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|computed chained"` (pass, 2 tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts -t "createRequire factories|computed call|computed apply|computed createRequire member|exported createRequire|symbolic-link entrypoints|missing snapshots"` during review remediation (fail as expected: 7 tests exposed indirect loaders, unresolved loader provenance, symlinked entrypoints, and off-directory evidence)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 124 tests)
+  - `npx prettier --check docs/pokemon-go-team-optimization.md docs/team-optimization/data-inputs.md lib/AGENTS.md` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` after review remediation (pass, 926 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB function budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents had already advised the existing US-037 candidate and the remaining remediation was one exact prior review finding with focused regressions
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer` and `security-engineer` re-review
+  - Findings: QA found none; fixed the initial four medium findings, but targeted re-review found three deduplicated medium blockers: computed loader-member aliases and computed `call`/`apply` members still fail open, export assignments can expose tracked factories/loaders, and the source-graph authority predicate still allows recognizable evidence outside `data/`
+- Decisions (why):
+  - Extended the existing transparent loader-expression unwrapping to simple assignment expressions instead of adding another provenance pass, so both inner and outer identifiers converge through the same fixed-point binding analysis.
+  - Kept the fix scoped to plain `=` and comma expressions; compound assignments do not propagate an equivalent loader value and must not be treated as aliases.
+  - Rejected loader factories exported across local module boundaries instead of guessing inter-module runtime values; the architecture gate must fail closed when provenance cannot be established exactly.
+  - Classified project-local CSVs plus canonical manifest, index, and snapshot filenames as route data authorities regardless of directory while leaving ordinary application JSON and external dependency assets unaffected.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - In `a = b = value`, both assignment nodes are collected, but the outer binding's initializer is itself an assignment expression and must be unwrapped to the right-hand runtime value before provenance classification.
+  - CommonJS `call` uses its second argument as the module specifier; `apply` requires a literal argument array whose first element is the module specifier, and all other forms fail closed.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because medium findings remain after the single targeted re-review.
+  - Reject computed element-access bindings on tracked module namespaces and computed member calls on tracked loaders; reject tracked factory/loader export assignments including default, export-equals, `module.exports`, and `exports` forms; and apply recognizable CSV/manifest/index/snapshot classification to the source-graph authority predicate.
+- Next iteration start:
+  - Resume US-037 test-first with the three targeted-review blocker areas, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-07 21:30:22 MST - US-037
+- Resumed the blocked deployment-contract candidate and closed the final three review areas: computed tracked loader and module-namespace members now fail closed, default/CommonJS/export-equals assignments cannot expose tracked `createRequire` provenance across module boundaries, and recognizable CSV/manifest/index/snapshot evidence outside `data/` must match the exact route authority plan.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "team-details authority|unresolved executable module load|tracked loader provenance"` before implementation (fail as expected: 9 tests exposed all three blocker areas)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "team-details authority|unresolved executable module load|tracked loader provenance"` (pass, 21 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 132 tests)
+  - `npx prettier --check` for all changed TypeScript, AGENTS, and optimizer documentation files (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 934 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - Review regressions for supported process bindings, exported builtin-loader provenance, and canonical dependency roots containing the project before remediation (fail as expected: 3 tests exposed all merged review findings)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 207 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review remediation (pass)
+  - `npm test` after review remediation (pass, 1009 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; unchanged 122 files and 19,058,698 bytes; both route plans and budgets validated; 8 unique snapshots total 12,019,584 bytes)
+  - `git diff --check && git diff --cached --check` (pass)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|class property initializer|parameter initializer|binding default|compound assignment|loop binding|mixed named module namespace"` during review remediation (fail as expected: named namespace imports, binding defaults, loop containers, and namespace re-exports exposed four gaps)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` during complete review-fixture validation (fail as expected: class/parameter initializers and compound assignments exposed three additional gaps)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 168 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review remediation (pass)
+  - `npm test` after review remediation (pass, 970 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts -t "team-details authority|createRequire factories|unresolved executable module load|tracked loader provenance|missing snapshots"` during review remediation (fail as expected: 12 tests exposed computed destructuring, import-equals, static indirection, export-shape, dependency-authority, and case-sensitivity gaps)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 141 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review remediation (pass)
+  - `npm test` after review remediation (pass, 943 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037, exhausting the two-agent story budget, and the remaining changes were exact prior review findings with focused regressions
+- Specialist review:
+  - Agents used: initial staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed six initial deduplicated medium areas, but targeted re-review found three remaining medium blockers: unsupported tracked destructuring/container assignments, module namespace or wrapped aggregate exports, and nested static factory/loader indirection can still erase provenance
+- Decisions (why):
+  - Rejected computed member access on any tracked factory, loader, or Node module namespace instead of guessing a runtime property value, preserving a complete fail-closed graph.
+  - Rejected tracked provenance in default exports, TypeScript export assignments, and CommonJS export targets because the route-rooted walker intentionally does not perform inter-module value-flow analysis.
+  - Applied exact route authority to recognizable evidence filenames regardless of directory so moving source CSVs, manifests, tooling indexes, or snapshots cannot disguise them as application code.
+  - Rejected unsupported static factory/loader `call`, `apply`, and `bind` indirection instead of attempting incomplete function-value modeling; supported direct loader `call`/`apply` remains covered.
+  - Applied artifact and PvPoke classification to canonical ancestor dependencies because trusted filesystem containment does not make their data assets valid route authorities.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, and `test-runner` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - Computed element access must be checked as its own AST node because a surrounding call or variable binding can otherwise hide tracked loader provenance before module-specifier extraction.
+  - Runtime data authority follows recognizable artifact semantics, not only the lexical `data/` directory.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Fail closed when tracked namespace/factory/loader values enter destructuring assignments, nested/rest binding patterns, or aggregate containers.
+  - Reject module namespaces and recursively wrapped tracked provenance in every ESM, TypeScript, and CommonJS export form.
+  - Reject nested static chains such as `nodeModule.createRequire.call(...)` and `runtimeRequire.resolve.bind(...)` when their runtime value cannot be followed exactly.
+- Next iteration start:
+  - Resume US-037 test-first with the three targeted-review blocker areas, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-07 22:00:02 MST - US-037
+- Resumed the blocked deployment-contract candidate and closed the remaining provenance gaps: tracked Node module namespaces, `createRequire` factories, and loader aliases now fail closed when hidden in unsupported destructuring or aggregate containers; recursively wrapped ESM, TypeScript, and CommonJS exports are rejected; and nested static factory/loader `call`, `apply`, or `bind` indirection cannot erase provenance.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "unresolved executable module load|tracked loader provenance"` before implementation (fail as expected: 13 tests exposed unsupported destructuring, aggregate containers, recursive exports, and nested static indirection)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts` after implementation (pass, 53 tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts -t "erased Node module|createRequire factories|unresolved executable module load|tracked loader provenance|team-details authority|missing snapshots"` during review remediation (fail as expected: 11 tests exposed all five merged review areas)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 162 tests)
+  - `npx prettier --check lib/architecture/pvpokeRuntimeBoundary.ts lib/architecture/pvpokeRuntimeBoundary.test.ts docs/pokemon-go-team-optimization.md docs/team-optimization/data-inputs.md lib/AGENTS.md` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` after review remediation (pass, 964 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check && git diff --cached --check` (pass)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: `build-engineer`, `documentation-engineer`; both provided complementary confirmation of the exact route assets, independent function and aggregate snapshot budgets, boundary risks, existing documentation scope, and required validation commands
+- Specialist review:
+  - Agents used: initial staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed five initial deduplicated medium areas; targeted QA found none, but targeted code and security review found two remaining medium blockers: supported loader `call`/`apply` results do not retain Node module namespace provenance, and mixed named exports still classify a `type createRequire` specifier as executable provenance
+- Decisions (why):
+  - Centralized tracked-provenance recognition over TypeScript AST expressions so assignment, export, and nested-member checks share one fail-closed definition instead of accumulating independent textual special cases.
+  - Rejected unsupported containers and indirection rather than modeling arbitrary runtime value flow; the route-rooted architecture gate must not omit a dependency when provenance becomes ambiguous.
+  - Did not classify the return value of an ordinary literal `require(...)` call as loader provenance, preserving dependency extraction for loaded modules while still tracking calls that create a new require function.
+  - Classified canonical Pokemon, move, and type-effectiveness basenames as runtime data authority outside `data/` because moving those files must not evade the exact route plan.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, and `test-runner` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - Loader provenance hidden inside object, array, nested, rest, or destructuring flows is not safely recoverable without interprocedural value analysis and must fail closed.
+  - Export checks must inspect nested initializer values and module namespaces, not only the exported top-level identifier.
+  - Node module namespace provenance can originate from `await import(...)`, `module.require(...)`, or a supported loader alias, not only a literal `require(...)` callee.
+  - Functions and unknown wrappers must not return, yield, receive, construct, or tag tracked loader provenance unless the walker explicitly models that flow.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Namespace classification must read the module specifier from the supported loader `call` second argument and `apply` literal argument array before a returned Node module namespace can expose `createRequire`.
+  - Mixed named exports must ignore each erased `ExportSpecifier.isTypeOnly` binding while preserving executable sibling exports.
+- Next iteration start:
+  - Resume US-037 test-first with `call`/`apply` namespace provenance and mixed type-only export regressions, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-07 22:32:46 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the final two review blockers: supported CommonJS loader `call`/`apply` results now retain Node module namespace provenance, and mixed named exports ignore only type-erased specifiers while preserving executable siblings.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "erased Node module|createRequire factories"` before implementation (fail as expected: the mixed type-only export was rejected and `call`/`apply` namespace loads omitted two runtime dependencies)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "erased Node module"` for direct mixed re-export coverage (fail as expected: `type createRequire` was treated as executable provenance)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "erased Node module|createRequire factories|exported createRequire"` (pass, 3 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 162 tests)
+  - Changed-file `npx prettier --check` (pass after formatting the architecture regression fixture)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 964 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check && git diff --cached --check` (pass)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: `build-engineer`, `documentation-engineer`; both confirmed the exact route assets, independent function and aggregate snapshot budgets, architecture risks, existing documentation sections, and required validation commands
+- Specialist review:
+  - Agents used: initial staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed two initial deduplicated medium areas; targeted QA and security found none, but targeted code review found one remaining medium blocker because shorthand destructuring assignment defaults omit `objectAssignmentInitializer` provenance
+- Decisions (why):
+  - Centralized direct and supported indirect CommonJS module-specifier extraction so dependency discovery and Node namespace provenance interpret `call` and `apply` identically.
+  - Evaluated `ExportSpecifier.isTypeOnly` per named export instead of erasing or rejecting an entire mixed declaration, preserving executable siblings while preventing type-only `createRequire` from becoming loader provenance.
+  - Rejected unsupported loader propagation rather than modeling class, parameter, binding-default, loop-container, or compound-assignment value flow; the boundary must fail closed when it cannot prove the exact runtime dependency.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - A supported `require.call` or `module.require.apply` can return the `node:module` namespace; provenance analysis must read the call's second argument or the apply array's first element before later `createRequire` access.
+  - Named export declarations can mix erased and executable specifiers, so type-only status belongs to each `ExportSpecifier`, not only the declaration.
+  - Node's named `default` and `Module` ESM bindings expose `createRequire` and therefore carry module namespace provenance just like namespace imports.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because one medium finding remains after the single targeted re-review.
+  - Reject or track shorthand destructuring assignment defaults such as `({ runtimeRequire = require } = {})` by inspecting `ShorthandPropertyAssignment.objectAssignmentInitializer`, and add a focused literal/computed regression.
+- Next iteration start:
+  - Resume US-037 test-first with shorthand destructuring assignment-default provenance, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-07 22:59:41 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the remaining shorthand destructuring assignment-default provenance gap so object assignment patterns cannot hide a tracked CommonJS loader; retained the existing computed-property fail-closed behavior.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "unresolved executable module load"` before implementation (fail as expected: shorthand assignment-default provenance was not rejected; computed-property coverage already passed)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "unresolved executable module load"` after implementation (pass, 41 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 170 tests)
+  - `npx prettier --check "lib/architecture/pvpokeRuntimeBoundary.ts" "lib/architecture/pvpokeRuntimeBoundary.test.ts" "docs/pokemon-go-team-optimization.md" "docs/team-optimization/data-inputs.md" "lib/AGENTS.md"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 972 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check` (pass)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|unresolved executable module load"` during review remediation (fail as expected: four cases exposed omitted `module.require` destructuring, global aliases, and computed module access)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "package identity"` during review remediation (fail as expected: a symlinked trusted dependency root erased `node_modules/pvpoke` identity)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|unresolved executable module load"` after review remediation (pass, 45 selected tests)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "package identity"` after review remediation (pass, 1 selected test)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 174 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review remediation (pass)
+  - `npm test` after review remediation (pass, 976 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; unchanged 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised the existing US-037 candidate, exhausting the two-agent story budget, and the remaining change was one exact prior review finding with focused regressions
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed three initial merged medium blocker areas; targeted QA found none, but targeted code and security review found two remaining medium blocker areas: destructuring assignments/parameters can still hide CommonJS loader provenance, and package-level symlinks inside a trusted dependency root can erase the `pvpoke` package identity
+- Decisions (why):
+  - Rejected shorthand object assignment defaults carrying loader provenance instead of attempting to model whether the default executes at runtime; the architecture boundary must fail closed when assignment flow can hide a dependency.
+  - Kept the computed-property regression even though it already passed because it distinguishes the existing generic binary traversal from the missing shorthand-specific AST field.
+  - Unified loader alias recognition through `isCommonJsLoaderExpression(...)` so direct, member, global, and factory-produced loaders use the same fixed-point provenance path.
+  - Reported trusted dependencies through their lexical `node_modules` root plus canonical root-relative package path after containment validation, preserving package authority without trusting lexical targets for filesystem access.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, and `test-runner` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - TypeScript represents shorthand object assignment defaults through `ShorthandPropertyAssignment.objectAssignmentInitializer`; checking only the assignment expression's right side omits that provenance.
+  - Canonical dependency paths can lose the `node_modules/<package>` identity when the dependency root itself is a symlink; retain a validated lexical-root mapping for reporting and policy classification.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Track or reject supported static CommonJS loader destructuring in assignment and parameter forms, including literal and computed-property regressions.
+  - Preserve validated lexical package identity through package-level symlinks such as `node_modules/pvpoke -> node_modules/.store/runtime` while retaining canonical containment and byte accounting.
+- Next iteration start:
+  - Resume US-037 test-first with CommonJS loader destructuring assignment/parameter coverage and package-level dependency symlink identity, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-07 23:27:14 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the two remaining review blockers: CommonJS `module.require` provenance now fails closed in destructuring assignment and parameter forms, and validated lexical package identity survives package-level dependency symlinks while canonical targets remain authoritative for containment, deduplication, and byte accounting.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "module loader in|computed module member in"` (fail as expected before implementation: six destructuring assignment/parameter forms were accepted)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "package-level dependency symlinks"` (fail as expected before implementation: `node_modules/pvpoke` was reported as its `.store` target)
+  - Focused red regressions after implementation (pass, 9 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 182 tests before initial review)
+  - Changed-file `npx prettier --check` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 984 tests before initial review)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check && git diff --cached --check` (pass before final staging)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "follows createRequire factories|computed aliased module"` during review remediation (fail as expected: module-owner aliases omitted two dependencies and two computed forms failed open)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "canonical duplicate validation"` during review remediation (fail as expected: canonical deduplication discarded the PvPoke package authority alias)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review remediation (pass, 185 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review remediation (pass)
+  - `npm test` after review remediation (pass, 987 tests)
+  - `npm run build` after review remediation (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review remediation (pass; unchanged 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037, exhausting the two-agent story budget, and the remaining work consisted of exact prior review findings with focused regressions
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed two initial deduplicated blocking areas, but the single targeted re-review found three remaining medium blockers: nested loader arguments can bypass dependency traversal, cross-root or canonical dependency aliases can hide lexical/canonical vendor and data authority, and the duplicate-alias regression does not directly assert single-count canonical byte accounting
+- Decisions (why):
+  - Rejected CommonJS loader destructuring in assignment and parameter flows instead of attempting interprocedural value tracking; supported variable-declaration destructuring remains explicit, while ambiguous execution-boundary flows fail closed.
+  - Preserved a traced path beneath a trusted lexical dependency root only after its canonical target passed containment; this retains `node_modules/<package>` policy identity without weakening canonical deduplication or byte accounting.
+  - Separated policy authority paths from canonical file reports so every package alias reaches route/vendor validation while unique file counts, categories, and bytes remain canonical and deterministic.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - CommonJS object destructuring has different AST and execution boundaries in declarations, assignments, and parameters; only explicitly modeled forms should propagate loader provenance.
+  - Canonical paths establish trust and byte identity, but package policy must retain the validated lexical `node_modules/<package>` path when a package symlink targets an internal store.
+  - CommonJS `module` is a loader-owning object whose identifier aliases must be tracked before `.require` access or destructuring can be interpreted safely.
+  - Canonical trace deduplication and policy identity are separate concerns: retain all validated lexical aliases for policy and count each canonical target once for deployment size.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Traverse or reject non-specifier arguments to recognized loader calls so nested computed loads cannot be omitted.
+  - Preserve both every validated lexical alias and the canonical dependency target for policy across cross-root/package symlinks while continuing to deduplicate canonical file bytes.
+  - Strengthen the canonical duplicate fixture to assert exactly one canonical file and a 10-byte total.
+- Next iteration start:
+  - Resume US-037 test-first with nested loader-argument traversal, cross-root lexical plus canonical dependency authority, and explicit duplicate-byte assertions; rerun all checks and begin a fresh staged review loop.
+---
+
+## 2026-08-10 17:55:37 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the three recorded prior-review blockers plus four fresh-review findings: recognized loader calls traverse nested argument and loader-factory loads; global loader-owner aliases fail closed; external packages are excluded consistently from the project-local graph; and trusted dependency roots retain canonical and every lexical authority identity across root, package, and project-targeting symlinks while canonical duplicate tests prove one dependency file and 10-byte accounting.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "computed nested.*loader argument"` before implementation (fail as expected: 3 nested computed loads were omitted)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "trusted dependency root aliases|canonical duplicate validation"` before implementation (fail as expected: the canonical trusted-root identity was omitted; the duplicate-byte assertion was corrected to exclude the emitted route entrypoint)
+  - Focused red regressions after implementation (pass, 5 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 189 tests)
+  - Changed-file `npx prettier --check` (pass after formatting `lib/build/functionTraceAnalyzer.ts`)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 991 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check && git diff --cached --check` (pass before final staging)
+  - Fresh-review regressions for loader-factory arguments, global loader owners, external package layouts, and project-targeting package symlinks before remediation (fail as expected: 7 architecture cases and 1 trace-authority case exposed all four merged findings)
+  - Fresh-review focused regressions after remediation (pass, 8 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review fixes (pass, 196 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 998 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review fixes (pass; unchanged 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037, exhausting the two-agent story budget, and the remaining work consisted of exact prior review findings with focused regressions
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed four initial deduplicated medium findings; targeted code review found none, but targeted QA and security review found three remaining medium blockers: derived global-owner aliases are not tracked, sequence/assignment-wrapped factory callees can skip argument traversal, and global loader owners can escape through unsupported aggregates or wrappers
+- Decisions (why):
+  - Traversed every recognized loader call argument after extracting the call's own module specifier because loader options, `thisArg`, and trailing arrays can contain independent executable loads.
+  - Retained all trusted dependency roots by canonical-plus-lexical identity because canonical-root deduplication can erase a security-relevant `node_modules/<package>` alias; canonical file identity remains the sole source for counts and bytes.
+  - Asserted dependency-category counts rather than complete trace counts because Next.js route traces also include the emitted route entrypoint by contract.
+  - Used TypeScript's `isExternalLibraryImport` classification to keep the project-local source graph independent of package hoisting, while exact NFT trace validation remains responsible for deployed dependency assets.
+  - Tracked global loader owners separately from CommonJS `module` owners so static or computed require aliases are recognized without treating ordinary `globalThis` property access as loader provenance.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, and `test-runner` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - A recognized loader call's own literal specifier does not make its other arguments safe; continue AST traversal inside every argument subtree.
+  - Trusted dependency roots need both canonical filesystem identity and every validated lexical root identity; package policy consumes all aliases, while deployment size consumes each canonical target once.
+  - A package symlink can target ordinary in-project code outside `node_modules`; preserve its lexical package identity for policy even when canonical classification treats the target as application code.
+  - Loader-factory calls can contain executable loads inside the callee expression, not only the outer call arguments.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Track or reject derived global-owner aliases such as `globalThis.global` and `{ global: runtimeGlobal } = globalThis`.
+  - Traverse loader-factory callees after the same sequence/assignment unwrapping used for loader recognition.
+  - Treat global loader owners as tracked provenance so aggregate, wrapper, return, and unsupported assignment flows fail closed.
+- Next iteration start:
+  - Resume US-037 test-first with the three targeted-review blocker areas, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-10 18:21:19 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the three remaining boundary blockers: static `.global` and supported object-destructured global loader-owner aliases now retain provenance, global owners fail closed through aggregate/wrapper/return/unsupported assignment flows, and assignment/sequence-wrapped loader-factory callees are traversed for nested executable loads.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|loader-factory arguments|global loader owner"` before implementation (fail as expected: 6 regressions exposed derived global-owner aliases, wrapped factory-callee traversal, and unsupported global-owner flows)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "createRequire factories|loader-factory arguments|global loader owner"` after implementation (pass, 6 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` before review (pass, 200 tests)
+  - Focused review regressions for builtin-module lookup, throw/catch provenance, discarded loader-callee operands, lexical trace aliases, and project-to-dependency package authority before remediation (fail as expected: 5 architecture assertions and 2 trace assertions exposed all four merged areas)
+  - Focused review regressions after remediation (pass, 7 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review fixes (pass, 204 tests)
+  - Changed-file `npx prettier --check` and `git diff --check && git diff --cached --check` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` after review fixes (pass, 1006 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037, exhausting the two-agent story budget, and the remaining work consisted of exact prior-review findings with focused regressions
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed four initial merged medium areas; targeted QA found none, but targeted code and security review found three remaining merged medium blockers: inline/aliased/`call`/`apply` `process.getBuiltinModule` forms do not retain or reject namespace provenance completely, assignment/comma operands inside loader `call`/`apply` receivers are not traversed, and a package symlink targeting the project can still erase its `node_modules/pvpoke` identity
+- Decisions (why):
+  - Reused one global-owner predicate in alias discovery and fail-closed provenance checks so static `.global` chains, supported object destructuring, loader extraction, and unsupported-flow rejection cannot drift.
+  - Traversed the assignment/sequence-unwrapped factory callee instead of adding special cases for individual wrappers, matching the existing loader-binding semantics while preserving nested argument discovery.
+  - Treated `process.getBuiltinModule(...)` as an explicit builtin lookup boundary: literal Node module authorities are modeled, while computed IDs fail closed rather than guessing provenance.
+  - Preserved ordinary in-project symlink aliases for policy but rejected project-to-dependency symlinks when the traced path cannot retain the dependency package identity; canonical targets remain the only source for file counts and bytes.
+  - Stopped without further remediation or commit because Ralph permits only one targeted re-review after substantive fixes and unresolved medium findings after that pass must block the story.
+  - Testing decision: classified the change as a security-boundary bug fix, required test-first coverage, observed the focused regressions fail for the expected omissions, then implemented the minimal provenance and traversal changes needed for them to pass.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - Global loader-owner provenance includes derived static `.global` references and supported variable object destructuring; it is not limited to direct `globalThis` or `global` identifier aliases.
+  - Loader-factory argument traversal must unwrap the callee through the same comma and plain-assignment expressions used for loader binding or nested executable loads can be omitted.
+  - `process.getBuiltinModule('module')` provides the same `createRequire` namespace authority as an import or CommonJS load; computed builtin-module IDs are unresolved executable loads.
+  - Loader provenance can escape through `throw`/`catch` just as through return/yield, so thrown tracked values must fail closed when catch-value flow is not modeled.
+  - Route policy consumes canonical targets plus every in-project lexical alias; a project symlink into dependencies must be rejected when its package authority cannot be proven.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Model or reject direct inline, aliased, destructured, and supported `call`/`apply` `process.getBuiltinModule` namespace sources while preserving computed-ID fail-closed behavior.
+  - Traverse assignment/comma operands inside recognized loader `call`/`apply` receivers before returning from indirect-loader handling.
+  - Preserve or reject `node_modules/<package>` identity when an in-project trace alias passes through a package symlink whose canonical target is also inside the project.
+- Next iteration start:
+  - Resume US-037 test-first with the three targeted-review blocker areas, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-10 18:49:41 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the three recorded review blockers: direct, aliased, destructured, and supported `call`/`apply` `process.getBuiltinModule` sources now retain Node module namespace provenance; indirect loader receivers traverse assignment/comma operands; and project-local trace aliases retain validated intermediate package identity when a package symlink targets the project.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "follows createRequire factories|traverses executable loads inside loader-factory arguments"` and `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "dependency symlink targets the project"` before implementation (fail as expected: five builtin-module variants and two receiver dependencies were omitted, and the project alias erased `node_modules/pvpoke` authority)
+  - The same focused regression commands after implementation (pass, 3 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 204 tests)
+  - Changed-file `npx prettier --write` and `npx prettier --check` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 1006 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037, exhausting the two-agent story budget, and the remaining work consisted of exact prior-review findings with focused regressions
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer`, `qa-expert`, and `security-engineer` re-review
+  - Findings: fixed four initial medium findings across two merged blocker areas, but the single targeted re-review found two remaining merged medium blockers: tracked CommonJS variants do not establish `node:process` owner provenance, and computed access on an inline builtin-module namespace is not rejected
+- Decisions (why):
+  - Extended the existing AST provenance sets to model supported builtin-module factory aliases instead of introducing a parallel parser, keeping namespace, loader, and fail-closed handling consistent.
+  - Traversed only assignment/comma operands and nested calls inside recognized indirect-loader receivers so direct loader identifiers are not incorrectly treated as unsupported wrapper escapes.
+  - Retained validated intermediate package paths as policy authority while continuing to report and count the canonical file once, preserving both vendor detection and exact deployment bytes.
+  - Modeled supported process-owner forms rather than rejecting ordinary `process` APIs, while limiting tracked property provenance to `getBuiltinModule` and unknown computed members so `process.cwd()` and similar runtime code remain valid.
+  - Rejected a trusted dependency root when its canonical target is the filesystem root or contains the canonical project because such a root can authorize arbitrary external files and misclassify route code as dependencies.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, and `test-runner` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - `process.getBuiltinModule` is a loader factory authority, so aliases and destructured bindings must participate in the same fixed-point provenance analysis as `createRequire`.
+  - An NFT trace can name a project alias whose symlink target enters `node_modules/<package>` and then returns to project code through a package symlink; preserve that validated intermediate package path for policy checks.
+  - `node:process` default, namespace, named, dynamic, import-equals, and CommonJS bindings can all expose `getBuiltinModule`; process-owner and factory provenance must be fixed-point data and must not cross exports.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Resolve `node:process` namespace loads through the existing tracked CommonJS loader machinery, including `module.require`, loader aliases, destructuring, and supported `call`/`apply`, then add inline and exported producer/consumer regressions.
+  - Reject computed members whenever the receiver satisfies the complete module-namespace predicate, including inline `process.getBuiltinModule('module')[member]` expressions.
+- Next iteration start:
+  - Resume US-037 test-first with the two targeted-review blocker areas, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-10 19:18:37 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the final two recorded boundary blockers plus two fresh-review findings: `node:process` namespaces retain owner provenance through CommonJS loaders and literal `process.getBuiltinModule('process')` results, computed members are rejected against complete inline namespace predicates, and chained dependency symlinks retain every intermediate package authority identity.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "supported process bindings|exported CommonJS process namespace"` before implementation (fail as expected: inline and destructured tracked CommonJS process loads omitted dependencies)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "unresolved executable module load"` before implementation (fail as expected: the computed inline namespace member was accepted)
+  - The same focused regressions after implementation (pass, 71 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 209 tests)
+  - Changed-file `npx prettier --write` and `npx prettier --check` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 1011 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check && git diff --cached --check` (pass before final staging)
+  - Fresh-review regressions for builtin process namespaces and chained dependency symlinks before remediation (fail as expected: two process-owner cases omitted dependencies, one exported namespace escaped, and the intermediate `node_modules/pvpoke` authority was absent)
+  - The same focused review regressions after remediation (pass, 3 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` after review fixes (pass, 211 tests)
+  - Changed-file `npx prettier --check`, `npx tsc --noEmit`, and `npm run lint` after review fixes (pass)
+  - `npm test` after review fixes (pass, 1013 tests)
+  - `npm run build` after review fixes (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` after review fixes (pass; unchanged 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037, exhausting the two-agent story budget, and the remaining work consisted of two exact prior-review findings with focused regressions
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer` and `security-engineer` re-review
+  - Findings: QA found none; fixed two initial merged medium blocker areas, but the single targeted re-review found three remaining medium blockers: fully inline recursive process chains are rejected instead of extracted, lexical dependency-root aliases can hide chained package identities, and dot-segment symlink targets can erase intermediate package authority
+- Decisions (why):
+  - Extended the existing process-namespace predicate chain instead of introducing a parallel parser so CommonJS aliases, `module.require`, destructuring, and indirect invocation retain one fixed-point source of truth.
+  - Rejected computed members against the complete Node module namespace predicate rather than only identifier-backed namespaces, closing inline builtin-module access without rejecting ordinary static members.
+  - Classified literal `process.getBuiltinModule('process')` results as process owners through the same recursive predicate, preserving chained `getBuiltinModule('module')` dependency extraction and exported-provenance rejection.
+  - Recursively followed only symlink-derived authority paths that remain under trusted lexical dependency roots and resolve to the same canonical traced file, retaining intermediate package identities without weakening containment or byte deduplication.
+  - Testing decision: classified the change as a security-boundary bug fix, required test-first coverage, observed the focused regressions fail for the expected omissions, then implemented the minimal shared-predicate changes needed for them to pass.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, `code-formatter`, and `test-runner` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - A `node:process` value returned by any recognized CommonJS loader is process-owner provenance even when consumed inline or destructured before assignment.
+  - A literal `process.getBuiltinModule('process')` result is also process-owner provenance and may expose another `getBuiltinModule` call.
+  - Computed-member rejection must evaluate the complete namespace expression, not only identifiers already present in the namespace set.
+  - Dependency package identity can occur at any hop in a chained symlink; retain each trusted intermediate authority path while counting the final canonical file once.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - `US-037` remains `passes: false`; no commit was created because blocking medium findings remain after the single targeted re-review.
+  - Thread the complete recursive process-namespace predicate through CommonJS loader recognition and add a fully inline `process.getBuiltinModule('process').getBuiltinModule('module').createRequire(...)` dependency regression, including supported `call`/`apply` forms.
+  - Project canonical dependency paths into every matching lexical trusted-root alias before recursive symlink traversal so intermediate package identities survive a symlinked `node_modules` root.
+  - Preserve symlink target components through physical resolution instead of lexically collapsing `..` before preceding symlinks resolve; add an `alias -> pvpoke/../runtime` regression that must retain `node_modules/pvpoke` authority.
+- Next iteration start:
+  - Resume US-037 test-first with the three targeted-review blocker areas, rerun all checks, and begin a fresh staged review loop.
+---
+
+## 2026-08-10 19:45:18 MST - US-037
+- Resumed the staged deployment-contract candidate and closed the three recorded boundary blockers: fully inline recursive builtin process/module loader chains now preserve dependency extraction, canonical dependency paths are projected through every lexical trusted-root alias before symlink traversal, and symlink target dot segments resolve physically without erasing intermediate package authority.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "fully inline recursive process namespace loaders"` before implementation (fail as expected: the inline literal dependency was rejected as an unresolved load)
+  - `npx vitest run lib/build/functionTraceAnalyzer.test.ts -t "projects chained package identities|symlink-sensitive dot segments"` before implementation (fail as expected: the lexical `node_modules/pvpoke` authority was absent and lexical normalization resolved the dot-segment target to the wrong path)
+  - The same focused regression commands after implementation (pass, 3 selected tests)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 214 tests)
+  - Changed-file `npx prettier --write` and `npx prettier --check` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 1016 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check && git diff --cached --check` (pass before final staging)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037 in prior iterations, exhausting the two-agent story budget, and the remaining work consisted of three exact prior-review findings with focused regressions
+- Specialist review:
+  - Agents used: pending staged `code-reviewer`, `qa-expert`, and `security-engineer` high-risk review
+  - Findings: pending
+- Decisions (why):
+  - Passed one recursive process-namespace predicate through existing CommonJS loader recognition instead of adding syntax-specific inline exceptions, keeping direct and supported indirect builtin-module forms consistent.
+  - Projected both traced and canonical dependency identities through all matching lexical trusted roots before traversal so a symlinked `node_modules` root cannot hide package aliases that exist in its canonical tree.
+  - Resolved link-target components with a cycle-safe physical walk so `..` is applied after preceding symlinks; retained intermediate package markers for vendor policy while canonical files remain the sole source for counts and bytes.
+  - Testing decision: classified the changes as security-boundary bug fixes, required test-first coverage, observed all three regressions fail for the expected omissions, then implemented the minimal shared predicate and physical traversal needed for them to pass.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - A recursive `process.getBuiltinModule('process')` result must participate in loader recognition, not only provenance checks, or a later inline `createRequire` call is rejected before its literal dependency can be extracted.
+  - Lexical path normalization is not a substitute for filesystem resolution: `pvpoke/../runtime` can reach a different directory when `pvpoke` is itself a symlink.
+  - Canonical trusted-root identity and every lexical root alias must seed the same symlink authority traversal so package policy cannot depend on which equivalent NFT path Next.js emits.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+- Next iteration start:
+  - Complete the fresh staged high-risk specialist review, address any blocking findings within the one allowed targeted re-review, then mark US-037 passed and commit.
+---
+
+## 2026-08-10 22:38:05 MST - US-037
+- Completed the fresh staged high-risk review and fixed its only blocking finding by failing closed on static `process.mainModule` loader provenance, preventing `process.mainModule.require(...)` from escaping the route-rooted runtime dependency graph.
+- Files changed: `next.config.ts`, `lib/AGENTS.md`, `lib/architecture/pvpokeRuntimeBoundary.ts`, `lib/architecture/pvpokeRuntimeBoundary.test.ts`, `lib/build/runtimeFunctionAssets.ts`, `lib/build/runtimeFunctionAssets.test.ts`, `lib/build/functionTraceAnalyzer.ts`, `lib/build/functionTraceAnalyzer.test.ts`, `lib/build/fixtures/functionTrace/valid/data/moves.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/ordered.js.nft.json`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/generate-team/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/pokemon-list/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js`, `lib/build/fixtures/functionTrace/valid/.next/server/app/api/team-details/route.js.nft.json`, `lib/genetic/moveset.ts`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `progress.txt`
+- Commit message: `feat: US-037 - Guard assignment authority deployment and documentation contracts`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts -t "process mainModule loader provenance"` before remediation (fail as expected: `process.mainModule.require(...)` was omitted)
+  - The same focused regression after remediation (pass, 1 selected test)
+  - `npx vitest run lib/architecture/pvpokeRuntimeBoundary.test.ts lib/build/runtimeFunctionAssets.test.ts lib/build/functionTraceAnalyzer.test.ts lib/genetic/moveset.test.ts app/api/team-details/route.test.ts` (pass, 215 tests)
+  - Changed-file `npx prettier --check` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 1017 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass; generate-team 122 files and 19,058,698 bytes; both route plans and 100 MiB budgets validated; 8 unique snapshots total 12,019,584 bytes under the 50 MiB budget)
+  - `git diff --check && git diff --cached --check` (pass before final restaging)
+- Implementation agents:
+  - Recommended: `build-engineer`, `documentation-engineer`
+  - Used: skipped in this resumed iteration because both recommended agents already advised US-037 in prior iterations, exhausting the two-agent story budget, and this iteration resumed at the pending review gate
+- Specialist review:
+  - Agents used: fresh staged `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `security-engineer` re-review
+  - Findings: code and QA review found none; fixed one medium security finding by rejecting static `process.mainModule` loader provenance; targeted security re-review found none
+- Decisions (why):
+  - Failed closed on `process.mainModule` rather than modeling its deprecated mutable module object because exact inter-module loader provenance cannot be established safely and the runtime boundary must not omit dependencies.
+  - Added the regression to the existing unresolved executable-load matrix so it exercises the public route-graph boundary rather than a private helper.
+  - Testing decision: classified the change as a security-boundary bug fix, required test-first coverage, observed the focused regression fail for the expected omission, then implemented the minimal tracked-provenance rule needed for it to pass.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - A tracked process namespace exposes loader provenance through deprecated `mainModule` as well as `getBuiltinModule`; unsupported loader-bearing process properties must fail closed.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+- Next iteration start:
+  - All PRD stories are complete and passing.
 ---

@@ -301,28 +301,40 @@ format, manifest policy, source digests, active digest, dictionary bounds,
 defaults, variants, rating bounds, and missing-value sentinels before caching any
 format. It fails closed and never falls back to manifests or simulation CSVs.
 
-Next.js output tracing uses the battle-format catalog to include exactly one
-compact snapshot per supported format. Source simulation CSVs, full manifests,
-and the runtime asset index remain checked-in tooling evidence but are excluded
-from `/api/generate-team`'s generated NFT trace. The deployment budgets are:
+Next.js output tracing uses exact battle-format catalog assets for both
+`/api/generate-team` and `/api/team-details`. Broad includes such as `data/**`,
+`data/**/*.json`, and `data/**/*.csv` are prohibited. Generate-team includes one
+compact snapshot and all seven ranking categories per supported format plus
+Pokemon, move, and type-effectiveness data. Team-details includes one compact
+snapshot and only the Overall ranking per format plus Pokemon and move data.
+Source simulation CSVs, full manifests, the runtime asset index, inactive
+evidence, and PvPoke vendor JavaScript remain excluded from both generated NFT
+traces. Each function is limited to `100 MiB` uncompressed, and the unique traced
+compact snapshot set is limited to `50 MiB` uncompressed.
 
-- `200 MiB` uncompressed for the active-CSV transition trace.
-- `100 MiB` uncompressed for the final compact-snapshot function trace.
-- `50 MiB` uncompressed for all traced compact snapshots combined.
+The trace analyzer enforces both route plans and budgets. This design must not
+enable, require, or depend on `VERCEL_SUPPORT_LARGE_FUNCTIONS` or any equivalent
+Vercel Large Functions setting. Optimizer matchup lookups remain synchronous
+after one format preparation and do not issue per-matchup network, database, KV,
+or object-storage requests.
 
-The compact-snapshot budgets are enforced by the trace analyzer. This design
-must not enable, require, or depend on `VERCEL_SUPPORT_LARGE_FUNCTIONS` or any
-equivalent Vercel Large Functions setting. Optimizer matchup lookups must remain
-synchronous after one format preparation and must not issue per-matchup network,
-database, KV, or object-storage requests.
+When moveset variant simulation is disabled, resolution returns ranked defaults
+for the complete roster. When enabled, assignment authority is per species: a
+snapshot-supported species remains manifest-backed, while only a species that
+raises an unqualified `variant-unavailable` result for the same format and
+species receives a `ranked-default-fallback`. One roster can therefore contain
+both authorities. Manifest variants, including manifest defaults, use qualified
+snapshot lookups; ranked-default fallbacks use unqualified default lookups.
 
-When moveset variant simulation is disabled, or at an assignment-only boundary
-where a manifest is intentionally absent, resolution returns one
-`ranked-default-fallback` assignment for the complete roster. That fallback does
-not scan variant files or activate alternates. Snapshot-backed scoring still
-fails closed when its snapshot is missing or incompatible and never falls back
-to manifests or CSVs. Malformed, incompatible, incomplete, or explicitly
-unavailable manifest data remains an actionable typed error in sync and tooling.
+Returned assignments pass structural and fingerprint validation before
+`/api/team-details` authenticates each authority against repository-owned data.
+A manifest claim must match the prepared snapshot policy and one complete active
+variant. A fallback claim must match the current Overall ranking moveset,
+canonical variant identity, default status, and fallback policy. Snapshot data is
+prepared only when at least one species claims manifest authority. Missing,
+malformed, incompatible, incomplete, or unprepared snapshots, mismatched
+species, and unavailable specific variants fail closed; they never trigger
+fallback or runtime loading from manifests or CSVs.
 
 ## Atomic Publication And Stale Cleanup
 
@@ -388,18 +400,21 @@ npx tsc --noEmit
 ```
 
 Build the production application, then inspect and validate the canonical
-`/api/generate-team` Next.js NFT trace with:
+`/api/generate-team` and `/api/team-details` Next.js NFT traces with:
 
 ```bash
 npm run build
 npm run analyze:generate-team-trace
 ```
 
-The analyzer reports deterministic unique file counts, uncompressed byte totals
-by asset category, and the largest traced files. It exits non-zero for missing or
-malformed traces, unauthorized runtime data, missing required snapshots,
-simulation CSV or manifest leakage, or either compact-snapshot size-budget
-violation.
+The command retains its original name but validates the canonical generate-team,
+team-details, and pokemon-list route traces. Its JSON report remains focused on
+generate-team and contains deterministic unique file counts, uncompressed byte
+totals by asset category, and the largest files. It exits non-zero if a required
+trace is missing or malformed, contains unauthorized runtime data, omits required
+snapshots, includes simulation CSVs, full manifests, the tooling index, or PvPoke
+vendor assets, exceeds the per-function `100 MiB` limit, or pushes the unique
+snapshot set above `50 MiB`.
 
 Local PvPoke engine JavaScript executes only inside isolated sync/tooling
 workflows. Runtime application, component, and optimizer code consume only
