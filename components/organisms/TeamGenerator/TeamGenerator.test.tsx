@@ -21,8 +21,6 @@ describe('TeamGenerator', () => {
         mode="GBL"
         pokemonList={['Marowak', 'Marowak (Shadow)', 'Azumarill']}
         selectedFormatId="great-league"
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={() => {}}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
       />,
@@ -61,8 +59,6 @@ describe('TeamGenerator', () => {
         mode="GBL"
         pokemonList={['Azumarill']}
         selectedFormatId="great-league"
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={() => {}}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
       />,
@@ -77,8 +73,6 @@ describe('TeamGenerator', () => {
         mode="PlayPokemon"
         pokemonList={['Azumarill']}
         selectedFormatId="great-league"
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={() => {}}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
       />,
@@ -90,48 +84,22 @@ describe('TeamGenerator', () => {
     expect(screen.queryByText(/fitness mode/i)).not.toBeInTheDocument();
   });
 
-  it('renders moveset options after exclusions with a divider', () => {
-    const onSimulateMovesetVariantsChange = vi.fn();
-
+  it('does not render moveset variation controls', () => {
     render(
       <TeamGenerator
         mode="PlayPokemon"
         pokemonList={['Azumarill']}
         selectedFormatId="great-league"
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={onSimulateMovesetVariantsChange}
         onAnchorsChange={() => {}}
         onExclusionsChange={() => {}}
       />,
     );
 
-    const exclusionsHeading = screen.getByRole('heading', {
-      name: 'Exclude Pokémon (Optional)',
-    });
-    const movesetHeading = screen.getByRole('heading', {
-      name: 'Moveset Options',
-    });
-    const divider = screen.getByRole('separator');
-    const toggle = screen.getByRole('switch', {
-      name: 'Simulate moveset variants',
-    });
-
     expect(
-      screen.getByText(
-        'Allow simulation-backed movesets instead of the default moveset.',
-      ),
-    ).toBeInTheDocument();
-
-    expect(exclusionsHeading.compareDocumentPosition(divider)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(divider.compareDocumentPosition(movesetHeading)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(toggle).toHaveAttribute('aria-checked', 'false');
-
-    fireEvent.click(toggle);
-
-    expect(onSimulateMovesetVariantsChange).toHaveBeenCalledWith(true);
+      screen.queryByRole('heading', { name: 'Moveset Options' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('switch', { name: 'Simulate moveset variants' }),
+    ).not.toBeInTheDocument();
   });
 });

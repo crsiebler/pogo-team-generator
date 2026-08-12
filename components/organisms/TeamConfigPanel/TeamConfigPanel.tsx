@@ -21,8 +21,6 @@ interface TeamConfigPanelProps {
   onFormatChange: (formatId: BattleFormatId) => void;
   mode: TournamentMode;
   onModeChange: (mode: TournamentMode) => void;
-  simulateMovesetVariants: boolean;
-  onSimulateMovesetVariantsChange: (enabled: boolean) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onExclusionsChange: (exclusions: string[]) => void;
   onGenerate: () => void;
@@ -36,8 +34,6 @@ export function TeamConfigPanel({
   onFormatChange,
   mode,
   onModeChange,
-  simulateMovesetVariants,
-  onSimulateMovesetVariantsChange,
   onAnchorsChange,
   onExclusionsChange,
   onGenerate,
@@ -137,8 +133,6 @@ export function TeamConfigPanel({
         mode={mode}
         pokemonList={pokemonList}
         selectedFormatId={selectedFormatId}
-        simulateMovesetVariants={simulateMovesetVariants}
-        onSimulateMovesetVariantsChange={onSimulateMovesetVariantsChange}
         onAnchorsChange={handleAnchorsChange}
         onExclusionsChange={handleExclusionsChange}
       />

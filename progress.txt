@@ -1,6 +1,7 @@
 ## Codebase Patterns
 - Default-only simulation publication projects each ranking-derived candidate set to exactly one ranked default before both simulation and manifest preparation, fails before simulation when a synchronized species lacks that authority, rejects prepared CSVs not declared by the prepared manifests, and rechecks stale cleanup targets as regular files immediately before unlink; explicit variant mode retains the bounded full candidate sets.
 - Moveset variant simulation is opt-in across sync tooling: normalize omitted `includeMovesetVariants` to `false` at the simulation boundary, expose variants only through `--moveset-variants`, keep projection read-only while reporting the selected mode, and reject unknown CLI arguments before any sync work starts.
+- Product UI generation remains ranked-default-only: keep moveset-variation state, props, request fields, and controls out of `TeamManager`, `TeamConfigPanel`, and `TeamGenerator`; retain the backend default-false option and reusable `Switch` atom for programmatic or unrelated use.
 - `RosterMovesetAssignment` authority is per species in `authorityBySpeciesId`; its keys must exactly match the canonical assigned roster and variant map, every authority belongs in the fingerprint, manifest defaults use qualified simulation lookups, and ranked-default fallbacks remain unqualified through `getAssignedMovesetVariantId(...)`.
 - Returned assignments require two gates before projection: structural parsing/fingerprint validation, then repository-authority validation. Prepare compact snapshots only when a species claims manifest authority, require exact policy and complete active-variant equality, compare fallback species with current format rankings, and propagate snapshot integrity failures without fallback.
 - Variant-enabled resolution may use a per-species ranked default only when `MovesetVariantSimulationDataError` is an unqualified `variant-unavailable` failure matching the current format and canonical species; singleton fallback slots preserve assignment bounds, while missing or corrupt authority and mismatched/specific-variant failures propagate.
@@ -2780,4 +2781,39 @@
   - US-041 remains responsible for running default sync against checked-in data and removing prior variant-qualified CSVs through this tested cleanup boundary.
 - Next iteration start:
   - US-040 - Hide moveset variation from team configuration
+---
+
+## 2026-08-11 19:46:52 MST - US-040
+- Removed the Moveset Options section and simulation switch from Team Configuration, deleted moveset-variation state and prop plumbing across `TeamManager`, `TeamConfigPanel`, and `TeamGenerator`, and omitted the experimental option from normal frontend generation requests while retaining backend default-false support and the reusable `Switch` atom.
+- Files changed: `components/AGENTS.md`, `components/organisms/TeamGenerator/TeamGenerator.tsx`, `components/organisms/TeamGenerator/TeamGenerator.test.tsx`, `components/organisms/TeamConfigPanel/TeamConfigPanel.tsx`, `components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx`, `components/organisms/TeamManager/TeamManager.tsx`, `components/organisms/TeamManager/TeamManager.test.tsx`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-040 - Hide moveset variation from team configuration`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run components/organisms/TeamGenerator/TeamGenerator.test.tsx components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx components/organisms/TeamManager/TeamManager.test.tsx` before implementation (fail as expected: 3 tests exposed the rendered control, forwarded props, and request option)
+  - `npx vitest run components/organisms/TeamGenerator/TeamGenerator.test.tsx components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx components/organisms/TeamManager/TeamManager.test.tsx app/api/generate-team/route.test.ts` (pass, 48 tests)
+  - `npx prettier --write "components/organisms/TeamGenerator/TeamGenerator.tsx" "components/organisms/TeamGenerator/TeamGenerator.test.tsx" "components/organisms/TeamConfigPanel/TeamConfigPanel.tsx" "components/organisms/TeamConfigPanel/TeamConfigPanel.test.tsx" "components/organisms/TeamManager/TeamManager.tsx" "components/organisms/TeamManager/TeamManager.test.tsx"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 1,037 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - Browser verification at 1440x1000 and 390x844 (pass: control absent, layout intact, mobile generation completed, request omitted `simulateMovesetVariants`; pre-existing favicon 404 only)
+- Implementation agents:
+  - Recommended: `react-specialist`, `accessibility-tester`
+  - Used: `react-specialist`; skipped `accessibility-tester` because the standard-mode one-agent budget and direct accessibility-tree verification covered the removal without adding a second overlapping implementation advisor
+- Specialist review:
+  - Agents used: `code-reviewer`, `qa-expert`, `ui-designer`, and `ux-researcher`
+  - Findings: none; all four reviewers returned empty actionable finding lists, so no targeted re-review was required
+- Decisions (why):
+  - Removed the feature-specific client contract completely instead of hiding JSX so normal UI code cannot accidentally enable the experimental path.
+  - Retained route parsing, optimizer options, route tests, and the `Switch` export because programmatic experiments and unrelated controls remain supported with default-false behavior.
+  - Combined component-level absence assertions with a real browser network inspection so both rendered behavior and the actual serialized request boundary are covered.
+- **Learnings for future iterations:**
+  - Feature removal should delete state and prop plumbing at every client layer, not only remove the visible control.
+  - The frontend can omit an optional generation option and rely on the route's independently tested default, keeping UI policy separate from backend experimental capability.
+- Known issues / follow-ups:
+  - The unrelated existing `tasks/prd-deterministic-moveset-variants.md` modification remains unstaged and is not part of US-040.
+  - The existing multiple-lockfile workspace-root warning remains during production builds, and local browser checks continue to report the pre-existing missing favicon 404.
+- Next iteration start:
+  - US-041 - Regenerate and document the default-only dataset
 ---

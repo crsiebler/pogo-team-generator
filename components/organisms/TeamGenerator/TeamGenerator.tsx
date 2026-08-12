@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
-import { Switch } from '@/components/atoms';
 import { AutocompleteInput, PokemonTag } from '@/components/molecules';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
@@ -12,8 +11,6 @@ interface TeamGeneratorProps {
   mode: TournamentMode;
   pokemonList: string[];
   selectedFormatId: BattleFormatId;
-  simulateMovesetVariants: boolean;
-  onSimulateMovesetVariantsChange: (enabled: boolean) => void;
   onAnchorsChange: (anchors: string[]) => void;
   onExclusionsChange: (exclusions: string[]) => void;
 }
@@ -21,8 +18,6 @@ interface TeamGeneratorProps {
 export function TeamGenerator({
   mode,
   pokemonList,
-  simulateMovesetVariants,
-  onSimulateMovesetVariantsChange,
   onAnchorsChange,
   onExclusionsChange,
 }: TeamGeneratorProps) {
@@ -221,26 +216,6 @@ export function TeamGenerator({
           </div>
         )}
       </div>
-
-      <hr className="my-6 border-gray-200 dark:border-gray-700" />
-
-      <section aria-labelledby="moveset-options-heading">
-        <h3
-          id="moveset-options-heading"
-          className={clsx(
-            'mb-3 block text-sm font-semibold',
-            'text-gray-800 dark:text-gray-300',
-          )}
-        >
-          Moveset Options
-        </h3>
-        <Switch
-          checked={simulateMovesetVariants}
-          onChange={onSimulateMovesetVariantsChange}
-          label="Simulate moveset variants"
-          description="Allow simulation-backed movesets instead of the default moveset."
-        />
-      </section>
     </div>
   );
 }

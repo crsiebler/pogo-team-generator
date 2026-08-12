@@ -18,6 +18,8 @@ For Battle Frontier Master anchor UX, keep the live point meter in `TeamGenerato
 
 Lineup-aware generation is the only frontend generation path. Do not add `FitnessAlgorithm` props, state, request fields, or algorithm-selection copy to `TeamManager`, `TeamConfigPanel`, or `TeamGenerator`.
 
+Moveset variant simulation is tooling and programmatic API functionality only. Do not add moveset-variation props, state, request fields, or controls to `TeamManager`, `TeamConfigPanel`, or `TeamGenerator`; normal client generation relies on the API's default-false behavior.
+
 Lineup-aware result UI should pass `recommendedLineups` from the generate-team response through `TeamManager` into `AnalysisPanel`; frontend adapters should display these diagnostics in the analysis column rather than recomputing lineup scoring or rendering them inside generated-team cards.
 
 Keep the scored `RosterMovesetAssignment` in `TeamManager` result state and pass it unchanged through `ResultsPanel` and `TeamDisplay` to `/api/team-details`; client components must not derive or select replacement movesets.

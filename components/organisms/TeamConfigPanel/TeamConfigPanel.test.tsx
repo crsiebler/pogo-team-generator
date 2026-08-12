@@ -39,8 +39,6 @@ describe('TeamConfigPanel', () => {
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
         onGenerate={vi.fn()}
@@ -71,8 +69,6 @@ describe('TeamConfigPanel', () => {
         onFormatChange={onFormatChange}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
         onGenerate={vi.fn()}
@@ -95,8 +91,6 @@ describe('TeamConfigPanel', () => {
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
         onGenerate={vi.fn()}
@@ -116,8 +110,6 @@ describe('TeamConfigPanel', () => {
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
         onGenerate={vi.fn()}
@@ -138,8 +130,6 @@ describe('TeamConfigPanel', () => {
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
         onGenerate={vi.fn()}
@@ -159,8 +149,6 @@ describe('TeamConfigPanel', () => {
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
         onGenerate={vi.fn()}
@@ -172,7 +160,7 @@ describe('TeamConfigPanel', () => {
     expect(screen.queryByText('Mode Selector')).not.toBeInTheDocument();
   });
 
-  it('does not pass algorithm selection props to TeamGenerator', () => {
+  it('does not pass hidden feature props to TeamGenerator', () => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
@@ -180,8 +168,6 @@ describe('TeamConfigPanel', () => {
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}
-        simulateMovesetVariants={false}
-        onSimulateMovesetVariantsChange={vi.fn()}
         onAnchorsChange={vi.fn()}
         onExclusionsChange={vi.fn()}
         onGenerate={vi.fn()}
@@ -193,5 +179,7 @@ describe('TeamConfigPanel', () => {
 
     expect(propNames).not.toContain('algorithm');
     expect(propNames).not.toContain('onAlgorithmChange');
+    expect(propNames).not.toContain('simulateMovesetVariants');
+    expect(propNames).not.toContain('onSimulateMovesetVariantsChange');
   });
 });

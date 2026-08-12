@@ -721,7 +721,7 @@
         "Verify in browser using dev-browser skill on desktop and mobile viewports."
       ],
       "priority": 40,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @react-specialist, @accessibility-tester. Implementation notes: remove feature-specific client state and prop plumbing, but retain the reusable Switch atom and backend default-false option for future experiments."
     },
     {
