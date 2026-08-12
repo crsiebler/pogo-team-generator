@@ -64,6 +64,7 @@ function createCandidateSet(
 describe('simulation projection', () => {
   it('projects alternate CSVs only for simulation targets with multiple candidates', () => {
     const projection = buildSimulationProjection({
+      includeMovesetVariants: true,
       formats,
       candidateSets: [
         createCandidateSet('quagsire', [
@@ -96,6 +97,7 @@ describe('simulation projection', () => {
       ]),
     });
 
+    expect(projection).toMatchObject({ includesMovesetVariants: true });
     expect(projection.formats).toEqual([
       {
         formatId: 'great-league',
@@ -149,6 +151,7 @@ describe('simulation projection', () => {
       ),
     ];
     const baseInput = {
+      includeMovesetVariants: true,
       formats,
       candidateSets: [createCandidateSet('bounded', candidates)],
       simulationSpeciesIdsByFormatId: new Map([
@@ -217,6 +220,51 @@ describe('simulation projection', () => {
     ).toBeNull();
   });
 
+  it('reports a default-only estimate when moveset variants are omitted', () => {
+    const projection = buildSimulationProjection({
+      includeMovesetVariants: false,
+      formats: [formats[0]!],
+      candidateSets: [
+        createCandidateSet('golisopod', [
+          createVariant('FURY_CUTTER', 'X_SCISSOR', 'AQUA_JET', true),
+          createVariant('SHADOW_CLAW', 'X_SCISSOR', 'AQUA_JET', false),
+        ]),
+      ],
+      simulationSpeciesIdsByFormatId: new Map([
+        ['great-league', ['golisopod']],
+      ]),
+      existingFilenamesByFormatId: new Map([
+        [
+          'great-league',
+          ['golisopod--shadow_claw--x_scissor--aqua_jet_1-1.csv'],
+        ],
+      ]),
+    });
+
+    expect(projection).toEqual({
+      includesMovesetVariants: false,
+      formats: [
+        expect.objectContaining({
+          candidateSpecies: 0,
+          candidateVariants: 0,
+          alternateVariants: 0,
+          shieldScenarioCsvs: 0,
+          species: [],
+          staleVariantFiles: [
+            'data/simulations/cp1500/all/golisopod--shadow_claw--x_scissor--aqua_jet_1-1.csv',
+          ],
+        }),
+      ],
+      totals: {
+        candidateSpecies: 0,
+        candidateVariants: 0,
+        alternateVariants: 0,
+        shieldScenarioCsvs: 0,
+        staleVariantFiles: 1,
+      },
+    });
+  });
+
   it('orchestrates projection exclusively through read-only dependencies', async () => {
     const validateSource = vi.fn();
     const loadRankingData = vi.fn().mockResolvedValue({
@@ -240,13 +288,19 @@ describe('simulation projection', () => {
     expect(readSimulationDirectory).toHaveBeenCalledTimes(
       getBattleFormats().length,
     );
+    expect(projection.includesMovesetVariants).toBe(false);
     expect(projection.formats).toHaveLength(getBattleFormats().length);
   });
 
   it('prints the real projection command as standalone JSON', async () => {
     const { stdout } = await execFileAsync(
       'bun',
-      ['run', 'lib/scripts/sync.ts', '--project-simulations'],
+      [
+        'run',
+        'lib/scripts/sync.ts',
+        '--project-simulations',
+        '--moveset-variants',
+      ],
       {
         cwd: process.cwd(),
         encoding: 'utf8',
@@ -255,9 +309,11 @@ describe('simulation projection', () => {
     );
 
     const projection = JSON.parse(stdout) as {
+      includesMovesetVariants: boolean;
       formats: unknown[];
       totals: { shieldScenarioCsvs: number };
     };
+    expect(projection.includesMovesetVariants).toBe(true);
     expect(projection.formats).toHaveLength(getBattleFormats().length);
     expect(projection.totals.shieldScenarioCsvs).toBeGreaterThan(0);
   }, 20_000);

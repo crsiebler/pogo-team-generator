@@ -52,6 +52,7 @@ export interface SimulationFormatProjection {
 
 /** Aggregate deterministic simulation projection. */
 export interface SimulationProjection {
+  readonly includesMovesetVariants: boolean;
   readonly formats: readonly SimulationFormatProjection[];
   readonly totals: {
     readonly candidateSpecies: number;
@@ -64,6 +65,7 @@ export interface SimulationProjection {
 
 /** Pure inputs for deterministic simulation projection. */
 export interface BuildSimulationProjectionInput {
+  readonly includeMovesetVariants?: boolean;
   readonly formats: readonly BattleFormat[];
   readonly candidateSets: readonly DerivedMovesetCandidateSet[];
   readonly simulationSpeciesIdsByFormatId: ReadonlyMap<
@@ -79,6 +81,7 @@ export interface BuildSimulationProjectionInput {
 /** Optional local source override for read-only projection. */
 export interface SimulationProjectionOptions {
   readonly sourcePath?: string;
+  readonly includeMovesetVariants?: boolean;
 }
 
 interface ProjectionRankingData {
@@ -229,6 +232,7 @@ export function parseVariantSimulationFilename(
 export function buildSimulationProjection(
   input: BuildSimulationProjectionInput,
 ): SimulationProjection {
+  const includesMovesetVariants = input.includeMovesetVariants ?? false;
   const formats = input.formats.map((format): SimulationFormatProjection => {
     const simulationTargets = new Set(
       input.simulationSpeciesIdsByFormatId.get(format.id) ?? [],
@@ -240,6 +244,7 @@ export function buildSimulationProjection(
 
     for (const candidateSet of input.candidateSets) {
       if (
+        !includesMovesetVariants ||
         candidateSet.formatId !== format.id ||
         !simulationTargets.has(candidateSet.speciesId)
       ) {
@@ -323,6 +328,7 @@ export function buildSimulationProjection(
   });
 
   return {
+    includesMovesetVariants,
     formats,
     totals: {
       candidateSpecies: formats.reduce(
@@ -374,6 +380,7 @@ export async function projectSimulationVariants(
   );
 
   return buildSimulationProjection({
+    includeMovesetVariants: options.includeMovesetVariants ?? false,
     formats,
     candidateSets: rankingData.candidateSets,
     simulationSpeciesIdsByFormatId: rankingData.simulationSpeciesIdsByFormatId,

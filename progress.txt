@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Moveset variant simulation is opt-in across sync tooling: normalize omitted `includeMovesetVariants` to `false` at the simulation boundary, expose variants only through `--moveset-variants`, keep projection read-only while reporting the selected mode, and reject unknown CLI arguments before any sync work starts.
 - `RosterMovesetAssignment` authority is per species in `authorityBySpeciesId`; its keys must exactly match the canonical assigned roster and variant map, every authority belongs in the fingerprint, manifest defaults use qualified simulation lookups, and ranked-default fallbacks remain unqualified through `getAssignedMovesetVariantId(...)`.
 - Returned assignments require two gates before projection: structural parsing/fingerprint validation, then repository-authority validation. Prepare compact snapshots only when a species claims manifest authority, require exact policy and complete active-variant equality, compare fallback species with current format rankings, and propagate snapshot integrity failures without fallback.
 - Variant-enabled resolution may use a per-species ranked default only when `MovesetVariantSimulationDataError` is an unqualified `variant-unavailable` failure matching the current format and canonical species; singleton fallback slots preserve assignment bounds, while missing or corrupt authority and mismatched/specific-variant failures propagate.
@@ -2699,4 +2700,45 @@
   - The existing multiple-lockfile workspace-root warning remains during production builds.
 - Next iteration start:
   - All PRD stories are complete and passing.
+---
+
+## 2026-08-11 18:52:53 MST - US-038
+- Added an explicit opt-in moveset variant sync flag, normalized omitted sync options to ranked-default-only simulation mode, introduced testable fail-closed CLI parsing, preserved combined resume and variant operation, and made read-only projection report and apply the selected variant mode.
+- Files changed: `lib/AGENTS.md`, `lib/scripts/sync.ts`, `lib/scripts/syncCommand.ts`, `lib/scripts/sync.test.ts`, `lib/sync/types.ts`, `lib/sync/index.ts`, `lib/sync/index.test.ts`, `lib/sync/simulationProjection.ts`, `lib/sync/simulationProjection.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-038 - Make moveset variant sync explicitly opt-in`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/scripts/sync.test.ts lib/sync/index.test.ts lib/sync/simulationProjection.test.ts` before implementation (fail as expected: missing parser module, omitted false option propagation, and missing projection mode/filtering)
+  - `npx vitest run lib/scripts/sync.test.ts lib/sync/index.test.ts lib/sync/simulationProjection.test.ts` after implementation (pass, 24 tests)
+  - `npx vitest run lib/scripts/sync.test.ts lib/sync/index.test.ts lib/sync/simulationProjection.test.ts lib/sync/simulations.test.ts` (pass, 35 tests)
+  - `npx prettier --write "lib/scripts/sync.ts" "lib/scripts/syncCommand.ts" "lib/scripts/sync.test.ts" "lib/sync/types.ts" "lib/sync/index.ts" "lib/sync/index.test.ts" "lib/sync/simulationProjection.ts" "lib/sync/simulationProjection.test.ts"` (pass; unchanged)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 1031 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+  - `bun run lib/scripts/sync.ts --resuem` (fail as expected with non-zero actionable unknown-option error before sync work)
+  - `npx prettier --check "lib/scripts/sync.ts"`, `npx tsc --noEmit`, `npm run lint`, and focused 24 tests after review fix (pass)
+- Implementation agents:
+  - Recommended: `cli-developer`, `test-automator`
+  - Used: `cli-developer`; skipped `test-automator` because the standard-mode one-agent budget and focused pure parser/orchestration tests made a second overlapping advisor unnecessary
+- Specialist review:
+  - Agents used: initial staged `code-reviewer` and `qa-expert`; targeted `code-reviewer` re-review
+  - Findings: QA found none; fixed one medium code-review finding by documenting npm's required `--` argument separator; targeted re-review found none
+- Decisions (why):
+  - Extracted a pure parser and injected command dispatcher instead of importing the executable script or mutating `process.argv`, allowing CLI behavior and destructive boundaries to be tested directly.
+  - Normalized `includeMovesetVariants` at the `completeSimulationManifestSync(...)` boundary so every normal programmatic sync also defaults false, not only the package script.
+  - Made default projection suppress alternate estimates and report existing recognized variant files as stale, while opt-in projection preserves the existing bounded candidate estimate; both paths retain read-only dependencies.
+  - Deferred default-only candidate simulation, manifest publication, snapshot generation, and cleanup behavior to US-039 rather than changing atomic publication semantics in the CLI-plumbing story.
+  - Testing decision: classified the change as behavioral, required test-first coverage, observed focused failures for every missing contract, then implemented the minimal parser, option propagation, and projection behavior needed for them to pass.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `code-formatter` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - CLI parsing belongs in an import-safe pure module; the executable wrapper should only dispatch parsed `process.argv.slice(2)` and translate failures to a non-zero exit.
+  - Projection mode should express both the selected variant policy and counts consistent with that policy while retaining strict no-write dependencies.
+- Known issues / follow-ups:
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - The pre-existing `tasks/prd-deterministic-moveset-variants.md` revision remains unstaged because Ralph did not create or need to modify it for this story.
+  - US-039 must make `generateSimulations(...)`, manifest/snapshot publication, and stale cleanup honor the new default-only option while preserving the opt-in variant path.
+- Next iteration start:
+  - US-039 - Publish default-only simulation authorities
 ---

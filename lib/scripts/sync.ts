@@ -3,7 +3,8 @@
  *
  * Syncs competitive data from a local PvPoke source into project outputs.
  *
- * Usage: npm run sync [--resume|--project-simulations]
+ * Usage: npm run sync -- [--resume] [--moveset-variants]
+ *        npm run sync -- --project-simulations [--moveset-variants]
  *
  * This script runs the complete sync pipeline:
  * 1. Read Pokemon and Moves JSON from local PvPoke source
@@ -13,34 +14,11 @@
  *
  * Output: Updated data files in data/ directory
  */
-import { runSync } from '@/lib/sync';
-import {
-  formatSimulationProjection,
-  projectSimulationVariants,
-} from '@/lib/sync/simulationProjection';
-
-const resume = process.argv.includes('--resume');
-const projectSimulations = process.argv.includes('--project-simulations');
+import { runSyncCommand } from '@/lib/scripts/syncCommand';
 
 async function main(): Promise<void> {
   try {
-    if (projectSimulations) {
-      if (resume) {
-        throw new Error(
-          '--project-simulations is read-only and cannot be combined with --resume',
-        );
-      }
-      const projection = await projectSimulationVariants();
-      process.stdout.write(formatSimulationProjection(projection));
-      return;
-    }
-
-    console.log('Starting PvPoke data sync...');
-    if (resume) {
-      console.log('Resume mode enabled: keeping existing simulation CSV files');
-    }
-    await runSync({ resume });
-    console.log('Sync completed successfully.');
+    await runSyncCommand(process.argv.slice(2));
   } catch (error) {
     console.error('Sync failed:', error);
     process.exit(1);

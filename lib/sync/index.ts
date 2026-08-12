@@ -96,6 +96,7 @@ export async function completeSimulationManifestSync(
 
   const simulationResult = await resolvedDependencies.generate({
     ...input.options,
+    includeMovesetVariants: input.options.includeMovesetVariants ?? false,
     sourcePath: input.sourcePath,
     forceRegenerateFormatIds: new Set(
       input.rankingSyncResult.formatsWithChangedOverallRankings,

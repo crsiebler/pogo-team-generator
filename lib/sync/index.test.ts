@@ -19,6 +19,45 @@ const input: CompleteSimulationManifestSyncInput = {
 };
 
 describe('completeSimulationManifestSync', () => {
+  it('normalizes moveset variant simulation to opt-in', async () => {
+    const generate = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('default options captured'))
+      .mockRejectedValueOnce(new Error('variant options captured'));
+    const dependencies = {
+      crossValidate: () => ({ valid: true, errors: [] }),
+      generate,
+    };
+
+    await expect(
+      completeSimulationManifestSync(input, dependencies),
+    ).rejects.toThrow('default options captured');
+    await expect(
+      completeSimulationManifestSync(
+        {
+          ...input,
+          options: { resume: true, includeMovesetVariants: true },
+        },
+        dependencies,
+      ),
+    ).rejects.toThrow('variant options captured');
+
+    expect(generate).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        resume: true,
+        includeMovesetVariants: false,
+      }),
+    );
+    expect(generate).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        resume: true,
+        includeMovesetVariants: true,
+      }),
+    );
+  });
+
   it('does not simulate or publish after cross-validation failure', async () => {
     const generate = vi.fn();
     const prepare = vi.fn();

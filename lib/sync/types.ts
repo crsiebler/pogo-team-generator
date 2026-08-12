@@ -14,6 +14,7 @@ export interface SyncConfig {
 export interface SyncRunOptions {
   resume?: boolean;
   sourcePath?: string;
+  includeMovesetVariants?: boolean;
 }
 
 export interface PokemonData {
