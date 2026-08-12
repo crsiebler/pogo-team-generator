@@ -14,7 +14,11 @@ import {
   readRuntimeSimulationSnapshotSource,
 } from './runtimeSimulationSnapshots';
 import { deleteStaleVariantSimulationFiles } from './simulationCleanup';
-import { generateSimulations, type SimulationSyncResult } from './simulations';
+import {
+  generateSimulations,
+  selectSimulationCandidateSets,
+  type SimulationSyncResult,
+} from './simulations';
 import { resolvePvpokeSourcePath, validatePhase1SourceFiles } from './source';
 import { type PokemonData, SyncRunOptions } from './types';
 import { logError } from './utils';
@@ -94,14 +98,33 @@ export async function completeSimulationManifestSync(
     );
   }
 
+  const includeMovesetVariants = input.options.includeMovesetVariants ?? false;
+  const candidateSets = selectSimulationCandidateSets(
+    input.rankingSyncResult.candidateSets,
+    includeMovesetVariants,
+    input.rankingSyncResult.simulationSpeciesIdsByFormatId,
+  );
+  const candidateSetKeys = new Set(
+    candidateSets.map(({ formatId, speciesId }) => `${formatId}|${speciesId}`),
+  );
+  for (const [formatId, speciesIds] of input.rankingSyncResult
+    .simulationSpeciesIdsByFormatId) {
+    for (const speciesId of speciesIds) {
+      if (!candidateSetKeys.has(`${formatId}|${speciesId}`)) {
+        throw new Error(
+          `[sync] Missing simulation candidate set for ${formatId}/${speciesId}`,
+        );
+      }
+    }
+  }
   const simulationResult = await resolvedDependencies.generate({
     ...input.options,
-    includeMovesetVariants: input.options.includeMovesetVariants ?? false,
+    includeMovesetVariants,
     sourcePath: input.sourcePath,
     forceRegenerateFormatIds: new Set(
       input.rankingSyncResult.formatsWithChangedOverallRankings,
     ),
-    candidateSets: input.rankingSyncResult.candidateSets,
+    candidateSets,
     simulationSpeciesIdsByFormatId:
       input.rankingSyncResult.simulationSpeciesIdsByFormatId,
     deferPublication: true,
@@ -109,7 +132,7 @@ export async function completeSimulationManifestSync(
   const preparedManifests = resolvedDependencies.prepare({
     pokemonSource: input.pokemonSource,
     movesSource: input.movesSource,
-    candidateSets: input.rankingSyncResult.candidateSets,
+    candidateSets,
     variantSelections: simulationResult.variantSelections,
     getMoveAvailability: createMoveAvailabilityResolver(input.pokemonData),
   });

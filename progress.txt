@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Default-only simulation publication projects each ranking-derived candidate set to exactly one ranked default before both simulation and manifest preparation, fails before simulation when a synchronized species lacks that authority, rejects prepared CSVs not declared by the prepared manifests, and rechecks stale cleanup targets as regular files immediately before unlink; explicit variant mode retains the bounded full candidate sets.
 - Moveset variant simulation is opt-in across sync tooling: normalize omitted `includeMovesetVariants` to `false` at the simulation boundary, expose variants only through `--moveset-variants`, keep projection read-only while reporting the selected mode, and reject unknown CLI arguments before any sync work starts.
 - `RosterMovesetAssignment` authority is per species in `authorityBySpeciesId`; its keys must exactly match the canonical assigned roster and variant map, every authority belongs in the fingerprint, manifest defaults use qualified simulation lookups, and ranked-default fallbacks remain unqualified through `getAssignedMovesetVariantId(...)`.
 - Returned assignments require two gates before projection: structural parsing/fingerprint validation, then repository-authority validation. Prepare compact snapshots only when a species claims manifest authority, require exact policy and complete active-variant equality, compare fallback species with current format rankings, and propagate snapshot integrity failures without fallback.
@@ -2741,4 +2742,42 @@
   - US-039 must make `generateSimulations(...)`, manifest/snapshot publication, and stale cleanup honor the new default-only option while preserving the opt-in variant path.
 - Next iteration start:
   - US-039 - Publish default-only simulation authorities
+---
+
+## 2026-08-11 19:24:35 MST - US-039
+- Implemented one shared default-only candidate authority for simulation and manifest preparation; default sync now evaluates exactly each synchronized species' ranked default while explicit variant sync preserves the full bounded candidate path. Added fail-closed synchronized-species coverage, manifest-declared CSV publication validation, and an immediate no-follow regular-file check before stale variant deletion. Existing manifest-derived compact snapshot and runtime asset index preparation now receive default-only authority inputs without changing their schemas.
+- Files changed: `lib/AGENTS.md`, `lib/sync/index.ts`, `lib/sync/index.test.ts`, `lib/sync/simulations.ts`, `lib/sync/simulations.test.ts`, `lib/sync/movesetVariantManifest.ts`, `lib/sync/movesetVariantManifest.test.ts`, `lib/sync/simulationCleanup.ts`, `lib/sync/simulationCleanup.test.ts`, `prd.json`, `progress.txt`
+- Commit message: `feat: US-039 - Publish default-only simulation authorities`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/sync/simulations.test.ts lib/sync/index.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/simulationCleanup.test.ts` (fail as expected before implementation: default mode retained alternates, publication accepted undeclared CSVs, and cleanup did not recheck file type)
+  - `npx vitest run lib/sync/index.test.ts` (fail as expected before synchronized-species completeness fix: missing candidate authority reached generation)
+  - `npx vitest run lib/sync/index.test.ts lib/sync/simulations.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/runtimeSimulationSnapshots.test.ts lib/sync/runtimeSimulationAssetIndex.test.ts lib/sync/simulationCleanup.test.ts` (pass, 63 tests after review fix)
+  - `npx vitest run lib/sync/simulations.test.ts lib/sync/index.test.ts lib/sync/movesetVariantManifest.test.ts lib/sync/runtimeSimulationSnapshots.test.ts lib/sync/runtimeSimulationAssetIndex.test.ts lib/sync/simulationCleanup.test.ts lib/architecture/pvpokeRuntimeBoundary.test.ts` (pass, 166 tests before the final completeness regression)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass)
+  - `npm test` (pass, 1,037 tests after review fix)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `data-engineer`, `security-engineer`
+  - Used: `data-engineer`, `security-engineer`; both were within the standard-mode high-risk budget and covered non-overlapping data-authority and destructive-cleanup risks
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer`; targeted `code-reviewer` re-review
+  - Findings: fixed one high code-review finding by filtering candidate authority to the synchronized species pool before enforcing a default, preserving evidence-only rejected ranking sets; QA found none; targeted re-review found none. A security report about parent-directory replacement was treated as a pre-existing residual risk because the staged change adds a final-component `lstat` check but does not weaken the existing physical directory checks, and Node's path APIs do not expose dirfd-relative unlink.
+- Decisions (why):
+  - Projected candidate sets once in `completeSimulationManifestSync(...)` and defensively inside direct simulation generation so manifests, snapshots, the runtime index, and generated CSVs cannot disagree about default-only authority.
+  - Kept snapshot and runtime asset index implementations mode-agnostic because validated manifests already define their exact active inputs.
+  - Added publication validation against every manifest candidate storage key, not active keys only, so resume or opt-in generation can still atomically publish inactive evidence while default-only publication rejects undeclared alternates.
+  - Added `lstat`-backed pre-unlink validation instead of broad cleanup changes so canonical parser, catalog directory, physical path, and regular-file confinement remain layered and minimal.
+  - Filtered ranking evidence to `simulationSpeciesIdsByFormatId` before default projection because candidate derivation intentionally retains rejected evidence-only sets for species omitted from Overall simulation.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer`, `test-driven-development`, and `test-runner` skills plus `docs/pokemon-go-team-optimization.md` and all eight required `docs/team-optimization/` references.
+  - Default-only authority should be expressed by narrowing candidate inputs, not by adding mode conditionals to manifest, snapshot, or runtime index serializers.
+  - Publication must bind prepared source artifacts to the authority being installed; filename and directory validation alone do not prove a generated CSV belongs to the prepared manifest.
+- Known issues / follow-ups:
+  - The unrelated existing `tasks/prd-deterministic-moveset-variants.md` modification remains unstaged and is not part of US-039.
+  - US-041 remains responsible for running default sync against checked-in data and removing prior variant-qualified CSVs through this tested cleanup boundary.
+- Next iteration start:
+  - US-040 - Hide moveset variation from team configuration
 ---

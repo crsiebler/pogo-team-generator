@@ -681,6 +681,7 @@ describe('generateSimulations', () => {
     }> = [];
     const options: SimulationSyncOptions = {
       sourcePath: '/source/pvpoke',
+      includeMovesetVariants: true,
       candidateSets: [
         {
           formatId: 'great-league',
@@ -838,6 +839,71 @@ describe('generateSimulations', () => {
       expect.anything(),
     );
 
+    const defaultOnlyGenerateScenarioCsv = vi.fn(
+      (runtime, format, speciesId, shields, recommendedMoves) => {
+        void runtime;
+        void format;
+        void speciesId;
+        void shields;
+        return recommendedMoves?.fastMove === 'WATER_GUN'
+          ? alternateSimulationCsv
+          : defaultSimulationCsv;
+      },
+    );
+    const defaultOnlyResult = await generateSimulations(
+      { ...options, includeMovesetVariants: false },
+      {
+        getRuntime: () => ({ context: {} as never }),
+        fileExists: (filePath: string) => isOverallRankingPath(filePath),
+        readFile: readSourceFile,
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile: vi.fn().mockResolvedValue(undefined),
+        generateScenarioCsv: defaultOnlyGenerateScenarioCsv,
+      },
+    );
+
+    const defaultOnlyGreatLeagueCalls =
+      defaultOnlyGenerateScenarioCsv.mock.calls.filter(
+        ([, format, speciesId]) =>
+          format.id === 'great-league' && speciesId === 'feraligatr',
+      );
+    expect(defaultOnlyGreatLeagueCalls).toHaveLength(3);
+    expect(defaultOnlyGenerateScenarioCsv).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'feraligatr',
+      expect.anything(),
+      expect.objectContaining({ fastMove: 'WATER_GUN' }),
+      expect.anything(),
+    );
+    const defaultOnlyGreatLeagueFiles =
+      defaultOnlyResult.preparedCsvFiles.filter(
+        ({ formatId }) => formatId === 'great-league',
+      );
+    expect(defaultOnlyGreatLeagueFiles).toHaveLength(3);
+    expect(
+      defaultOnlyGreatLeagueFiles.map(({ targetPath }) => targetPath),
+    ).toEqual([
+      path.join('data', 'simulations', 'cp1500', 'all', 'feraligatr_0-0.csv'),
+      path.join('data', 'simulations', 'cp1500', 'all', 'feraligatr_1-1.csv'),
+      path.join('data', 'simulations', 'cp1500', 'all', 'feraligatr_2-2.csv'),
+    ]);
+    expect(defaultOnlyResult.variantSelections).toEqual([
+      expect.objectContaining({
+        formatId: 'great-league',
+        speciesId: 'feraligatr',
+        activeVariantIds: ['shadow_claw--ice_beam--hydro_cannon'],
+        candidates: [
+          expect.objectContaining({
+            id: 'shadow_claw--ice_beam--hydro_cannon',
+            isDefault: true,
+            active: true,
+            completeness: { '0-0': true, '1-1': true, '2-2': true },
+          }),
+        ],
+      }),
+    ]);
+
     const reusablePath = path.join(
       'data',
       'simulations',
@@ -972,6 +1038,7 @@ describe('generateSimulations', () => {
       generateSimulations(
         {
           sourcePath: '/source/pvpoke',
+          includeMovesetVariants: true,
           candidateSets: [
             {
               formatId: 'great-league',
@@ -1061,6 +1128,7 @@ describe('generateSimulations', () => {
       generateSimulations(
         {
           sourcePath: '/source/pvpoke',
+          includeMovesetVariants: true,
           candidateSets: [
             {
               formatId: 'great-league',

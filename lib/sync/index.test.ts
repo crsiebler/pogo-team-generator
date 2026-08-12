@@ -3,6 +3,7 @@ import {
   completeSimulationManifestSync,
   type CompleteSimulationManifestSyncInput,
 } from './index';
+import type { DerivedMovesetCandidateSet } from '@/lib/sync/movesetCandidates';
 
 const input: CompleteSimulationManifestSyncInput = {
   options: { resume: true },
@@ -19,6 +20,33 @@ const input: CompleteSimulationManifestSyncInput = {
 };
 
 describe('completeSimulationManifestSync', () => {
+  const candidateSet: DerivedMovesetCandidateSet = {
+    formatId: 'great-league',
+    cup: 'all',
+    cp: 1500,
+    speciesId: 'bulbasaur',
+    pvpokeScorePrior: 90,
+    retainedFastMoves: ['VINE_WHIP', 'TACKLE'],
+    retainedChargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
+    rejections: [],
+    candidates: [
+      {
+        id: 'vine_whip--sludge_bomb--power_whip',
+        fastMove: 'VINE_WHIP',
+        chargedMove1: 'POWER_WHIP',
+        chargedMove2: 'SLUDGE_BOMB',
+        isDefault: true,
+      },
+      {
+        id: 'tackle--sludge_bomb--power_whip',
+        fastMove: 'TACKLE',
+        chargedMove1: 'POWER_WHIP',
+        chargedMove2: 'SLUDGE_BOMB',
+        isDefault: false,
+      },
+    ],
+  };
+
   it('normalizes moveset variant simulation to opt-in', async () => {
     const generate = vi
       .fn()
@@ -226,5 +254,144 @@ describe('completeSimulationManifestSync', () => {
     expect(log).toHaveBeenCalledWith(
       '[sync] Deleted stale moveset variant data/simulations/cp1500/all/stale--fast--charged_a--charged_b_1-1.csv',
     );
+  });
+
+  it.each([
+    { includeMovesetVariants: false, expectedCandidateCount: 1 },
+    { includeMovesetVariants: true, expectedCandidateCount: 2 },
+  ])(
+    'uses one candidate authority across generation and manifests when includeMovesetVariants is $includeMovesetVariants',
+    async ({ includeMovesetVariants, expectedCandidateCount }) => {
+      let generatedCandidateSets: readonly DerivedMovesetCandidateSet[] = [];
+      let preparedCandidateSets: readonly DerivedMovesetCandidateSet[] = [];
+      const generate = vi.fn(async (options) => {
+        generatedCandidateSets = options.candidateSets ?? [];
+        return {
+          simulations: [],
+          variantSelections: [],
+          preparedCsvFiles: [],
+        };
+      });
+      const prepare = vi.fn((prepareInput) => {
+        preparedCandidateSets = prepareInput.candidateSets;
+        return [];
+      });
+
+      await completeSimulationManifestSync(
+        {
+          ...input,
+          options: { includeMovesetVariants },
+          rankingSyncResult: {
+            ...input.rankingSyncResult,
+            candidateSets: [candidateSet],
+            simulationSpeciesIdsByFormatId: new Map([
+              ['great-league', ['bulbasaur']],
+            ]),
+          },
+        },
+        {
+          crossValidate: () => ({ valid: true, errors: [] }),
+          generate,
+          prepare,
+          prepareRuntimeSnapshots: vi.fn(() => []),
+          prepareRuntimeAssetIndex: vi.fn(() => ({
+            targetPath: 'data/simulations/runtime-asset-index.json' as const,
+            contents: '{"schemaVersion":1,"assets":[]}\n',
+          })),
+          publish: vi.fn().mockResolvedValue(undefined),
+          cleanup: vi.fn().mockResolvedValue([]),
+        },
+      );
+
+      expect(generatedCandidateSets).toEqual(preparedCandidateSets);
+      expect(generatedCandidateSets).toEqual([
+        expect.objectContaining({
+          speciesId: 'bulbasaur',
+          candidates: expect.any(Array),
+        }),
+      ]);
+      expect(generatedCandidateSets[0]!.candidates).toHaveLength(
+        expectedCandidateCount,
+      );
+      expect(
+        generatedCandidateSets[0]!.candidates.filter(({ isDefault }) =>
+          Boolean(isDefault),
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  it('rejects a synchronized species without a ranking-derived default', async () => {
+    const generate = vi.fn();
+
+    await expect(
+      completeSimulationManifestSync(
+        {
+          ...input,
+          rankingSyncResult: {
+            ...input.rankingSyncResult,
+            simulationSpeciesIdsByFormatId: new Map([
+              ['great-league', ['bulbasaur']],
+            ]),
+          },
+        },
+        {
+          crossValidate: () => ({ valid: true, errors: [] }),
+          generate,
+        },
+      ),
+    ).rejects.toThrow(
+      'Missing simulation candidate set for great-league/bulbasaur',
+    );
+
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('ignores evidence-only candidate sets outside the synchronized species pool', async () => {
+    let generatedCandidateSets: readonly DerivedMovesetCandidateSet[] = [];
+    const generate = vi.fn(async (options) => {
+      generatedCandidateSets = options.candidateSets ?? [];
+      return {
+        simulations: [],
+        variantSelections: [],
+        preparedCsvFiles: [],
+      };
+    });
+    const evidenceOnlyCandidateSet: DerivedMovesetCandidateSet = {
+      ...candidateSet,
+      speciesId: 'wobbuffet_shadow',
+      retainedFastMoves: [],
+      retainedChargedMoves: [],
+      candidates: [],
+    };
+
+    await completeSimulationManifestSync(
+      {
+        ...input,
+        rankingSyncResult: {
+          ...input.rankingSyncResult,
+          candidateSets: [candidateSet, evidenceOnlyCandidateSet],
+          simulationSpeciesIdsByFormatId: new Map([
+            ['great-league', ['bulbasaur']],
+          ]),
+        },
+      },
+      {
+        crossValidate: () => ({ valid: true, errors: [] }),
+        generate,
+        prepare: vi.fn(() => []),
+        prepareRuntimeSnapshots: vi.fn(() => []),
+        prepareRuntimeAssetIndex: vi.fn(() => ({
+          targetPath: 'data/simulations/runtime-asset-index.json' as const,
+          contents: '{"schemaVersion":1,"assets":[]}\n',
+        })),
+        publish: vi.fn().mockResolvedValue(undefined),
+        cleanup: vi.fn().mockResolvedValue([]),
+      },
+    );
+
+    expect(generatedCandidateSets).toEqual([
+      expect.objectContaining({ speciesId: 'bulbasaur' }),
+    ]);
   });
 });

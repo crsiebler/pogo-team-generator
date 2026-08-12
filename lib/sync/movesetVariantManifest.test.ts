@@ -951,9 +951,39 @@ describe('moveset variant manifest publication', () => {
     expect([...files.keys()]).toEqual([csvPath, manifestPath]);
   });
 
+  it('rejects prepared simulation CSVs not declared by their manifest', async () => {
+    const bundle = createPublicationBundle('great-league');
+    const writeFile = vi.fn();
+
+    await expect(
+      publishSimulationGeneration(
+        [
+          {
+            formatId: 'great-league',
+            targetPath:
+              'data/simulations/cp1500/all/bulbasaur--tackle--x_scissor--aqua_jet_1-1.csv',
+            contents: 'alternate simulation bytes',
+          },
+        ],
+        [bundle.manifest],
+        [bundle.snapshot],
+        {
+          targetPath: 'data/simulations/runtime-asset-index.json',
+          contents: runtimeAssetIndexContents,
+        },
+        {
+          writeFile,
+        },
+      ),
+    ).rejects.toThrow(/simulation target is not declared/i);
+
+    expect(writeFile).not.toHaveBeenCalled();
+  });
+
   it('does not replace prior targets when staging a later CSV fails', async () => {
     const firstCsvPath = 'data/simulations/cp1500/all/bulbasaur_0-0.csv';
     const secondCsvPath = 'data/simulations/cp1500/all/bulbasaur_1-1.csv';
+    const bundle = createPublicationBundle('great-league');
     const files = new Map<string, string>([
       [firstCsvPath, 'prior zero-shield bytes'],
       [secondCsvPath, 'prior one-shield bytes'],
@@ -979,8 +1009,8 @@ describe('moveset variant manifest publication', () => {
             contents: 'new one-shield bytes',
           },
         ],
-        [],
-        [],
+        [bundle.manifest],
+        [bundle.snapshot],
         {
           targetPath: 'data/simulations/runtime-asset-index.json',
           contents: runtimeAssetIndexContents,

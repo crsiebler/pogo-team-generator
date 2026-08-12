@@ -137,6 +137,7 @@ describe('deleteStaleVariantSimulationFiles', () => {
           isFile: false,
         },
       ]),
+      isRegularFile: vi.fn().mockResolvedValue(true),
       unlink,
     });
 
@@ -185,6 +186,7 @@ describe('deleteStaleVariantSimulationFiles', () => {
         readDirectory: vi
           .fn()
           .mockResolvedValue([{ name: staleFilename, isFile: true }]),
+        isRegularFile: vi.fn().mockResolvedValue(true),
         unlink,
       },
     );
@@ -259,6 +261,7 @@ describe('deleteStaleVariantSimulationFiles', () => {
             { name: secondFilename, isFile: true },
             { name: firstFilename, isFile: true },
           ]),
+          isRegularFile: vi.fn().mockResolvedValue(true),
           unlink,
           reportDeleted,
         },
@@ -270,5 +273,28 @@ describe('deleteStaleVariantSimulationFiles', () => {
     expect(reportDeleted).toHaveBeenCalledWith(
       `data/simulations/cp1500/all/${firstFilename}`,
     );
+  });
+
+  it('fails closed when a stale file stops being regular before unlink', async () => {
+    const staleFilename =
+      'golisopod--waterfall--liquidation--aerial_ace_1-1.csv';
+    const unlink = vi.fn();
+
+    await expect(
+      deleteStaleVariantSimulationFiles(
+        [createPreparedManifest(getFormat('great-league'))],
+        {
+          realpath: identityRealpath,
+          readDirectory: vi
+            .fn()
+            .mockResolvedValue([{ name: staleFilename, isFile: true }]),
+          isRegularFile: vi.fn().mockResolvedValue(false),
+          unlink,
+        },
+      ),
+    ).rejects.toThrow(
+      `Failed to delete data/simulations/cp1500/all/${staleFilename}: cleanup target is no longer a regular file`,
+    );
+    expect(unlink).not.toHaveBeenCalled();
   });
 });

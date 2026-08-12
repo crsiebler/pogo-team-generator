@@ -130,6 +130,46 @@ function getCandidateSetKey(
   return `${formatId}|${speciesId}`;
 }
 
+/**
+ * Limit simulation authority to ranked defaults unless variants are explicitly
+ * enabled. The returned candidate sets are safe to share with manifest preparation.
+ */
+export function selectSimulationCandidateSets(
+  candidateSets: readonly DerivedMovesetCandidateSet[],
+  includeMovesetVariants = false,
+  simulationSpeciesIdsByFormatId?: ReadonlyMap<
+    BattleFormatId,
+    readonly string[]
+  >,
+): readonly DerivedMovesetCandidateSet[] {
+  const synchronizedCandidateSets = simulationSpeciesIdsByFormatId
+    ? candidateSets.filter((candidateSet) =>
+        simulationSpeciesIdsByFormatId
+          .get(candidateSet.formatId)
+          ?.includes(candidateSet.speciesId),
+      )
+    : candidateSets;
+
+  if (includeMovesetVariants) {
+    return synchronizedCandidateSets;
+  }
+
+  return synchronizedCandidateSets.map((candidateSet) => {
+    const defaultCandidates = candidateSet.candidates.filter(
+      ({ isDefault }) => isDefault,
+    );
+    if (defaultCandidates.length !== 1) {
+      throw new Error(
+        `[sync-simulations] ${candidateSet.formatId}/${candidateSet.speciesId} must have exactly one default candidate`,
+      );
+    }
+    return {
+      ...candidateSet,
+      candidates: defaultCandidates,
+    };
+  });
+}
+
 function getValidatedCandidates(
   format: BattleFormat,
   speciesId: string,
@@ -1047,11 +1087,16 @@ export async function generateSimulations(
       ]),
     );
     const getMoveAvailability = createMoveAvailabilityResolver(pokemonData);
+    const selectedCandidateSets = selectSimulationCandidateSets(
+      options.candidateSets ?? [],
+      options.includeMovesetVariants ?? false,
+      options.simulationSpeciesIdsByFormatId,
+    );
     const candidateSetsByFormatAndSpecies = new Map<
       string,
       DerivedMovesetCandidateSet
     >();
-    for (const candidateSet of options.candidateSets ?? []) {
+    for (const candidateSet of selectedCandidateSets) {
       if (
         normalizeToChoosableSpeciesId(candidateSet.speciesId) !==
           candidateSet.speciesId ||

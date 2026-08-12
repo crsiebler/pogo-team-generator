@@ -843,6 +843,25 @@ function validatePreparedSimulationCsvTarget(
   }
 }
 
+function getDeclaredSimulationTargets(
+  manifests: readonly PreparedMovesetVariantManifest[],
+): ReadonlySet<string> {
+  const targets = new Set<string>();
+  for (const preparedManifest of manifests) {
+    validatePreparedManifestTarget(preparedManifest);
+    const manifest = parseMovesetVariantManifestJson(preparedManifest.contents);
+    const directoryPath = path.dirname(preparedManifest.targetPath);
+    for (const species of manifest.species) {
+      for (const candidate of species.candidates) {
+        for (const storageKey of Object.values(candidate.storageKeys)) {
+          targets.add(path.join(directoryPath, storageKey));
+        }
+      }
+    }
+  }
+  return targets;
+}
+
 function validatePreparedRuntimeAssetIndexTarget(
   index: PreparedRuntimeSimulationAssetIndex,
 ): void {
@@ -999,6 +1018,15 @@ export async function publishSimulationGeneration(
     ...dependencies,
   };
   validateRuntimeSnapshotManifestBindings(manifests, runtimeSnapshots);
+  const declaredSimulationTargets = getDeclaredSimulationTargets(manifests);
+  for (const csvFile of csvFiles) {
+    validatePreparedSimulationCsvTarget(csvFile);
+    if (!declaredSimulationTargets.has(csvFile.targetPath)) {
+      throw new Error(
+        `[sync-manifest] Simulation target is not declared by its manifest: ${csvFile.targetPath}`,
+      );
+    }
+  }
   const targets = [
     ...csvFiles.map((file) => ({ ...file, kind: 'simulation' as const })),
     ...manifests.map((file) => ({ ...file, kind: 'manifest' as const })),

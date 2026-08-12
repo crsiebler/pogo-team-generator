@@ -20,6 +20,7 @@ export interface SimulationCleanupDependencies {
   readonly readDirectory: (
     directoryPath: string,
   ) => Promise<readonly SimulationCleanupDirectoryEntry[]>;
+  readonly isRegularFile: (filePath: string) => Promise<boolean>;
   readonly unlink: (filePath: string) => Promise<void>;
   readonly reportDeleted: (repositoryPath: string) => void;
 }
@@ -46,6 +47,7 @@ const defaultDependencies: SimulationCleanupDependencies = {
       isFile: entry.isFile(),
     }));
   },
+  isRegularFile: async (filePath) => (await fs.lstat(filePath)).isFile(),
   unlink: async (filePath) => {
     await fs.unlink(filePath);
   },
@@ -186,6 +188,9 @@ export async function deleteStaleVariantSimulationFiles(
       );
       if (currentPhysicalDirectoryPath !== staleFile.physicalDirectoryPath) {
         throw new Error('format directory changed during cleanup');
+      }
+      if (!(await resolvedDependencies.isRegularFile(staleFile.absolutePath))) {
+        throw new Error('cleanup target is no longer a regular file');
       }
       await resolvedDependencies.unlink(staleFile.absolutePath);
       resolvedDependencies.reportDeleted(staleFile.repositoryPath);
