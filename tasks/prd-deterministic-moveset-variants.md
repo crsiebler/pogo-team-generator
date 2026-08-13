@@ -18,6 +18,21 @@ for runtime use, and assign one immutable moveset to each Pokemon in a finalist
 roster. The same assignment must drive matchup scoring, diagnostics, API output,
 and team export.
 
+### Revision: Default-Only Production Data
+
+Moveset variation proved substantially more expensive in repository size, sync
+duration, runtime data preparation, and optimizer complexity than its current
+product usage justifies. The generalized implementation remains valuable as an
+experimental option, but production sync and UI behavior will return to ranked
+default movesets.
+
+Normal sync runs must generate, publish, and retain only ranked-default
+simulation data. Alternate moveset derivation and simulation remain available
+behind an explicit `--moveset-variants` sync flag for future evaluation. The
+user-facing moveset variation control must not render, and frontend generation
+requests must use the ranked-default path. Existing reusable UI atoms and the
+underlying opt-in sync/runtime implementation may remain in the codebase.
+
 ## Goals
 
 - Support deterministic moveset variants for every ranked species and form in
@@ -40,6 +55,12 @@ and team export.
   bounded finalist reranking.
 - Keep runtime application and optimizer code independent of PvPoke vendor
   JavaScript.
+- Make ranked-default simulation generation the normal sync behavior.
+- Preserve alternate simulation generation as explicit opt-in tooling through
+  `npm run sync -- --moveset-variants`.
+- Remove generated alternate simulation evidence from the default checked-in
+  dataset after safe default-only publication.
+- Hide the moveset variation UI and keep frontend generation on ranked defaults.
 
 ## User Stories
 
@@ -641,6 +662,109 @@ break production deployments.
 
 **Recommended Agents:** @documentation-engineer
 
+### US-038: Make Moveset Variant Sync Explicitly Opt-In
+
+**Description:** As a maintainer, I want normal sync runs to exclude alternate
+moveset simulations so routine data refreshes remain bounded while the
+experimental generator remains available for future evaluation.
+
+**Acceptance Criteria:**
+
+- [ ] Add `includeMovesetVariants?: boolean` to the shared sync options contract,
+      with omitted values resolving to `false`.
+- [ ] `npm run sync` and `npm run sync -- --resume` pass
+      `includeMovesetVariants: false` to simulation generation.
+- [ ] `npm run sync -- --moveset-variants` passes
+      `includeMovesetVariants: true` to simulation generation.
+- [ ] `--moveset-variants` can be combined with `--resume`.
+- [ ] Projection mode remains read-only and documents whether its estimate
+      includes moveset variants.
+- [ ] Unknown CLI flags fail with an actionable message instead of being
+      silently ignored.
+- [ ] Focused CLI and sync option tests pass.
+- [ ] Typecheck passes.
+
+**Recommended Agents:** @cli-developer, @test-automator
+
+### US-039: Publish Default-Only Simulation Authorities
+
+**Description:** As a maintainer, I want default sync runs to publish complete
+default-only manifests and snapshots so runtime contracts remain valid without
+retaining alternate simulation data.
+
+**Acceptance Criteria:**
+
+- [ ] When `includeMovesetVariants` is false, simulation generation evaluates
+      exactly the ranked-default candidate for each synchronized species.
+- [ ] Default-only manifests contain exactly one active default candidate per
+      included species and no alternate candidate storage keys.
+- [ ] Default-only compact snapshots contain only ranked-default matrices and
+      preserve all required `0-0`, `1-1`, and `2-2` ratings.
+- [ ] Default simulation CSVs, manifests, snapshots, and the runtime asset index
+      are validated and published atomically before cleanup begins.
+- [ ] After successful default-only publication, cleanup deletes only regular
+      files accepted by the strict canonical variant filename parser.
+- [ ] Cleanup never deletes default simulation files, format directories, or
+      files outside catalog-authorized simulation directories.
+- [ ] When `includeMovesetVariants` is true, existing candidate derivation,
+      simulation, manifest selection, and snapshot behavior remains available.
+- [ ] Focused sync, publication, snapshot, and cleanup tests pass.
+- [ ] Typecheck passes.
+
+**Recommended Agents:** @data-engineer, @security-engineer
+
+### US-040: Hide Moveset Variation From Team Configuration
+
+**Description:** As a player, I want team generation to present only supported
+ranked-default behavior so an experimental data path is not exposed in the
+product UI.
+
+**Acceptance Criteria:**
+
+- [ ] The Moveset Options section and Simulate moveset variants switch do not
+      render in Team Configuration.
+- [ ] Remove moveset-variation state and feature-specific props from
+      `TeamManager`, `TeamConfigPanel`, and `TeamGenerator` rather than guarding
+      JSX with a hardcoded false condition.
+- [ ] Frontend `/api/generate-team` requests omit `simulateMovesetVariants`.
+- [ ] The reusable `Switch` atom remains available for unrelated or future UI
+      use.
+- [ ] The API and optimizer option may remain defaulted to false for future
+      programmatic experiments, but normal UI generation cannot enable it.
+- [ ] Component tests assert the moveset variation control is absent and the
+      request payload omits the option.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+- [ ] Verify in browser using dev-browser skill on desktop and mobile viewports.
+
+**Recommended Agents:** @react-specialist, @accessibility-tester
+
+### US-041: Regenerate and Document the Default-Only Dataset
+
+**Description:** As a maintainer, I want checked-in simulation assets and
+documentation aligned with the default-only policy so repository size and
+runtime costs reflect actual product behavior.
+
+**Acceptance Criteria:**
+
+- [ ] Run the default sync path for every supported battle format and publish
+      deterministic default-only manifests and compact snapshots.
+- [ ] Remove all generated variant-qualified simulation CSVs through the tested
+      post-publication cleanup boundary.
+- [ ] No checked-in `data/simulations` filename accepted by the canonical variant
+      parser remains after default sync.
+- [ ] Record before-and-after simulation file count, repository data bytes,
+      compact snapshot bytes, and generate-team trace bytes.
+- [ ] Representative default-only team generation remains under one minute and
+      records lower or equal snapshot bytes than the variant-enabled baseline.
+- [ ] Documentation states that normal sync excludes variants, documents
+      `--moveset-variants` as experimental opt-in tooling, and states that the UI
+      does not expose the feature.
+- [ ] Repeating default sync with unchanged inputs produces no data diff.
+- [ ] Typecheck, lint, full tests, production build, and trace analysis pass.
+
+**Recommended Agents:** @data-engineer, @performance-engineer
+
 ## Functional Requirements
 
 - **FR-1:** The system must derive moveset variants for all ranked species and
@@ -710,6 +834,20 @@ break production deployments.
   writing or deleting files.
 - **FR-37:** Identical inputs must produce byte-identical candidate ordering,
   manifests, and projection reports.
+- **FR-38:** Sync must exclude alternate moveset simulations unless
+  `--moveset-variants` is explicitly provided.
+- **FR-39:** Default-only sync must publish structurally valid manifests and
+  compact snapshots containing ranked-default variants only.
+- **FR-40:** Successful default-only publication must remove recognized
+  variant-qualified simulation CSVs without deleting default matrices.
+- **FR-41:** Variant-enabled sync must remain available as experimental tooling
+  and preserve the existing bounded candidate and active-variant limits.
+- **FR-42:** The frontend must not render a moveset variation control or send a
+  request that enables variant simulation.
+- **FR-43:** The reusable Switch component and backend variant contracts may
+  remain available for future reintroduction.
+- **FR-44:** Unknown sync CLI flags must fail instead of silently changing or
+  skipping data-generation behavior.
 
 ## Non-Goals
 
@@ -725,6 +863,12 @@ break production deployments.
 - Do not add Threat Score to weighted fitness.
 - Do not perform variant-aware scoring throughout every GA generation.
 - Do not retain stale variant CSVs after a successful non-dry-run sync.
+- Do not delete the underlying candidate derivation, variant simulation, or
+  assignment implementation solely because production defaults no longer use
+  it.
+- Do not expose the experimental sync flag as a product UI control.
+- Do not retain generated alternate CSV evidence in the default checked-in
+  dataset.
 
 ## Design Considerations
 
@@ -774,12 +918,16 @@ break production deployments.
   paths.
 - Generated API and export movesets match the optimizer's fixed assignment.
 - Representative team generation completes in under one minute.
+- Normal sync produces no variant-qualified simulation CSVs.
+- Variant generation occurs only when `--moveset-variants` is explicitly set.
+- Team Configuration renders no moveset variation control and frontend requests
+  cannot enable variant simulation.
+- Default-only snapshots and function traces are no larger than the recorded
+  variant-enabled baseline.
 - Runtime boundary, focused tests, full tests, typecheck, lint, and build pass.
 
 ## Open Questions
 
-- What CLI flag names should expose projection-only mode and manifest
-  regeneration while remaining consistent with the current sync command?
 - Should acquisition metadata use one requirement per moveset or support
   per-move requirements for future combinations containing both Elite and
   purified/event-exclusive moves?
