@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { createHash } from 'node:crypto';
 import * as path from 'path';
 import { syncConfig } from './config';
 import { fetchPokemonData, fetchMovesData } from './gamemaster';
@@ -163,19 +164,111 @@ export async function completeSimulationManifestSync(
   return simulationResult;
 }
 
+const SYNC_OUTPUT_ROOTS = [
+  'moves.json',
+  'pokemon.json',
+  'rankings',
+  'simulations',
+] as const;
+
 /**
- * Persist successful sync metadata for UI freshness indicators.
+ * Return stable successful-sync metadata, preserving its timestamp when the
+ * generated output fingerprint did not change.
  */
-function writeSyncMetadata(): void {
+export function resolveSuccessfulSyncMetadata(
+  previousMetadata: string | null,
+  previousOutputFingerprint: string,
+  currentOutputFingerprint: string,
+  completedAt: Date,
+): string {
+  if (
+    previousMetadata !== null &&
+    previousOutputFingerprint === currentOutputFingerprint
+  ) {
+    try {
+      const parsed = JSON.parse(previousMetadata) as {
+        readonly lastSuccessfulSyncAt?: unknown;
+      };
+      if (
+        typeof parsed.lastSuccessfulSyncAt === 'string' &&
+        !Number.isNaN(new Date(parsed.lastSuccessfulSyncAt).getTime())
+      ) {
+        return previousMetadata;
+      }
+    } catch {
+      // Replace malformed metadata after an otherwise successful sync.
+    }
+  }
+
+  return JSON.stringify(
+    { lastSuccessfulSyncAt: completedAt.toISOString() },
+    null,
+    2,
+  );
+}
+
+/** Create a deterministic fingerprint of every generated sync output. */
+export function createSyncOutputFingerprint(
+  outputDirectory: string = syncConfig.outputDir,
+): string {
+  const outputPaths = SYNC_OUTPUT_ROOTS.flatMap((resourcePath) =>
+    collectSyncOutputFiles(path.join(outputDirectory, resourcePath)),
+  ).sort((left, right) => left.localeCompare(right));
+  const hash = createHash('sha256');
+
+  for (const outputPath of outputPaths) {
+    hash.update(path.relative(outputDirectory, outputPath));
+    hash.update('\0');
+    hash.update(fs.readFileSync(outputPath));
+    hash.update('\0');
+  }
+
+  return hash.digest('hex');
+}
+
+/** Resolve metadata after hashing the completed generated output. */
+export function resolveCompletedSyncMetadata(
+  previousMetadata: string | null,
+  previousOutputFingerprint: string,
+  outputDirectory: string = syncConfig.outputDir,
+  completedAt: Date = new Date(),
+): string {
+  return resolveSuccessfulSyncMetadata(
+    previousMetadata,
+    previousOutputFingerprint,
+    createSyncOutputFingerprint(outputDirectory),
+    completedAt,
+  );
+}
+
+function collectSyncOutputFiles(outputPath: string): string[] {
+  if (!fs.existsSync(outputPath)) {
+    return [];
+  }
+  const stats = fs.lstatSync(outputPath);
+  if (stats.isFile()) {
+    return [outputPath];
+  }
+  if (!stats.isDirectory()) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(outputPath, { withFileTypes: true })
+    .flatMap((entry) =>
+      entry.isSymbolicLink()
+        ? []
+        : collectSyncOutputFiles(path.join(outputPath, entry.name)),
+    );
+}
+
+/** Persist successful sync metadata for UI freshness indicators. */
+function writeSyncMetadata(contents: string): void {
   const syncMetadataPath = path.join(
     syncConfig.outputDir,
     'sync-metadata.json',
   );
-  const syncMetadata = {
-    lastSuccessfulSyncAt: new Date().toISOString(),
-  };
-
-  fs.writeFileSync(syncMetadataPath, JSON.stringify(syncMetadata, null, 2));
+  fs.writeFileSync(syncMetadataPath, contents);
 }
 
 /**
@@ -184,6 +277,15 @@ function writeSyncMetadata(): void {
 export async function runSync(options: SyncRunOptions = {}): Promise<void> {
   try {
     console.log('[sync] Starting data sync pipeline');
+
+    const syncMetadataPath = path.join(
+      syncConfig.outputDir,
+      'sync-metadata.json',
+    );
+    const previousSyncMetadata = fs.existsSync(syncMetadataPath)
+      ? fs.readFileSync(syncMetadataPath, 'utf8')
+      : null;
+    const previousOutputFingerprint = createSyncOutputFingerprint();
 
     const sourceResolution = resolvePvpokeSourcePath();
     console.log(
@@ -273,7 +375,12 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
       `[sync] Atomically published ${getBattleFormats().length} moveset variant manifests`,
     );
 
-    writeSyncMetadata();
+    writeSyncMetadata(
+      resolveCompletedSyncMetadata(
+        previousSyncMetadata,
+        previousOutputFingerprint,
+      ),
+    );
     console.log('[sync] Wrote sync-metadata.json');
 
     console.log('[sync] Pipeline completed successfully');

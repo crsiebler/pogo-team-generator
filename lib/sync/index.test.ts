@@ -1,6 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import * as fs from 'fs';
+import path from 'path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   completeSimulationManifestSync,
+  createSyncOutputFingerprint,
+  resolveCompletedSyncMetadata,
+  resolveSuccessfulSyncMetadata,
   type CompleteSimulationManifestSyncInput,
 } from './index';
 import type { DerivedMovesetCandidateSet } from '@/lib/sync/movesetCandidates';
@@ -393,5 +398,92 @@ describe('completeSimulationManifestSync', () => {
     expect(generatedCandidateSets).toEqual([
       expect.objectContaining({ speciesId: 'bulbasaur' }),
     ]);
+  });
+});
+
+describe('resolveSuccessfulSyncMetadata', () => {
+  it('preserves identical successful sync metadata when generated data is unchanged', () => {
+    const previousMetadata =
+      '{\n  "lastSuccessfulSyncAt": "2026-08-07T10:19:54.674Z"\n}';
+
+    expect(
+      resolveSuccessfulSyncMetadata(
+        previousMetadata,
+        'same-output-fingerprint',
+        'same-output-fingerprint',
+        new Date('2026-08-11T20:00:00.000Z'),
+      ),
+    ).toBe(previousMetadata);
+  });
+
+  it('records completion time when generated data changes', () => {
+    expect(
+      resolveSuccessfulSyncMetadata(
+        '{\n  "lastSuccessfulSyncAt": "2026-08-07T10:19:54.674Z"\n}',
+        'old-output-fingerprint',
+        'new-output-fingerprint',
+        new Date('2026-08-11T20:00:00.000Z'),
+      ),
+    ).toBe('{\n  "lastSuccessfulSyncAt": "2026-08-11T20:00:00.000Z"\n}');
+  });
+});
+
+describe('createSyncOutputFingerprint', () => {
+  const fixtureRoot = path.join(process.cwd(), '.sync-output-fingerprint-test');
+
+  afterEach(() => {
+    fs.rmSync(fixtureRoot, { force: true, recursive: true });
+  });
+
+  it('hashes every generated output path and file contents deterministically', () => {
+    fs.mkdirSync(path.join(fixtureRoot, 'rankings', 'nested'), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(fixtureRoot, 'simulations'), { recursive: true });
+    fs.writeFileSync(path.join(fixtureRoot, 'pokemon.json'), 'pokemon');
+    fs.writeFileSync(path.join(fixtureRoot, 'moves.json'), 'moves');
+    fs.writeFileSync(
+      path.join(fixtureRoot, 'rankings', 'nested', 'overall.csv'),
+      'ranking',
+    );
+    fs.writeFileSync(
+      path.join(fixtureRoot, 'simulations', 'snapshot.json'),
+      'snapshot',
+    );
+
+    const first = createSyncOutputFingerprint(fixtureRoot);
+    expect(createSyncOutputFingerprint(fixtureRoot)).toBe(first);
+
+    fs.writeFileSync(path.join(fixtureRoot, 'pokemon.json'), 'changed pokemon');
+    expect(createSyncOutputFingerprint(fixtureRoot)).not.toBe(first);
+  });
+
+  it('preserves completed-run metadata only while real generated output is unchanged', () => {
+    fs.mkdirSync(path.join(fixtureRoot, 'rankings'), { recursive: true });
+    fs.writeFileSync(path.join(fixtureRoot, 'pokemon.json'), 'pokemon');
+    const previousMetadata =
+      '{\n  "lastSuccessfulSyncAt": "2026-08-07T10:19:54.674Z"\n}';
+    const previousFingerprint = createSyncOutputFingerprint(fixtureRoot);
+
+    expect(
+      resolveCompletedSyncMetadata(
+        previousMetadata,
+        previousFingerprint,
+        fixtureRoot,
+        new Date('2026-08-11T20:00:00.000Z'),
+      ),
+    ).toBe(previousMetadata);
+
+    fs.writeFileSync(path.join(fixtureRoot, 'pokemon.json'), 'changed pokemon');
+    expect(
+      resolveCompletedSyncMetadata(
+        previousMetadata,
+        previousFingerprint,
+        fixtureRoot,
+        new Date('2026-08-11T20:00:00.000Z'),
+      ),
+    ).toBe(`{
+  "lastSuccessfulSyncAt": "2026-08-11T20:00:00.000Z"
+}`);
   });
 });

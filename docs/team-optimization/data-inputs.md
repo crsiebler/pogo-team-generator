@@ -358,6 +358,39 @@ active format directories and reports deleted repository-relative paths in
 deterministic order. Projection can report recognized stale files but never
 deletes them.
 
+The checked-in repository policy is default-only. A normal sync projects every
+synchronized species to exactly one ranked-default candidate before simulation
+and manifest preparation. Each resulting manifest species record therefore has
+one complete active default with unqualified `{speciesId}_{scenario}.csv`
+storage keys. After the complete default authority publishes, cleanup removes
+every regular canonical variant-qualified CSV omitted by those manifests.
+Passing `--moveset-variants` preserves the bounded alternate derivation and
+simulation path as explicit experimental tooling; the product UI does not expose
+that mode.
+
+### Default-Only Dataset Measurements
+
+The default-only regeneration used the pinned `vendor/pvpoke` revision
+`3ca651c7c83f3d39704f33b28ac4ca01ae10bf16`. Byte counts are logical file sizes,
+not filesystem allocation:
+
+| Metric                    | Variant-enabled baseline | Default-only dataset |
+| ------------------------- | -----------------------: | -------------------: |
+| Repository `data/` files  |                   20,246 |                3,647 |
+| Repository `data/` bytes  |              367,627,804 |           74,519,250 |
+| Simulation files          |                   20,183 |                3,584 |
+| Simulation CSVs           |                   20,166 |                3,567 |
+| Canonical variant CSVs    |                   16,599 |                    0 |
+| Compact snapshot bytes    |               12,019,584 |            7,663,712 |
+| Generate-team trace bytes |               19,058,698 |           14,702,826 |
+
+The representative default-only PlayPokemon generation fixture completed in
+`589 ms`, below the one-minute limit. Two consecutive non-resume default syncs
+produced the same complete `data/` diff SHA-256
+`03e188d816273d779de2e4f1ca9280b65f9fe004575b35a4d802548c8d2d7b13`.
+Successful-sync metadata preserves its prior timestamp when the generated
+Pokemon, moves, rankings, and simulations fingerprint is unchanged.
+
 ## Projection, Generation, And Validation Commands
 
 Initialize the default local PvPoke source before running sync or data tests:
@@ -380,12 +413,21 @@ npm run sync
 npm run sync -- --resume
 ```
 
+Normal sync is ranked-default-only. Use the experimental variant path only when
+explicitly evaluating alternate candidate evidence:
+
+```bash
+npm run sync -- --moveset-variants
+npm run sync -- --moveset-variants --resume
+```
+
 `PVPOKE_PATH` can override the default `vendor/pvpoke` source.
 `--project-simulations` cannot be combined with `--resume`. Generation replaces
 checked-in Pokemon, move, and ranking data before the rollback-capable simulation
 and manifest publication phase, and can perform guarded post-publication stale
 cleanup. A later sync failure does not restore those earlier gamemaster or
-ranking writes. Successful sync also rewrites `data/sync-metadata.json`. The
+ranking writes. Successful sync updates `data/sync-metadata.json` when generated
+output changes and preserves it when a repeated run is byte-identical. The
 package script invokes Bun.
 
 Validate generated data, the full repository, documentation formatting, and

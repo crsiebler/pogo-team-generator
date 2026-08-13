@@ -60,7 +60,7 @@ Pass ranking-derived candidate sets and sanitized top-150 species ids directly f
 
 Checked-in moveset-specific simulation variants must include complete `0-0`, `1-1`, and `2-2` files with matching opponent sets for every applicable format.
 
-Keep the catalog-driven checked-in manifest regression in `lib/data/simulations.test.ts` aligned with generated data policy: parse every supported format manifest, validate every active scenario CSV and default opponent parity, reject excluded moves and synthesized forbidden forms, and require representative evidence-backed alternates.
+Keep the catalog-driven checked-in manifest regression in `lib/data/simulations.test.ts` aligned with the default-only repository policy: parse every supported format manifest, require exactly one complete active default per species with unqualified scenario storage keys, validate snapshot and CSV parity, reject excluded moves and synthesized forbidden forms, and require zero canonical variant-qualified CSVs. Preserve experimental alternate coverage in synthetic sync tests.
 
 Simulation projection must bypass the destructive `runSync(...)` pipeline, derive candidates through read-only sync dependencies, limit alternate output to sanitized top-150 Overall targets with multiple candidates, and recognize stale files only through the strict canonical variant filename parser.
 

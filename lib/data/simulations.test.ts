@@ -1,6 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parse } from 'csv-parse/sync';
 import { beforeAll } from 'vitest';
 import { getBattleFormats } from './battleFormats';
 import { getMovesetAvailability } from './moveAvailability';
@@ -9,7 +8,12 @@ import {
   MOVESET_VARIANT_SCENARIOS,
   parseMovesetVariantManifestJson,
 } from './movesetVariantManifest';
-import { speciesNameToChoosableId } from './pokemon';
+import { speciesIdToSpeciesName, speciesNameToChoosableId } from './pokemon';
+import { getOptimalMoveset } from './rankings';
+import {
+  parseRuntimeSimulationAssetIndexJson,
+  RUNTIME_SIMULATION_ASSET_INDEX_PATH,
+} from './runtimeSimulationAssetIndex';
 import {
   ensureSimulationDataAvailable,
   extractSpeciesNameFromSimulationCell,
@@ -20,6 +24,7 @@ import {
   getShieldScenarioMatchupResult,
   getTopThreatsByRole,
 } from './simulations';
+import { parseVariantSimulationFilename } from '@/lib/sync/simulationProjection';
 
 describe('format-aware simulation loading', () => {
   beforeAll(() => {
@@ -101,60 +106,18 @@ describe('format-aware simulation loading', () => {
     ).toBe(564);
   });
 
-  it('keeps generated Golisopod variants complete across applicable formats', () => {
-    const scenarios = ['0-0', '1-1', '2-2'] as const;
+  it('contains no generated variant-qualified simulation CSVs', () => {
     const simulationRoot = path.join(process.cwd(), 'data', 'simulations');
-    const applicableFormats = getBattleFormats().filter((format) =>
-      scenarios.every((scenario) =>
-        existsSync(
-          path.join(
-            simulationRoot,
-            `cp${format.cp}`,
-            format.cup,
-            `golisopod_${scenario}.csv`,
-          ),
-        ),
-      ),
+    const variantPaths = getRegularFiles(simulationRoot).filter(
+      (filePath) =>
+        parseVariantSimulationFilename(path.basename(filePath)) !== null,
     );
 
-    expect(applicableFormats).not.toHaveLength(0);
-
-    for (const format of applicableFormats) {
-      const opponentLists = scenarios.map((scenario) => {
-        const variantPath = path.join(
-          simulationRoot,
-          `cp${format.cp}`,
-          format.cup,
-          `golisopod--shadow_claw--x_scissor--aqua_jet_${scenario}.csv`,
-        );
-
-        expect(existsSync(variantPath), variantPath).toBe(true);
-
-        const records = parse(readFileSync(variantPath, 'utf8'), {
-          columns: true,
-          skip_empty_lines: true,
-        }) as Array<{ Pokemon: string }>;
-        return records.map((record) => record.Pokemon);
-      });
-
-      expect(opponentLists[1]).toEqual(opponentLists[0]);
-      expect(opponentLists[2]).toEqual(opponentLists[0]);
-    }
+    expect(variantPaths).toEqual([]);
   });
 
-  it('validates every checked-in manifest and active variant scenario', () => {
-    const representativeSpeciesIds = [
-      'golisopod',
-      'quagsire',
-      'forretress',
-      'feraligatr',
-      'empoleon',
-      'furret',
-      'sableye',
-      'florges',
-      'blastoise',
-    ];
-    const representativesWithAlternates = new Set<string>();
+  it('validates every checked-in default-only manifest and scenario', () => {
+    const expectedRuntimeAssets = new Set<string>();
     let eliteDefaultCount = 0;
     let eventExclusiveMoveCount = 0;
 
@@ -165,18 +128,14 @@ describe('format-aware simulation loading', () => {
       );
 
       expect(manifest.metadata.formatId).toBe(format.id);
+      expectedRuntimeAssets.add(manifestResourcePath);
       const defaultMatrix = getMatchupMatrix(format.id);
       expect(defaultMatrix.size).toBe(manifest.species.length);
 
       for (const species of manifest.species) {
         expect(species.speciesId).not.toMatch(/^(furret|florges)_shadow$/);
 
-        if (
-          representativeSpeciesIds.includes(species.speciesId) &&
-          species.candidates.length > 1
-        ) {
-          representativesWithAlternates.add(species.speciesId);
-        }
+        expect(species.candidates).toHaveLength(1);
 
         for (const candidate of species.candidates) {
           const availability = getMovesetAvailability(
@@ -206,10 +165,29 @@ describe('format-aware simulation loading', () => {
         const activeCandidates = species.candidates.filter(
           ({ active }) => active,
         );
+        expect(activeCandidates).toHaveLength(1);
         const defaultCandidate = activeCandidates.find(
           ({ id }) => id === species.defaultVariantId,
         );
         expect(defaultCandidate).toBeDefined();
+        expect(defaultCandidate?.isDefault).toBe(true);
+        expect(defaultCandidate).toMatchObject(
+          getOptimalMoveset(
+            speciesIdToSpeciesName(species.speciesId),
+            format.id,
+          ),
+        );
+        for (const scenario of MOVESET_VARIANT_SCENARIOS) {
+          expect(defaultCandidate?.storageKeys[scenario]).toBe(
+            `${species.speciesId}_${scenario}.csv`,
+          );
+          expectedRuntimeAssets.add(
+            path.posix.join(
+              path.posix.dirname(manifestResourcePath),
+              defaultCandidate!.storageKeys[scenario],
+            ),
+          );
+        }
         expect(getActiveMovesetVariants(species.speciesId, format.id)).toEqual(
           activeCandidates.map(
             ({ id, fastMove, chargedMove1, chargedMove2, isDefault }) => ({
@@ -365,11 +343,20 @@ describe('format-aware simulation loading', () => {
       }
     }
 
-    expect([...representativesWithAlternates].sort()).toEqual(
-      [...representativeSpeciesIds].sort(),
-    );
     expect(eliteDefaultCount).toBeGreaterThan(0);
     expect(eventExclusiveMoveCount).toBeGreaterThan(0);
+    const runtimeAssetIndex = parseRuntimeSimulationAssetIndexJson(
+      readFileSync(
+        path.join(process.cwd(), RUNTIME_SIMULATION_ASSET_INDEX_PATH),
+        'utf8',
+      ),
+    );
+    expect(runtimeAssetIndex.assets).toEqual([...expectedRuntimeAssets].sort());
+    for (const assetPath of runtimeAssetIndex.assets) {
+      expect(
+        readFileSync(path.join(process.cwd(), assetPath)).length,
+      ).toBeGreaterThan(0);
+    }
   }, 120000);
 
   it('returns null when shield scenario matchup data is missing', () => {
@@ -381,6 +368,18 @@ describe('format-aware simulation loading', () => {
     ).toBeNull();
   });
 });
+
+function getRegularFiles(directoryPath: string): string[] {
+  return readdirSync(directoryPath, { withFileTypes: true }).flatMap(
+    (entry) => {
+      const entryPath = path.join(directoryPath, entry.name);
+      if (entry.isDirectory()) {
+        return getRegularFiles(entryPath);
+      }
+      return entry.isFile() ? [entryPath] : [];
+    },
+  );
+}
 
 interface ValidSimulationRow {
   readonly opponentSpeciesId: string;

@@ -54,6 +54,7 @@
 - Publish `data/simulations/runtime-asset-index.json` from reparsed manifests for every catalog format, including each manifest and only active candidate scenario paths; install it after manifests in the rollback-capable batch while retaining inactive CSVs as sync evidence.
 - Compact runtime snapshots use canonical dictionaries plus little-endian `uint16` Base64 ratings in variant/opponent/scenario order, reserve `0xffff` for missing rows, overlay deferred CSV bytes before reused files, and retain every validated active CSV row because manifest `evaluationCounts` describe bounded selection pools rather than full matrix sizes.
 - Prepare compact runtime snapshots once per format before optimizer context construction; keep warm matchup, active-variant, and policy lookups synchronous and snapshot-only, preserve the default variant plus source opponent iteration order, bind behavior-affecting identity to the active digest, and fail closed without manifest or CSV fallback.
+- Checked-in simulation data is default-only: every manifest species has one complete active ranked default with unqualified scenario storage keys, canonical variant-qualified CSVs are absent, and repeated sync preserves `sync-metadata.json` when the complete generated output fingerprint is unchanged.
 
 ## Iteration Log
 - Next iteration start: US-001 - Define shared moveset contracts and canonical variant IDs
@@ -2816,4 +2817,47 @@
   - The existing multiple-lockfile workspace-root warning remains during production builds, and local browser checks continue to report the pre-existing missing favicon 404.
 - Next iteration start:
   - US-041 - Regenerate and document the default-only dataset
+---
+
+## 2026-08-11 22:57:25 MST - US-041
+- Regenerated all eight supported formats through the normal default sync path, published one active ranked default per manifest species plus compact snapshots and the runtime asset index, and removed all 16,599 canonical variant-qualified CSVs only through guarded post-publication cleanup. Added deterministic successful-sync metadata preservation, aligned checked-in data regressions with the default-only policy, and documented the normal, experimental opt-in, UI, artifact, and measurement contracts.
+- Files changed: `README.md`, `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/data-inputs.md`, `lib/AGENTS.md`, `lib/data/simulations.test.ts`, `lib/sync/index.ts`, `lib/sync/index.test.ts`, `data/sync-metadata.json`, `data/simulations/runtime-asset-index.json`, all eight `data/simulations/cp{cp}/{cup}/moveset-variants.json` and `runtime-snapshot.json` files, 16,599 deleted canonical variant CSVs, `progress.txt`
+- Commit message: `feat: US-041 - Regenerate and document the default-only dataset`
+- Auto approval: `disabled`
+- Checks:
+  - `npx vitest run lib/sync/index.test.ts` before implementation (fail as expected: deterministic metadata resolver missing)
+  - `npx vitest run lib/data/simulations.test.ts` before regeneration (fail as expected: 16,599 variant CSVs and multi-candidate manifests remained)
+  - focused sync publication, cleanup, snapshot, index, and checked-in data suite (pass, 87 tests)
+  - `env -u PVPOKE_PATH npm run sync -- --project-simulations` before/after (pass: default-only read-only projection changed from 16,599 stale files to 0)
+  - `env -u PVPOKE_PATH npm run sync` twice (pass; complete `data/` diff SHA-256 remained `03e188d816273d779de2e4f1ca9280b65f9fe004575b35a4d802548c8d2d7b13`)
+  - `npx vitest run lib/data/simulations.test.ts` (pass, 8 tests)
+  - representative default-only PlayPokemon performance test (pass, 589 ms; earlier runs 678 ms and 692 ms)
+  - `npx prettier --check "README.md" "docs/pokemon-go-team-optimization.md" "docs/team-optimization/data-inputs.md"` (pass)
+  - `npx tsc --noEmit` (pass)
+  - `npm run lint` (pass after correcting import order)
+  - `npm test` (pass, 1,041 tests)
+  - `npm run build` (pass; existing multiple-lockfile workspace-root warning only)
+  - `npm run analyze:generate-team-trace` (pass: 122 files, 14,702,826 bytes; snapshots 7,663,712 bytes)
+  - `git diff --check` (pass)
+- Implementation agents:
+  - Recommended: `data-engineer`, `performance-engineer`
+  - Used: `data-engineer`, `performance-engineer`; both fit the standard-mode complex-story budget and covered non-overlapping safe publication/cleanup and reproducible measurement concerns
+- Specialist review:
+  - Agents used: initial `code-reviewer`, `qa-expert`, and `security-engineer` staged review
+  - Findings: no blocking findings; deferred three low fingerprint hardening suggestions because the digest controls freshness metadata rather than authenticity, generated outputs are trusted and independently validated local artifacts, and each file is read sequentially rather than retaining the full dataset in memory
+- Decisions (why):
+  - Used only normal `npm run sync` for generated data and deletion so every removal passed the strict parser, catalog path, physical directory, regular-file, successful-publication, and deterministic-report boundaries.
+  - Preserved `lastSuccessfulSyncAt` only when Pokemon, moves, rankings, and simulations have the same deterministic fingerprint, satisfying byte-identical repeated sync without making failed or changed syncs look fresh.
+  - Replaced physical alternate-data assertions with catalog-wide default-only manifest, storage-key, snapshot/CSV parity, legality, and zero-variant assertions while retaining experimental variant coverage in synthetic sync tests.
+  - Recorded logical file bytes and NFT uncompressed traced bytes instead of filesystem allocation or trace JSON size so before/after measurements remain comparable.
+- **Learnings for future iterations:**
+  - Read the `gbl-optimizer` and `test-driven-development` skills plus `docs/pokemon-go-team-optimization.md`, `docs/team-optimization/scoring-model.md`, `docs/team-optimization/lineup-structures.md`, `docs/team-optimization/coverage-threat-pools.md`, `docs/team-optimization/safety-consistency-bulk.md`, `docs/team-optimization/type-effectiveness.md`, `docs/team-optimization/role-scoring.md`, `docs/team-optimization/data-inputs.md`, and `docs/team-optimization/validation.md`.
+  - Default-only regeneration reduced repository data from 20,246 files and 367,627,804 bytes to 3,647 files and 74,519,250 bytes; snapshots fell from 12,019,584 to 7,663,712 bytes and generate-team trace bytes from 19,058,698 to 14,702,826.
+  - Idempotence must include freshness metadata; preserve valid prior metadata when the generated-output fingerprint is unchanged rather than excluding or manually restoring it.
+- Known issues / follow-ups:
+  - The unrelated existing `tasks/prd-deterministic-moveset-variants.md` modification remains unstaged and is not part of US-041.
+  - The existing multiple-lockfile workspace-root warning remains during production builds.
+  - Optional future hardening could length-frame fingerprint records, reject rather than skip generated-output symlinks, and stream unusually large files; these do not affect the validated default-only publication or idempotence contract.
+- Next iteration start:
+  - All PRD stories will be complete after staged review passes and US-041 is marked passing.
 ---

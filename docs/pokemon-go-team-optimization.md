@@ -59,10 +59,12 @@ ten canonical, deduplicated default-scored finalists. Canonical identity
 preserves explicit anchor order, sorts flexible roster members, and uses the
 canonical roster key for deterministic ties.
 
-Moveset variant simulation is opt-in. When disabled, generation creates one
-ranked-default assignment for the complete roster so anchors and flexible roster
-members use the Overall ranking-recommended movesets consistently during scoring,
-diagnostics, display, and export. When enabled, authority is resolved per species.
+Moveset variant simulation is opt-in experimental tooling and is not exposed in
+Team Configuration. Normal product generation creates one ranked-default
+assignment for the complete roster so anchors and flexible roster members use
+the Overall ranking-recommended movesets consistently during scoring,
+diagnostics, display, and export. Programmatic experiments can still enable
+variant authority per species.
 Snapshot-supported species enumerate manifest-declared active variants, while a
 species without active snapshot variants receives one ranked-default fallback
 slot without disabling variants for supported teammates. A six-member roster can
