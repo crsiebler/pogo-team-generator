@@ -12,7 +12,11 @@ const fullDiagnosticsConfig: LineupAwareFitnessConfig = {
 
 describe('Great League calibration fixture scoring', () => {
   test('scores calibration rosters with broad regression invariants', () => {
-    const context = createDefaultLineupScoringContext('great-league', 30);
+    const context = createDefaultLineupScoringContext(
+      'great-league',
+      30,
+      'ranked-default',
+    );
     const fixtures = getGreatLeagueShowSixPickThreeCalibrationFixtures();
 
     for (const fixture of fixtures) {

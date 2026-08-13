@@ -1,3 +1,5 @@
+import type { Move } from '@/lib/types';
+
 // TypeScript types for the sync module
 
 export interface SyncConfig {
@@ -12,6 +14,7 @@ export interface SyncConfig {
 export interface SyncRunOptions {
   resume?: boolean;
   sourcePath?: string;
+  includeMovesetVariants?: boolean;
 }
 
 export interface PokemonData {
@@ -26,6 +29,8 @@ export interface PokemonData {
   types: string[];
   fastMoves: string[];
   chargedMoves: string[];
+  eliteMoves?: string[];
+  legacyMoves?: string[];
   tags?: string[];
   defaultIVs: {
     cp500: number[];
@@ -42,16 +47,8 @@ export interface PokemonData {
   };
 }
 
-export interface MovesData {
-  moveId: string;
-  name: string;
-  abbreviation: string;
-  type: string;
-  power: number;
-  energy: number;
-  energyGain: number;
-  cooldown: number;
-  archetype: string;
+export interface MovesData extends Move {
+  abbreviation?: string;
   turns: number;
 }
 

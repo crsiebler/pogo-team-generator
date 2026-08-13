@@ -1,7 +1,7 @@
 {
   "project": "pogo-team-generator",
   "branchName": "ralph/deterministic-moveset-variants",
-  "description": "Derive bounded, legal moveset variants from PvPoke ranking evidence, publish authoritative simulation manifests, and use one fixed simulation-backed moveset assignment throughout finalist scoring, diagnostics, API output, and export.",
+  "description": "Preserve bounded, legal moveset variants as explicit opt-in sync tooling while returning normal sync, checked-in runtime data, and the product UI to ranked-default movesets.",
   "userStories": [
     {
       "id": "US-001",
@@ -17,7 +17,7 @@
         "Typecheck passes."
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @refactoring-specialist. Implementation notes: preserve existing Golisopod behavior while replacing duplicate local moveset shapes with shared contracts. Read the gbl-optimizer skill and required optimizer docs before editing."
     },
     {
@@ -34,7 +34,7 @@
         "Typecheck passes."
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @refactoring-specialist. Implementation notes: do not treat stateful Morpeko or Aegislash form moves as ordinary canonical-species alternates without explicit provenance."
     },
     {
@@ -52,7 +52,7 @@
         "Typecheck passes."
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: use checked-in Pokemon data for shadow eligibility and do not synthesize unavailable shadow forms."
     },
     {
@@ -70,7 +70,7 @@
         "Typecheck passes."
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: key exceptions by species-move pair, not by move ID alone."
     },
     {
@@ -87,7 +87,7 @@
         "Typecheck passes."
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @data-engineer, @typescript-pro. Implementation notes: all PvPoke source-layout knowledge stays behind the sync adapter."
     },
     {
@@ -104,7 +104,7 @@
         "Typecheck passes."
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: do not compare raw use totals across categories or formats."
     },
     {
@@ -122,7 +122,7 @@
         "Typecheck passes."
       ],
       "priority": 7,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: mechanics filter simulation candidates; they do not replace matchup simulation."
     },
     {
@@ -141,7 +141,7 @@
         "Typecheck passes."
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: preserve the ranked default first when eligible and never generate a full combination product."
     },
     {
@@ -159,7 +159,7 @@
         "Typecheck passes."
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @debugger, @test-automator. Implementation notes: replacement changes the simulated moveset, not the checked-in source ranking score."
     },
     {
@@ -176,7 +176,7 @@
         "Typecheck passes."
       ],
       "priority": 10,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @tooling-engineer, @data-engineer. Implementation notes: choose a non-interactive CLI option consistent with the current sync command."
     },
     {
@@ -193,7 +193,7 @@
         "Typecheck passes."
       ],
       "priority": 11,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @architect-reviewer. Implementation notes: keep schema parsing in lib/data and generated manifest construction in lib/sync."
     },
     {
@@ -211,7 +211,7 @@
         "Typecheck passes."
       ],
       "priority": 12,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: local PvPoke execution remains inside sync tooling and the Node VM boundary."
     },
     {
@@ -230,7 +230,7 @@
         "Typecheck passes."
       ],
       "priority": 13,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: use scoreMatchupRating for continuous comparisons and stable deterministic tie-breakers."
     },
     {
@@ -247,7 +247,7 @@
         "Typecheck passes."
       ],
       "priority": 14,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: the manifest is the runtime availability authority, not a cache of directory discovery."
     },
     {
@@ -265,7 +265,7 @@
         "Typecheck passes."
       ],
       "priority": 15,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @tooling-engineer, @test-automator. Implementation notes: delete only filenames accepted by the strict variant filename parser after a successful atomic manifest publication."
     },
     {
@@ -283,7 +283,7 @@
         "Typecheck passes."
       ],
       "priority": 16,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @backend-developer, @architect-reviewer. Implementation notes: runtime may read repository-owned JSON and CSV only; vendor JavaScript remains forbidden."
     },
     {
@@ -301,7 +301,7 @@
         "Typecheck passes."
       ],
       "priority": 17,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @architect-reviewer, @typescript-pro. Implementation notes: resolve assignments outside scoreOrderedLineup and bind them into the scoring context."
     },
     {
@@ -319,7 +319,7 @@
         "Typecheck passes."
       ],
       "priority": 18,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: preserve scoreMatchupRating for continuous values and keep missing shield rows unevaluated."
     },
     {
@@ -336,7 +336,7 @@
         "Typecheck passes."
       ],
       "priority": 19,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: derive analyses from existing scored outputs where possible and keep diagnostic-only work out of GA hot paths."
     },
     {
@@ -353,7 +353,7 @@
         "Typecheck passes."
       ],
       "priority": 20,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: collect finalists without performing variant-aware full scoring during evolution."
     },
     {
@@ -372,7 +372,7 @@
         "Typecheck passes."
       ],
       "priority": 21,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: document the lightweight assignment objective in code and keep all tie-breakers deterministic."
     },
     {
@@ -389,7 +389,7 @@
         "Typecheck passes."
       ],
       "priority": 22,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @fullstack-developer, @test-automator. Implementation notes: keep API routes thin and avoid recomputing scoring or assignment policy in adapters."
     },
     {
@@ -406,7 +406,7 @@
         "Typecheck passes."
       ],
       "priority": 23,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @fullstack-developer, @test-automator. Implementation notes: acquisition metadata is informational and must not alter battle scoring."
     },
     {
@@ -425,7 +425,7 @@
         "Typecheck passes."
       ],
       "priority": 24,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @data-engineer, @test-automator. Implementation notes: run projection first, then generation; stale variant cleanup is authorized only through the tested sync path from US-015."
     },
     {
@@ -444,8 +444,303 @@
         "Typecheck passes."
       ],
       "priority": 25,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @documentation-engineer. Implementation notes: update existing optimizer and data-input documentation rather than creating duplicate guidance."
+    },
+    {
+      "id": "US-026",
+      "title": "Measure generated function trace size",
+      "description": "As a maintainer, I want a deterministic report of the files traced into the generate-team function so deployment size regressions are visible before Vercel rejects a build.",
+      "acceptanceCriteria": [
+        "Add a non-interactive analyzer for the generated /api/generate-team Next.js NFT trace.",
+        "Report unique traced file count and uncompressed bytes grouped by simulations, rankings, application code, dependencies, and other data.",
+        "Report the largest traced files in deterministic order.",
+        "Missing or malformed trace files produce an actionable non-zero failure.",
+        "Analyzer tests use checked-in fixtures and do not require a Vercel deployment.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 26,
+      "passes": true,
+      "notes": "Recommended agents: @build-engineer, @test-automator. Implementation notes: analyze the generated Next.js NFT trace rather than estimating from repository directory size. Read the gbl-optimizer skill and required optimizer docs before editing simulation runtime boundaries."
+    },
+    {
+      "id": "US-027",
+      "title": "Publish an active runtime simulation asset index",
+      "description": "As a runtime developer, I want sync to publish an exact list of runtime-authorized simulation assets so deployment tracing does not include inactive candidate evidence.",
+      "acceptanceCriteria": [
+        "Sync derives a versioned runtime asset index from every supported format's validated moveset manifest.",
+        "The index includes each format manifest and only scenario storage keys for manifest-declared active candidates, including active defaults.",
+        "Inactive candidate CSVs never appear in the runtime asset index.",
+        "Every indexed path is repository-relative, canonical, unique, and confined to its catalog-derived simulation format directory.",
+        "The index is written atomically after successful manifest publication and is byte-identical for identical inputs.",
+        "Existing full manifests and inactive candidate CSVs remain unchanged as sync and validation evidence.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 27,
+      "passes": true,
+      "notes": "Recommended agents: @data-engineer, @security-engineer. Implementation notes: derive deployment authority from validated active manifest entries without changing existing manifest semantics or deleting inactive evidence."
+    },
+    {
+      "id": "US-028",
+      "title": "Remove runtime simulation directory scanning",
+      "description": "As a runtime developer, I want default matrices loaded through manifest-declared storage keys so Next.js tracing does not conservatively retain entire simulation directories.",
+      "acceptanceCriteria": [
+        "Runtime default matrix loading uses each species' active default candidate and exact manifest storage keys.",
+        "Runtime simulation loading no longer calls readdirSync or discovers default matrices by scanning filenames.",
+        "Default aggregate and shield-scenario lookup behavior remains unchanged.",
+        "Alternate lookup remains manifest-authoritative and never falls back to a default row.",
+        "Missing, malformed, incompatible, or incomplete default data produces the existing actionable typed error contract.",
+        "Runtime loader tests cover all supported formats and default/alternate opponent parity.",
+        "The PvPoke runtime boundary test passes.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 28,
+      "passes": true,
+      "notes": "Recommended agents: @backend-developer, @architect-reviewer. Implementation notes: keep manifest authority from US-016 while eliminating filesystem enumeration that broadens static tracing."
+    },
+    {
+      "id": "US-029",
+      "title": "Trace only runtime-authorized function assets",
+      "description": "As a maintainer, I want Next.js output tracing scoped to exact runtime assets so the standard Vercel function remains within its deployment limit.",
+      "acceptanceCriteria": [
+        "Replace recursive data/**/*.csv and data/**/*.json tracing for /api/generate-team with runtime-indexed paths and exact required non-simulation data.",
+        "Narrow /api/pokemon-list tracing to only the files that route consumes.",
+        "No inactive candidate CSV appears in the generated /api/generate-team NFT trace.",
+        "Every runtime-indexed active simulation asset appears in the generated trace.",
+        "A production build followed by the trace analyzer reports no more than 200 MiB uncompressed for /api/generate-team.",
+        "Deployment correctness does not depend on VERCEL_SUPPORT_LARGE_FUNCTIONS or any equivalent Large Functions setting.",
+        "All supported formats pass generate-team route tests using traced assets.",
+        "Typecheck, lint, tests, and production build pass."
+      ],
+      "priority": 29,
+      "passes": true,
+      "notes": "Recommended agents: @build-engineer, @deployment-engineer. Implementation notes: use the generated active asset index as the tracing allowlist and preserve at least 20 percent headroom under Vercel's standard limit."
+    },
+    {
+      "id": "US-030",
+      "title": "Generate compact per-format runtime simulation snapshots",
+      "description": "As a maintainer, I want active matchup data compiled into one compact deterministic snapshot per format so runtime does not ship thousands of CSV files.",
+      "acceptanceCriteria": [
+        "Define a versioned repository-owned snapshot schema containing format, manifest policy, and source digest identity.",
+        "Each snapshot contains canonical species and opponent dictionaries, active moveset identities, active default mappings, and required 0-0, 1-1, and 2-2 Battle Ratings.",
+        "Ratings use a documented fixed-width encoding with an explicit missing-row sentinel and no silent default substitution.",
+        "Snapshot generation consumes validated manifests and active scenario CSVs only.",
+        "Every encoded rating has exact parity with its source CSV value.",
+        "Identical inputs produce byte-identical snapshots.",
+        "Snapshot publication is atomic and occurs after source manifest publication succeeds.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 30,
+      "passes": true,
+      "notes": "Recommended agents: @data-engineer, @performance-engineer. Implementation notes: CSVs remain sync and validation evidence; snapshots contain only runtime-consumed active data and no PvPoke vendor code."
+    },
+    {
+      "id": "US-031",
+      "title": "Load matchups from compact runtime snapshots",
+      "description": "As a runtime developer, I want optimizer lookups backed by a prepared compact snapshot so scoring remains synchronous, deterministic, and independent of runtime CSV parsing.",
+      "acceptanceCriteria": [
+        "Add a format-scoped snapshot repository with an explicit preparation step before optimizer scoring begins.",
+        "Aggregate and shield-scenario lookups preserve existing synchronous scoring interfaces after preparation.",
+        "Active moveset availability and manifest policy identity come from the validated snapshot.",
+        "Schema, format, policy, source digest, bounds, and missing-value sentinels are validated before caching.",
+        "Snapshot lookup results match the CSV-backed loader for every active species, variant, opponent, and scenario in regression fixtures.",
+        "Runtime never falls back to CSV data when a snapshot is missing or incompatible.",
+        "Assignment fingerprints, finalist ordering, diagnostics, API output, and export remain unchanged for deterministic fixtures.",
+        "The PvPoke runtime boundary test passes.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 31,
+      "passes": true,
+      "notes": "Recommended agents: @backend-developer, @performance-engineer. Implementation notes: hydrate once per format before scoring and keep network or asynchronous work out of optimizer lookup loops."
+    },
+    {
+      "id": "US-032",
+      "title": "Remove simulation CSVs from runtime function traces",
+      "description": "As a maintainer, I want deployed functions to include compact snapshots instead of source simulations so future candidate growth does not consume the Vercel bundle budget.",
+      "acceptanceCriteria": [
+        "/api/generate-team traces compact per-format snapshots and no simulation CSV files.",
+        "Full candidate manifests and inactive simulation evidence remain available to sync and validation tooling but are not runtime function dependencies.",
+        "The trace analyzer reports no more than 100 MiB uncompressed for /api/generate-team.",
+        "All compact runtime simulation snapshots total no more than 50 MiB uncompressed.",
+        "Representative cold and warm generation remain under one minute and do not regress by more than 10 percent from the recorded active-only baseline.",
+        "Peak runtime memory is recorded for each supported format and remains within the configured Vercel function memory limit.",
+        "The standard Vercel function size limit is met without enabling Large Functions support.",
+        "Typecheck, lint, tests, and production build pass."
+      ],
+      "priority": 32,
+      "passes": true,
+      "notes": "Recommended agents: @performance-engineer, @build-engineer. Implementation notes: retain source CSVs for tooling while removing them from runtime traces; do not enable Vercel Large Functions."
+    },
+    {
+      "id": "US-033",
+      "title": "Document runtime artifact and Vercel size contracts",
+      "description": "As a future contributor, I want the simulation artifact and deployment-size workflow documented so generated data growth cannot silently break production deployments.",
+      "acceptanceCriteria": [
+        "Documentation distinguishes full CSV and manifest sync evidence from compact runtime snapshots.",
+        "Documentation explains active-only asset indexing, snapshot generation, atomic publication, and runtime validation.",
+        "Documentation includes production build and NFT trace analyzer commands.",
+        "Documentation records the 200 MiB active-only transition budget, the 100 MiB compact-snapshot target, and the 50 MiB snapshot-data target.",
+        "Documentation states that this feature must not enable or depend on Vercel Large Functions support.",
+        "Documentation states that optimizer hot-path lookups must not perform per-matchup network, database, KV, or object-storage requests.",
+        "Documentation formatting passes.",
+        "Typecheck passes."
+      ],
+      "priority": 33,
+      "passes": true,
+      "notes": "Recommended agents: @documentation-engineer. Implementation notes: update existing optimizer data-input and generation documentation instead of creating duplicate architecture guidance."
+    },
+    {
+      "id": "US-034",
+      "title": "Track moveset assignment authority per roster species",
+      "description": "As a runtime developer, I want each assigned moveset to record whether it came from the compact snapshot or the ranked default so one roster can safely contain both authorities.",
+      "acceptanceCriteria": [
+        "Extend RosterMovesetAssignment with a canonical per-species authority that distinguishes manifest-backed variants from ranked-default fallbacks.",
+        "Require the authority keys to match variantsBySpeciesId and the canonical roster exactly.",
+        "Include every per-species authority in the deterministic assignment fingerprint.",
+        "Manifest defaults remain variant-qualified, while ranked-default fallback entries remain unqualified for aggregate and shield-scenario matchup lookup.",
+        "Update assignment parsing, API serialization, analysis, team-details projection, and export consumers to preserve the authority without independently selecting moves.",
+        "Tests cover mixed-authority fingerprint determinism, malformed authority maps, manifest-default qualification, ranked-default non-qualification, and immutable assignment values.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 34,
+      "passes": true,
+      "notes": "Recommended agents: @typescript-pro, @refactoring-specialist. Implementation notes: replace the global-policy shortcut used for simulation qualification with explicit per-species authority. No backward-compatibility parser is required because assignments are transient response data, not persisted records. Read the gbl-optimizer skill and required optimizer docs before editing."
+    },
+    {
+      "id": "US-035",
+      "title": "Fall back unsupported variant anchors to default movesets",
+      "description": "As a player, I want an eligible anchor outside the compact variant snapshot to use its default moveset so variant-enabled generation still succeeds for my selected roster.",
+      "acceptanceCriteria": [
+        "When variant simulation is enabled and one roster species has no active snapshot variants, assign that species its ranked-default moveset without disabling variants for supported teammates.",
+        "GBL team-aware assignment resolution and PlayPokemon finalist assignment enumeration both support mixed manifest and ranked-default roster assignments.",
+        "Only variant-unavailable species data triggers the per-species fallback; malformed, incompatible, incomplete, missing, or unprepared snapshot failures still propagate as typed errors.",
+        "The fallback species uses unqualified default matchup lookups and never substitutes another species or variant row.",
+        "A regression fixture with an eligible explicit anchor outside the top-150 snapshot completes generation while at least one supported teammate retains manifest-backed variant candidates.",
+        "Deterministic assignment ordering, finalist bounds, anchor order, diagnostics, API output, and export remain intact.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 35,
+      "passes": true,
+      "notes": "Recommended agents: @backend-developer, @debugger. Implementation notes: implement the user-selected per-species fallback rather than rejecting the request or falling back the entire roster. Preserve fail-closed behavior for snapshot integrity failures. Read the gbl-optimizer skill and required optimizer docs before editing."
+    },
+    {
+      "id": "US-036",
+      "title": "Validate returned moveset assignments against runtime authorities",
+      "description": "As an API consumer, I want team details to accept only assignments matching current ranking and snapshot authorities so caller-recomputed fingerprints cannot present an unscored moveset as authoritative output.",
+      "acceptanceCriteria": [
+        "Add a testable authority validator that runs after structural assignment parsing and before team-details projection.",
+        "For each manifest-backed species, require the assignment policy identity to match the prepared compact snapshot and require the complete assigned variant to match one current active snapshot variant.",
+        "For each ranked-default fallback species, require the assigned fast move, charged moves, variant identity, default status, and fallback policy identity to match the current format ranking recommendation.",
+        "Reject legal but inactive movesets, stale manifest policies, false authority labels, modified defaults, and caller-recomputed fingerprints with HTTP 400 responses.",
+        "Prepare snapshot data only when an assignment contains manifest-backed species, and propagate malformed, incompatible, or incomplete authority data without silently accepting the assignment.",
+        "The team-details route continues to project the validated assignment exactly and does not perform team-aware reselection.",
+        "Unit and route tests cover valid manifest, valid fallback, valid mixed, tampered active, tampered fallback, and stale-policy assignments.",
+        "Tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 36,
+      "passes": true,
+      "notes": "Recommended agents: @security-engineer, @backend-developer. Implementation notes: deterministic fingerprints provide identity, not authenticity; establish authenticity by comparing each transient assignment with repository-owned runtime authorities. Keep validation dependencies injectable in unit tests."
+    },
+    {
+      "id": "US-037",
+      "title": "Guard assignment authority deployment and documentation contracts",
+      "description": "As a maintainer, I want authority validation covered by tracing, architecture, and documentation checks so the team-details fix remains deployable and does not cross the PvPoke runtime boundary.",
+      "acceptanceCriteria": [
+        "Next.js output tracing includes every compact snapshot required by /api/team-details authority validation and excludes simulation CSVs, full manifests, and PvPoke vendor JavaScript.",
+        "Trace planning and analysis validate both /api/generate-team and /api/team-details route assets without broad recursive data includes.",
+        "Each generated function remains under the existing 100 MiB uncompressed compact-runtime budget and all traced compact snapshots remain under the existing 50 MiB aggregate budget.",
+        "Runtime boundary tests prove that assignment validation consumes only repository-owned rankings, Pokemon and move data, and compact snapshots.",
+        "Optimizer documentation explains mixed per-species authority, unsupported-species default fallback, team-details authority validation, and fail-closed snapshot integrity behavior.",
+        "Documentation formatting passes.",
+        "Trace analyzer tests pass.",
+        "The full test suite and production build pass.",
+        "Typecheck passes."
+      ],
+      "priority": 37,
+      "passes": true,
+      "notes": "Recommended agents: @build-engineer, @documentation-engineer. Implementation notes: extend the existing catalog-derived compact snapshot tracing and analyzer contracts; do not enable Large Functions, trace source simulation evidence, or add runtime PvPoke dependencies."
+    },
+    {
+      "id": "US-038",
+      "title": "Make moveset variant sync explicitly opt-in",
+      "description": "As a maintainer, I want normal sync runs to exclude alternate moveset simulations so routine data refreshes remain bounded while the experimental generator remains available for future evaluation.",
+      "acceptanceCriteria": [
+        "Add includeMovesetVariants?: boolean to the shared sync options contract, with omitted values resolving to false.",
+        "npm run sync and npm run sync -- --resume pass includeMovesetVariants: false to simulation generation.",
+        "npm run sync -- --moveset-variants passes includeMovesetVariants: true to simulation generation.",
+        "The --moveset-variants and --resume flags can be combined.",
+        "Projection mode remains read-only and reports whether its estimate includes moveset variants.",
+        "Unknown CLI flags fail with an actionable message instead of being silently ignored.",
+        "Focused CLI and sync option tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 38,
+      "passes": true,
+      "notes": "Recommended agents: @cli-developer, @test-automator. Implementation notes: keep normal sync ranked-default-only and preserve variant generation only behind the explicit --moveset-variants flag. Read the gbl-optimizer skill and required optimizer docs before editing sync behavior."
+    },
+    {
+      "id": "US-039",
+      "title": "Publish default-only simulation authorities",
+      "description": "As a maintainer, I want default sync runs to publish complete default-only manifests and snapshots so runtime contracts remain valid without retaining alternate simulation data.",
+      "acceptanceCriteria": [
+        "When includeMovesetVariants is false, simulation generation evaluates exactly the ranked-default candidate for each synchronized species.",
+        "Default-only manifests contain exactly one active default candidate per included species and no alternate candidate storage keys.",
+        "Default-only compact snapshots contain only ranked-default matrices and preserve all required 0-0, 1-1, and 2-2 ratings.",
+        "Default simulation CSVs, manifests, snapshots, and the runtime asset index are validated and published atomically before cleanup begins.",
+        "After successful default-only publication, cleanup deletes only regular files accepted by the strict canonical variant filename parser.",
+        "Cleanup never deletes default simulation files, format directories, or files outside catalog-authorized simulation directories.",
+        "When includeMovesetVariants is true, existing candidate derivation, simulation, manifest selection, and snapshot behavior remains available.",
+        "Focused sync, publication, snapshot, and cleanup tests pass.",
+        "Typecheck passes."
+      ],
+      "priority": 39,
+      "passes": true,
+      "notes": "Recommended agents: @data-engineer, @security-engineer. Implementation notes: publish a complete default-only authority before deleting prior variant evidence; preserve the existing opt-in variant path and strict cleanup confinement. Read the gbl-optimizer skill and required optimizer docs before editing simulation inputs or runtime snapshots."
+    },
+    {
+      "id": "US-040",
+      "title": "Hide moveset variation from team configuration",
+      "description": "As a player, I want team generation to present only supported ranked-default behavior so an experimental data path is not exposed in the product UI.",
+      "acceptanceCriteria": [
+        "The Moveset Options section and Simulate moveset variants switch do not render in Team Configuration.",
+        "Remove moveset-variation state and feature-specific props from TeamManager, TeamConfigPanel, and TeamGenerator rather than guarding JSX with a hardcoded false condition.",
+        "Frontend /api/generate-team requests omit simulateMovesetVariants.",
+        "The reusable Switch atom remains available for unrelated or future UI use.",
+        "The API and optimizer option remain defaulted to false for future programmatic experiments, but normal UI generation cannot enable it.",
+        "Component tests assert the moveset variation control is absent and the request payload omits the option.",
+        "Tests pass.",
+        "Typecheck passes.",
+        "Verify in browser using dev-browser skill on desktop and mobile viewports."
+      ],
+      "priority": 40,
+      "passes": true,
+      "notes": "Recommended agents: @react-specialist, @accessibility-tester. Implementation notes: remove feature-specific client state and prop plumbing, but retain the reusable Switch atom and backend default-false option for future experiments."
+    },
+    {
+      "id": "US-041",
+      "title": "Regenerate and document the default-only dataset",
+      "description": "As a maintainer, I want checked-in simulation assets and documentation aligned with the default-only policy so repository size and runtime costs reflect actual product behavior.",
+      "acceptanceCriteria": [
+        "Run the default sync path for every supported battle format and publish deterministic default-only manifests and compact snapshots.",
+        "Remove all generated variant-qualified simulation CSVs through the tested post-publication cleanup boundary.",
+        "No checked-in data/simulations filename accepted by the canonical variant parser remains after default sync.",
+        "Record before-and-after simulation file count, repository data bytes, compact snapshot bytes, and generate-team trace bytes.",
+        "Representative default-only team generation remains under one minute and records lower or equal snapshot bytes than the variant-enabled baseline.",
+        "Documentation states that normal sync excludes variants, documents --moveset-variants as experimental opt-in tooling, and states that the UI does not expose the feature.",
+        "Repeating default sync with unchanged inputs produces no data diff.",
+        "Typecheck, lint, full tests, production build, and trace analysis pass."
+      ],
+      "priority": 41,
+      "passes": true,
+      "notes": "Recommended agents: @data-engineer, @performance-engineer. Implementation notes: use only the tested sync cleanup boundary for generated variant removal, record objective size and performance deltas, and update existing optimizer data-input and runtime artifact documentation. Read the gbl-optimizer skill and required optimizer docs before regenerating data."
     }
   ]
 }

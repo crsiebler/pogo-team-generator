@@ -51,6 +51,83 @@ code must not import, require, execute, bundle, or runtime-load PvPoke vendor
 JavaScript. Keep any local PvPoke engine execution isolated to sync or tooling
 workflows that generate repository-owned data.
 
+### Fixed Moveset Assignments And Bounded Finalist Reranking
+
+PlayPokemon evolution remains ranked-default-only so variant-aware full scoring
+does not enter the genetic algorithm hot path. Across generations, retain up to
+ten canonical, deduplicated default-scored finalists. Canonical identity
+preserves explicit anchor order, sorts flexible roster members, and uses the
+canonical roster key for deterministic ties.
+
+Moveset variant simulation is opt-in experimental tooling and is not exposed in
+Team Configuration. Normal product generation creates one ranked-default
+assignment for the complete roster so anchors and flexible roster members use
+the Overall ranking-recommended movesets consistently during scoring,
+diagnostics, display, and export. Programmatic experiments can still enable
+variant authority per species.
+Snapshot-supported species enumerate manifest-declared active variants, while a
+species without active snapshot variants receives one ranked-default fallback
+slot without disabling variants for supported teammates. A six-member roster can
+therefore contain mixed authority while retaining the `3^6 = 729` assignment
+upper bound.
+
+A `RosterMovesetAssignment` fixes one variant and one authority per species before
+lineup scoring. `authorityBySpeciesId` and `variantsBySpeciesId` have exactly the
+canonical roster keys, and every authority contributes to the deterministic
+assignment fingerprint. The same species uses the same assigned moveset across
+all 120 ordered lead, switch, and closer permutations. Manifest variants,
+including manifest defaults, use variant-qualified simulation lookups;
+ranked-default fallbacks use unqualified default lookups. Assignment-dependent
+cache keys include the complete fingerprint so different variants or authorities
+cannot collide.
+
+Fallback is allowed only for an unqualified `variant-unavailable` result matching
+the requested format and species. Missing, malformed, incompatible, incomplete,
+or unprepared snapshots, mismatched species, and unavailable specific variants
+fail closed instead of becoming ranked fallbacks.
+
+A lightweight aggregate-matrix objective prefilters assignments before full
+lineup scoring. It weights top-meta and full-meta evidence `0.7/0.3` and the best
+three roster answers per threat `0.55/0.30/0.15`. Fully score at most twelve
+assignments per finalist across all 120 ordered lineups. The lightweight result
+is only a work bound. Assignment ties within a finalist use lightweight score,
+fewer alternates, then assignment fingerprint. Selection across finalists uses
+variant-aware full fitness, then default-only finalist fitness, then canonical
+roster key.
+
+The selected immutable assignment is retained for final diagnostics, API output,
+team details, and export. `/api/team-details` first verifies the assignment's
+structure and fingerprint, then validates each species against current
+repository-owned authority before projecting the exact assignment without
+reselecting moves. A fingerprint proves deterministic identity, not authenticity.
+Manifest authority must match the prepared snapshot policy and one complete
+active variant; fallback authority must match the current Overall ranking default
+and fallback policy. Snapshot preparation occurs only when at least one species
+claims manifest authority. Regular, Elite, event-exclusive, and purified
+acquisition classifications remain informational and do not change weighted
+fitness. See
+[Data Inputs](team-optimization/data-inputs.md) for availability, candidate,
+manifest, publication, and sync semantics.
+
+### Runtime Simulation Artifacts
+
+Full simulation CSVs and moveset manifests are sync and validation evidence, not
+optimizer runtime inputs. Sync publishes one compact active-only simulation
+snapshot per supported format after validating the manifest-declared active
+scenarios. Runtime prepares and validates that repository-owned snapshot once per
+format, then keeps matchup lookups synchronous and local throughout scoring.
+
+Deployment tracing uses exact catalog-derived asset plans for both
+`/api/generate-team` and `/api/team-details`. Each function must include every
+compact snapshot and stay at or below `100 MiB` uncompressed, while the unique
+snapshot set must stay at or below `50 MiB`. Source simulation CSVs, full
+manifests, the tooling index, and PvPoke vendor JavaScript are excluded. This
+contract must not depend on Vercel Large Functions. Optimizer hot-path lookups
+must not perform per-matchup network, database, KV, or object-storage requests.
+See [Data Inputs](team-optimization/data-inputs.md#runtime-artifact-and-deployment-contract)
+for asset indexing, publication order, validation, size budgets, and build
+commands.
+
 For ordered lineups, use one of these models depending on project requirements:
 
 - Lead ordered, back pair unordered: `6 * C(5, 2) = 60` lineups.
@@ -66,7 +143,7 @@ If a project has enough role data, fully ordered lead/switch/closer scoring is p
 - [Safety, Consistency, And Bulk](team-optimization/safety-consistency-bulk.md): hard-loss, bait-dependence, and bulk scoring.
 - [Type Effectiveness](team-optimization/type-effectiveness.md): Pokemon GO multipliers, dual-type calculation, and offensive/defensive ratios.
 - [Role Scoring](team-optimization/role-scoring.md): lead, switch, closer, charger, attacker, and consistency ranking use.
-- [Data Inputs](team-optimization/data-inputs.md): recommended PvPoke exports and normalized inputs.
+- [Data Inputs](team-optimization/data-inputs.md): move availability, ranking evidence, bounded candidates, manifest publication, and sync commands.
 - [Validation](team-optimization/validation.md): regression fixtures and expected edge cases.
 - OpenCode skill `gbl-optimizer`: project skill for agents implementing, refactoring, or reviewing GBL optimizer logic.
 

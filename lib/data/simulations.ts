@@ -1,49 +1,31 @@
-import { readFileSync, readdirSync } from 'fs';
-import { parse } from 'csv-parse/sync';
 import type { BattleFormatId } from './battleFormats';
 import { DEFAULT_BATTLE_FORMAT_ID, getBattleFormatById } from './battleFormats';
 import {
   normalizeToChoosableSpeciesId,
   speciesIdToSpeciesName,
-  speciesNameToChoosableId,
 } from './pokemon';
 import {
   getAllRankingsForPokemon,
   getRoleBasedThreatSpeciesIds,
 } from './rankings';
+import {
+  createRuntimeSimulationRepository,
+  MovesetVariantSimulationDataError,
+  type RuntimeMatchupMatrix,
+  type RuntimeMatchupResult,
+} from './runtimeSimulationRepository';
+import { readRuntimeSimulationSnapshotFile } from './runtimeSimulationSnapshotFile';
+import type { MovesetVariant, MovesetVariantId } from '@/lib/types';
 
 /**
  * Simulation matchup result for a specific shield scenario
  */
-export interface MatchupResult {
-  battleRating: number; // >500 = win, <500 = loss, =500 = tie
-  energyRemaining: number;
-  hpRemaining: number;
-}
-
-/**
- * Complete matchup data across all shield scenarios
- */
-interface MatchupData {
-  shields0: MatchupResult | null;
-  shields1: MatchupResult | null;
-  shields2: MatchupResult | null;
-}
+export type MatchupResult = RuntimeMatchupResult;
 
 /**
  * Matchup matrix keyed by speciesId.
  */
-type MatchupMatrix = Map<string, Map<string, MatchupData>>;
-type MovesetVariantMatchupMatrix = Map<
-  string,
-  Map<string, Map<string, MatchupData>>
->;
-
-const formatMatchupCache: Map<BattleFormatId, MatchupMatrix> = new Map();
-const formatMovesetVariantMatchupCache: Map<
-  BattleFormatId,
-  MovesetVariantMatchupMatrix
-> = new Map();
+type MatchupMatrix = RuntimeMatchupMatrix;
 
 /**
  * Raised when requested format simulation files are unavailable.
@@ -66,20 +48,10 @@ export class MissingSimulationDataError extends Error {
 }
 
 /**
- * CSV record structure from simulation files
- */
-interface SimulationCSVRecord {
-  Pokemon: string;
-  'Battle Rating': number;
-  'Energy Remaining': number;
-  'HP Remaining': number;
-}
-
-/**
  * Extract the display species name from simulation row value.
  * Example: "Aegislash (Shield) AS+FC/GB" -> "Aegislash (Shield)"
  */
-function extractSpeciesNameFromSimulationCell(value: string): string {
+export function extractSpeciesNameFromSimulationCell(value: string): string {
   const trimmedValue = value.trim();
   if (!trimmedValue) {
     return '';
@@ -103,227 +75,35 @@ function extractSpeciesNameFromSimulationCell(value: string): string {
 }
 
 /**
- * Parse a simulation CSV file and extract matchup results by opponent speciesId.
- */
-function parseSimulationCSV(filePath: string): Map<string, MatchupResult> {
-  const fileContent = readFileSync(filePath, 'utf-8');
-  const records = parse(fileContent, {
-    columns: true,
-    skip_empty_lines: true,
-    cast: (value, context) => {
-      if (
-        context.column &&
-        typeof context.column === 'string' &&
-        ['Battle Rating', 'Energy Remaining', 'HP Remaining'].includes(
-          context.column,
-        )
-      ) {
-        return parseFloat(value);
-      }
-      return value;
-    },
-  }) as SimulationCSVRecord[];
-
-  const matchups = new Map<string, MatchupResult>();
-
-  for (const record of records) {
-    const speciesDisplayName = extractSpeciesNameFromSimulationCell(
-      record.Pokemon,
-    );
-    const opponentSpeciesId = speciesNameToChoosableId(speciesDisplayName);
-    if (!opponentSpeciesId) {
-      continue;
-    }
-
-    matchups.set(opponentSpeciesId, {
-      battleRating: record['Battle Rating'],
-      energyRemaining: record['Energy Remaining'],
-      hpRemaining: record['HP Remaining'],
-    });
-  }
-
-  return matchups;
-}
-
-/**
  * Resolve selected format id with Great League fallback.
  */
 function resolveFormatId(formatId?: BattleFormatId): BattleFormatId {
   return formatId ?? DEFAULT_BATTLE_FORMAT_ID;
 }
 
-/**
- * Parsed simulation filename metadata.
- */
-export interface ParsedSimulationFilename {
-  speciesId: string;
-  movesetVariantId?: string;
-  shieldCount: number;
-}
+const runtimeSimulationRepository = createRuntimeSimulationRepository({
+  rootPath: process.cwd(),
+  readText: readRuntimeSimulationSnapshotFile,
+});
 
-/**
- * Parse simulation CSV filename in format-specific directories.
- * Filename format: {speciesId}_{shields}.csv
- */
-export function parseSimulationFilename(
-  filename: string,
-): ParsedSimulationFilename | null {
-  const match = filename.match(/^(.+)_(\d+)-\d+\.csv$/);
-  if (!match) {
-    return null;
-  }
-
-  const [rawSpeciesId, ...movesetVariantParts] = match[1].split('--');
-  const speciesId = normalizeToChoosableSpeciesId(rawSpeciesId);
-  const movesetVariantId = movesetVariantParts.join('--') || undefined;
-  const shieldCount = parseInt(match[2]);
-
-  if (!speciesId) {
-    return null;
-  }
-
-  return {
+/** Return manifest-declared active movesets for one species and format. */
+export function getActiveMovesetVariants(
+  speciesId: string,
+  formatId?: BattleFormatId,
+): readonly MovesetVariant[] {
+  return runtimeSimulationRepository.getActiveVariants(
     speciesId,
-    ...(movesetVariantId ? { movesetVariantId } : {}),
-    shieldCount,
-  };
+    resolveFormatId(formatId),
+  );
 }
 
-/**
- * Load all simulation data for a selected battle format.
- */
-function loadSimulationData(formatId?: BattleFormatId): MatchupMatrix {
-  const resolvedFormatId = resolveFormatId(formatId);
-  const matrix: MatchupMatrix = new Map();
-  const battleFormat = getBattleFormatById(resolvedFormatId);
-
-  if (!battleFormat) {
-    return matrix;
-  }
-
-  const simulationDir = `${process.cwd()}/data/simulations/cp${battleFormat.cp}/${battleFormat.cup}`;
-
-  try {
-    const files = readdirSync(simulationDir);
-
-    for (const filename of files) {
-      if (!filename.endsWith('.csv')) {
-        continue;
-      }
-
-      const parsedFilename = parseSimulationFilename(filename);
-      if (!parsedFilename) {
-        continue;
-      }
-
-      const { speciesId, movesetVariantId, shieldCount } = parsedFilename;
-      if (movesetVariantId) {
-        continue;
-      }
-      const filePath = `${simulationDir}/${filename}`;
-      const matchups = parseSimulationCSV(filePath);
-
-      if (!matrix.has(speciesId)) {
-        matrix.set(speciesId, new Map());
-      }
-
-      const pokemonMatchups = matrix.get(speciesId)!;
-
-      for (const [opponentSpeciesId, result] of matchups.entries()) {
-        if (!pokemonMatchups.has(opponentSpeciesId)) {
-          pokemonMatchups.set(opponentSpeciesId, {
-            shields0: null,
-            shields1: null,
-            shields2: null,
-          });
-        }
-
-        const matchupData = pokemonMatchups.get(opponentSpeciesId)!;
-
-        if (shieldCount === 0) {
-          matchupData.shields0 = result;
-        } else if (shieldCount === 1) {
-          matchupData.shields1 = result;
-        } else if (shieldCount === 2) {
-          matchupData.shields2 = result;
-        }
-      }
-    }
-  } catch {
-    return matrix;
-  }
-
-  return matrix;
-}
-
-function loadMovesetVariantSimulationData(
+/** Return the schema and policy identity governing one format manifest. */
+export function getMovesetVariantManifestPolicyIdentity(
   formatId?: BattleFormatId,
-): MovesetVariantMatchupMatrix {
-  const resolvedFormatId = resolveFormatId(formatId);
-  const matrix: MovesetVariantMatchupMatrix = new Map();
-  const battleFormat = getBattleFormatById(resolvedFormatId);
-
-  if (!battleFormat) {
-    return matrix;
-  }
-
-  const simulationDir = `${process.cwd()}/data/simulations/cp${battleFormat.cp}/${battleFormat.cup}`;
-
-  try {
-    for (const filename of readdirSync(simulationDir)) {
-      if (!filename.endsWith('.csv')) {
-        continue;
-      }
-
-      const parsedFilename = parseSimulationFilename(filename);
-      if (!parsedFilename?.movesetVariantId) {
-        continue;
-      }
-
-      const { speciesId, movesetVariantId, shieldCount } = parsedFilename;
-      const matchups = parseSimulationCSV(`${simulationDir}/${filename}`);
-      const variants = matrix.get(speciesId) ?? new Map();
-      const pokemonMatchups = variants.get(movesetVariantId) ?? new Map();
-
-      for (const [opponentSpeciesId, result] of matchups.entries()) {
-        const matchupData = pokemonMatchups.get(opponentSpeciesId) ?? {
-          shields0: null,
-          shields1: null,
-          shields2: null,
-        };
-
-        if (shieldCount === 0) {
-          matchupData.shields0 = result;
-        } else if (shieldCount === 1) {
-          matchupData.shields1 = result;
-        } else if (shieldCount === 2) {
-          matchupData.shields2 = result;
-        }
-        pokemonMatchups.set(opponentSpeciesId, matchupData);
-      }
-
-      variants.set(movesetVariantId, pokemonMatchups);
-      matrix.set(speciesId, variants);
-    }
-  } catch {
-    return matrix;
-  }
-
-  return matrix;
-}
-
-function getMovesetVariantMatchupMatrix(
-  formatId?: BattleFormatId,
-): MovesetVariantMatchupMatrix {
-  const resolvedFormatId = resolveFormatId(formatId);
-  const cachedMatrix = formatMovesetVariantMatchupCache.get(resolvedFormatId);
-  if (cachedMatrix) {
-    return cachedMatrix;
-  }
-
-  const matrix = loadMovesetVariantSimulationData(resolvedFormatId);
-  formatMovesetVariantMatchupCache.set(resolvedFormatId, matrix);
-  return matrix;
+): Readonly<{ schemaVersion: number; policyVersion: string }> {
+  return runtimeSimulationRepository.getManifestPolicyIdentity(
+    resolveFormatId(formatId),
+  );
 }
 
 /**
@@ -331,15 +111,7 @@ function getMovesetVariantMatchupMatrix(
  */
 export function getMatchupMatrix(formatId?: BattleFormatId): MatchupMatrix {
   const resolvedFormatId = resolveFormatId(formatId);
-  const cachedMatrix = formatMatchupCache.get(resolvedFormatId);
-
-  if (cachedMatrix) {
-    return cachedMatrix;
-  }
-
-  const matrix = loadSimulationData(resolvedFormatId);
-  formatMatchupCache.set(resolvedFormatId, matrix);
-  return matrix;
+  return runtimeSimulationRepository.getDefaultMatchupMatrix(resolvedFormatId);
 }
 
 /**
@@ -347,6 +119,17 @@ export function getMatchupMatrix(formatId?: BattleFormatId): MatchupMatrix {
  */
 export function ensureSimulationDataAvailable(formatId?: BattleFormatId): void {
   const resolvedFormatId = resolveFormatId(formatId);
+  try {
+    runtimeSimulationRepository.prepare(resolvedFormatId);
+  } catch (error) {
+    if (
+      error instanceof MovesetVariantSimulationDataError &&
+      error.code === 'manifest-missing'
+    ) {
+      throw new MissingSimulationDataError(resolvedFormatId);
+    }
+    throw error;
+  }
   const matrix = getMatchupMatrix(resolvedFormatId);
 
   if (matrix.size === 0) {
@@ -362,7 +145,16 @@ export function getMatchupResult(
   speciesId: string,
   opponentSpeciesId: string,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number | null {
+  if (movesetVariantId) {
+    return runtimeSimulationRepository.getMatchupResult(
+      speciesId,
+      movesetVariantId,
+      opponentSpeciesId,
+      resolveFormatId(formatId),
+    );
+  }
   const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const canonicalOpponentSpeciesId =
@@ -417,7 +209,17 @@ export function getShieldScenarioMatchupResult(
   opponentSpeciesId: string,
   shields: 0 | 1 | 2,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number | null {
+  if (movesetVariantId) {
+    return runtimeSimulationRepository.getShieldScenarioMatchupResult(
+      speciesId,
+      movesetVariantId,
+      opponentSpeciesId,
+      shields,
+      resolveFormatId(formatId),
+    );
+  }
   const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
   const canonicalOpponentSpeciesId =
@@ -447,29 +249,18 @@ export function getShieldScenarioMatchupResult(
 /** Get a matchup rating for one explicit moveset and shield scenario. */
 export function getMovesetVariantShieldScenarioMatchupResult(
   speciesId: string,
-  movesetVariantId: string,
+  movesetVariantId: MovesetVariantId,
   opponentSpeciesId: string,
   shields: 0 | 1 | 2,
   formatId?: BattleFormatId,
 ): number | null {
-  const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
-  const canonicalOpponentSpeciesId =
-    normalizeToChoosableSpeciesId(opponentSpeciesId);
-  const matchupData = getMovesetVariantMatchupMatrix(formatId)
-    .get(canonicalSpeciesId)
-    ?.get(movesetVariantId)
-    ?.get(canonicalOpponentSpeciesId);
-
-  if (!matchupData) {
-    return null;
-  }
-  if (shields === 0) {
-    return matchupData.shields0?.battleRating ?? null;
-  }
-  if (shields === 1) {
-    return matchupData.shields1?.battleRating ?? null;
-  }
-  return matchupData.shields2?.battleRating ?? null;
+  return getShieldScenarioMatchupResult(
+    speciesId,
+    opponentSpeciesId,
+    shields,
+    formatId,
+    movesetVariantId,
+  );
 }
 
 /**
@@ -719,6 +510,7 @@ export function getSingleCounterThreats(
 export function getMeanBattleRating(
   speciesId: string,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number {
   const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
@@ -735,6 +527,7 @@ export function getMeanBattleRating(
       canonicalSpeciesId,
       opponentSpeciesId,
       formatId,
+      movesetVariantId,
     );
     if (rating !== null) {
       ratings.push(rating);
@@ -754,6 +547,7 @@ export function getMeanBattleRating(
 export function getMedianBattleRating(
   speciesId: string,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number {
   const matrix = getMatchupMatrix(formatId);
   const canonicalSpeciesId = normalizeToChoosableSpeciesId(speciesId);
@@ -770,6 +564,7 @@ export function getMedianBattleRating(
       canonicalSpeciesId,
       opponentSpeciesId,
       formatId,
+      movesetVariantId,
     );
     if (rating !== null) {
       ratings.push(rating);
@@ -848,9 +643,10 @@ export function countersThreats(
 export function getMatchupQualityScore(
   speciesId: string,
   formatId?: BattleFormatId,
+  movesetVariantId?: MovesetVariantId,
 ): number {
-  const mean = getMeanBattleRating(speciesId, formatId);
-  const median = getMedianBattleRating(speciesId, formatId);
+  const mean = getMeanBattleRating(speciesId, formatId, movesetVariantId);
+  const median = getMedianBattleRating(speciesId, formatId, movesetVariantId);
   const meanScore = mean / 1000;
   const medianScore = median / 1000;
 

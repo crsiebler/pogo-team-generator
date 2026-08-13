@@ -1,55 +1,29 @@
-import type { BattleFormatId } from '@/lib/data/battleFormats';
-import {
-  getRoleBasedThreatSpeciesIds,
-  speciesIdToRankingName,
-} from '@/lib/data/rankings';
-import { getMatchupResult } from '@/lib/data/simulations';
 import type {
+  OptimizerThreatScore,
   ThreatAnalysis,
   ThreatAnalysisEntry,
   ThreatSeverityTier,
 } from '@/lib/types';
 
-const THREATS_PER_ROLE = 100;
-
 /**
- * Build ranked threat analysis for a generated team.
+ * Build ranked threat analysis from the assignment-aware final score.
  */
 export function buildThreatAnalysis(
-  team: string[],
-  formatId?: BattleFormatId,
+  threatScore: OptimizerThreatScore | undefined,
 ): ThreatAnalysis {
-  const threatSpeciesIds = getRoleBasedThreatSpeciesIds(
-    THREATS_PER_ROLE,
-    formatId,
-  );
-
-  const entries: ThreatAnalysisEntry[] = threatSpeciesIds.flatMap(
-    (threatSpeciesId, index) => {
-      const ratings = team
-        .map((teamMember) =>
-          getMatchupResult(teamMember, threatSpeciesId, formatId),
-        )
-        .filter((rating): rating is number => rating !== null);
-
-      if (ratings.length === 0) {
-        return [];
-      }
-
-      const rank = index + 1;
-      const teamAnswers = ratings.filter((rating) => rating > 500).length;
-
-      return [
-        {
-          speciesId: threatSpeciesId,
-          pokemon: speciesIdToRankingName(threatSpeciesId),
-          rank,
-          teamAnswers,
-          severityTier: calculateThreatSeverity(rank, teamAnswers),
-        },
-      ];
-    },
-  );
+  const entries: ThreatAnalysisEntry[] = (threatScore?.overallTeamThreats ?? [])
+    .map(({ speciesId, pokemon, rank, teamAnswers }) => ({
+      speciesId,
+      pokemon,
+      rank,
+      teamAnswers,
+      severityTier: calculateThreatSeverity(rank, teamAnswers),
+    }))
+    .toSorted((first, second) =>
+      first.rank !== second.rank
+        ? first.rank - second.rank
+        : first.speciesId.localeCompare(second.speciesId),
+    );
 
   return {
     evaluatedCount: entries.length,

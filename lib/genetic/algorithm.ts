@@ -24,6 +24,7 @@ import {
 import {
   countersThreats,
   ensureSimulationDataAvailable,
+  getMatchupResult,
   getWorstMatchups,
 } from '@lib/data/simulations';
 import type {
@@ -43,12 +44,78 @@ import {
 import {
   buildGblLineupRecommendation,
   buildPlayPokemonRosterRecommendations,
-  createDefaultLineupScoringContext,
+  bindRosterMovesetAssignment,
   createLineupAwareFitnessContext,
   evaluatePopulation,
+  scoreOrderedLineup,
   scorePlayPokemonRoster,
 } from './fitness';
+import { rerankRosterFinalists } from './fitness/finalistReranking';
+import {
+  enumerateRosterMovesetAssignments,
+  resolveRankedDefaultRosterMovesetAssignment,
+} from './moveset';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
+
+const DEFAULT_SCORED_FINALIST_LIMIT = 10;
+
+function getCanonicalRoster(
+  team: readonly string[],
+  fixedAnchorCount: number,
+): string[] {
+  return [
+    ...team.slice(0, fixedAnchorCount),
+    ...team.slice(fixedAnchorCount).sort(),
+  ];
+}
+
+function getCanonicalRosterKey(
+  team: readonly string[],
+  fixedAnchorCount: number,
+): string {
+  return JSON.stringify(getCanonicalRoster(team, fixedAnchorCount));
+}
+
+function retainDefaultScoredFinalists(
+  retained: readonly Chromosome[],
+  population: readonly Chromosome[],
+  fixedAnchorCount: number,
+): Chromosome[] {
+  const finalistsByRoster = new Map<string, Chromosome>();
+
+  for (const chromosome of [...retained, ...population]) {
+    const team = getCanonicalRoster(chromosome.team, fixedAnchorCount);
+    const rosterKey = getCanonicalRosterKey(team, fixedAnchorCount);
+    const current = finalistsByRoster.get(rosterKey);
+
+    if (!current || chromosome.fitness > current.fitness) {
+      finalistsByRoster.set(rosterKey, {
+        team,
+        anchors: chromosome.anchors ? [...chromosome.anchors] : [],
+        fitness: chromosome.fitness,
+      });
+    }
+  }
+
+  return [...finalistsByRoster.entries()]
+    .sort(([firstKey, first], [secondKey, second]) => {
+      if (first.fitness !== second.fitness) {
+        return second.fitness - first.fitness;
+      }
+      return firstKey < secondKey ? -1 : firstKey > secondKey ? 1 : 0;
+    })
+    .slice(0, DEFAULT_SCORED_FINALIST_LIMIT)
+    .map(([, chromosome]) => chromosome);
+}
+
+function hasRequiredAnchors(
+  chromosome: Chromosome,
+  anchorPokemon: readonly string[],
+): boolean {
+  return anchorPokemon.every(
+    (anchorSpeciesId, index) => chromosome.team[index] === anchorSpeciesId,
+  );
+}
 
 function canBuildLegalUniqueTeam(
   pokemonPool: readonly Pokemon[],
@@ -134,12 +201,20 @@ export async function generateTeam(
     populationSize = 150,
     generations = 75,
     formatId = DEFAULT_BATTLE_FORMAT_ID,
+    simulateMovesetVariants = false,
   } = options;
 
   const teamSize = mode === 'GBL' ? 3 : 6;
-  const fitnessContext = createLineupAwareFitnessContext(formatId);
-
   ensureSimulationDataAvailable(formatId);
+  const movesetPolicy =
+    mode === 'GBL' && simulateMovesetVariants ? 'team-aware' : 'ranked-default';
+  const fitnessContext =
+    mode === 'GBL' && !simulateMovesetVariants
+      ? createLineupAwareFitnessContext(formatId, movesetPolicy, {
+          resolveMovesetAssignment: (roster) =>
+            resolveRankedDefaultRosterMovesetAssignment(roster, formatId),
+        })
+      : createLineupAwareFitnessContext(formatId, movesetPolicy);
 
   let candidateNames = getAutomaticCandidatePokemonNames(formatId);
   let availablePokemon = getRankedPokemonForFormat(candidateNames, formatId);
@@ -224,6 +299,16 @@ export async function generateTeam(
   evaluatePopulation(population, mode, formatId, fitnessContext);
 
   let bestOverall = getBestChromosome(population);
+  let defaultScoredFinalists =
+    mode === 'PlayPokemon'
+      ? retainDefaultScoredFinalists(
+          [],
+          population.filter((chromosome) =>
+            hasRequiredAnchors(chromosome, anchorPokemon),
+          ),
+          anchorPokemon.length,
+        )
+      : [];
 
   // Validate initial best has anchors
   if (anchorPokemon.length > 0) {
@@ -303,6 +388,14 @@ export async function generateTeam(
       }
     }
 
+    if (mode === 'PlayPokemon') {
+      defaultScoredFinalists = retainDefaultScoredFinalists(
+        defaultScoredFinalists,
+        population,
+        anchorPokemon.length,
+      );
+    }
+
     // Track best
     const currentBest = getBestChromosome(population);
 
@@ -343,54 +436,84 @@ export async function generateTeam(
     }
   }
 
-  console.log('=== FINAL BEST TEAM ===');
-  console.log('Team:', bestOverall.team);
-  console.log('Anchors:', bestOverall.anchors);
-  console.log('Fitness:', bestOverall.fitness);
-
-  // FINAL VALIDATION: Ensure anchors are preserved
-  if (anchorPokemon.length > 0) {
-    for (let i = 0; i < anchorPokemon.length; i++) {
-      if (bestOverall.team[i] !== anchorPokemon[i]) {
-        console.error(
-          `❌ FINAL BEST TEAM HAS CORRUPTED ANCHOR ${i}: Expected ${anchorPokemon[i]}, got ${bestOverall.team[i]}`,
-        );
-        throw new Error(
-          `Final team has corrupted anchors. This should never happen.`,
-        );
-      }
-    }
-    console.log('✅ All anchors verified in final team');
-  }
-
-  if (hasOneMegaLimitForFormat(formatId)) {
-    const legality = getMegaMasterTeamLegality(bestOverall.team);
-
-    if (!legality.isLegal) {
-      throw new Error(
-        'Final one-Mega-limit team is illegal. This should never happen.',
-      );
-    }
-  }
-
-  const lineupContext = createDefaultLineupScoringContext(formatId);
-
   if (mode === 'GBL') {
+    validateFinalTeam(bestOverall, anchorPokemon, formatId);
+    const movesetAssignment = fitnessContext.resolveMovesetAssignment(
+      bestOverall.team,
+    );
+    const finalLineupContext = bindRosterMovesetAssignment(
+      fitnessContext.scoringContext,
+      movesetAssignment,
+    );
     const recommendedLineup = buildGblLineupRecommendation(bestOverall.team, {
-      context: lineupContext,
+      scoreLineup: (lineup) => scoreOrderedLineup(lineup, finalLineupContext),
     });
 
     bestOverall = {
       ...bestOverall,
       fitness:
         recommendedLineup.scoreBreakdown?.score ?? recommendedLineup.score,
+      movesetAssignment,
       scoreBreakdown: recommendedLineup.scoreBreakdown,
       recommendedLineups: [recommendedLineup],
     };
   } else {
+    const rerankingContext = createLineupAwareFitnessContext(
+      formatId,
+      simulateMovesetVariants ? 'team-aware' : 'ranked-default',
+      { threatCount: 100 },
+    );
+    const reranking = rerankRosterFinalists(
+      defaultScoredFinalists.length > 0
+        ? defaultScoredFinalists
+        : [bestOverall],
+      {
+        topThreats:
+          rerankingContext.scoringContext.topThreats ??
+          rerankingContext.scoringContext.threats,
+        fullMetaThreats:
+          rerankingContext.scoringContext.fullMetaThreats ??
+          rerankingContext.scoringContext.threats,
+        getAssignments: (roster) =>
+          simulateMovesetVariants
+            ? enumerateRosterMovesetAssignments(roster, formatId)
+            : [resolveRankedDefaultRosterMovesetAssignment(roster, formatId)],
+        getMatchupRating: (speciesId, opponentSpeciesId, variantId) =>
+          getMatchupResult(speciesId, opponentSpeciesId, formatId, variantId),
+        scoreAssignment: (finalist, assignment) =>
+          scorePlayPokemonRoster(
+            finalist.team,
+            {
+              ...bindRosterMovesetAssignment(
+                rerankingContext.scoringContext,
+                assignment,
+              ),
+              scoreLineup: (lineup) =>
+                rerankingContext.scoreLineup(lineup, assignment),
+            },
+            {
+              mode: 'full',
+              includeDiagnostics: false,
+              recommendationLimit: 0,
+            },
+          ),
+        getCanonicalRosterKey: (roster) =>
+          getCanonicalRosterKey(roster, anchorPokemon.length),
+      },
+    );
+    bestOverall = reranking.finalist;
+    validateFinalTeam(bestOverall, anchorPokemon, formatId);
+    const movesetAssignment = reranking.assignment;
     const rosterScore = scorePlayPokemonRoster(
       bestOverall.team,
-      lineupContext,
+      {
+        ...bindRosterMovesetAssignment(
+          rerankingContext.scoringContext,
+          movesetAssignment,
+        ),
+        scoreLineup: (lineup) =>
+          rerankingContext.scoreLineup(lineup, movesetAssignment),
+      },
       { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
     );
     const recommendations = buildPlayPokemonRosterRecommendations(
@@ -401,12 +524,52 @@ export async function generateTeam(
     bestOverall = {
       ...bestOverall,
       fitness: rosterScore.fitness,
+      defaultScoredFinalists,
+      finalistRerankingStats: {
+        ...reranking.stats,
+        lineupCache: rerankingContext.cacheStats.lineup,
+      },
+      movesetAssignment,
       scoreBreakdown: rosterScore.scoreBreakdown,
       recommendedLineups: recommendations.recommendedLineups,
     };
   }
 
+  console.log('=== FINAL BEST TEAM ===');
+  console.log('Team:', bestOverall.team);
+  console.log('Anchors:', bestOverall.anchors);
+  console.log('Fitness:', bestOverall.fitness);
+
   return bestOverall;
+}
+
+function validateFinalTeam(
+  chromosome: Chromosome,
+  anchorPokemon: readonly string[],
+  formatId: BattleFormatId,
+): void {
+  for (let index = 0; index < anchorPokemon.length; index++) {
+    if (chromosome.team[index] !== anchorPokemon[index]) {
+      console.error(
+        `❌ FINAL BEST TEAM HAS CORRUPTED ANCHOR ${index}: Expected ${anchorPokemon[index]}, got ${chromosome.team[index]}`,
+      );
+      throw new Error(
+        'Final team has corrupted anchors. This should never happen.',
+      );
+    }
+  }
+  if (anchorPokemon.length > 0) {
+    console.log('✅ All anchors verified in final team');
+  }
+
+  if (
+    hasOneMegaLimitForFormat(formatId) &&
+    !getMegaMasterTeamLegality(chromosome.team).isLegal
+  ) {
+    throw new Error(
+      'Final one-Mega-limit team is illegal. This should never happen.',
+    );
+  }
 }
 
 function buildAnchorFirstCandidateProfiles(

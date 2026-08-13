@@ -2,4 +2,4 @@
 export { convertSpeciesIdToExportFormat } from './convertSpeciesId';
 export { exportTeam } from './exportTeam';
 export { copyTeamToClipboard } from './copyTeamToClipboard';
-export type { Moveset, TeamMovesets } from './types';
+export type { TeamAcquisitionRequirements } from './types';

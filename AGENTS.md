@@ -32,6 +32,7 @@ All code must be built, linted, and tested with full compliance to these steps:
 
 ### Test/Coverage
 
+- **Initialize test data dependency:** `git submodule update --init vendor/pvpoke`
 - **Run All Tests:**
   - `npm test` or `npx vitest run`
 - **Test Coverage:**

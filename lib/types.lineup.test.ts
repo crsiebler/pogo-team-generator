@@ -101,6 +101,12 @@ describe('lineup-aware generation types', () => {
       recommendationLimit: 5,
     } satisfies LineupAwareFitnessConfig;
 
+    const finalistConfig = {
+      mode: 'full',
+      includeDiagnostics: false,
+      recommendationLimit: 0,
+    } satisfies LineupAwareFitnessConfig;
+
     // @ts-expect-error fast scoring must not include UI-ready diagnostics.
     const fastConfigWithDiagnostics: LineupAwareFitnessConfig = {
       mode: 'fast',
@@ -119,6 +125,7 @@ describe('lineup-aware generation types', () => {
     expect(rosterMetrics.benchUtilitySummary[0].switchAppearances).toBe(2);
     expect(fastConfig.includeDiagnostics).toBe(false);
     expect(fullConfig.recommendationLimit).toBe(5);
+    expect(finalistConfig.includeDiagnostics).toBe(false);
     expect(missingResourcePathScore).toBeDefined();
     expect(unavailableResourcePathWithScore).toBeDefined();
     expect(recommendationWithDisplayResourcePaths).toBeDefined();

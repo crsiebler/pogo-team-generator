@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
-import type { ThreatAnalysisEntry } from '@/lib/types';
+import type {
+  MovesetAssignmentPolicyIdentity,
+  RosterMovesetAssignment,
+  ThreatAnalysisEntry,
+} from '@/lib/types';
 
 const speciesIdToRankingNameMock = vi.fn();
 const getShieldScenarioMatchupResultMock = vi.fn();
@@ -16,7 +20,15 @@ vi.mock('@/lib/data/simulations', () => ({
     opponent: string,
     shields: 0 | 1 | 2,
     formatId?: string,
-  ) => getShieldScenarioMatchupResultMock(pokemon, opponent, shields, formatId),
+    movesetVariantId?: string,
+  ) =>
+    getShieldScenarioMatchupResultMock(
+      pokemon,
+      opponent,
+      shields,
+      formatId,
+      movesetVariantId,
+    ),
 }));
 
 describe('buildShieldScenarioAnalysis', () => {
@@ -138,7 +150,64 @@ describe('buildShieldScenarioAnalysis', () => {
       'threat-1',
       0,
       'battle-frontier-tsuki-cup',
+      undefined,
     );
+  });
+
+  it('uses each roster member assigned variant for every shield lookup', () => {
+    const assignment = createAssignment(['lanturn', 'dewgong']);
+    getShieldScenarioMatchupResultMock.mockImplementation(
+      (
+        speciesId: string,
+        _opponent: string,
+        _shields: number,
+        _formatId: string,
+        movesetVariantId?: string,
+      ) =>
+        movesetVariantId === assignment.variantsBySpeciesId[speciesId]?.id
+          ? 600
+          : null,
+    );
+
+    const analysis = buildShieldScenarioAnalysis(
+      ['lanturn', 'dewgong'],
+      threats,
+      'great-league',
+      assignment,
+    );
+    const reads = getShieldScenarioMatchupResultMock.mock.calls;
+
+    expect(reads.length).toBeGreaterThan(0);
+    expect(
+      reads.every(
+        ([speciesId, , , , variantId]) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id,
+      ),
+    ).toBe(true);
+    expect(analysis['0-0'].coveredThreats).toBe(2);
+    expect(analysis['1-1'].coveredThreats).toBe(2);
+    expect(analysis['2-2'].coveredThreats).toBe(2);
+  });
+
+  it('keeps ranked-default shield lookups unqualified', () => {
+    const assignment = createAssignment(
+      ['lanturn', 'dewgong'],
+      'ranked-default-fallback',
+    );
+    getShieldScenarioMatchupResultMock.mockReturnValue(550);
+
+    buildShieldScenarioAnalysis(
+      ['lanturn', 'dewgong'],
+      threats,
+      'great-league',
+      assignment,
+    );
+    const variantIds = getShieldScenarioMatchupResultMock.mock.calls.map(
+      ([, , , , variantId]) => variantId,
+    );
+
+    expect(variantIds).not.toHaveLength(0);
+    expect(variantIds.every((variantId) => variantId === undefined)).toBe(true);
   });
 
   it('treats shield scenario coverage as evaluated once data exists and covered on first win', () => {
@@ -174,3 +243,31 @@ describe('buildShieldScenarioAnalysis', () => {
     expect(getShieldScenarioMatchupResultMock).toHaveBeenCalledTimes(11);
   });
 });
+
+function createAssignment(
+  speciesIds: readonly string[],
+  source: MovesetAssignmentPolicyIdentity['source'] = 'manifest',
+): RosterMovesetAssignment {
+  return {
+    formatId: 'great-league',
+    authorityBySpeciesId: Object.fromEntries(
+      speciesIds.map((speciesId) => [
+        speciesId,
+        { source, schemaVersion: 1, policyVersion: 'ranking-evidence-v1' },
+      ]),
+    ),
+    fingerprint: 'analysis-assignment',
+    variantsBySpeciesId: Object.fromEntries(
+      speciesIds.map((speciesId) => [
+        speciesId,
+        {
+          id: `${speciesId}_fast--${speciesId}_charged_b--${speciesId}_charged_a`,
+          fastMove: `${speciesId}_FAST`,
+          chargedMove1: `${speciesId}_CHARGED_A`,
+          chargedMove2: `${speciesId}_CHARGED_B`,
+          isDefault: false,
+        },
+      ]),
+    ),
+  };
+}

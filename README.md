@@ -200,9 +200,19 @@ Examples:
 
 `lib/data/simulations.ts` loads matchup matrices per format and throws `MissingSimulationDataError` when data is unavailable.
 
+The checked-in simulation dataset is ranked-default-only. Normal sync keeps one
+active ranked-default candidate per species and removes canonical
+variant-qualified CSVs only after default CSVs, manifests, compact snapshots,
+and the runtime asset index publish successfully. Alternate candidate generation
+remains experimental sync tooling and is not exposed in Team Configuration.
+
 ### Sync Metadata
 
-`data/sync-metadata.json` records the timestamp of the last successful sync. `lib/data/syncMetadata.ts` exposes helpers for reading and formatting that timestamp.
+`data/sync-metadata.json` records the timestamp of the last successful sync that
+changed generated output. Repeating sync against identical source data preserves
+the existing timestamp so the complete generated dataset remains byte-identical.
+`lib/data/syncMetadata.ts` exposes helpers for reading and formatting that
+timestamp.
 
 ## Sync Workflow
 
@@ -225,7 +235,15 @@ npm run sync
 Resume mode keeps existing simulation CSVs when possible:
 
 ```bash
-bun run lib/scripts/sync.ts --resume
+npm run sync -- --resume
+```
+
+Experimental alternate moveset generation is explicitly opt-in and may be
+combined with resume mode:
+
+```bash
+npm run sync -- --moveset-variants
+npm run sync -- --moveset-variants --resume
 ```
 
 The sync pipeline:
@@ -233,8 +251,14 @@ The sync pipeline:
 1. reads Pokemon and move data from the PvPoke source
 2. writes normalized `data/pokemon.json` and `data/moves.json`
 3. exports available Overall, Leads, Switches, Closers, Chargers, Attackers, and Consistency rankings for every supported battle format
-4. generates simulation CSVs for every supported battle format
-5. updates `data/sync-metadata.json`
+4. generates ranked-default simulation CSVs for every supported battle format
+5. atomically publishes default-only manifests, compact snapshots, and the runtime asset index
+6. deletes stale canonical variant-qualified CSVs through guarded post-publication cleanup
+7. updates `data/sync-metadata.json` only when generated output changed
+
+Use `npm run sync -- --project-simulations` for a read-only report. It identifies
+whether the projection includes moveset variants and reports recognized stale
+variant files without writing or deleting data.
 
 ## API Overview
 

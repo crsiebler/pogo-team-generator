@@ -1,5 +1,7 @@
 import { enumeratePlayPokemonLineups } from './lineupEnumeration';
 import {
+  getAssignedMatchupRating,
+  getAssignedShieldScenarioMatchupRating,
   scoreOrderedLineup,
   type LineupScoreResult,
   type LineupScoringContext,
@@ -14,6 +16,7 @@ import {
   calculateDefensiveTypeRatio,
   calculateOffensiveTypeRatio,
 } from './typeEffectivenessRatios';
+import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
 import { normalizeToChoosableSpeciesId } from '@/lib/data/pokemon';
 import { MissingRankingDataError } from '@/lib/data/rankings';
 import { calculateOptimizerThreatScore } from '@/lib/genetic/fitness/threatScore';
@@ -88,6 +91,7 @@ export function scorePlayPokemonRoster(
   context: PlayPokemonRosterScoringContext,
   config: LineupAwareFitnessConfig,
 ): PlayPokemonRosterScoreResult {
+  validateRosterMovesetAssignment(roster, context);
   const scoredLineups = enumeratePlayPokemonLineups(roster)
     .map((lineup) => scoreRosterLineup(lineup, context, config))
     .toSorted((first, second) => second.score - first.score);
@@ -103,7 +107,9 @@ export function scorePlayPokemonRoster(
     config.includeDiagnostics,
   );
   const diagnosticLimit =
-    config.mode === 'full' ? Math.max(0, config.recommendationLimit) : 0;
+    config.mode === 'full' && config.includeDiagnostics
+      ? Math.max(0, config.recommendationLimit)
+      : 0;
 
   return {
     roster: [...roster],
@@ -114,6 +120,36 @@ export function scorePlayPokemonRoster(
     lineupScores:
       diagnosticLimit > 0 ? scoredLineups.slice(0, diagnosticLimit) : undefined,
   };
+}
+
+function validateRosterMovesetAssignment(
+  roster: readonly string[],
+  context: PlayPokemonRosterScoringContext,
+): void {
+  const assignment = context.movesetAssignment;
+  if (!assignment) {
+    return;
+  }
+  const scoringFormatId = context.formatId ?? DEFAULT_BATTLE_FORMAT_ID;
+  if (assignment.formatId !== scoringFormatId) {
+    throw new Error(
+      `Cannot score ${assignment.formatId} movesets in ${scoringFormatId}.`,
+    );
+  }
+
+  const rosterSpeciesIds = new Set(roster);
+  for (const speciesId of rosterSpeciesIds) {
+    if (!assignment.variantsBySpeciesId[speciesId]) {
+      throw new Error(`Roster moveset assignment is missing ${speciesId}.`);
+    }
+  }
+  for (const speciesId of Object.keys(assignment.variantsBySpeciesId)) {
+    if (!rosterSpeciesIds.has(speciesId)) {
+      throw new Error(
+        `Roster moveset assignment contains non-roster species ${speciesId}.`,
+      );
+    }
+  }
 }
 
 function scoreRosterLineup(
@@ -173,7 +209,7 @@ export function scoreFastRosterLineup(
 
   for (const threat of evaluatedThreats) {
     const ratings = speciesIds
-      .map((speciesId) => context.getMatchupRating(speciesId, threat))
+      .map((speciesId) => getAssignedMatchupRating(speciesId, threat, context))
       .filter((rating): rating is number => rating !== null);
 
     if (ratings.length === 0) {
@@ -375,27 +411,26 @@ function calculateFastResourcePathMetric(
   shieldsByRole: Record<LineupRole, 0 | 1 | 2>,
 ): NonNullable<LineupScoreResult['resourcePathMetrics']>['balanced'] {
   const ratings: number[] = [];
-  let availableRatingCount = 0;
 
   try {
     for (const threat of threats) {
       for (const role of ['lead', 'switch', 'closer'] as const) {
-        const rating = context.getShieldScenarioMatchupRating!(
+        const rating = getAssignedShieldScenarioMatchupRating(
           lineup[role],
           threat,
           shieldsByRole[role],
+          context,
         );
         if (rating !== null) {
-          availableRatingCount++;
+          ratings.push(rating);
         }
-        ratings.push(rating ?? 500);
       }
     }
   } catch {
     return { available: false };
   }
 
-  return availableRatingCount > 0
+  return ratings.length > 0
     ? {
         available: true,
         score: average(ratings.map((rating) => scoreMatchupRating(rating))),
@@ -418,7 +453,7 @@ function calculateThreatPoolCoverage(
 
   for (const threat of threats) {
     const ratings = speciesIds
-      .map((speciesId) => context.getMatchupRating(speciesId, threat))
+      .map((speciesId) => getAssignedMatchupRating(speciesId, threat, context))
       .filter((rating): rating is number => rating !== null);
     if (ratings.length === 0) {
       continue;
@@ -697,7 +732,8 @@ function createThreatScoreContext(
     getThreatName: (speciesId) =>
       context.getPokemon(speciesId)?.speciesName ?? speciesId,
     getThreatRank: (speciesId) => ranks.get(speciesId) ?? ranks.size + 1,
-    getMatchupRating: context.getMatchupRating,
+    getMatchupRating: (speciesId, threatSpeciesId) =>
+      getAssignedMatchupRating(speciesId, threatSpeciesId, context),
   };
 }
 
@@ -852,7 +888,7 @@ function calculateMoveConsistency(
   context: PlayPokemonRosterScoringContext,
 ): number {
   const pokemon = context.getPokemon(speciesId);
-  const moveset = context.getRecommendedMoveset?.(speciesId);
+  const moveset = getAssignedRosterMoveset(speciesId, context);
   if (!pokemon || !moveset) {
     return 0.5;
   }
@@ -937,7 +973,12 @@ function calculateShieldStability(
     try {
       ratings = ([0, 1, 2] as const)
         .map((shields) =>
-          context.getShieldScenarioMatchupRating!(speciesId, threat, shields),
+          getAssignedShieldScenarioMatchupRating(
+            speciesId,
+            threat,
+            shields,
+            context,
+          ),
         )
         .filter((rating): rating is number => rating !== null);
     } catch {
@@ -1223,7 +1264,7 @@ function getRosterAttackingTypes(
   >,
   context: PlayPokemonRosterScoringContext,
 ): string[] {
-  const moveset = context.getRecommendedMoveset?.(pokemon.speciesId);
+  const moveset = getAssignedRosterMoveset(pokemon.speciesId, context);
   if (!moveset) {
     return pokemon.types;
   }
@@ -1244,6 +1285,16 @@ function getRosterAttackingTypes(
   return moveTypes.length === moveIds.length
     ? uniqueSorted(moveTypes)
     : uniqueSorted([...moveTypes, ...pokemon.types]);
+}
+
+function getAssignedRosterMoveset(
+  speciesId: string,
+  context: PlayPokemonRosterScoringContext,
+): ReturnType<NonNullable<LineupScoringContext['getRecommendedMoveset']>> {
+  return (
+    context.movesetAssignment?.variantsBySpeciesId[speciesId] ??
+    context.getRecommendedMoveset?.(speciesId)
+  );
 }
 
 function calculatePrimaryRedundancyPenalty(

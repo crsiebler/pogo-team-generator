@@ -83,4 +83,23 @@ describe('TeamGenerator', () => {
     expect(screen.queryByText(/team synergy/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/fitness mode/i)).not.toBeInTheDocument();
   });
+
+  it('does not render moveset variation controls', () => {
+    render(
+      <TeamGenerator
+        mode="PlayPokemon"
+        pokemonList={['Azumarill']}
+        selectedFormatId="great-league"
+        onAnchorsChange={() => {}}
+        onExclusionsChange={() => {}}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('heading', { name: 'Moveset Options' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('switch', { name: 'Simulate moveset variants' }),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -18,6 +18,21 @@ for runtime use, and assign one immutable moveset to each Pokemon in a finalist
 roster. The same assignment must drive matchup scoring, diagnostics, API output,
 and team export.
 
+### Revision: Default-Only Production Data
+
+Moveset variation proved substantially more expensive in repository size, sync
+duration, runtime data preparation, and optimizer complexity than its current
+product usage justifies. The generalized implementation remains valuable as an
+experimental option, but production sync and UI behavior will return to ranked
+default movesets.
+
+Normal sync runs must generate, publish, and retain only ranked-default
+simulation data. Alternate moveset derivation and simulation remain available
+behind an explicit `--moveset-variants` sync flag for future evaluation. The
+user-facing moveset variation control must not render, and frontend generation
+requests must use the ranked-default path. Existing reusable UI atoms and the
+underlying opt-in sync/runtime implementation may remain in the codebase.
+
 ## Goals
 
 - Support deterministic moveset variants for every ranked species and form in
@@ -40,6 +55,12 @@ and team export.
   bounded finalist reranking.
 - Keep runtime application and optimizer code independent of PvPoke vendor
   JavaScript.
+- Make ranked-default simulation generation the normal sync behavior.
+- Preserve alternate simulation generation as explicit opt-in tooling through
+  `npm run sync -- --moveset-variants`.
+- Remove generated alternate simulation evidence from the default checked-in
+  dataset after safe default-only publication.
+- Hide the moveset variation UI and keep frontend generation on ranked defaults.
 
 ## User Stories
 
@@ -439,6 +460,311 @@ flow documented so that sync and optimizer behavior remain deterministic.
 
 **Recommended Agents:** @documentation-engineer
 
+### US-026: Measure Generated Function Trace Size
+
+**Description:** As a maintainer, I want a deterministic report of the files
+traced into the generate-team function so deployment size regressions are
+visible before Vercel rejects a build.
+
+**Acceptance Criteria:**
+
+- [ ] Add a non-interactive analyzer for the generated
+      `/api/generate-team` Next.js NFT trace.
+- [ ] The analyzer reports unique traced file count and uncompressed bytes.
+- [ ] The analyzer groups traced bytes by simulations, rankings, application
+      code, dependencies, and other data.
+- [ ] The analyzer reports the largest traced files in deterministic order.
+- [ ] Missing or malformed trace files produce an actionable non-zero failure.
+- [ ] Analyzer tests use checked-in fixtures and do not require a Vercel
+      deployment.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @build-engineer, @test-automator
+
+### US-027: Publish an Active Runtime Simulation Asset Index
+
+**Description:** As a runtime developer, I want sync to publish an exact list of
+runtime-authorized simulation assets so deployment tracing does not include
+inactive candidate evidence.
+
+**Acceptance Criteria:**
+
+- [ ] Sync derives a versioned runtime asset index from every supported format's
+      validated moveset manifest.
+- [ ] The index includes each format manifest and only scenario storage keys for
+      manifest-declared active candidates, including active defaults.
+- [ ] Inactive candidate CSVs never appear in the runtime asset index.
+- [ ] Every indexed path is repository-relative, canonical, unique, and confined
+      to its catalog-derived simulation format directory.
+- [ ] The runtime asset index is written atomically after successful manifest
+      publication.
+- [ ] Identical inputs produce a byte-identical index.
+- [ ] Existing full manifests and inactive candidate CSVs remain unchanged as
+      sync and validation evidence.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @data-engineer, @security-engineer
+
+### US-028: Remove Runtime Simulation Directory Scanning
+
+**Description:** As a runtime developer, I want default matrices loaded through
+manifest-declared storage keys so Next.js tracing does not conservatively retain
+entire simulation directories.
+
+**Acceptance Criteria:**
+
+- [ ] Runtime default matrix loading uses each species' active default candidate
+      and exact manifest storage keys.
+- [ ] Runtime simulation loading no longer calls `readdirSync` or discovers
+      default matrices by scanning filenames.
+- [ ] Default aggregate and shield-scenario lookup behavior remains unchanged.
+- [ ] Alternate lookup remains manifest-authoritative and never falls back to a
+      default row.
+- [ ] Missing, malformed, incompatible, or incomplete default data produces the
+      existing actionable typed error contract.
+- [ ] Runtime loader tests cover all supported formats and default/alternate
+      opponent parity.
+- [ ] The PvPoke runtime boundary test passes.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @backend-developer, @architect-reviewer
+
+### US-029: Trace Only Runtime-Authorized Function Assets
+
+**Description:** As a maintainer, I want Next.js output tracing scoped to exact
+runtime assets so the standard Vercel function remains within its deployment
+limit.
+
+**Acceptance Criteria:**
+
+- [ ] Replace recursive `data/**/*.csv` and `data/**/*.json` tracing for
+      `/api/generate-team` with paths from the generated runtime asset index and
+      the exact non-simulation data required by the route.
+- [ ] Narrow `/api/pokemon-list` tracing to only the files that route consumes.
+- [ ] No inactive candidate CSV appears in the generated
+      `/api/generate-team` NFT trace.
+- [ ] Every runtime-indexed active simulation asset appears in the generated
+      trace.
+- [ ] A production build followed by the trace analyzer reports no more than
+      `200 MiB` uncompressed for `/api/generate-team`.
+- [ ] Deployment correctness does not depend on
+      `VERCEL_SUPPORT_LARGE_FUNCTIONS` or any equivalent Large Functions setting.
+- [ ] All supported formats pass generate-team route tests using traced assets.
+- [ ] Typecheck, lint, tests, and production build pass.
+
+**Recommended Agents:** @build-engineer, @deployment-engineer
+
+### US-030: Generate Compact Per-Format Runtime Simulation Snapshots
+
+**Description:** As a maintainer, I want active matchup data compiled into one
+compact deterministic snapshot per format so runtime does not ship thousands of
+CSV files.
+
+**Acceptance Criteria:**
+
+- [ ] Define a versioned repository-owned snapshot schema containing format,
+      manifest policy, and source digest identity.
+- [ ] Each snapshot contains canonical species and opponent dictionaries,
+      active moveset identities, active default mappings, and all required
+      `0-0`, `1-1`, and `2-2` Battle Ratings.
+- [ ] Ratings use a documented fixed-width encoding with an explicit missing-row
+      sentinel and no silent default substitution.
+- [ ] Snapshot generation consumes validated manifests and active scenario CSVs
+      only.
+- [ ] Every encoded rating has exact parity with its source CSV value.
+- [ ] Repeating generation from identical inputs produces byte-identical
+      snapshots.
+- [ ] Snapshot publication is atomic and occurs after source manifest
+      publication succeeds.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @data-engineer, @performance-engineer
+
+### US-031: Load Matchups From Compact Runtime Snapshots
+
+**Description:** As a runtime developer, I want optimizer lookups backed by a
+prepared compact snapshot so scoring remains synchronous, deterministic, and
+independent of runtime CSV parsing.
+
+**Acceptance Criteria:**
+
+- [ ] Add a format-scoped snapshot repository with an explicit preparation step
+      before optimizer scoring begins.
+- [ ] Aggregate and shield-scenario lookups preserve the existing synchronous
+      scoring interfaces after preparation.
+- [ ] Active moveset availability and manifest policy identity come from the
+      validated snapshot.
+- [ ] Schema, format, policy, source digest, bounds, and missing-value sentinels
+      are validated before a snapshot is cached.
+- [ ] Snapshot lookup results match the CSV-backed loader for every active
+      species, variant, opponent, and scenario in regression fixtures.
+- [ ] Runtime never falls back to CSV data when a snapshot is missing or
+      incompatible.
+- [ ] Assignment fingerprints, finalist ordering, diagnostics, API output, and
+      export remain unchanged for deterministic fixtures.
+- [ ] The PvPoke runtime boundary test passes.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+
+**Recommended Agents:** @backend-developer, @performance-engineer
+
+### US-032: Remove Simulation CSVs From Runtime Function Traces
+
+**Description:** As a maintainer, I want deployed functions to include compact
+snapshots instead of source simulations so future candidate growth does not
+consume the Vercel bundle budget.
+
+**Acceptance Criteria:**
+
+- [ ] `/api/generate-team` traces compact per-format snapshots and no simulation
+      CSV files.
+- [ ] Full candidate manifests and inactive simulation evidence remain available
+      to sync and validation tooling but are not runtime function dependencies.
+- [ ] The trace analyzer reports no more than `100 MiB` uncompressed for
+      `/api/generate-team`.
+- [ ] All compact runtime simulation snapshots total no more than `50 MiB`
+      uncompressed.
+- [ ] Representative cold and warm generation remain under one minute and do not
+      regress by more than 10 percent from the recorded active-only baseline.
+- [ ] Peak runtime memory is recorded for each supported format and remains
+      within the configured Vercel function memory limit.
+- [ ] The standard Vercel function size limit is met without enabling Large
+      Functions support.
+- [ ] Typecheck, lint, tests, and production build pass.
+
+**Recommended Agents:** @performance-engineer, @build-engineer
+
+### US-033: Document Runtime Artifact and Vercel Size Contracts
+
+**Description:** As a future contributor, I want the simulation artifact and
+deployment-size workflow documented so generated data growth cannot silently
+break production deployments.
+
+**Acceptance Criteria:**
+
+- [ ] Documentation distinguishes full CSV and manifest sync evidence from
+      compact runtime snapshots.
+- [ ] Documentation explains active-only asset indexing, snapshot generation,
+      atomic publication, and runtime validation.
+- [ ] Documentation includes production build and NFT trace analyzer commands.
+- [ ] Documentation records the `200 MiB` active-only transition budget, the
+      `100 MiB` compact-snapshot target, and the `50 MiB` snapshot-data target.
+- [ ] Documentation states that this feature must not enable or depend on Vercel
+      Large Functions support.
+- [ ] Documentation states that optimizer hot-path lookups must not perform
+      per-matchup network, database, KV, or object-storage requests.
+- [ ] Documentation formatting passes.
+- [ ] Typecheck passes.
+
+**Recommended Agents:** @documentation-engineer
+
+### US-038: Make Moveset Variant Sync Explicitly Opt-In
+
+**Description:** As a maintainer, I want normal sync runs to exclude alternate
+moveset simulations so routine data refreshes remain bounded while the
+experimental generator remains available for future evaluation.
+
+**Acceptance Criteria:**
+
+- [ ] Add `includeMovesetVariants?: boolean` to the shared sync options contract,
+      with omitted values resolving to `false`.
+- [ ] `npm run sync` and `npm run sync -- --resume` pass
+      `includeMovesetVariants: false` to simulation generation.
+- [ ] `npm run sync -- --moveset-variants` passes
+      `includeMovesetVariants: true` to simulation generation.
+- [ ] `--moveset-variants` can be combined with `--resume`.
+- [ ] Projection mode remains read-only and documents whether its estimate
+      includes moveset variants.
+- [ ] Unknown CLI flags fail with an actionable message instead of being
+      silently ignored.
+- [ ] Focused CLI and sync option tests pass.
+- [ ] Typecheck passes.
+
+**Recommended Agents:** @cli-developer, @test-automator
+
+### US-039: Publish Default-Only Simulation Authorities
+
+**Description:** As a maintainer, I want default sync runs to publish complete
+default-only manifests and snapshots so runtime contracts remain valid without
+retaining alternate simulation data.
+
+**Acceptance Criteria:**
+
+- [ ] When `includeMovesetVariants` is false, simulation generation evaluates
+      exactly the ranked-default candidate for each synchronized species.
+- [ ] Default-only manifests contain exactly one active default candidate per
+      included species and no alternate candidate storage keys.
+- [ ] Default-only compact snapshots contain only ranked-default matrices and
+      preserve all required `0-0`, `1-1`, and `2-2` ratings.
+- [ ] Default simulation CSVs, manifests, snapshots, and the runtime asset index
+      are validated and published atomically before cleanup begins.
+- [ ] After successful default-only publication, cleanup deletes only regular
+      files accepted by the strict canonical variant filename parser.
+- [ ] Cleanup never deletes default simulation files, format directories, or
+      files outside catalog-authorized simulation directories.
+- [ ] When `includeMovesetVariants` is true, existing candidate derivation,
+      simulation, manifest selection, and snapshot behavior remains available.
+- [ ] Focused sync, publication, snapshot, and cleanup tests pass.
+- [ ] Typecheck passes.
+
+**Recommended Agents:** @data-engineer, @security-engineer
+
+### US-040: Hide Moveset Variation From Team Configuration
+
+**Description:** As a player, I want team generation to present only supported
+ranked-default behavior so an experimental data path is not exposed in the
+product UI.
+
+**Acceptance Criteria:**
+
+- [ ] The Moveset Options section and Simulate moveset variants switch do not
+      render in Team Configuration.
+- [ ] Remove moveset-variation state and feature-specific props from
+      `TeamManager`, `TeamConfigPanel`, and `TeamGenerator` rather than guarding
+      JSX with a hardcoded false condition.
+- [ ] Frontend `/api/generate-team` requests omit `simulateMovesetVariants`.
+- [ ] The reusable `Switch` atom remains available for unrelated or future UI
+      use.
+- [ ] The API and optimizer option may remain defaulted to false for future
+      programmatic experiments, but normal UI generation cannot enable it.
+- [ ] Component tests assert the moveset variation control is absent and the
+      request payload omits the option.
+- [ ] Typecheck passes.
+- [ ] Tests pass.
+- [ ] Verify in browser using dev-browser skill on desktop and mobile viewports.
+
+**Recommended Agents:** @react-specialist, @accessibility-tester
+
+### US-041: Regenerate and Document the Default-Only Dataset
+
+**Description:** As a maintainer, I want checked-in simulation assets and
+documentation aligned with the default-only policy so repository size and
+runtime costs reflect actual product behavior.
+
+**Acceptance Criteria:**
+
+- [ ] Run the default sync path for every supported battle format and publish
+      deterministic default-only manifests and compact snapshots.
+- [ ] Remove all generated variant-qualified simulation CSVs through the tested
+      post-publication cleanup boundary.
+- [ ] No checked-in `data/simulations` filename accepted by the canonical variant
+      parser remains after default sync.
+- [ ] Record before-and-after simulation file count, repository data bytes,
+      compact snapshot bytes, and generate-team trace bytes.
+- [ ] Representative default-only team generation remains under one minute and
+      records lower or equal snapshot bytes than the variant-enabled baseline.
+- [ ] Documentation states that normal sync excludes variants, documents
+      `--moveset-variants` as experimental opt-in tooling, and states that the UI
+      does not expose the feature.
+- [ ] Repeating default sync with unchanged inputs produces no data diff.
+- [ ] Typecheck, lint, full tests, production build, and trace analysis pass.
+
+**Recommended Agents:** @data-engineer, @performance-engineer
+
 ## Functional Requirements
 
 - **FR-1:** The system must derive moveset variants for all ranked species and
@@ -508,6 +834,20 @@ flow documented so that sync and optimizer behavior remain deterministic.
   writing or deleting files.
 - **FR-37:** Identical inputs must produce byte-identical candidate ordering,
   manifests, and projection reports.
+- **FR-38:** Sync must exclude alternate moveset simulations unless
+  `--moveset-variants` is explicitly provided.
+- **FR-39:** Default-only sync must publish structurally valid manifests and
+  compact snapshots containing ranked-default variants only.
+- **FR-40:** Successful default-only publication must remove recognized
+  variant-qualified simulation CSVs without deleting default matrices.
+- **FR-41:** Variant-enabled sync must remain available as experimental tooling
+  and preserve the existing bounded candidate and active-variant limits.
+- **FR-42:** The frontend must not render a moveset variation control or send a
+  request that enables variant simulation.
+- **FR-43:** The reusable Switch component and backend variant contracts may
+  remain available for future reintroduction.
+- **FR-44:** Unknown sync CLI flags must fail instead of silently changing or
+  skipping data-generation behavior.
 
 ## Non-Goals
 
@@ -523,6 +863,12 @@ flow documented so that sync and optimizer behavior remain deterministic.
 - Do not add Threat Score to weighted fitness.
 - Do not perform variant-aware scoring throughout every GA generation.
 - Do not retain stale variant CSVs after a successful non-dry-run sync.
+- Do not delete the underlying candidate derivation, variant simulation, or
+  assignment implementation solely because production defaults no longer use
+  it.
+- Do not expose the experimental sync flag as a product UI control.
+- Do not retain generated alternate CSV evidence in the default checked-in
+  dataset.
 
 ## Design Considerations
 
@@ -572,12 +918,16 @@ flow documented so that sync and optimizer behavior remain deterministic.
   paths.
 - Generated API and export movesets match the optimizer's fixed assignment.
 - Representative team generation completes in under one minute.
+- Normal sync produces no variant-qualified simulation CSVs.
+- Variant generation occurs only when `--moveset-variants` is explicitly set.
+- Team Configuration renders no moveset variation control and frontend requests
+  cannot enable variant simulation.
+- Default-only snapshots and function traces are no larger than the recorded
+  variant-enabled baseline.
 - Runtime boundary, focused tests, full tests, typecheck, lint, and build pass.
 
 ## Open Questions
 
-- What CLI flag names should expose projection-only mode and manifest
-  regeneration while remaining consistent with the current sync command?
 - Should acquisition metadata use one requirement per moveset or support
   per-move requirements for future combinations containing both Elite and
   purified/event-exclusive moves?

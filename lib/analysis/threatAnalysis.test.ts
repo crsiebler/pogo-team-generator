@@ -1,117 +1,96 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   buildThreatAnalysis,
   calculateThreatSeverity,
 } from '@/lib/analysis/threatAnalysis';
-
-const getTopPokemonMock = vi.fn();
-const getRoleBasedThreatSpeciesIdsMock = vi.fn();
-const speciesIdToRankingNameMock = vi.fn();
-const speciesIdToSpeciesNameMock = vi.fn();
-const getMatchupResultMock = vi.fn();
-
-vi.mock('@/lib/data/rankings', () => ({
-  getTopPokemon: (...args: unknown[]) => getTopPokemonMock(...args),
-  getRoleBasedThreatSpeciesIds: (...args: unknown[]) =>
-    getRoleBasedThreatSpeciesIdsMock(...args),
-  speciesIdToRankingName: (speciesId: string) =>
-    speciesIdToRankingNameMock(speciesId),
-  speciesIdToSpeciesName: (speciesId: string) =>
-    speciesIdToSpeciesNameMock(speciesId),
-}));
-
-vi.mock('@/lib/data/simulations', () => ({
-  getMatchupResult: (pokemon: string, opponent: string, formatId?: string) =>
-    getMatchupResultMock(pokemon, opponent, formatId),
-}));
+import type { OptimizerThreatScore } from '@/lib/types';
 
 describe('buildThreatAnalysis', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    speciesIdToRankingNameMock.mockImplementation((speciesId: string) =>
-      speciesId.toUpperCase(),
-    );
-    speciesIdToSpeciesNameMock.mockImplementation((speciesId: string) =>
-      speciesId.toUpperCase(),
-    );
-  });
+  it('derives ranked threat analysis from assignment-aware score diagnostics', () => {
+    const analysis = buildThreatAnalysis(createThreatScore());
 
-  it('evaluates the role-based GA threat pool for the selected format', () => {
-    getRoleBasedThreatSpeciesIdsMock.mockReturnValue([
-      'threat-1',
-      'threat-2',
-      'threat-3',
-    ]);
-    getMatchupResultMock.mockReturnValue(450);
-
-    const analysis = buildThreatAnalysis(
-      ['lanturn', 'dewgong', 'annihilape'],
-      'great-league',
-    );
-
-    expect(getRoleBasedThreatSpeciesIdsMock).toHaveBeenCalledWith(
-      100,
-      'great-league',
-    );
     expect(analysis.evaluatedCount).toBe(3);
     expect(analysis.entries).toHaveLength(3);
-    expect(analysis.entries[0]).toMatchObject({
-      speciesId: 'threat-1',
-      pokemon: 'THREAT-1',
-    });
-  });
-
-  it('includes team answer count and severity tier per threat', () => {
-    getRoleBasedThreatSpeciesIdsMock.mockReturnValue(['threat-1']);
-
-    getMatchupResultMock.mockImplementation((pokemon: string) => {
-      return pokemon !== 'annihilape' ? 650 : 420;
-    });
-
-    const analysis = buildThreatAnalysis(
-      ['lanturn', 'dewgong', 'annihilape'],
-      'great-league',
-    );
-
-    expect(analysis.entries[0]).toMatchObject({
-      speciesId: 'threat-1',
-      pokemon: 'THREAT-1',
-      rank: 1,
-      teamAnswers: 2,
-      severityTier: 'high',
-    });
-    expect(getMatchupResultMock).toHaveBeenCalledWith(
-      'lanturn',
-      'threat-1',
-      'great-league',
-    );
-  });
-
-  it('excludes threats with no matchup data from evaluated count', () => {
-    getRoleBasedThreatSpeciesIdsMock.mockReturnValue(['threat-1', 'threat-2']);
-    getMatchupResultMock.mockImplementation(
-      (pokemon: string, opponent: string) => {
-        if (opponent === 'threat-1') {
-          return pokemon === 'lanturn' ? 610 : 420;
-        }
-
-        return null;
+    expect(analysis.entries).toEqual([
+      {
+        speciesId: 'threat-1',
+        pokemon: 'Threat 1',
+        rank: 1,
+        teamAnswers: 2,
+        severityTier: 'high',
       },
-    );
+      {
+        speciesId: 'threat-2',
+        pokemon: 'Threat 2',
+        rank: 2,
+        teamAnswers: 1,
+        severityTier: 'critical',
+      },
+      {
+        speciesId: 'threat-3',
+        pokemon: 'Threat 3',
+        rank: 3,
+        teamAnswers: 0,
+        severityTier: 'critical',
+      },
+    ]);
+  });
 
-    const analysis = buildThreatAnalysis(
-      ['lanturn', 'dewgong'],
-      'great-league',
-    );
+  it('uses only evaluated score entries and preserves their answer counts', () => {
+    const score = createThreatScore();
+    score.overallTeamThreats = score.overallTeamThreats.slice(0, 1);
 
-    expect(analysis.evaluatedCount).toBe(1);
-    expect(analysis.entries).toHaveLength(1);
-    expect(analysis.entries[0]).toMatchObject({
-      speciesId: 'threat-1',
-      teamAnswers: 1,
+    const analysis = buildThreatAnalysis(score);
+
+    expect(analysis).toEqual({
+      evaluatedCount: 1,
+      entries: [
+        expect.objectContaining({
+          speciesId: 'threat-2',
+          teamAnswers: 1,
+        }),
+      ],
     });
   });
 });
+
+function createThreatScore(): OptimizerThreatScore {
+  return {
+    score: 0.5,
+    evaluatedCount: 3,
+    topMetaThreats: [],
+    overallTeamThreats: [
+      {
+        speciesId: 'threat-2',
+        pokemon: 'Threat 2',
+        rank: 2,
+        teamAnswers: 1,
+        threatValue: 0.9,
+        severityTier: 'critical',
+      },
+      {
+        speciesId: 'threat-3',
+        pokemon: 'Threat 3',
+        rank: 3,
+        teamAnswers: 0,
+        threatValue: 0.8,
+        severityTier: 'critical',
+      },
+      {
+        speciesId: 'threat-1',
+        pokemon: 'Threat 1',
+        rank: 1,
+        teamAnswers: 2,
+        threatValue: 0.2,
+        severityTier: 'low',
+      },
+    ],
+    pools: {
+      topMeta: { score: 0.5, evaluatedCount: 2, weight: 0.7 },
+      fullMeta: { score: 0.5, evaluatedCount: 3, weight: 0.3 },
+    },
+  };
+}
 
 describe('calculateThreatSeverity', () => {
   it('increases severity for higher-ranked threats', () => {

@@ -1,10 +1,41 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
   calculateLineupPatternLabel,
+  createDefaultLineupScoringContext,
   scoreOrderedLineup,
   type LineupScoringContext,
 } from './lineupScoring';
-import type { OrderedLineup, Pokemon } from '@/lib/types';
+import {
+  getRecommendedMovesetForPokemon,
+  getSimulationBackedMovesetForTeam,
+} from '@/lib/genetic/moveset';
+import type {
+  MovesetAssignmentPolicyIdentity,
+  MovesetVariantId,
+  OrderedLineup,
+  Pokemon,
+  RosterMovesetAssignment,
+  MovesetVariant,
+} from '@/lib/types';
+
+vi.mock('@/lib/genetic/moveset', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@/lib/genetic/moveset')>();
+
+  return {
+    ...original,
+    getRecommendedMovesetForPokemon: vi.fn(() => ({
+      fastMove: 'BUBBLE',
+      chargedMove1: 'ICE_BEAM',
+      chargedMove2: 'PLAY_ROUGH',
+    })),
+    getSimulationBackedMovesetForTeam: vi.fn(() => ({
+      fastMove: 'BUBBLE',
+      chargedMove1: 'HYDRO_PUMP',
+      chargedMove2: 'PLAY_ROUGH',
+    })),
+  };
+});
 
 const pokemonById: Record<string, Pokemon> = {
   bulky: makePokemon('bulky', ['water'], { atk: 100, def: 180, hp: 170 }),
@@ -39,6 +70,167 @@ const pokemonById: Record<string, Pokemon> = {
 };
 
 const defaultThreats = ['threat-a', 'threat-b', 'threat-c', 'threat-d'];
+
+describe('createDefaultLineupScoringContext', () => {
+  test('uses team-aware moveset selection when requested', () => {
+    vi.mocked(getRecommendedMovesetForPokemon).mockClear();
+    vi.mocked(getSimulationBackedMovesetForTeam).mockClear();
+    const team = ['azumarill', 'skarmory', 'lanturn'];
+    const context = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'team-aware',
+    );
+
+    context.getRecommendedMoveset?.('azumarill', team);
+
+    expect(getSimulationBackedMovesetForTeam).toHaveBeenCalledWith(
+      expect.objectContaining({ speciesId: 'azumarill' }),
+      team,
+      'great-league',
+    );
+    expect(getRecommendedMovesetForPokemon).not.toHaveBeenCalled();
+  });
+
+  test('uses ranked defaults without consulting team-aware selection', () => {
+    vi.mocked(getRecommendedMovesetForPokemon).mockClear();
+    vi.mocked(getSimulationBackedMovesetForTeam).mockClear();
+    const context = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+    );
+
+    context.getRecommendedMoveset?.('azumarill', [
+      'azumarill',
+      'skarmory',
+      'lanturn',
+    ]);
+
+    expect(getRecommendedMovesetForPokemon).toHaveBeenCalledWith(
+      expect.objectContaining({ speciesId: 'azumarill' }),
+      'great-league',
+    );
+    expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
+  });
+
+  test('memoizes every result-affecting lookup input including null results', () => {
+    const getAverageRankingScore = vi.fn(() => 90);
+    const getRankingScore = vi.fn(() => 80);
+    const getMatchupResult = vi.fn(() => null);
+    const getShieldScenarioMatchupResult = vi.fn(() => 500);
+    const getMatchupQualityScore = vi.fn(() => 0.5);
+    const context = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+      {
+        getAverageRankingScore,
+        getRankingScore,
+        getMatchupResult,
+        getShieldScenarioMatchupResult,
+        getMatchupQualityScore,
+      },
+    );
+    const variantA = 'bubble--ice_beam--play_rough' as MovesetVariantId;
+    const variantB = 'bubble--hydro_pump--play_rough' as MovesetVariantId;
+
+    context.getRankingScore('azumarill');
+    context.getRankingScore('azumarill');
+    context.getRankingScore('skarmory');
+    expect(getAverageRankingScore).toHaveBeenCalledTimes(2);
+
+    context.getRoleScore('azumarill', 'lead');
+    context.getRoleScore('azumarill', 'lead');
+    context.getRoleScore('azumarill', 'switch');
+    context.getRoleScore('skarmory', 'lead');
+    context.getRankingCategoryScore?.('azumarill', 'chargers');
+    context.getRankingCategoryScore?.('azumarill', 'chargers');
+    context.getRankingCategoryScore?.('azumarill', 'attackers');
+    context.getRankingCategoryScore?.('skarmory', 'chargers');
+    expect(getRankingScore).toHaveBeenCalledTimes(6);
+
+    context.getMatchupRating('azumarill', 'lanturn', variantA);
+    context.getMatchupRating('azumarill', 'lanturn', variantA);
+    context.getMatchupRating('azumarill', 'skarmory', variantA);
+    context.getMatchupRating('azumarill', 'lanturn', variantB);
+    context.getMatchupRating('skarmory', 'lanturn', variantA);
+    expect(getMatchupResult).toHaveBeenCalledTimes(4);
+
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      1,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      1,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      2,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'skarmory',
+      1,
+      variantA,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'azumarill',
+      'lanturn',
+      1,
+      variantB,
+    );
+    context.getShieldScenarioMatchupRating?.(
+      'skarmory',
+      'lanturn',
+      1,
+      variantA,
+    );
+    expect(getShieldScenarioMatchupResult).toHaveBeenCalledTimes(5);
+
+    context.getMatchupQualityScore?.('azumarill', variantA);
+    context.getMatchupQualityScore?.('azumarill', variantA);
+    context.getMatchupQualityScore?.('azumarill', variantB);
+    context.getMatchupQualityScore?.('skarmory', variantA);
+    expect(getMatchupQualityScore).toHaveBeenCalledTimes(3);
+  });
+
+  test('keeps production lookup caches isolated between contexts', () => {
+    const getAverageRankingScore = vi.fn(() => 90);
+    const dependencies = {
+      getAverageRankingScore,
+      getRankingScore: vi.fn(() => 80),
+      getMatchupResult: vi.fn(() => 500),
+      getShieldScenarioMatchupResult: vi.fn(() => 500),
+      getMatchupQualityScore: vi.fn(() => 0.5),
+    };
+    const first = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+      dependencies,
+    );
+    const second = createDefaultLineupScoringContext(
+      'great-league',
+      0,
+      'ranked-default',
+      dependencies,
+    );
+
+    first.getRankingScore('azumarill');
+    first.getRankingScore('azumarill');
+    second.getRankingScore('azumarill');
+
+    expect(getAverageRankingScore).toHaveBeenCalledTimes(2);
+  });
+});
 
 describe('scoreOrderedLineup', () => {
   test('lead-specific matchup data changes score for the same three Pokemon', () => {
@@ -356,6 +548,41 @@ describe('scoreOrderedLineup', () => {
       expect.objectContaining({ speciesId: 'rare-hole', teamAnswers: 0 }),
       expect.objectContaining({ speciesId: 'single-answer', teamAnswers: 1 }),
     ]);
+  });
+
+  test('uses assigned variants for every threat score matchup read', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const assignment = createLineupAssignment(lineup);
+    const matchupReads: Array<[string, MovesetVariantId | undefined]> = [];
+
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        movesetAssignment: assignment,
+        getMatchupRating: (speciesId, _threatId, variantId) => {
+          matchupReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 600
+            : 400;
+        },
+      }),
+    );
+
+    expect(matchupReads.length).toBeGreaterThan(0);
+    expect(
+      matchupReads.every(
+        ([speciesId, variantId]) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id,
+      ),
+    ).toBe(true);
+    expect(result.scoreBreakdown.threatScore?.score).toBe(0);
   });
 
   test('can omit display-only threat score diagnostics for hot-path scoring', () => {
@@ -1092,6 +1319,291 @@ describe('scoreOrderedLineup', () => {
     expect(requestedTeams).toContainEqual(['bulky', 'balanced', 'closer']);
   });
 
+  test('uses a bound roster assignment without deriving lineup movesets', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const variantsBySpeciesId: Record<string, MovesetVariant> =
+      Object.fromEntries(
+        Object.values(lineup).map((speciesId): [string, MovesetVariant] => [
+          speciesId,
+          {
+            id: `fast--charged_b--charged_a`,
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+            isDefault: true,
+          },
+        ]),
+      );
+    const assignment: RosterMovesetAssignment = {
+      formatId: 'great-league',
+      authorityBySpeciesId: Object.fromEntries(
+        Object.values(lineup).map((speciesId) => [
+          speciesId,
+          {
+            source: 'manifest' as const,
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          },
+        ]),
+      ),
+      fingerprint: 'assignment-fingerprint',
+      variantsBySpeciesId,
+    };
+    const requestedTeams: string[][] = [];
+
+    scoreOrderedLineup(
+      lineup,
+      createContext({
+        movesetAssignment: assignment,
+        getRecommendedMoveset: (_speciesId, teamSpeciesIds) => {
+          if (teamSpeciesIds) {
+            requestedTeams.push([...teamSpeciesIds]);
+          }
+          return {
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+          };
+        },
+      }),
+    );
+
+    expect(requestedTeams).toEqual([]);
+  });
+
+  test('uses the assigned variant for matchup, shield, consistency, and move scoring', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const assignment = createLineupAssignment(lineup);
+    const aggregateReads: Array<[string, MovesetVariantId | undefined]> = [];
+    const shieldReads: Array<[string, MovesetVariantId | undefined]> = [];
+    const qualityReads: Array<[string, MovesetVariantId | undefined]> = [];
+    const moveReads: string[] = [];
+    const result = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['threat-a'],
+        topThreats: ['threat-a'],
+        fullMetaThreats: ['threat-a'],
+        movesetAssignment: assignment,
+        getMatchupRating: (
+          speciesId: string,
+          _threatId: string,
+          variantId?: MovesetVariantId,
+        ) => {
+          aggregateReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 650
+            : 350;
+        },
+        getShieldScenarioMatchupRating: (
+          speciesId: string,
+          _threatId: string,
+          _shields: 0 | 1 | 2,
+          variantId?: MovesetVariantId,
+        ) => {
+          shieldReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 700
+            : 300;
+        },
+        getMatchupQualityScore: (
+          speciesId: string,
+          variantId?: MovesetVariantId,
+        ) => {
+          qualityReads.push([speciesId, variantId]);
+          return variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 0.9
+            : 0.1;
+        },
+        getMove: (moveId) => {
+          moveReads.push(moveId);
+          return { type: moveId.endsWith('_FAST') ? 'water' : 'ghost' };
+        },
+      }),
+      { includeThreatScore: false },
+    );
+
+    expect(result.coverageMetrics.coverageRate).toBe(1);
+    expect(result.coverageMetrics.overwhelmingLossCount).toBe(0);
+    expect(result.componentScores.shieldReliability).toBeCloseTo(0.9);
+    expect(result.resourcePathMetrics?.balanced).toEqual({
+      available: true,
+      score: 1,
+    });
+    for (const speciesId of Object.values(lineup)) {
+      const variantId = assignment.variantsBySpeciesId[speciesId].id;
+      expect(aggregateReads).toContainEqual([speciesId, variantId]);
+      expect(shieldReads).toContainEqual([speciesId, variantId]);
+      expect(qualityReads).toContainEqual([speciesId, variantId]);
+      expect(moveReads).toContain(`${speciesId}_FAST`);
+      expect(moveReads).toContain(`${speciesId}_CHARGED_A`);
+      expect(moveReads).toContain(`${speciesId}_CHARGED_B`);
+    }
+    expect(
+      aggregateReads.every(
+        ([speciesId, variantId]) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id,
+      ),
+    ).toBe(true);
+    expect(
+      shieldReads.every(
+        ([speciesId, variantId]) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id,
+      ),
+    ).toBe(true);
+  });
+
+  test('uses assigned variants when identifying ABA lead-alignment fragility', () => {
+    const lineup: OrderedLineup = {
+      lead: 'water',
+      switch: 'ground',
+      closer: 'bulky',
+    };
+    const assignment = createLineupAssignment(lineup);
+    const fragile = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        fullMetaThreats: ['electric-threat'],
+        movesetAssignment: assignment,
+        getMatchupRating: (speciesId, _threat, variantId) => {
+          if (variantId !== assignment.variantsBySpeciesId[speciesId]?.id) {
+            return null;
+          }
+
+          return speciesId === 'ground' ? 700 : 350;
+        },
+      }),
+      { includeThreatScore: false },
+    );
+    const redundant = scoreOrderedLineup(
+      lineup,
+      createContext({
+        threats: ['electric-threat'],
+        topThreats: ['electric-threat'],
+        fullMetaThreats: ['electric-threat'],
+        movesetAssignment: assignment,
+        getMatchupRating: (speciesId, _threat, variantId) =>
+          variantId === assignment.variantsBySpeciesId[speciesId]?.id
+            ? 650
+            : null,
+      }),
+      { includeThreatScore: false },
+    );
+
+    expect(fragile.diagnosticLabel).toBe('ABA');
+    expect(fragile.scoreBreakdown.components.synergy).toBeLessThan(
+      redundant.scoreBreakdown.components.synergy,
+    );
+    expect(fragile.scoreBreakdown.components.safety).toBeLessThan(
+      redundant.scoreBreakdown.components.safety,
+    );
+  });
+
+  test('keeps ranked-default fallback matrix reads unqualified while using assigned moves', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const assignment = createLineupAssignment(
+      lineup,
+      'ranked-default-fallback',
+    );
+    const aggregateVariants: Array<MovesetVariantId | undefined> = [];
+    const shieldVariants: Array<MovesetVariantId | undefined> = [];
+    const qualityVariants: Array<MovesetVariantId | undefined> = [];
+    const moveReads: string[] = [];
+
+    scoreOrderedLineup(
+      lineup,
+      createContext({
+        movesetAssignment: assignment,
+        getMatchupRating: (_speciesId, _threat, variantId) => {
+          aggregateVariants.push(variantId);
+          return 550;
+        },
+        getShieldScenarioMatchupRating: (
+          _speciesId,
+          _threat,
+          _shields,
+          variantId,
+        ) => {
+          shieldVariants.push(variantId);
+          return 550;
+        },
+        getMatchupQualityScore: (_speciesId, variantId) => {
+          qualityVariants.push(variantId);
+          return 0.55;
+        },
+        getMove: (moveId) => {
+          moveReads.push(moveId);
+          return { type: 'normal' };
+        },
+      }),
+    );
+
+    expect(aggregateVariants).not.toHaveLength(0);
+    expect(
+      aggregateVariants.every((variantId) => variantId === undefined),
+    ).toBe(true);
+    expect(shieldVariants).not.toHaveLength(0);
+    expect(shieldVariants.every((variantId) => variantId === undefined)).toBe(
+      true,
+    );
+    expect(qualityVariants).not.toHaveLength(0);
+    expect(qualityVariants.every((variantId) => variantId === undefined)).toBe(
+      true,
+    );
+    for (const speciesId of Object.values(lineup)) {
+      expect(moveReads).toContain(`${speciesId}_FAST`);
+    }
+  });
+
+  test('rejects a bound assignment that omits a lineup species', () => {
+    const lineup: OrderedLineup = {
+      lead: 'bulky',
+      switch: 'balanced',
+      closer: 'closer',
+    };
+    const context = createContext({
+      formatId: 'great-league',
+      movesetAssignment: {
+        formatId: 'great-league',
+        authorityBySpeciesId: {
+          bulky: {
+            source: 'manifest',
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          },
+        },
+        fingerprint: 'incomplete-assignment',
+        variantsBySpeciesId: {
+          bulky: {
+            id: 'fast--charged_b--charged_a',
+            fastMove: 'FAST',
+            chargedMove1: 'CHARGED_A',
+            chargedMove2: 'CHARGED_B',
+            isDefault: true,
+          },
+        },
+      },
+    });
+
+    expect(() => scoreOrderedLineup(lineup, context)).toThrow(
+      'Bound roster moveset assignment is missing balanced.',
+    );
+  });
+
   test('computes balanced, shield-spend, and shield-save resource path metrics from shield-specific matchups', () => {
     const lineup: OrderedLineup = {
       lead: 'bulky',
@@ -1150,7 +1662,7 @@ describe('scoreOrderedLineup', () => {
 
     expect(result.resourcePathMetrics?.balanced).toEqual({
       available: true,
-      score: expect.closeTo(0.6666666666666666),
+      score: 1,
     });
     expect(result.resourcePathMetrics?.shieldSpend).toEqual({
       available: false,
@@ -1327,4 +1839,32 @@ function uniformMovesets(
       { fastMove, chargedMove1, chargedMove2 },
     ]),
   );
+}
+
+function createLineupAssignment(
+  lineup: OrderedLineup,
+  source: MovesetAssignmentPolicyIdentity['source'] = 'manifest',
+): RosterMovesetAssignment {
+  return {
+    formatId: 'great-league',
+    authorityBySpeciesId: Object.fromEntries(
+      Object.values(lineup).map((speciesId) => [
+        speciesId,
+        { source, schemaVersion: 1, policyVersion: 'ranking-evidence-v1' },
+      ]),
+    ),
+    fingerprint: 'variant-aware-lineup',
+    variantsBySpeciesId: Object.fromEntries(
+      Object.values(lineup).map((speciesId) => [
+        speciesId,
+        {
+          id: `${speciesId}_fast--${speciesId}_charged_b--${speciesId}_charged_a`,
+          fastMove: `${speciesId}_FAST`,
+          chargedMove1: `${speciesId}_CHARGED_A`,
+          chargedMove2: `${speciesId}_CHARGED_B`,
+          isDefault: false,
+        },
+      ]),
+    ),
+  };
 }

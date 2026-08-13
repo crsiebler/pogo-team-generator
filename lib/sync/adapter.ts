@@ -47,6 +47,8 @@ export interface PvpokeAdapter {
     leagueCp: number,
     cup?: RankingCup,
   ): Promise<T>;
+  getMovesetOverridesFilePath(leagueCp: number, cup?: RankingCup): string;
+  readMovesetOverridesJson<T>(leagueCp: number, cup?: RankingCup): Promise<T[]>;
   getSimulationAssetPath(relativePath: string): string;
   readJsonFile<T>(relativePath: string): Promise<T>;
 }
@@ -153,6 +155,31 @@ export function createPvpokeAdapter(
       return readJsonFile<T>(
         `src/data/rankings/${cup}/${category}/rankings-${leagueCp}.json`,
       );
+    },
+    getMovesetOverridesFilePath(
+      leagueCp: number,
+      cup: RankingCup = 'all',
+    ): string {
+      if (!RANKING_CUPS.includes(cup)) {
+        throw new Error(`[pvpoke-adapter] Unsupported ranking cup: ${cup}`);
+      }
+
+      return resolveUnderSource(`src/data/overrides/${cup}/${leagueCp}.json`);
+    },
+    readMovesetOverridesJson<T>(
+      leagueCp: number,
+      cup: RankingCup = 'all',
+    ): Promise<T[]> {
+      if (!RANKING_CUPS.includes(cup)) {
+        throw new Error(`[pvpoke-adapter] Unsupported ranking cup: ${cup}`);
+      }
+
+      const relativePath = `src/data/overrides/${cup}/${leagueCp}.json`;
+      if (!pathExists(resolveUnderSource(relativePath))) {
+        return Promise.resolve([]);
+      }
+
+      return readJsonFile<T[]>(relativePath);
     },
     getSimulationAssetPath(relativePath: string): string {
       return resolveUnderSource(relativePath);

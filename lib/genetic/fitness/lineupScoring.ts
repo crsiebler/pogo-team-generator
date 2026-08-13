@@ -15,6 +15,7 @@ import {
   MissingRankingDataError,
 } from '@/lib/data/rankings';
 import {
+  ensureSimulationDataAvailable,
   getMatchupQualityScore,
   getMatchupResult,
   getShieldScenarioMatchupResult,
@@ -35,6 +36,7 @@ import {
   calculateOffensiveTypeRatio,
 } from '@/lib/genetic/fitness/typeEffectivenessRatios';
 import {
+  getAssignedMovesetVariantId,
   getRecommendedMovesetForPokemon,
   getSimulationBackedMovesetForTeam,
 } from '@/lib/genetic/moveset';
@@ -46,6 +48,8 @@ import type {
   LineupRole,
   OrderedLineup,
   Pokemon,
+  RosterMovesetAssignment,
+  MovesetVariantId,
 } from '@/lib/types';
 
 interface LineupMoveset {
@@ -108,6 +112,7 @@ export interface LineupScoringContext {
   topThreats?: string[];
   fullMetaThreats?: string[];
   formatId?: BattleFormatId;
+  movesetAssignment?: RosterMovesetAssignment;
   getPokemon: (speciesId: string) => Pokemon | undefined;
   getRankingScore: (speciesId: string) => number;
   getRoleScore: (speciesId: string, role: LineupRole) => number;
@@ -118,13 +123,18 @@ export interface LineupScoringContext {
   getMatchupRating: (
     speciesId: string,
     threatSpeciesId: string,
+    movesetVariantId?: MovesetVariantId,
   ) => number | null;
   getShieldScenarioMatchupRating?: (
     speciesId: string,
     threatSpeciesId: string,
     shields: 0 | 1 | 2,
+    movesetVariantId?: MovesetVariantId,
   ) => number | null;
-  getMatchupQualityScore?: (speciesId: string) => number;
+  getMatchupQualityScore?: (
+    speciesId: string,
+    movesetVariantId?: MovesetVariantId,
+  ) => number;
   getMove?: (moveId: string) => LineupMoveData | undefined;
   getRecommendedMoveset?: (
     speciesId: string,
@@ -168,12 +178,41 @@ export interface LineupScoringOptions {
   includeThreatScore?: boolean;
 }
 
+/** Moveset policy used when constructing a production lineup context. */
+export type LineupMovesetPolicy = 'team-aware' | 'ranked-default';
+
+/** Data-loading boundaries memoized by one production lineup context. */
+export interface LineupScoringDataDependencies {
+  readonly getAverageRankingScore: typeof getAverageRankingScore;
+  readonly getRankingScore: typeof getRankingScore;
+  readonly getMatchupResult: typeof getMatchupResult;
+  readonly getShieldScenarioMatchupResult: typeof getShieldScenarioMatchupResult;
+  readonly getMatchupQualityScore: typeof getMatchupQualityScore;
+}
+
+const defaultLineupScoringDataDependencies: LineupScoringDataDependencies = {
+  getAverageRankingScore,
+  getRankingScore,
+  getMatchupResult,
+  getShieldScenarioMatchupResult,
+  getMatchupQualityScore,
+};
+
 /** Builds the production data context for lineup scoring. */
 export function createDefaultLineupScoringContext(
   formatId?: BattleFormatId,
   threatCount: number = 100,
+  movesetPolicy: LineupMovesetPolicy = 'team-aware',
+  dataDependencies: LineupScoringDataDependencies = defaultLineupScoringDataDependencies,
 ): LineupScoringContext {
+  ensureSimulationDataAvailable(formatId);
   const recommendedMovesetCache = new Map<string, LineupMoveset>();
+  const rankingScoreCache = new Map<string, number>();
+  const roleScoreCache = new Map<string, number>();
+  const rankingCategoryScoreCache = new Map<string, number>();
+  const matchupRatingCache = new Map<string, number | null>();
+  const shieldMatchupRatingCache = new Map<string, number | null>();
+  const matchupQualityScoreCache = new Map<string, number>();
   const boundedThreatCount = clampInteger(
     threatCount,
     0,
@@ -192,42 +231,96 @@ export function createDefaultLineupScoringContext(
     formatId,
     getPokemon: getPokemonBySpeciesId,
     getRankingScore: (speciesId) =>
-      getAverageRankingScore(speciesIdToSpeciesName(speciesId), formatId),
-    getRoleScore: (speciesId, role) =>
-      getRankingScore(
-        speciesIdToSpeciesName(speciesId),
-        ROLE_RANKING_BY_LINEUP_ROLE[role],
-        formatId,
-      ) / 100,
-    getRankingCategoryScore: (speciesId, category) =>
-      getRankingScore(
-        speciesIdToSpeciesName(speciesId),
-        category as Parameters<typeof getRankingScore>[1],
-        formatId,
-      ) / 100,
-    getMatchupRating: (speciesId, threatSpeciesId) =>
-      getMatchupResult(speciesId, threatSpeciesId, formatId),
-    getShieldScenarioMatchupRating: (speciesId, threatSpeciesId, shields) =>
-      getShieldScenarioMatchupResult(
-        speciesId,
-        threatSpeciesId,
-        shields,
-        formatId,
+      getCachedValue(rankingScoreCache, speciesId, () =>
+        dataDependencies.getAverageRankingScore(
+          speciesIdToSpeciesName(speciesId),
+          formatId,
+        ),
       ),
-    getMatchupQualityScore: (speciesId) =>
-      getMatchupQualityScore(speciesId, formatId),
+    getRoleScore: (speciesId, role) =>
+      getCachedValue(
+        roleScoreCache,
+        `${speciesId}:${role}`,
+        () =>
+          dataDependencies.getRankingScore(
+            speciesIdToSpeciesName(speciesId),
+            ROLE_RANKING_BY_LINEUP_ROLE[role],
+            formatId,
+          ) / 100,
+      ),
+    getRankingCategoryScore: (speciesId, category) =>
+      getCachedValue(
+        rankingCategoryScoreCache,
+        `${speciesId}:${category}`,
+        () =>
+          dataDependencies.getRankingScore(
+            speciesIdToSpeciesName(speciesId),
+            category as Parameters<typeof getRankingScore>[1],
+            formatId,
+          ) / 100,
+      ),
+    getMatchupRating: (speciesId, threatSpeciesId, movesetVariantId) =>
+      getCachedValue(
+        matchupRatingCache,
+        JSON.stringify([speciesId, threatSpeciesId, movesetVariantId ?? null]),
+        () =>
+          dataDependencies.getMatchupResult(
+            speciesId,
+            threatSpeciesId,
+            formatId,
+            movesetVariantId,
+          ),
+      ),
+    getShieldScenarioMatchupRating: (
+      speciesId,
+      threatSpeciesId,
+      shields,
+      movesetVariantId,
+    ) =>
+      getCachedValue(
+        shieldMatchupRatingCache,
+        JSON.stringify([
+          speciesId,
+          threatSpeciesId,
+          shields,
+          movesetVariantId ?? null,
+        ]),
+        () =>
+          dataDependencies.getShieldScenarioMatchupResult(
+            speciesId,
+            threatSpeciesId,
+            shields,
+            formatId,
+            movesetVariantId,
+          ),
+      ),
+    getMatchupQualityScore: (speciesId, movesetVariantId) =>
+      getCachedValue(
+        matchupQualityScoreCache,
+        JSON.stringify([speciesId, movesetVariantId ?? null]),
+        () =>
+          dataDependencies.getMatchupQualityScore(
+            speciesId,
+            formatId,
+            movesetVariantId,
+          ),
+      ),
     getMove: getMoveByMoveId,
     getRecommendedMoveset: (speciesId, teamSpeciesIds) => {
       const pokemon = getPokemonBySpeciesId(speciesId);
       if (!pokemon) {
         return undefined;
       }
-      const cacheKey = `${speciesId}:${teamSpeciesIds ? [...teamSpeciesIds].sort().join(',') : 'default'}`;
+      const useTeamAwareMoveset =
+        movesetPolicy === 'team-aware' && teamSpeciesIds !== undefined;
+      const cacheKey = useTeamAwareMoveset
+        ? `${speciesId}:${[...teamSpeciesIds].sort().join(',')}`
+        : speciesId;
       const cachedMoveset = recommendedMovesetCache.get(cacheKey);
       if (cachedMoveset) {
         return cachedMoveset;
       }
-      const moveset = teamSpeciesIds
+      const moveset = useTeamAwareMoveset
         ? getSimulationBackedMovesetForTeam(
             pokemon,
             teamSpeciesIds,
@@ -239,6 +332,19 @@ export function createDefaultLineupScoringContext(
     },
     getPressureScore: calculatePressureScore,
   };
+}
+
+function getCachedValue<T>(
+  cache: Map<string, T>,
+  key: string,
+  load: () => T,
+): T {
+  if (cache.has(key)) {
+    return cache.get(key)!;
+  }
+  const value = load();
+  cache.set(key, value);
+  return value;
 }
 
 /** Scores one ordered pick-3 lineup while preserving legacy quality signals. */
@@ -390,7 +496,8 @@ function createThreatScoreContext(
     getThreatName: (speciesId) =>
       context.getPokemon(speciesId)?.speciesName ?? speciesId,
     getThreatRank: (speciesId) => ranks.get(speciesId) ?? ranks.size + 1,
-    getMatchupRating: context.getMatchupRating,
+    getMatchupRating: (speciesId, threatSpeciesId) =>
+      getAssignedMatchupRating(speciesId, threatSpeciesId, context),
   };
 }
 
@@ -422,9 +529,17 @@ function leadCoversBacklineWeakness(
   topThreats: string[],
 ): boolean {
   return topThreats.some((threat) => {
-    const leadRating = context.getMatchupRating(lineup.lead, threat);
-    const switchRating = context.getMatchupRating(lineup.switch, threat);
-    const closerRating = context.getMatchupRating(lineup.closer, threat);
+    const leadRating = getAssignedMatchupRating(lineup.lead, threat, context);
+    const switchRating = getAssignedMatchupRating(
+      lineup.switch,
+      threat,
+      context,
+    );
+    const closerRating = getAssignedMatchupRating(
+      lineup.closer,
+      threat,
+      context,
+    );
 
     return (
       leadRating !== null &&
@@ -443,9 +558,17 @@ function hasAbaLeadAlignmentFragility(
   topThreats: string[],
 ): boolean {
   return topThreats.some((threat) => {
-    const leadRating = context.getMatchupRating(lineup.lead, threat);
-    const switchRating = context.getMatchupRating(lineup.switch, threat);
-    const closerRating = context.getMatchupRating(lineup.closer, threat);
+    const leadRating = getAssignedMatchupRating(lineup.lead, threat, context);
+    const switchRating = getAssignedMatchupRating(
+      lineup.switch,
+      threat,
+      context,
+    );
+    const closerRating = getAssignedMatchupRating(
+      lineup.closer,
+      threat,
+      context,
+    );
 
     return (
       leadRating !== null &&
@@ -880,7 +1003,7 @@ function getThreatRatings(
   context: LineupScoringContext,
 ): number[] {
   return speciesIds
-    .map((speciesId) => context.getMatchupRating(speciesId, threat))
+    .map((speciesId) => getAssignedMatchupRating(speciesId, threat, context))
     .filter((rating): rating is number => rating !== null);
 }
 
@@ -917,7 +1040,7 @@ function calculateRoleMatchupScore(
   context: LineupScoringContext,
 ): number {
   const ratings = threats
-    .map((threat) => context.getMatchupRating(speciesId, threat))
+    .map((threat) => getAssignedMatchupRating(speciesId, threat, context))
     .filter((rating): rating is number => rating !== null);
 
   return ratings.length > 0
@@ -1056,6 +1179,18 @@ function getContextMoveset(
   context: LineupScoringContext,
   teamSpeciesIds?: readonly string[],
 ): LineupMoveset {
+  if (teamSpeciesIds) {
+    const assigned =
+      context.movesetAssignment?.variantsBySpeciesId[pokemon.speciesId];
+    if (assigned) {
+      return assigned;
+    }
+    if (context.movesetAssignment) {
+      throw new Error(
+        `Bound roster moveset assignment is missing ${pokemon.speciesId}.`,
+      );
+    }
+  }
   if (context.getRecommendedMoveset) {
     return (
       context.getRecommendedMoveset(pokemon.speciesId, teamSpeciesIds) ?? {
@@ -1146,9 +1281,11 @@ function calculateShieldReliability(
   }
 
   return average(
-    speciesIds.map((speciesId) =>
-      clamp01(context.getMatchupQualityScore!(speciesId)),
-    ),
+    speciesIds.map((speciesId) => {
+      const score = getAssignedMatchupQualityScore(speciesId, context);
+
+      return score === undefined ? 0.5 : clamp01(score);
+    }),
   );
 }
 
@@ -1185,21 +1322,22 @@ function calculateResourcePathMetric(
   shieldsByRole: Record<LineupRole, 0 | 1 | 2>,
 ): LineupResourcePathMetric {
   const ratings: number[] = [];
-  let availableRatingCount = 0;
 
   for (const threat of context.threats) {
     for (const role of ['lead', 'switch', 'closer'] as const) {
-      const rating = context.getShieldScenarioMatchupRating!(
+      const rating = getAssignedShieldScenarioMatchupRating(
         lineup[role],
         threat,
         shieldsByRole[role],
+        context,
       );
-      ratings.push(rating ?? 500);
-      availableRatingCount += rating === null ? 0 : 1;
+      if (rating !== null) {
+        ratings.push(rating);
+      }
     }
   }
 
-  if (ratings.length === 0 || availableRatingCount === 0) {
+  if (ratings.length === 0) {
     return { available: false };
   }
 
@@ -1207,6 +1345,49 @@ function calculateResourcePathMetric(
     available: true,
     score: average(ratings.map((rating) => scoreMatchupRating(rating))),
   };
+}
+
+/** Reads one aggregate matchup using the roster member's fixed variant. */
+export function getAssignedMatchupRating(
+  speciesId: string,
+  threatSpeciesId: string,
+  context: LineupScoringContext,
+): number | null {
+  return context.getMatchupRating(
+    speciesId,
+    threatSpeciesId,
+    getAssignedMovesetVariantId(context.movesetAssignment, speciesId),
+  );
+}
+
+/** Reads one shield matchup using the roster member's fixed variant. */
+export function getAssignedShieldScenarioMatchupRating(
+  speciesId: string,
+  threatSpeciesId: string,
+  shields: 0 | 1 | 2,
+  context: LineupScoringContext,
+): number | null {
+  if (!context.getShieldScenarioMatchupRating) {
+    return null;
+  }
+
+  return context.getShieldScenarioMatchupRating(
+    speciesId,
+    threatSpeciesId,
+    shields,
+    getAssignedMovesetVariantId(context.movesetAssignment, speciesId),
+  );
+}
+
+/** Reads aggregate matchup quality using the roster member's fixed variant. */
+export function getAssignedMatchupQualityScore(
+  speciesId: string,
+  context: LineupScoringContext,
+): number | undefined {
+  return context.getMatchupQualityScore?.(
+    speciesId,
+    getAssignedMovesetVariantId(context.movesetAssignment, speciesId),
+  );
 }
 
 function sharesType(first: Pokemon, second: Pokemon): boolean {

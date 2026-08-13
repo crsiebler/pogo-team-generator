@@ -50,9 +50,16 @@ function resolveRecommendedLineupLabels(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mode, formatId, anchorPokemon, excludedPokemon } = body as {
+    const {
+      mode,
+      formatId,
+      simulateMovesetVariants,
+      anchorPokemon,
+      excludedPokemon,
+    } = body as {
       mode: TournamentMode;
       formatId?: string;
+      simulateMovesetVariants?: unknown;
       anchorPokemon?: string[];
       excludedPokemon?: string[];
     };
@@ -69,6 +76,16 @@ export async function POST(request: NextRequest) {
     if (!mode || (mode !== 'PlayPokemon' && mode !== 'GBL')) {
       return NextResponse.json(
         { error: 'Invalid tournament mode' },
+        { status: 400 },
+      );
+    }
+
+    if (
+      simulateMovesetVariants !== undefined &&
+      typeof simulateMovesetVariants !== 'boolean'
+    ) {
+      return NextResponse.json(
+        { error: 'simulateMovesetVariants must be a boolean' },
         { status: 400 },
       );
     }
@@ -157,13 +174,19 @@ export async function POST(request: NextRequest) {
     const result = await generateTeam({
       formatId: resolvedFormatId,
       mode,
+      simulateMovesetVariants: simulateMovesetVariants ?? false,
       anchorPokemon: anchorSpeciesIds,
       excludedPokemon: excludedSpeciesIds,
       populationSize: 150,
       generations: 75,
     });
+    if (!result.movesetAssignment) {
+      throw new Error(
+        'Generated team is missing its scored moveset assignment.',
+      );
+    }
 
-    const threats = buildThreatAnalysis(result.team, resolvedFormatId);
+    const threats = buildThreatAnalysis(result.scoreBreakdown?.threatScore);
 
     const analysis: GenerationAnalysis = {
       mode,
@@ -175,11 +198,13 @@ export async function POST(request: NextRequest) {
         result.team,
         threats.entries,
         resolvedFormatId,
+        result.movesetAssignment,
       ),
       pokemonContributions: buildPokemonContributionAnalysis(
         result.team,
         threats.entries,
         resolvedFormatId,
+        result.movesetAssignment,
       ),
     };
 
@@ -190,6 +215,7 @@ export async function POST(request: NextRequest) {
         result.recommendedLineups,
       ),
       scoreBreakdown: result.scoreBreakdown,
+      movesetAssignment: result.movesetAssignment,
       analysis,
     });
   } catch (error) {

@@ -118,7 +118,7 @@ export function hasBuffEffects(moveId: string): boolean {
  * Get buff details for a move
  */
 export function getBuffDetails(moveId: string): {
-  stats: number[];
+  stats: readonly number[];
   target: string;
   chance: string;
 } | null {

@@ -4,16 +4,86 @@ import { useEffect, useState } from 'react';
 import { PokemonCard } from '@/components/molecules';
 import { ExportButton } from '@/components/molecules/ExportButton/ExportButton';
 import type { BattleFormatId } from '@/lib/data/battleFormats';
-import type { TeamMovesets } from '@/lib/export';
-import type { Pokemon, TournamentMode } from '@/lib/types';
+import type {
+  MovesetAcquisitionRequirements,
+  Pokemon,
+  RosterMovesetAssignment,
+  TournamentMode,
+} from '@/lib/types';
 
 interface TeamDisplayProps {
   team: string[];
   mode: TournamentMode;
   formatId: BattleFormatId;
+  movesetAssignment: RosterMovesetAssignment;
 }
 
-export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isEligibleAcquisitionRequirement(value: unknown): boolean {
+  return (
+    isUnknownRecord(value) &&
+    (value.kind === 'regular' ||
+      value.kind === 'elite' ||
+      value.kind === 'eventExclusive' ||
+      value.kind === 'purified')
+  );
+}
+
+function isTeamDetailsResponse(
+  value: unknown,
+  team: readonly string[],
+  assignment: RosterMovesetAssignment,
+): value is { pokemon: Pokemon[] } {
+  if (typeof value !== 'object' || value === null || !('pokemon' in value)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(value.pokemon) &&
+    value.pokemon.length === team.length &&
+    value.pokemon.every((pokemon, index) => {
+      if (!isUnknownRecord(pokemon) || pokemon.speciesId !== team[index]) {
+        return false;
+      }
+
+      const variant = assignment.variantsBySpeciesId[team[index]!];
+      const authority = assignment.authorityBySpeciesId[team[index]!];
+      const recommendedMoveset = pokemon.recommendedMoveset;
+      if (!variant || !authority || !isUnknownRecord(recommendedMoveset)) {
+        return false;
+      }
+
+      const requirements = recommendedMoveset.acquisitionRequirements;
+      return (
+        recommendedMoveset.id === variant.id &&
+        recommendedMoveset.fastMove === variant.fastMove &&
+        recommendedMoveset.chargedMove1 === variant.chargedMove1 &&
+        recommendedMoveset.chargedMove2 === variant.chargedMove2 &&
+        recommendedMoveset.isDefault === variant.isDefault &&
+        isUnknownRecord(recommendedMoveset.authority) &&
+        recommendedMoveset.authority.source === authority.source &&
+        recommendedMoveset.authority.schemaVersion ===
+          authority.schemaVersion &&
+        recommendedMoveset.authority.policyVersion ===
+          authority.policyVersion &&
+        isUnknownRecord(requirements) &&
+        isEligibleAcquisitionRequirement(requirements.fastMove) &&
+        isEligibleAcquisitionRequirement(requirements.chargedMove1) &&
+        isEligibleAcquisitionRequirement(requirements.chargedMove2)
+      );
+    })
+  );
+}
+
+export function TeamDisplay({
+  team,
+  mode,
+  formatId,
+  movesetAssignment,
+}: TeamDisplayProps) {
   const [pokemonData, setPokemonData] = useState<Pokemon[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,9 +92,20 @@ export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
     fetch('/api/team-details', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team, formatId }),
+      body: JSON.stringify({ team, formatId, movesetAssignment }),
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error('Team details request failed.');
+        }
+
+        const data: unknown = await res.json();
+        if (!isTeamDetailsResponse(data, team, movesetAssignment)) {
+          throw new Error('Team details response is invalid.');
+        }
+
+        return data;
+      })
       .then((data) => {
         setPokemonData(data.pokemon);
         setLoading(false);
@@ -33,7 +114,7 @@ export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
         console.error('Failed to fetch team details:', err);
         setLoading(false);
       });
-  }, [formatId, team]);
+  }, [formatId, movesetAssignment, team]);
 
   if (loading) {
     return (
@@ -43,15 +124,14 @@ export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
     );
   }
 
-  // Build movesets from pokemon data
-  const movesets: TeamMovesets = {};
+  const acquisitionRequirementsBySpeciesId: Record<
+    string,
+    MovesetAcquisitionRequirements
+  > = {};
   pokemonData.forEach((pokemon) => {
-    if (pokemon.recommendedMoveset) {
-      movesets[pokemon.speciesId] = {
-        fastMove: pokemon.recommendedMoveset.fastMove,
-        chargedMove1: pokemon.recommendedMoveset.chargedMove1,
-        chargedMove2: pokemon.recommendedMoveset.chargedMove2,
-      };
+    if (pokemon.recommendedMoveset?.acquisitionRequirements) {
+      acquisitionRequirementsBySpeciesId[pokemon.speciesId] =
+        pokemon.recommendedMoveset.acquisitionRequirements;
     }
   });
 
@@ -66,7 +146,14 @@ export function TeamDisplay({ team, mode, formatId }: TeamDisplayProps) {
           <h4 className="font-bold text-blue-900 dark:text-blue-100">
             💡 Team Notes
           </h4>
-          <ExportButton team={team} movesets={movesets} />
+          <ExportButton
+            team={team}
+            movesetAssignment={movesetAssignment}
+            acquisitionRequirementsBySpeciesId={
+              acquisitionRequirementsBySpeciesId
+            }
+            disabled={pokemonData.length !== team.length}
+          />
         </div>
         <ul className="space-y-1 text-xs text-blue-800 sm:text-sm dark:text-blue-200">
           <li>

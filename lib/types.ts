@@ -1,5 +1,63 @@
 import type { BattleFormatId } from '@/lib/data/battleFormats';
 
+/** One complete battle moveset in preferred simulation and display order. */
+export interface Moveset {
+  readonly fastMove: string;
+  readonly chargedMove1: string;
+  readonly chargedMove2: string;
+}
+
+/** Canonical identity for a fast move and order-independent charged-move pair. */
+export type MovesetVariantId = `${string}--${string}--${string}`;
+
+/** Acquisition category for one move in a moveset. */
+export type MoveAvailability =
+  | { readonly kind: 'regular' }
+  | { readonly kind: 'elite' }
+  | { readonly kind: 'eventExclusive' }
+  | { readonly kind: 'purified' }
+  | { readonly kind: 'excluded'; readonly reason: string };
+
+/** Acquisition category for a move that is eligible for recommendation. */
+export type EligibleMoveAvailability = Exclude<
+  MoveAvailability,
+  { readonly kind: 'excluded' }
+>;
+
+/** Acquisition requirements for every move slot in one recommended moveset. */
+export type MovesetAcquisitionRequirements = Readonly<{
+  [Slot in keyof Moveset]: EligibleMoveAvailability;
+}>;
+
+/** One legal moveset variant with canonical identity and preferred move order. */
+export interface MovesetVariant extends Moveset {
+  readonly id: MovesetVariantId;
+  readonly isDefault: boolean;
+}
+
+/** Policy authority used to resolve one species in a fixed roster assignment. */
+export interface MovesetAssignmentPolicyIdentity {
+  readonly source: 'manifest' | 'ranked-default-fallback';
+  readonly schemaVersion: number;
+  readonly policyVersion: string;
+}
+
+/** Fixed moveset variants and deterministic identity for one roster. */
+export interface RosterMovesetAssignment {
+  readonly formatId: BattleFormatId;
+  readonly authorityBySpeciesId: Readonly<
+    Record<string, MovesetAssignmentPolicyIdentity>
+  >;
+  readonly variantsBySpeciesId: Readonly<Record<string, MovesetVariant>>;
+  readonly fingerprint: string;
+}
+
+/** Attack and defense stage changes applied by a move. */
+export type MoveStatStages = readonly [attack: number, defense: number];
+
+/** Battler or battlers affected by a move's status effect. */
+export type MoveEffectTarget = 'self' | 'opponent' | 'both';
+
 export interface Pokemon {
   dex: number;
   speciesName: string;
@@ -12,6 +70,9 @@ export interface Pokemon {
   types: string[];
   fastMoves: string[];
   chargedMoves: string[];
+  eliteMoves?: string[];
+  legacyMoves?: string[];
+  level25CP?: number;
   tags: string[];
   defaultIVs: {
     cp1500?: number[];
@@ -25,9 +86,13 @@ export interface Pokemon {
     evolutions?: string[];
   };
   recommendedMoveset?: {
+    id?: MovesetVariantId;
     fastMove: string | null;
     chargedMove1: string | null;
     chargedMove2: string | null;
+    isDefault?: boolean;
+    authority?: MovesetAssignmentPolicyIdentity;
+    acquisitionRequirements?: MovesetAcquisitionRequirements;
   };
 }
 
@@ -41,8 +106,10 @@ export interface Move {
   cooldown: number;
   archetype: string;
   turns?: number;
-  buffs?: number[];
-  buffTarget?: string;
+  buffs?: MoveStatStages;
+  buffsSelf?: MoveStatStages;
+  buffsOpponent?: MoveStatStages;
+  buffTarget?: MoveEffectTarget;
   buffApplyChance?: string;
 }
 
@@ -219,14 +286,35 @@ export type LineupAwareFitnessConfig =
     }
   | {
       mode: 'full';
+      includeDiagnostics: false;
+      recommendationLimit: 0;
+    }
+  | {
+      mode: 'full';
       includeDiagnostics: true;
       recommendationLimit: number;
     };
+
+/** Bounded work and lineup-cache counters from finalist assignment reranking. */
+export interface FinalistRerankingStats {
+  readonly finalistCount: number;
+  readonly assignmentEvaluationCount: number;
+  readonly fullScoreCount: number;
+  readonly lineupCache: {
+    readonly hits: number;
+    readonly misses: number;
+    readonly size: number;
+  };
+}
 
 export interface Chromosome {
   team: string[];
   anchors?: number[];
   fitness: number;
+  /** Canonical top GA rosters scored with ranked-default movesets. */
+  defaultScoredFinalists?: readonly Chromosome[];
+  finalistRerankingStats?: FinalistRerankingStats;
+  movesetAssignment?: RosterMovesetAssignment;
   scoreBreakdown?: OptimizerScoreBreakdown;
   recommendedLineups?: RecommendedLineup[];
 }
@@ -234,6 +322,8 @@ export interface Chromosome {
 export interface GenerationOptions {
   formatId?: BattleFormatId;
   mode: TournamentMode;
+  /** Enables simulation-backed alternatives instead of ranked default movesets. */
+  simulateMovesetVariants?: boolean;
   anchorPokemon?: string[];
   excludedPokemon?: string[];
   populationSize?: number;

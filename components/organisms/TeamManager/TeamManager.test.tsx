@@ -2,7 +2,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import { TeamManager } from './TeamManager';
 import { type BattleFormatId } from '@/lib/data/battleFormats';
-import type { OptimizerScoreBreakdown, RecommendedLineup } from '@/lib/types';
+import type {
+  OptimizerScoreBreakdown,
+  RecommendedLineup,
+  RosterMovesetAssignment,
+} from '@/lib/types';
 
 const showToastMock = vi.fn();
 
@@ -32,8 +36,30 @@ interface MockAnalysisPanelProps {
 interface MockResultsPanelProps {
   generatedTeam: {
     team?: string[];
+    movesetAssignment?: RosterMovesetAssignment;
   } | null;
 }
+
+const movesetAssignment: RosterMovesetAssignment = {
+  formatId: 'great-league',
+  authorityBySpeciesId: {
+    azumarill: {
+      source: 'manifest',
+      schemaVersion: 1,
+      policyVersion: 'ranking-evidence-v1',
+    },
+  },
+  variantsBySpeciesId: {
+    azumarill: {
+      id: 'bubble--play_rough--ice_beam',
+      fastMove: 'BUBBLE',
+      chargedMove1: 'ICE_BEAM',
+      chargedMove2: 'PLAY_ROUGH',
+      isDefault: true,
+    },
+  },
+  fingerprint: 'team-manager-assignment',
+};
 
 vi.mock('@/components/organisms', () => ({
   TeamConfigPanel: (
@@ -90,7 +116,10 @@ vi.mock('@/components/organisms', () => ({
     );
   },
   ResultsPanel: ({ generatedTeam }: MockResultsPanelProps) => (
-    <div>Results team {generatedTeam?.team?.join(', ') ?? 'none'}</div>
+    <div>
+      Results team {generatedTeam?.team?.join(', ') ?? 'none'} assignment{' '}
+      {generatedTeam?.movesetAssignment?.fingerprint ?? 'none'}
+    </div>
   ),
   AnalysisPanel: ({
     generatedTeam,
@@ -183,6 +212,7 @@ describe('TeamManager', () => {
             score: 0.74,
           },
           analysis: { generatedAt: '2026-03-15T00:00:00.000Z' },
+          movesetAssignment,
         }),
       });
     });
@@ -319,6 +349,40 @@ describe('TeamManager', () => {
     };
 
     expect(payload.formatId).toBe('ultra-league');
+  });
+
+  it('omits moveset variation props and request options', async () => {
+    const fetchMock = vi.mocked(fetch);
+
+    render(<TeamManager />);
+
+    await waitFor(() => {
+      expect(teamConfigPanelProps.length).toBeGreaterThan(0);
+    });
+
+    expect(teamConfigPanelProps.at(-1)).not.toHaveProperty(
+      'simulateMovesetVariants',
+    );
+    expect(teamConfigPanelProps.at(-1)).not.toHaveProperty(
+      'onSimulateMovesetVariantsChange',
+    );
+
+    fireEvent.click(screen.getByText('Generate Team'));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/generate-team',
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    const postCall = fetchMock.mock.calls.find(
+      ([url]) => url === '/api/generate-team',
+    );
+    const [, options] = postCall as [string, RequestInit & { body: string }];
+    const payload = JSON.parse(options.body) as Record<string, unknown>;
+
+    expect(payload).not.toHaveProperty('simulateMovesetVariants');
   });
 
   it('does not pass algorithm selection props to TeamConfigPanel or generate-team', async () => {
@@ -478,7 +542,11 @@ describe('TeamManager', () => {
     fireEvent.click(screen.getByText('Generate Team'));
 
     await waitFor(() => {
-      expect(screen.getByText(/Results team Azumarill/)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Results team Azumarill assignment team-manager-assignment/,
+        ),
+      ).toBeInTheDocument();
     });
   });
 

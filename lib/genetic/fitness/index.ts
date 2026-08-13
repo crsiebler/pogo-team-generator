@@ -3,14 +3,20 @@ import {
   scoreOrderedLineup,
   type LineupScoreResult,
   type LineupScoringContext,
+  type LineupMovesetPolicy,
 } from './lineupScoring';
 import { buildGblLineupRecommendation } from './recommendations';
 import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
-import type { BattleFormatId } from '@/lib/data/battleFormats';
+import {
+  DEFAULT_BATTLE_FORMAT_ID,
+  type BattleFormatId,
+} from '@/lib/data/battleFormats';
+import { resolveRosterMovesetAssignment } from '@/lib/genetic/moveset';
 import type {
   Chromosome,
   LineupAwareFitnessConfig,
   OrderedLineup,
+  RosterMovesetAssignment,
   TournamentMode,
 } from '@/lib/types';
 
@@ -25,6 +31,7 @@ export {
   calculateLineupPatternLabel,
   scoreOrderedLineup,
   type LineupComponentScores,
+  type LineupMovesetPolicy,
   type LineupScoreResult,
   type LineupScoringContext,
   type LineupScoringOptions,
@@ -72,7 +79,7 @@ const FAST_LINEUP_AWARE_CONFIG: LineupAwareFitnessConfig = {
   includeDiagnostics: false,
   recommendationLimit: 0,
 };
-const LINEUP_AWARE_CACHE_VERSION = 1;
+const LINEUP_AWARE_CACHE_VERSION = 2;
 
 /** Read-only cache counters for one cache namespace. */
 export interface LineupAwareFitnessCacheStats {
@@ -84,19 +91,46 @@ export interface LineupAwareFitnessCacheStats {
 /** Per-run caches and data context for canonical lineup-aware fitness. */
 export interface LineupAwareFitnessContext {
   scoringContext: LineupScoringContext;
-  scoreLineup: (lineup: OrderedLineup) => LineupScoreResult;
-  scoreFastLineup: (lineup: OrderedLineup) => LineupScoreResult;
+  resolveMovesetAssignment: (
+    roster: readonly string[],
+  ) => RosterMovesetAssignment;
+  scoreLineup: (
+    lineup: OrderedLineup,
+    assignment?: RosterMovesetAssignment,
+  ) => LineupScoreResult;
+  scoreFastLineup: (
+    lineup: OrderedLineup,
+    assignment?: RosterMovesetAssignment,
+  ) => LineupScoreResult;
   readonly cacheStats: {
     readonly lineup: LineupAwareFitnessCacheStats;
     readonly fastLineup: LineupAwareFitnessCacheStats;
   };
 }
 
+/** Injectable boundaries for one lineup-aware fitness run. */
+export interface LineupAwareFitnessDependencies {
+  threatCount?: number;
+  resolveMovesetAssignment?: (
+    roster: readonly string[],
+  ) => RosterMovesetAssignment;
+}
+
 /** Creates a cacheable fitness context for one generation run. */
 export function createLineupAwareFitnessContext(
   formatId?: BattleFormatId,
+  movesetPolicy: LineupMovesetPolicy = 'team-aware',
+  dependencies: LineupAwareFitnessDependencies = {},
 ): LineupAwareFitnessContext {
-  const scoringContext = createDefaultLineupScoringContext(formatId, 50);
+  const resolvedFormatId = formatId ?? DEFAULT_BATTLE_FORMAT_ID;
+  const scoringContext = {
+    ...createDefaultLineupScoringContext(
+      resolvedFormatId,
+      dependencies.threatCount ?? 50,
+      movesetPolicy,
+    ),
+    formatId: resolvedFormatId,
+  };
   const lineupScoreCache = new Map<string, LineupScoreResult>();
   const fastLineupScoreCache = new Map<string, LineupScoreResult>();
   let lineupCacheHits = 0;
@@ -123,8 +157,15 @@ export function createLineupAwareFitnessContext(
   return {
     scoringContext,
     cacheStats,
-    scoreLineup: (lineup) => {
-      const cacheKey = getLineupAwareFitnessCacheKey(lineup, formatId);
+    resolveMovesetAssignment:
+      dependencies.resolveMovesetAssignment ??
+      ((roster) => resolveRosterMovesetAssignment(roster, resolvedFormatId)),
+    scoreLineup: (lineup, assignment) => {
+      const cacheKey = getLineupAwareFitnessCacheKey(
+        lineup,
+        resolvedFormatId,
+        assignment?.fingerprint,
+      );
       const cached = lineupScoreCache.get(cacheKey);
       if (cached) {
         lineupCacheHits++;
@@ -132,14 +173,20 @@ export function createLineupAwareFitnessContext(
       }
 
       lineupCacheMisses++;
-      const score = scoreOrderedLineup(lineup, scoringContext, {
-        includeThreatScore: false,
-      });
+      const score = scoreOrderedLineup(
+        lineup,
+        bindRosterMovesetAssignment(scoringContext, assignment),
+        { includeThreatScore: false },
+      );
       lineupScoreCache.set(cacheKey, score);
       return score;
     },
-    scoreFastLineup: (lineup) => {
-      const cacheKey = getLineupAwareFitnessCacheKey(lineup, formatId);
+    scoreFastLineup: (lineup, assignment) => {
+      const cacheKey = getLineupAwareFitnessCacheKey(
+        lineup,
+        resolvedFormatId,
+        assignment?.fingerprint,
+      );
       const cached = fastLineupScoreCache.get(cacheKey);
       if (cached) {
         fastLineupCacheHits++;
@@ -147,7 +194,10 @@ export function createLineupAwareFitnessContext(
       }
 
       fastLineupCacheMisses++;
-      const score = scoreFastRosterLineup(lineup, scoringContext);
+      const score = scoreFastRosterLineup(
+        lineup,
+        bindRosterMovesetAssignment(scoringContext, assignment),
+      );
       fastLineupScoreCache.set(cacheKey, score);
       return score;
     },
@@ -161,6 +211,7 @@ export function calculateLineupAwareFitness(
   formatId?: BattleFormatId,
   context: LineupAwareFitnessContext = createLineupAwareFitnessContext(
     formatId,
+    mode === 'PlayPokemon' ? 'ranked-default' : 'team-aware',
   ),
 ): number {
   if (mode === 'PlayPokemon') {
@@ -168,14 +219,15 @@ export function calculateLineupAwareFitness(
       chromosome.team,
       {
         ...context.scoringContext,
-        scoreLineup: context.scoreFastLineup,
+        scoreLineup: (lineup) => context.scoreFastLineup(lineup),
       },
       FAST_LINEUP_AWARE_CONFIG,
     ).fitness;
   }
 
+  const assignment = context.resolveMovesetAssignment(chromosome.team);
   return buildGblLineupRecommendation(chromosome.team, {
-    scoreLineup: context.scoreLineup,
+    scoreLineup: (lineup) => context.scoreLineup(lineup, assignment),
   }).score;
 }
 
@@ -186,6 +238,7 @@ export function evaluatePopulation(
   formatId?: BattleFormatId,
   context: LineupAwareFitnessContext = createLineupAwareFitnessContext(
     formatId,
+    mode === 'PlayPokemon' ? 'ranked-default' : 'team-aware',
   ),
 ): void {
   for (const chromosome of population) {
@@ -202,12 +255,28 @@ export function evaluatePopulation(
 export function getLineupAwareFitnessCacheKey(
   lineup: OrderedLineup,
   formatId?: BattleFormatId,
+  assignmentFingerprint: string = 'unassigned',
 ): string {
   return JSON.stringify([
     LINEUP_AWARE_CACHE_VERSION,
-    formatId ?? 'default-format',
+    formatId ?? DEFAULT_BATTLE_FORMAT_ID,
+    assignmentFingerprint,
     lineup.lead,
     lineup.switch,
     lineup.closer,
   ]);
+}
+
+/** Bind one fixed roster assignment into a scoring context. */
+export function bindRosterMovesetAssignment(
+  context: LineupScoringContext,
+  assignment?: RosterMovesetAssignment,
+): LineupScoringContext {
+  const scoringFormatId = context.formatId ?? DEFAULT_BATTLE_FORMAT_ID;
+  if (assignment && assignment.formatId !== scoringFormatId) {
+    throw new Error(
+      `Cannot bind ${assignment.formatId} movesets to ${scoringFormatId} scoring.`,
+    );
+  }
+  return assignment ? { ...context, movesetAssignment: assignment } : context;
 }

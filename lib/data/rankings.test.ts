@@ -1,5 +1,6 @@
 import { getBattleFormats } from './battleFormats';
-import { speciesNameToChoosableId } from './pokemon';
+import { getMoveAvailability } from './moveAvailability';
+import { getPokemonBySpeciesName, speciesNameToChoosableId } from './pokemon';
 import {
   getAllRankingsForPokemon,
   getAttackersRankings,
@@ -168,6 +169,91 @@ describe('getOptimalMoveset', () => {
       fastMove: 'FURY_CUTTER',
       chargedMove1: 'X_SCISSOR',
       chargedMove2: 'AQUA_JET',
+    });
+  });
+
+  it('normalizes ranking move spelling aliases', () => {
+    expect(getOptimalMoveset('Snorlax')).toEqual({
+      fastMove: 'LICK',
+      chargedMove1: 'BODY_SLAM',
+      chargedMove2: 'SUPER_POWER',
+    });
+    expect(getOptimalMoveset('Krabby')).toEqual({
+      fastMove: 'BUBBLE',
+      chargedMove1: 'VICE_GRIP',
+      chargedMove2: 'RAZOR_SHELL',
+    });
+  });
+
+  it('never returns a rejected ranked default moveset', () => {
+    expect(getOptimalMoveset('Muk', 'master-league')).toEqual({
+      fastMove: 'POISON_JAB',
+      chargedMove1: 'THUNDER_PUNCH',
+      chargedMove2: 'DARK_PULSE',
+    });
+  });
+
+  it('keeps every checked-in Overall moveset eligible', () => {
+    const rejectedMoves = getBattleFormats().flatMap((format) => {
+      return getOverallRankings(format.id).flatMap((ranking) => {
+        const pokemon = getPokemonBySpeciesName(ranking.Pokemon);
+        if (!pokemon) {
+          return [
+            {
+              formatId: format.id,
+              speciesId: ranking.Pokemon,
+              reason: 'Pokemon does not resolve',
+            },
+          ];
+        }
+
+        const moveset = getOptimalMoveset(ranking.Pokemon, format.id);
+        return [
+          moveset.fastMove,
+          moveset.chargedMove1,
+          moveset.chargedMove2,
+        ].flatMap((moveId) => {
+          if (!moveId) {
+            return [
+              {
+                formatId: format.id,
+                speciesId: pokemon.speciesId,
+                reason: 'Moveset is incomplete',
+              },
+            ];
+          }
+          const availability = getMoveAvailability(
+            pokemon.speciesId,
+            moveId,
+            format.id,
+          );
+          return availability.kind === 'excluded'
+            ? [
+                {
+                  formatId: format.id,
+                  speciesId: pokemon.speciesId,
+                  moveId,
+                  reason: availability.reason,
+                },
+              ]
+            : [];
+        });
+      });
+    });
+
+    expect(rejectedMoves).toEqual([]);
+  });
+
+  it('resolves stateful move names against the canonical species movepool', () => {
+    expect(getOptimalMoveset('Morpeko (Full Belly)')).toEqual({
+      fastMove: 'THUNDER_SHOCK',
+      chargedMove1: 'AURA_WHEEL_ELECTRIC',
+      chargedMove2: 'PSYCHIC_FANGS',
+    });
+    expect(getOptimalMoveset('Aegislash (Shield)')).toEqual({
+      fastMove: 'AEGISLASH_CHARGE_PSYCHO_CUT',
+      chargedMove1: 'SHADOW_BALL',
+      chargedMove2: 'GYRO_BALL',
     });
   });
 });

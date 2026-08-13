@@ -2,25 +2,33 @@ import path from 'path';
 import { describe, expect, it, vi } from 'vitest';
 import { syncConfig } from './config';
 import { fetchMovesData, fetchPokemonData } from './gamemaster';
+import { validateMovesJson, validatePokemonJson } from './validation';
+import movesData from '@/data/moves.json';
+
+const validPokemonData = {
+  dex: 1,
+  speciesName: 'Bulbasaur',
+  speciesId: 'bulbasaur',
+  baseStats: { atk: 118, def: 111, hp: 128 },
+  types: ['Grass', 'Poison'],
+  fastMoves: ['VINE_WHIP'],
+  chargedMoves: ['POWER_WHIP'],
+  defaultIVs: { cp500: [0], cp1500: [0], cp2500: [0] },
+  level25CP: 700,
+  buddyDistance: 3,
+  thirdMoveCost: 50000,
+  released: true,
+  family: { id: 'BULBASAUR' },
+};
 
 describe('gamemaster local sync', () => {
   it('syncs pokemon JSON from local source path', async () => {
     const sourcePath = '/source/pvpoke';
     const readPokemonJson = vi.fn().mockResolvedValue([
       {
-        dex: 1,
-        speciesName: 'Bulbasaur',
-        speciesId: 'bulbasaur',
-        baseStats: { atk: 118, def: 111, hp: 128 },
-        types: ['Grass', 'Poison'],
-        fastMoves: ['VINE_WHIP'],
-        chargedMoves: ['POWER_WHIP'],
-        defaultIVs: { cp500: [0], cp1500: [0], cp2500: [0] },
-        level25CP: 700,
-        buddyDistance: 3,
-        thirdMoveCost: 50000,
-        released: true,
-        family: { id: 'BULBASAUR' },
+        ...validPokemonData,
+        eliteMoves: ['FRENZY_PLANT'],
+        legacyMoves: ['TACKLE'],
       },
     ]);
     const mkdir = vi.fn().mockResolvedValue(undefined);
@@ -42,6 +50,24 @@ describe('gamemaster local sync', () => {
       expect.stringContaining('"speciesName": "Bulbasaur"'),
     );
     expect(data).toHaveLength(1);
+  });
+
+  it('rejects malformed optional move availability lists', () => {
+    expect(
+      validatePokemonJson([
+        {
+          ...validPokemonData,
+          eliteMoves: ['FRENZY_PLANT', 1],
+          legacyMoves: 'TACKLE',
+        },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Pokemon 0: eliteMoves must contain strings',
+        'Pokemon 0: legacyMoves must be array if present',
+      ],
+    });
   });
 
   it('syncs moves JSON from local source path', async () => {
@@ -76,6 +102,107 @@ describe('gamemaster local sync', () => {
       expect.stringContaining('"moveId": "VINE_WHIP"'),
     );
     expect(data).toHaveLength(1);
+  });
+
+  it('accepts typed self, opponent, and dual-target status effects', () => {
+    expect(
+      validateMovesJson([
+        {
+          moveId: 'OBSTRUCT',
+          name: 'Obstruct',
+          type: 'dark',
+          power: 15,
+          energy: 40,
+          energyGain: 0,
+          cooldown: 500,
+          archetype: 'Boost Spam',
+          turns: 1,
+          buffs: [0, 1],
+          buffsSelf: [0, 1],
+          buffsOpponent: [0, -1],
+          buffTarget: 'both',
+          buffApplyChance: '1',
+        },
+      ]),
+    ).toEqual({ valid: true, errors: [] });
+  });
+
+  it('validates every checked-in move status shape', () => {
+    expect(validateMovesJson(movesData)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects malformed status-effect fields', () => {
+    expect(
+      validateMovesJson([
+        {
+          moveId: 'INVALID_STATUS',
+          name: 'Invalid Status',
+          type: 'normal',
+          power: 20,
+          energy: 35,
+          energyGain: 0,
+          cooldown: 500,
+          archetype: 'Spam',
+          turns: 1,
+          buffs: [1],
+          buffsSelf: [0, Number.NaN],
+          buffsOpponent: 'none',
+          buffTarget: 'team',
+          buffApplyChance: '2',
+        },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Move 0: buffs must contain exactly two finite numbers if present',
+        'Move 0: buffsSelf must contain exactly two finite numbers if present',
+        'Move 0: buffsOpponent must contain exactly two finite numbers if present',
+        'Move 0: buffTarget must be self, opponent, or both if present',
+        'Move 0: buffApplyChance must be a numeric string from 0 to 1 if present',
+      ],
+    });
+  });
+
+  it('rejects status fields that contradict their declared target', () => {
+    const baseMove = {
+      moveId: 'INVALID_STATUS',
+      name: 'Invalid Status',
+      type: 'normal',
+      power: 20,
+      energy: 35,
+      energyGain: 0,
+      cooldown: 500,
+      archetype: 'Spam',
+      turns: 1,
+      buffApplyChance: '1',
+    };
+
+    expect(
+      validateMovesJson([
+        {
+          ...baseMove,
+          buffsSelf: [1, 0],
+          buffTarget: 'opponent',
+        },
+        {
+          ...baseMove,
+          buffs: [0, 1],
+          buffsSelf: [0, 1],
+          buffTarget: 'both',
+        },
+        {
+          ...baseMove,
+          buffs: [1, 0],
+        },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Move 0: self/opponent targets require buffs and forbid split status fields',
+        'Move 1: both target requires buffsSelf and buffsOpponent',
+        'Move 2: status fields require buffTarget',
+      ],
+    });
   });
 
   it('throws when pokemon JSON fails validation', async () => {
