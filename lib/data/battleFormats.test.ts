@@ -16,6 +16,7 @@ describe('battle format catalog', () => {
       'Ultra League',
       'Master League',
       'Weather Cup',
+      'Evolution Cup',
       'Battle Frontier (Copa Diluvio)',
       'Battle Frontier (Tsuki Cup)',
       'Battle Frontier (Liga Ultra)',
@@ -32,6 +33,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
     expect(isBattleFormatId('weather-cup')).toBe(true);
+    expect(isBattleFormatId('evolution-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-copa-diluvio')).toBe(true);
     expect(isBattleFormatId('battle-frontier-tsuki-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-liga-ultra')).toBe(true);
@@ -63,6 +65,13 @@ describe('battle format catalog', () => {
       id: 'weather-cup',
       label: 'Weather Cup',
       cup: 'weather',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('evolution-cup')).toEqual({
+      id: 'evolution-cup',
+      label: 'Evolution Cup',
+      cup: 'evolution',
       cp: 1500,
     });
 
@@ -125,6 +134,7 @@ describe('battle format catalog', () => {
     );
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
     expect(isBattleFrontierFormatId('weather-cup')).toBe(false);
+    expect(isBattleFrontierFormatId('evolution-cup')).toBe(false);
   });
 
   it('identifies formats with a one-Mega team limit', () => {
@@ -133,6 +143,7 @@ describe('battle format catalog', () => {
     );
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
     expect(hasOneMegaLimitForFormat('weather-cup')).toBe(false);
+    expect(hasOneMegaLimitForFormat('evolution-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat(undefined)).toBe(false);
   });

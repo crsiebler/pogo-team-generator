@@ -4,6 +4,7 @@ export interface BattleFormat {
   cup:
     | 'all'
     | 'weather'
+    | 'evolution'
     | 'copadiluvio'
     | 'tsuki'
     | 'ligaultra'
@@ -19,6 +20,7 @@ export type BattleFormatId =
   | 'ultra-league'
   | 'master-league'
   | 'weather-cup'
+  | 'evolution-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
@@ -50,6 +52,12 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     id: 'weather-cup',
     label: 'Weather Cup',
     cup: 'weather',
+    cp: 1500,
+  },
+  {
+    id: 'evolution-cup',
+    label: 'Evolution Cup',
+    cup: 'evolution',
     cp: 1500,
   },
   {
