@@ -29,6 +29,25 @@
     "turns": 1
   },
   {
+    "moveId": "ACID_SPRAY_PLUS",
+    "name": "Acid Spray+",
+    "type": "poison",
+    "power": 20,
+    "energy": 40,
+    "energyGain": 0,
+    "cooldown": 500,
+    "buffs": [
+      0,
+      -2
+    ],
+    "buffTarget": "opponent",
+    "buffApplyChance": "1",
+    "archetype": "Debuff Spam",
+    "turns": 1,
+    "abbreviation": "AS+",
+    "isMegaMove": true
+  },
+  {
     "moveId": "ACROBATICS",
     "name": "Acrobatics",
     "abbreviation": "Acr",
@@ -426,6 +445,25 @@
     "buffApplyChance": "1",
     "archetype": "Debuff Spam",
     "turns": 1
+  },
+  {
+    "moveId": "BRICK_BREAK_PLUS",
+    "name": "Brick Break+",
+    "abbreviation": "BkB+",
+    "type": "fighting",
+    "power": 40,
+    "energy": 35,
+    "energyGain": 0,
+    "cooldown": 500,
+    "buffs": [
+      0,
+      -1
+    ],
+    "buffTarget": "opponent",
+    "buffApplyChance": "1",
+    "archetype": "Debuff Spam",
+    "turns": 1,
+    "isMegaMove": true
   },
   {
     "moveId": "BRINE",
@@ -986,6 +1024,19 @@
     "turns": 1
   },
   {
+    "moveId": "DRILL_PECK_PLUS",
+    "name": "Drill Peck+",
+    "abbreviation": "DrP+",
+    "type": "flying",
+    "power": 60,
+    "energy": 35,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "Spam/Bait",
+    "turns": 1,
+    "isMegaMove": true
+  },
+  {
     "moveId": "DRILL_RUN",
     "name": "Drill Run",
     "type": "ground",
@@ -1037,6 +1088,19 @@
     "cooldown": 500,
     "archetype": "General",
     "turns": 1
+  },
+  {
+    "moveId": "DYNAMIC_PUNCH_PLUS",
+    "name": "Dynamic Punch+",
+    "abbreviation": "DyP+",
+    "type": "fighting",
+    "power": 130,
+    "energy": 80,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "Nuke",
+    "turns": 1,
+    "isMegaMove": true
   },
   {
     "moveId": "EARTHQUAKE",
@@ -1448,6 +1512,19 @@
     "cooldown": 500,
     "archetype": "Nuke",
     "turns": 1
+  },
+  {
+    "moveId": "FUTURE_SIGHT_PLUS",
+    "name": "Future Sight+",
+    "type": "psychic",
+    "power": 130,
+    "energy": 80,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "Nuke",
+    "turns": 1,
+    "abbreviation": "FS+",
+    "isMegaMove": true
   },
   {
     "moveId": "GEOMANCY",
@@ -2174,6 +2251,25 @@
     "turns": 1
   },
   {
+    "moveId": "LIQUIDATION_PLUS",
+    "name": "Liquidation+",
+    "abbreviation": "Li+",
+    "type": "water",
+    "power": 55,
+    "energy": 40,
+    "energyGain": 0,
+    "cooldown": 500,
+    "buffs": [
+      0,
+      -1
+    ],
+    "buffTarget": "opponent",
+    "buffApplyChance": "0.3",
+    "archetype": "Debuff Spam",
+    "turns": 1,
+    "isMegaMove": true
+  },
+  {
     "moveId": "LOCK_ON",
     "name": "Lock On",
     "type": "normal",
@@ -2516,6 +2612,24 @@
     "turns": 1
   },
   {
+    "moveId": "MYSTICAL_FIRE_PLUS",
+    "name": "Mystical Fire+",
+    "type": "fire",
+    "power": 50,
+    "energy": 40,
+    "energyGain": 0,
+    "cooldown": 500,
+    "buffs": [
+      -1,
+      0
+    ],
+    "buffTarget": "opponent",
+    "buffApplyChance": "1",
+    "archetype": "Debuff Spam",
+    "turns": 1,
+    "isMegaMove": true
+  },
+  {
     "moveId": "NATURES_MADNESS",
     "name": "Nature's Madness",
     "type": "fairy",
@@ -2663,6 +2777,19 @@
     "turns": 1
   },
   {
+    "moveId": "OUTRAGE_PLUS",
+    "name": "Outrage+",
+    "type": "dragon",
+    "power": 80,
+    "energy": 50,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "General",
+    "turns": 1,
+    "abbreviation": "O+",
+    "isMegaMove": true
+  },
+  {
     "moveId": "OVERHEAT",
     "name": "Overheat",
     "abbreviation": "Ov",
@@ -2735,17 +2862,6 @@
     "turns": 1
   },
   {
-    "moveId": "PLAY_ROUGH",
-    "name": "Play Rough",
-    "type": "fairy",
-    "power": 90,
-    "energy": 60,
-    "energyGain": 0,
-    "cooldown": 500,
-    "archetype": "High Energy",
-    "turns": 1
-  },
-  {
     "moveId": "PLASMA_FISTS",
     "name": "Plasma Fists",
     "type": "electric",
@@ -2754,6 +2870,17 @@
     "energyGain": 0,
     "cooldown": 500,
     "archetype": "Spam/Bait",
+    "turns": 1
+  },
+  {
+    "moveId": "PLAY_ROUGH",
+    "name": "Play Rough",
+    "type": "fairy",
+    "power": 90,
+    "energy": 60,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "High Energy",
     "turns": 1
   },
   {
@@ -2905,6 +3032,19 @@
     "cooldown": 500,
     "archetype": "High Energy",
     "turns": 1
+  },
+  {
+    "moveId": "PSYBEAM_PLUS",
+    "name": "Psybeam+",
+    "abbreviation": "Psb+",
+    "type": "psychic",
+    "power": 60,
+    "energy": 45,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "General",
+    "turns": 1,
+    "isMegaMove": true
   },
   {
     "moveId": "PSYCHIC",
@@ -3340,6 +3480,19 @@
     "cooldown": 500,
     "archetype": "Spam/Bait",
     "turns": 1
+  },
+  {
+    "moveId": "SEED_BOMB_PLUS",
+    "name": "Seed Bomb+",
+    "abbreviation": "SeB+",
+    "type": "grass",
+    "power": 60,
+    "energy": 40,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "Spam/Bait",
+    "turns": 1,
+    "isMegaMove": true
   },
   {
     "moveId": "SEED_FLARE",
@@ -3795,6 +3948,19 @@
     "turns": 1
   },
   {
+    "moveId": "SURF_PLUS",
+    "name": "Surf+",
+    "type": "water",
+    "power": 55,
+    "energy": 35,
+    "energyGain": 0,
+    "cooldown": 500,
+    "archetype": "Spam/Bait",
+    "turns": 1,
+    "abbreviation": "S+",
+    "isMegaMove": true
+  },
+  {
     "moveId": "SWIFT",
     "name": "Swift",
     "abbreviation": "Sw",
@@ -4132,6 +4298,25 @@
     "turns": 1
   },
   {
+    "moveId": "VOLT_TACKLE_PLUS",
+    "name": "Volt Tackle+",
+    "type": "electric",
+    "power": 65,
+    "energy": 35,
+    "energyGain": 0,
+    "cooldown": 500,
+    "buffs": [
+      0,
+      -1
+    ],
+    "buffTarget": "self",
+    "buffApplyChance": "1",
+    "archetype": "Self-Debuff Spam",
+    "turns": 1,
+    "abbreviation": "VT+",
+    "isMegaMove": true
+  },
+  {
     "moveId": "V_CREATE",
     "name": "V-Create",
     "type": "fire",
@@ -4362,6 +4547,25 @@
     "buffApplyChance": ".33",
     "archetype": "Debuff Nuke",
     "turns": 1
+  },
+  {
+    "moveId": "ZAP_CANNON_PLUS",
+    "name": "Zap Cannon+",
+    "type": "electric",
+    "power": 70,
+    "energy": 45,
+    "energyGain": 0,
+    "cooldown": 500,
+    "buffs": [
+      -1,
+      0
+    ],
+    "buffTarget": "opponent",
+    "buffApplyChance": "1",
+    "archetype": "Debuff",
+    "turns": 1,
+    "abbreviation": "ZC+",
+    "isMegaMove": true
   },
   {
     "moveId": "ZEN_HEADBUTT",

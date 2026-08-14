@@ -63,7 +63,8 @@ Approval does not transfer to related species or forms. For example,
 
 The current explicitly excluded checked-in legacy pairs are `ACID` for
 `grimer`, `muk`, `koffing`, and `weezing`; `QUICK_ATTACK` for `staryu`,
-`starmie`, `porygon`, `pichu`, and `delibird`; `PSYBEAM` for `chansey`; and
+`starmie`, `starmie_mega`, `porygon`, `pichu`, and `delibird`; `PSYBEAM` for
+`chansey`; and
 `DRAINING_KISS` for `kirlia`. Tests require an explicit allow or exclude
 decision for every checked-in `legacyMoves` pair.
 

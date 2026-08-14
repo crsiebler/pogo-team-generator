@@ -15,6 +15,7 @@ const LEGACY_MOVE_EXPECTATIONS = [
   ['chansey', 'PSYBEAM', 'excluded'],
   ['staryu', 'QUICK_ATTACK', 'excluded'],
   ['starmie', 'QUICK_ATTACK', 'excluded'],
+  ['starmie_mega', 'QUICK_ATTACK', 'excluded'],
   ['porygon', 'QUICK_ATTACK', 'excluded'],
   ['mewtwo', 'COUNTER', 'eventExclusive'],
   ['mewtwo_mega_x', 'COUNTER', 'eventExclusive'],

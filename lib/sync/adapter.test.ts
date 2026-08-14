@@ -27,6 +27,9 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'weather')).toBe(
       '/source/pvpoke/src/data/rankings/weather/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 1500, 'evolution')).toBe(
+      '/source/pvpoke/src/data/rankings/evolution/overall/rankings-1500.json',
+    );
     expect(adapter.getRankingFilePath('overall', 1500, 'copadiluvio')).toBe(
       '/source/pvpoke/src/data/rankings/copadiluvio/overall/rankings-1500.json',
     );
@@ -227,6 +230,30 @@ describe('createPvpokeAdapter', () => {
     >('overall', 1500, 'weather');
 
     expect(rankings).toEqual([{ speciesName: 'Feraligatr' }]);
+  });
+
+  it('reads Evolution Cup rankings JSON files', async () => {
+    const sourcePath = '/source/pvpoke';
+    const rankingRelativePath =
+      'src/data/rankings/evolution/overall/rankings-1500.json';
+    const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
+    const adapter = createPvpokeAdapter({
+      sourcePath,
+      pathExists: (filePath: string) => filePath === rankingAbsolutePath,
+      readFile: async (filePath: string) => {
+        if (filePath !== rankingAbsolutePath) {
+          throw new Error('unexpected path read');
+        }
+
+        return '[{"speciesName":"Dragonair"}]';
+      },
+    });
+
+    const rankings = await adapter.readRankingJson<
+      Array<{ speciesName: string }>
+    >('overall', 1500, 'evolution');
+
+    expect(rankings).toEqual([{ speciesName: 'Dragonair' }]);
   });
 
   it('reads new Battle Frontier rankings JSON files', async () => {

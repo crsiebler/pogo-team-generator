@@ -498,6 +498,7 @@ describe('generateSimulations', () => {
       cup:
         | 'all'
         | 'weather'
+        | 'evolution'
         | 'copadiluvio'
         | 'tsuki'
         | 'ligaultra'
@@ -555,7 +556,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(24);
+    expect(generatedCalls).toHaveLength(27);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -579,6 +580,12 @@ describe('generateSimulations', () => {
       cp: 1500,
       speciesId: 'bulbasaur',
       shields: 1,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'evolution',
+      cp: 1500,
+      speciesId: 'bulbasaur',
+      shields: 2,
     });
     expect(generatedCalls).toContainEqual({
       cup: 'copadiluvio',
@@ -624,6 +631,16 @@ describe('generateSimulations', () => {
         'cp1500',
         'weather',
         'bulbasaur_1-1.csv',
+      ),
+      VALID_SIMULATION_CSV,
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join(
+        'data',
+        'simulations',
+        'cp1500',
+        'evolution',
+        'bulbasaur_2-2.csv',
       ),
       VALID_SIMULATION_CSV,
     );

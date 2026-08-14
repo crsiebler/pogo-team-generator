@@ -22,6 +22,7 @@ const RANKING_CATEGORIES = [
 const RANKING_CUPS = [
   'all',
   'weather',
+  'evolution',
   'copadiluvio',
   'tsuki',
   'ligaultra',
