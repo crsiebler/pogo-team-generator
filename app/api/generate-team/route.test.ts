@@ -291,7 +291,7 @@ describe('POST /api/generate-team', () => {
     ['great-league'],
     ['ultra-league'],
     ['master-league'],
-    ['weather-cup'],
+    ['scroll-cup'],
     ['battle-frontier-copa-diluvio'],
     ['battle-frontier-tsuki-cup'],
     ['battle-frontier-liga-ultra'],

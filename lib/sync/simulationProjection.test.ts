@@ -20,9 +20,9 @@ const formats: readonly BattleFormat[] = [
     cp: 1500,
   },
   {
-    id: 'weather-cup',
-    label: 'Weather Cup',
-    cup: 'weather',
+    id: 'scroll-cup',
+    label: 'Scroll Cup',
+    cup: 'scroll',
     cp: 1500,
   },
 ];
@@ -50,7 +50,7 @@ function createCandidateSet(
 ): DerivedMovesetCandidateSet {
   return {
     formatId,
-    cup: formatId === 'weather-cup' ? 'weather' : 'all',
+    cup: formatId === 'scroll-cup' ? 'scroll' : 'all',
     cp: 1500,
     speciesId,
     pvpokeScorePrior: 90,
@@ -81,7 +81,7 @@ describe('simulation projection', () => {
       ],
       simulationSpeciesIdsByFormatId: new Map([
         ['great-league', ['quagsire', 'golisopod']],
-        ['weather-cup', []],
+        ['scroll-cup', []],
       ]),
       existingFilenamesByFormatId: new Map([
         [
@@ -122,9 +122,9 @@ describe('simulation projection', () => {
         ],
       },
       {
-        formatId: 'weather-cup',
-        label: 'Weather Cup',
-        cup: 'weather',
+        formatId: 'scroll-cup',
+        label: 'Scroll Cup',
+        cup: 'scroll',
         cp: 1500,
         candidateSpecies: 0,
         candidateVariants: 0,
