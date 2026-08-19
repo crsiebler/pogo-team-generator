@@ -9,7 +9,7 @@
       {
         "key": "formats/great-league.json",
         "algorithm": "sha256",
-        "digest": "9a6307b95c531527ccd546229ae975ad9e7e1d8c33e66a7731541f5dba3d068a"
+        "digest": "056edf0c0e5820e0da8ab5dfd9773e49eb99f44c0ab80e70896c8d3a96f372f4"
       },
       {
         "key": "moves.json",
@@ -19,7 +19,7 @@
       {
         "key": "pokemon.json",
         "algorithm": "sha256",
-        "digest": "b6928ce61e03658d8c3ca1910a66b87409555cc1ad49439c173b76a213706a3d"
+        "digest": "9cd84aa568c1362fdbb380385ef5770860e7ab1177fd7d928ba464a6f242345a"
       }
     ],
     "derivationSettings": {
@@ -924,7 +924,7 @@
       "speciesId": "charjabug",
       "defaultVariantId": "volt_switch--x_scissor--discharge",
       "evidence": {
-        "pvpokeScorePrior": 88.9,
+        "pvpokeScorePrior": 89,
         "retainedFastMoves": [
           "VOLT_SWITCH",
           "BUG_BITE"
@@ -1301,7 +1301,7 @@
       "speciesId": "cradily",
       "defaultVariantId": "acid--rock_tomb--grass_knot",
       "evidence": {
-        "pvpokeScorePrior": 89.5,
+        "pvpokeScorePrior": 89.4,
         "retainedFastMoves": [
           "ACID",
           "BULLET_SEED"
@@ -1490,7 +1490,7 @@
       "speciesId": "crustle_shadow",
       "defaultVariantId": "fury_cutter--x_scissor--rock_wrecker",
       "evidence": {
-        "pvpokeScorePrior": 86.7,
+        "pvpokeScorePrior": 86.8,
         "retainedFastMoves": [
           "FURY_CUTTER",
           "SMACK_DOWN"
@@ -2118,7 +2118,7 @@
       "speciesId": "dunsparce",
       "defaultVariantId": "rollout--rock_slide--drill_run",
       "evidence": {
-        "pvpokeScorePrior": 88.2,
+        "pvpokeScorePrior": 88.1,
         "retainedFastMoves": [
           "ROLLOUT",
           "ASTONISH"
@@ -3375,7 +3375,7 @@
       "speciesId": "gourgeist_average",
       "defaultVariantId": "incinerate--shadow_ball--seed_bomb",
       "evidence": {
-        "pvpokeScorePrior": 87.8,
+        "pvpokeScorePrior": 87.7,
         "retainedFastMoves": [
           "INCINERATE",
           "HEX"
@@ -3438,7 +3438,7 @@
       "speciesId": "gourgeist_large",
       "defaultVariantId": "incinerate--shadow_ball--seed_bomb",
       "evidence": {
-        "pvpokeScorePrior": 87.9,
+        "pvpokeScorePrior": 87.8,
         "retainedFastMoves": [
           "INCINERATE",
           "HEX"
@@ -3689,7 +3689,7 @@
       "speciesId": "greninja_shadow",
       "defaultVariantId": "water_shuriken--night_slash--hydro_cannon",
       "evidence": {
-        "pvpokeScorePrior": 86.1,
+        "pvpokeScorePrior": 86.2,
         "retainedFastMoves": [
           "WATER_SHURIKEN",
           "BUBBLE"
@@ -4256,7 +4256,7 @@
       "speciesId": "jumpluff_shadow",
       "defaultVariantId": "fairy_wind--energy_ball--acrobatics",
       "evidence": {
-        "pvpokeScorePrior": 88.2,
+        "pvpokeScorePrior": 88.1,
         "retainedFastMoves": [
           "FAIRY_WIND",
           "BULLET_SEED"
@@ -5327,7 +5327,7 @@
       "speciesId": "mantine",
       "defaultVariantId": "wing_attack--water_pulse--twister",
       "evidence": {
-        "pvpokeScorePrior": 89.3,
+        "pvpokeScorePrior": 89.4,
         "retainedFastMoves": [
           "WING_ATTACK",
           "BUBBLE"
@@ -5516,7 +5516,7 @@
       "speciesId": "medicham",
       "defaultVariantId": "psycho_cut--ice_punch--dynamic_punch",
       "evidence": {
-        "pvpokeScorePrior": 90.1,
+        "pvpokeScorePrior": 90.2,
         "retainedFastMoves": [
           "PSYCHO_CUT",
           "COUNTER"
@@ -5830,7 +5830,7 @@
       "speciesId": "mimikyu",
       "defaultVariantId": "shadow_claw--shadow_sneak--play_rough",
       "evidence": {
-        "pvpokeScorePrior": 95.9,
+        "pvpokeScorePrior": 92.2,
         "retainedFastMoves": [
           "SHADOW_CLAW",
           "HEX"
@@ -6582,7 +6582,7 @@
       "speciesId": "pachirisu",
       "defaultVariantId": "volt_switch--thunder_punch--hyper_fang",
       "evidence": {
-        "pvpokeScorePrior": 85.8,
+        "pvpokeScorePrior": 85.9,
         "retainedFastMoves": [
           "VOLT_SWITCH",
           "SPARK"
@@ -8656,25 +8656,26 @@
     },
     {
       "speciesId": "thievul",
-      "defaultVariantId": "sucker_punch--play_rough--night_slash",
+      "defaultVariantId": "sucker_punch--night_slash--icy_wind",
       "evidence": {
-        "pvpokeScorePrior": 86.3,
+        "pvpokeScorePrior": 89.7,
         "retainedFastMoves": [
           "SUCKER_PUNCH",
           "SNARL"
         ],
         "retainedChargedMoves": [
           "NIGHT_SLASH",
+          "ICY_WIND",
           "PLAY_ROUGH"
         ],
         "rejections": []
       },
       "candidates": [
         {
-          "id": "sucker_punch--play_rough--night_slash",
+          "id": "sucker_punch--night_slash--icy_wind",
           "fastMove": "SUCKER_PUNCH",
           "chargedMove1": "NIGHT_SLASH",
-          "chargedMove2": "PLAY_ROUGH",
+          "chargedMove2": "ICY_WIND",
           "isDefault": true,
           "evidence": {
             "kind": "preferred",
@@ -8682,7 +8683,7 @@
               "overall"
             ],
             "sourceVariantIds": [
-              "sucker_punch--play_rough--night_slash"
+              "sucker_punch--night_slash--icy_wind"
             ]
           },
           "acquisitionRequirements": {
@@ -8693,7 +8694,7 @@
               "kind": "regular"
             },
             "chargedMove2": {
-              "kind": "regular"
+              "kind": "elite"
             }
           },
           "storageKeys": {

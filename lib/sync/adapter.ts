@@ -21,8 +21,7 @@ const RANKING_CATEGORIES = [
 ] as const;
 const RANKING_CUPS = [
   'all',
-  'weather',
-  'evolution',
+  'scroll',
   'copadiluvio',
   'tsuki',
   'ligaultra',
@@ -85,7 +84,7 @@ export function createPvpokeAdapter(
 
     const content = await readFile(resolvedPath);
     try {
-      return JSON.parse(content) as T;
+      return JSON.parse(content.replace(/^\uFEFF/, '')) as T;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(

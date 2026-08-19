@@ -3,8 +3,7 @@ export interface BattleFormat {
   label: string;
   cup:
     | 'all'
-    | 'weather'
-    | 'evolution'
+    | 'scroll'
     | 'copadiluvio'
     | 'tsuki'
     | 'ligaultra'
@@ -19,8 +18,7 @@ export type BattleFormatId =
   | 'great-league'
   | 'ultra-league'
   | 'master-league'
-  | 'weather-cup'
-  | 'evolution-cup'
+  | 'scroll-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
@@ -49,15 +47,9 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 10000,
   },
   {
-    id: 'weather-cup',
-    label: 'Weather Cup',
-    cup: 'weather',
-    cp: 1500,
-  },
-  {
-    id: 'evolution-cup',
-    label: 'Evolution Cup',
-    cup: 'evolution',
+    id: 'scroll-cup',
+    label: 'Scroll Cup',
+    cup: 'scroll',
     cp: 1500,
   },
   {

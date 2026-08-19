@@ -24,11 +24,8 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/overall/rankings-1500.json',
     );
-    expect(adapter.getRankingFilePath('overall', 1500, 'weather')).toBe(
-      '/source/pvpoke/src/data/rankings/weather/overall/rankings-1500.json',
-    );
-    expect(adapter.getRankingFilePath('overall', 1500, 'evolution')).toBe(
-      '/source/pvpoke/src/data/rankings/evolution/overall/rankings-1500.json',
+    expect(adapter.getRankingFilePath('overall', 1500, 'scroll')).toBe(
+      '/source/pvpoke/src/data/rankings/scroll/overall/rankings-1500.json',
     );
     expect(adapter.getRankingFilePath('overall', 1500, 'copadiluvio')).toBe(
       '/source/pvpoke/src/data/rankings/copadiluvio/overall/rankings-1500.json',
@@ -54,8 +51,8 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getMovesetOverridesFilePath(1500)).toBe(
       '/source/pvpoke/src/data/overrides/all/1500.json',
     );
-    expect(adapter.getMovesetOverridesFilePath(1500, 'weather')).toBe(
-      '/source/pvpoke/src/data/overrides/weather/1500.json',
+    expect(adapter.getMovesetOverridesFilePath(1500, 'scroll')).toBe(
+      '/source/pvpoke/src/data/overrides/scroll/1500.json',
     );
   });
 
@@ -80,6 +77,20 @@ describe('createPvpokeAdapter', () => {
       Array<{ speciesName: string }>
     >('overall', 1500);
     expect(rankings).toEqual([{ speciesName: 'Azumarill' }]);
+  });
+
+  it('accepts JSON files with a leading UTF-8 BOM', async () => {
+    const adapter = createPvpokeAdapter({
+      sourcePath: '/source/pvpoke',
+      pathExists: () => true,
+      readFile: async () => '\uFEFF[{"speciesName":"Azumarill"}]',
+    });
+
+    await expect(
+      adapter.readJsonFile<Array<{ speciesName: string }>>(
+        'src/data/rankings/scroll/overall/rankings-1500.json',
+      ),
+    ).resolves.toEqual([{ speciesName: 'Azumarill' }]);
   });
 
   it('reads cup-specific rankings JSON files', async () => {
@@ -108,7 +119,7 @@ describe('createPvpokeAdapter', () => {
 
   it('reads explicit moveset overrides when present', async () => {
     const sourcePath = '/source/pvpoke';
-    const overrideRelativePath = 'src/data/overrides/weather/1500.json';
+    const overrideRelativePath = 'src/data/overrides/scroll/1500.json';
     const overrideAbsolutePath = path.join(sourcePath, overrideRelativePath);
     const adapter = createPvpokeAdapter({
       sourcePath,
@@ -125,7 +136,7 @@ describe('createPvpokeAdapter', () => {
     const overrides = await adapter.readMovesetOverridesJson<{
       speciesId: string;
       fastMove: string;
-    }>(1500, 'weather');
+    }>(1500, 'scroll');
 
     expect(overrides).toEqual([
       { speciesId: 'abomasnow', fastMove: 'POWDER_SNOW' },
@@ -208,10 +219,10 @@ describe('createPvpokeAdapter', () => {
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: battlefrontiermaster');
   });
 
-  it('reads Weather Cup rankings JSON files', async () => {
+  it('reads Scroll Cup rankings JSON files', async () => {
     const sourcePath = '/source/pvpoke';
     const rankingRelativePath =
-      'src/data/rankings/weather/overall/rankings-1500.json';
+      'src/data/rankings/scroll/overall/rankings-1500.json';
     const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
     const adapter = createPvpokeAdapter({
       sourcePath,
@@ -227,15 +238,15 @@ describe('createPvpokeAdapter', () => {
 
     const rankings = await adapter.readRankingJson<
       Array<{ speciesName: string }>
-    >('overall', 1500, 'weather');
+    >('overall', 1500, 'scroll');
 
     expect(rankings).toEqual([{ speciesName: 'Feraligatr' }]);
   });
 
-  it('reads Evolution Cup rankings JSON files', async () => {
+  it('reads Scroll Cup rankings JSON files again', async () => {
     const sourcePath = '/source/pvpoke';
     const rankingRelativePath =
-      'src/data/rankings/evolution/overall/rankings-1500.json';
+      'src/data/rankings/scroll/overall/rankings-1500.json';
     const rankingAbsolutePath = path.join(sourcePath, rankingRelativePath);
     const adapter = createPvpokeAdapter({
       sourcePath,
@@ -251,7 +262,7 @@ describe('createPvpokeAdapter', () => {
 
     const rankings = await adapter.readRankingJson<
       Array<{ speciesName: string }>
-    >('overall', 1500, 'evolution');
+    >('overall', 1500, 'scroll');
 
     expect(rankings).toEqual([{ speciesName: 'Dragonair' }]);
   });
