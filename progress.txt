@@ -239,5 +239,51 @@ Run initialized for `ralph/additional-mega-charged-attacks` from
 - Review duration and reviewer session ID when available: completed; `ses_f9f9db9a0ffeXt8e33EBNBLx0A`
 - Learning candidate disposition: `optimizer-tests-must-avoid-production-path-stubs` was not promoted to `memory.json` because no finding met the bounded-memory `accepted_fixed` threshold.
 - Final metadata: US-007 is marked `passes: true` in `prd.json`; `memory.json` remains unchanged.
-- Final consistency check: passed after final metadata staging; all nine US-007 files are staged and unrelated `.opencode/package-lock.json`, ranking sync, and candidate sync changes remain unstaged.
+ - Final consistency check: passed after final metadata staging; all nine US-007 files are staged and unrelated `.opencode/package-lock.json`, ranking sync, and candidate sync changes remain unstaged.
+ ---
+## 2026-09-01 21:48 MST - US-008
+- What was implemented: Extended team-detail recommendation metadata with the assigned additional Mega Charged Attack and fixed Mega Level 4, preserved that metadata on ranked-default fallback assignments, validated it against the scored assignment in `TeamDisplay`, and rendered it as a distinct non-selectable move section without acquisition labels.
+- Files changed: `lib/types.ts`, `lib/genetic/moveset.ts`, `lib/genetic/moveset.test.ts`, `app/api/team-details/route.test.ts`, `components/molecules/MovesSection/MovesSection.tsx`, `components/molecules/MovesSection/MovesSection.test.tsx`, `components/molecules/PokemonCard/PokemonCard.tsx`, `components/molecules/PokemonCard/PokemonCard.test.tsx`, `components/organisms/TeamDisplay/TeamDisplay.tsx`, `components/organisms/TeamDisplay/TeamDisplay.test.tsx`, `progress.txt`
+- Commit message: `feat: US-008 - Display additional Charged Attacks`
+- Auto approval: `disabled`
+- Checks:
+  - `npx tsc --noEmit --incremental false` (pass)
+  - `npm run lint` (pass after import-order fix)
+  - `npx prettier --check lib/types.ts lib/genetic/moveset.ts lib/genetic/moveset.test.ts components/molecules/MovesSection/MovesSection.tsx components/molecules/MovesSection/MovesSection.test.tsx components/molecules/PokemonCard/PokemonCard.tsx components/molecules/PokemonCard/PokemonCard.test.tsx components/organisms/TeamDisplay/TeamDisplay.tsx components/organisms/TeamDisplay/TeamDisplay.test.tsx app/api/team-details/route.test.ts` (pass)
+  - Focused Vitest suite for API, assignment, card, display, and move section (pass, 5 files and 114 tests)
+  - `npm test` (pass, 90 files and 1104 tests)
+- Implementation agents:
+  - Recommended: `react-specialist`, `accessibility-tester`
+  - Used: `react-specialist` (`ses_f9f98bc4fffeGWubuD7GntgZJt`); skipped `accessibility-tester` because the standard-mode budget allowed one implementation advisor and the focused component tests plus browser accessibility snapshot covered the UI contract.
+- Local review:
+  - Reviewer: pending staged review
+  - Passes: pending
+  - Findings: pending
+  - Review duration and reviewer session ID when available: pending
+- Browser verification:
+  - Fresh dev server at `http://localhost:3001`.
+  - Selected `Mega Great League`, anchored `Raichu (Mega X)`, and generated a team.
+  - Accessibility snapshot showed `Additional Charged Attack`, `VOLT TACKLE PLUS`, and `Mega Level 4` only on the eligible Mega card; non-Mega cards had no additional section.
+  - `POST /api/generate-team` and `POST /api/team-details` returned `200`; team-details payload contained the v3 assignment metadata and fixed move.
+  - Screenshot: `artifacts/us-008-mega-browser.png`.
+  - Console/network residual: only the dev server's missing `/favicon.ico` returned `404`; all feature requests succeeded.
+- Decisions (why):
+  - Kept the fixed move outside acquisition requirements and selectable move labels because it is inherent to the scored Mega configuration, not a user-selectable third charged slot.
+  - Derived ranked-default fallback metadata from synchronized Pokemon and move records so eligible Mega forms remain complete even when variant simulation data is unavailable.
+  - Compared both optional metadata fields in the client response guard so omitted, extra, or mismatched Mega metadata cannot silently corrupt displayed results.
+- **Learnings for future iterations:**
+  - Team details already projects the exact `MovesetVariant`; UI contracts must mirror optional `additionalChargedMove` and `megaLevel` fields when validating that projection.
+  - Ranked-default fallback construction is centralized in `toDefaultMovesetVariant(...)`; it must receive the synchronized Pokemon record to preserve species-specific Mega metadata.
+- Known issues / follow-ups:
+  - The browser dev server reports the existing `/favicon.ico` 404; unrelated to this story.
+ - Next iteration start:
+   - Implement US-009 export support for the complete scored battle configuration.
+ ---
+## 2026-09-01 21:50 MST - US-008 Review Completion
+- Local review: `ralph-reviewer` initial staged review passed with no findings.
+- Findings: none; no remediation or targeted re-review required.
+- Review duration and reviewer session ID when available: completed; `ses_f9f8cd322ffeLTB1Gt67JunIJx`.
+- Learning candidate disposition: no bounded-memory pattern met the `accepted_fixed` threshold; `memory.json` remains unchanged.
+- Final metadata: US-008 is marked `passes: true` in `prd.json`.
+- Final consistency check: passed; staged files are the complete US-008 story set and only unrelated pre-existing work remains unstaged.
 ---

@@ -62,6 +62,9 @@ function isTeamDetailsResponse(
         recommendedMoveset.fastMove === variant.fastMove &&
         recommendedMoveset.chargedMove1 === variant.chargedMove1 &&
         recommendedMoveset.chargedMove2 === variant.chargedMove2 &&
+        recommendedMoveset.additionalChargedMove ===
+          variant.additionalChargedMove &&
+        recommendedMoveset.megaLevel === variant.megaLevel &&
         recommendedMoveset.isDefault === variant.isDefault &&
         isUnknownRecord(recommendedMoveset.authority) &&
         recommendedMoveset.authority.source === authority.source &&

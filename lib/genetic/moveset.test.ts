@@ -980,6 +980,29 @@ describe('roster moveset assignments', () => {
     expect(Object.isFrozen(assignment.variantsBySpeciesId)).toBe(true);
   });
 
+  it('preserves eligible Mega metadata in ranked-default assignments', () => {
+    const pokemon = getPokemonBySpeciesId('raichu_mega_x');
+    expect(pokemon).toBeDefined();
+
+    const assignment = resolveRankedDefaultRosterMovesetAssignment(
+      ['raichu_mega_x'],
+      'great-league',
+      {
+        getPokemon: () => pokemon,
+        getRankedDefault: () => ({
+          fastMove: 'VOLT_SWITCH',
+          chargedMove1: 'WILD_CHARGE',
+          chargedMove2: 'BRICK_BREAK',
+        }),
+      },
+    );
+
+    expect(assignment.variantsBySpeciesId.raichu_mega_x).toMatchObject({
+      additionalChargedMove: 'VOLT_TACKLE_PLUS',
+      megaLevel: 4,
+    });
+  });
+
   it.each<MovesetVariantSimulationDataErrorCode>([
     'manifest-missing',
     'manifest-malformed',

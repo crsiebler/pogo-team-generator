@@ -57,6 +57,25 @@ describe('PokemonCard', () => {
     expect(screen.getByText('⭐ Thunder')).toBeInTheDocument();
   });
 
+  it('renders the assigned additional Mega attack', () => {
+    render(
+      <PokemonCard
+        pokemon={{
+          ...mockPokemon,
+          recommendedMoveset: {
+            ...mockPokemon.recommendedMoveset!,
+            additionalChargedMove: 'Wild_Charge',
+            megaLevel: 4,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText('Additional Charged Attack')).toBeInTheDocument();
+    expect(screen.getByText('Wild Charge')).toBeInTheDocument();
+    expect(screen.getByText('Mega Level 4')).toBeInTheDocument();
+  });
+
   it('renders shadow badge when pokemon is shadow', () => {
     const shadowPokemon = { ...mockPokemon, tags: ['shadow'] };
     render(<PokemonCard pokemon={shadowPokemon} />);

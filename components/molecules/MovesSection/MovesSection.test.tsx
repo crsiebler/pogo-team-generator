@@ -31,4 +31,22 @@ describe('MovesSection', () => {
     expect(screen.getByText('⭐ Water Gun')).toBeInTheDocument();
     expect(screen.getByText('⭐ Hydro Pump')).toBeInTheDocument();
   });
+
+  it('renders a distinct additional charged attack with its Mega level', () => {
+    render(<MovesSection additionalChargedMove="Frenzy_Plant" megaLevel={4} />);
+
+    expect(screen.getByText('Additional Charged Attack')).toBeInTheDocument();
+    expect(screen.getByText('Frenzy Plant')).toBeInTheDocument();
+    expect(screen.getByText('Mega Level 4')).toBeInTheDocument();
+    expect(screen.queryByText('⭐ Frenzy Plant')).not.toBeInTheDocument();
+  });
+
+  it('does not render an additional attack section without a move', () => {
+    render(<MovesSection megaLevel={4} />);
+
+    expect(
+      screen.queryByText('Additional Charged Attack'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Mega Level 4')).not.toBeInTheDocument();
+  });
 });

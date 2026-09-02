@@ -95,6 +95,8 @@ export interface Pokemon {
     fastMove: string | null;
     chargedMove1: string | null;
     chargedMove2: string | null;
+    additionalChargedMove?: string;
+    megaLevel?: 4;
     isDefault?: boolean;
     authority?: MovesetAssignmentPolicyIdentity;
     acquisitionRequirements?: MovesetAcquisitionRequirements;

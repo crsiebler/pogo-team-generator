@@ -129,6 +129,55 @@ describe('TeamDisplay', () => {
     });
   });
 
+  it('rejects response metadata that differs from the scored Mega assignment', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const team = ['charizard_mega_y'];
+    const megaAssignment = assignmentForFormat('great-league', team);
+    const megaVariant = megaAssignment.variantsBySpeciesId[team[0]!]!;
+    const responsePokemon = {
+      ...createPokemonDetails(team[0]!, megaAssignment),
+      recommendedMoveset: {
+        ...createPokemonDetails(team[0]!, megaAssignment).recommendedMoveset,
+        additionalChargedMove: 'BLAST_BURN',
+        megaLevel: 4 as const,
+      },
+    };
+    const response = {
+      ok: true,
+      json: vi.fn().mockResolvedValue({ pokemon: [responsePokemon] }),
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response));
+
+    render(
+      <TeamDisplay
+        team={team}
+        mode="PlayPokemon"
+        formatId="great-league"
+        movesetAssignment={{
+          ...megaAssignment,
+          variantsBySpeciesId: {
+            ...megaAssignment.variantsBySpeciesId,
+            [team[0]!]: {
+              ...megaVariant,
+              additionalChargedMove: 'DRAGON_CLAW',
+              megaLevel: 4,
+            },
+          },
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(consoleError).toHaveBeenCalledWith(
+        'Failed to fetch team details:',
+        expect.any(Error),
+      );
+    });
+    expect(screen.queryByText('Pokemon Card')).not.toBeInTheDocument();
+  });
+
   it('forwards the scored assignment and acquisition-only export metadata', async () => {
     render(
       <TeamDisplay

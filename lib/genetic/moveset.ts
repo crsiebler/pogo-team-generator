@@ -1,3 +1,4 @@
+import { resolveAdditionalChargedMove } from '@lib/data/additionalMegaMove';
 import { normalizeMoveId } from '@lib/data/aliases';
 import type { BattleFormatId } from '@lib/data/battleFormats';
 import { getMovesetAvailability } from '@lib/data/moveAvailability';
@@ -170,11 +171,19 @@ const MAX_ASSIGNMENT_STRING_LENGTH = 128;
 const MAX_ASSIGNMENT_FINGERPRINT_LENGTH = 16_384;
 export const MAX_ROSTER_MOVESET_ASSIGNMENTS = 3 ** 6;
 
-function toDefaultMovesetVariant(moveset: Moveset): MovesetVariant {
+function toDefaultMovesetVariant(
+  moveset: Moveset,
+  pokemon?: Pokemon,
+): MovesetVariant {
+  const additionalChargedMove = resolveAdditionalChargedMove(pokemon);
+
   return {
     ...moveset,
     id: getMovesetVariantId(moveset),
     isDefault: true,
+    ...(additionalChargedMove
+      ? { additionalChargedMove, megaLevel: 4 as const }
+      : {}),
   };
 }
 
@@ -242,6 +251,7 @@ export function getSimulationBackedMovesetForTeam(
         pokemon,
         formatId,
       ),
+      pokemon,
     );
   }
   return {
@@ -747,7 +757,7 @@ export function validateRosterMovesetAssignmentAuthority(
         `Roster moveset assignment ranked-default authority for ${speciesId} is unavailable.`,
       );
     }
-    const rankedDefault = toDefaultMovesetVariant(rankedMoveset);
+    const rankedDefault = toDefaultMovesetVariant(rankedMoveset, pokemon);
     if (!matchesMovesetVariant(assignedVariant, rankedDefault)) {
       throw new RosterMovesetAssignmentValidationError(
         `Roster moveset assignment ranked default for ${speciesId} is not current.`,
@@ -840,6 +850,7 @@ export function resolveRosterMovesetAssignment(
       }
       variantsBySpeciesId[pokemon.speciesId] = toDefaultMovesetVariant(
         dependencies.getRankedDefault(pokemon, formatId),
+        pokemon,
       );
       authorityBySpeciesId[pokemon.speciesId] = RANKED_DEFAULT_POLICY_IDENTITY;
     }
@@ -901,7 +912,10 @@ export function enumerateRosterMovesetAssignments(
         throw error;
       }
       variants = [
-        toDefaultMovesetVariant(dependencies.getRankedDefault(entry, formatId)),
+        toDefaultMovesetVariant(
+          dependencies.getRankedDefault(entry, formatId),
+          entry,
+        ),
       ];
       authority = RANKED_DEFAULT_POLICY_IDENTITY;
     }
@@ -975,6 +989,7 @@ export function resolveRankedDefaultRosterMovesetAssignment(
     }
     variantsBySpeciesId[pokemon.speciesId] = toDefaultMovesetVariant(
       dependencies.getRankedDefault(pokemon, formatId),
+      pokemon,
     );
     authorityBySpeciesId[pokemon.speciesId] = RANKED_DEFAULT_POLICY_IDENTITY;
   }
