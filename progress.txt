@@ -32,7 +32,6 @@ Run initialized for `ralph/additional-mega-charged-attacks` from
   - None for US-001.
 - Next iteration start:
   - Implement US-002 eligibility resolution from synchronized tags and move metadata.
----
 ## 2026-09-01 19:06 MST - US-002 Review Completion
 - Local review: `ralph-reviewer` initial staged review passed with no findings.
 - Findings: none; no remediation or targeted re-review required.
@@ -200,5 +199,45 @@ Run initialized for `ralph/additional-mega-charged-attacks` from
 - Review duration and reviewer session ID when available: completed; `ses_f9fb943b6ffeMiEVRzpuLivmx9`
 - Learning candidate disposition: no bounded-memory pattern met the `accepted_fixed` threshold; `memory.json` remains unchanged.
 - Final metadata: US-006 is marked `passes: true` in `prd.json`.
-- Final consistency check: passed after final metadata staging; all US-006 files are staged and no selected story files remain unstaged. Existing unrelated `.opencode/package-lock.json`, ranking sync, and candidate sync changes remain unstaged.
+ - Final consistency check: passed after final metadata staging; all US-006 files are staged and no selected story files remain unstaged. Existing unrelated `.opencode/package-lock.json`, ranking sync, and candidate sync changes remain unstaged.
+ ---
+## 2026-09-01 21:28 MST - US-007
+- What was implemented: Added shared optimizer diagnostic handling for species-specific fixed Mega Charged Attacks. Eligible Level 4 Mega moves now participate in lineup and roster typing, coverage, expected opponent attack types, energy pressure, consistency, and DPE calculations while remaining outside selectable moveset identity.
+- Files changed: `lib/AGENTS.md`, `lib/genetic/fitness/moveDiagnostics.ts`, `lib/genetic/fitness/moveDiagnostics.test.ts`, `lib/genetic/fitness/lineupScoring.ts`, `lib/genetic/fitness/lineupScoring.test.ts`, `lib/genetic/fitness/rosterScoring.ts`, `lib/genetic/fitness/rosterScoring.test.ts`, `progress.txt`
+- Commit message: `feat: US-007 - Include the additional attack in optimizer diagnostics`
+- Auto approval: `disabled`
+- Checks:
+  - `npx tsc --noEmit --incremental false` (pass)
+  - `npm run lint` (pass)
+  - `npx prettier --check lib/AGENTS.md lib/genetic/fitness/moveDiagnostics.ts lib/genetic/fitness/moveDiagnostics.test.ts lib/genetic/fitness/lineupScoring.ts lib/genetic/fitness/lineupScoring.test.ts lib/genetic/fitness/rosterScoring.ts lib/genetic/fitness/rosterScoring.test.ts` (pass)
+  - Focused optimizer Vitest suite (pass)
+  - `npm test` (pass)
+- Optimizer guidance read: `.opencode/skills/gbl-optimizer/SKILL.md`, `docs/pokemon-go-team-optimization.md`, and the scoring, lineup, coverage, safety/consistency/bulk, type-effectiveness, role, data-input, and validation documents under `docs/team-optimization/`
+- Implementation agents:
+  - Recommended: `performance-engineer`, `test-automator`
+  - Used: `performance-engineer` (`ses_fa01ee42affeLKtNCOW6rmWbR`), `test-automator` (`ses_fa01ee42affeLKtNCOW6rmWbR`)
+- Local review:
+  - Reviewer: `ralph-reviewer`
+  - Passes: pending initial staged review
+  - Findings: pending
+  - Review duration and reviewer session ID when available: pending
+- Decisions (why):
+  - Centralized fixed-move resolution and effective-move construction so every diagnostic path applies the same eligibility and Level 4 power multiplier.
+  - Kept canonical scoring weights, normalization, and status-effect utility unchanged; only the effective move inputs were extended.
+  - Reused the existing typing, coverage, energy, and consistency data flows rather than introducing a parallel scoring model.
+- **Learnings for future iterations:**
+  - Fixed Mega attacks must be injected into diagnostic effective-move inputs independently from selectable `MovesetVariant` identity.
+  - Opponent attack-type and energy-pressure diagnostics need the fixed move included on both the active team and generated opponent projections.
+- Known issues / follow-ups:
+  - Production-wide artifact regeneration remains deferred to US-010.
+- Next iteration start:
+  - Review and commit US-007, then implement the next pending story.
+---
+## 2026-09-01 21:32 MST - US-007 Review Completion
+- Local review: `ralph-reviewer` initial staged review requested one medium-severity test-path remediation; the roster test's `scoreLineup` override was removed so the assertion reaches the production roster diagnostic path.
+- Findings: initial finding `roster-diagnostic-test-bypasses-scoring-path` remediated; focused roster test passed; targeted re-review passed with no findings.
+- Review duration and reviewer session ID when available: completed; `ses_f9f9db9a0ffeXt8e33EBNBLx0A`
+- Learning candidate disposition: `optimizer-tests-must-avoid-production-path-stubs` was not promoted to `memory.json` because no finding met the bounded-memory `accepted_fixed` threshold.
+- Final metadata: US-007 is marked `passes: true` in `prd.json`; `memory.json` remains unchanged.
+- Final consistency check: passed after final metadata staging; all nine US-007 files are staged and unrelated `.opencode/package-lock.json`, ranking sync, and candidate sync changes remain unstaged.
 ---

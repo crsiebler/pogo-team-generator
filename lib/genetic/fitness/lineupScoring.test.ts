@@ -733,6 +733,149 @@ describe('scoreOrderedLineup', () => {
     );
   });
 
+  test('includes an eligible Mega fixed move in offensive and pressure diagnostics', () => {
+    const mega = {
+      ...makePokemon('mega', ['normal'], { atk: 140, def: 135, hp: 135 }),
+      extraChargedMoves: ['MEGA_MOVE'],
+      tags: ['mega'],
+    };
+    const plain = makePokemon('plain', ['normal'], {
+      atk: 140,
+      def: 135,
+      hp: 135,
+    });
+    const context = createContext({
+      getPokemon: (speciesId) =>
+        speciesId === 'mega'
+          ? mega
+          : speciesId === 'plain'
+            ? plain
+            : pokemonById[speciesId],
+      recommendedMovesets: {
+        mega: {
+          fastMove: 'FAST',
+          chargedMove1: 'CHARGED_A',
+          chargedMove2: 'CHARGED_B',
+        },
+        plain: {
+          fastMove: 'FAST',
+          chargedMove1: 'CHARGED_A',
+          chargedMove2: 'CHARGED_B',
+        },
+      },
+      moves: {
+        FAST: { type: 'normal' },
+        CHARGED_A: { type: 'normal' },
+        CHARGED_B: { type: 'normal' },
+        MEGA_MOVE: {
+          type: 'grass',
+          power: 70,
+          energy: 45,
+          isMegaMove: true,
+        },
+      },
+      pressureScores: {
+        FAST: {
+          CHARGED_A: 0,
+          CHARGED_B: 0,
+          MEGA_MOVE: 0.45,
+        },
+      },
+    });
+
+    const megaResult = scoreOrderedLineup(
+      { lead: 'mega', switch: 'balanced', closer: 'closer' },
+      context,
+      { includeThreatScore: false },
+    );
+    const plainResult = scoreOrderedLineup(
+      { lead: 'plain', switch: 'balanced', closer: 'closer' },
+      context,
+      { includeThreatScore: false },
+    );
+
+    expect(megaResult.componentScores.moveCoverage).toBeGreaterThan(
+      plainResult.componentScores.moveCoverage,
+    );
+    expect(megaResult.componentScores.energyPressure).toBeGreaterThan(
+      plainResult.componentScores.energyPressure,
+    );
+    expect(megaResult.scoreBreakdown.components.offensiveRatio).toBeGreaterThan(
+      plainResult.scoreBreakdown.components.offensiveRatio,
+    );
+  });
+
+  test('includes an eligible Mega opponent fixed move in defensive diagnostics', () => {
+    const megaThreat = {
+      ...makePokemon('mega-threat', ['normal'], {
+        atk: 140,
+        def: 135,
+        hp: 135,
+      }),
+      extraChargedMoves: ['MEGA_MOVE'],
+      tags: ['mega'],
+    };
+    const plainThreat = makePokemon('plain-threat', ['normal'], {
+      atk: 140,
+      def: 135,
+      hp: 135,
+    });
+    const createThreatContext = (threatSpeciesId: string) =>
+      createContext({
+        threats: [threatSpeciesId],
+        topThreats: [threatSpeciesId],
+        fullMetaThreats: [threatSpeciesId],
+        getPokemon: (speciesId) => {
+          if (speciesId === 'mega-threat') {
+            return megaThreat;
+          }
+          if (speciesId === 'plain-threat') {
+            return plainThreat;
+          }
+          return pokemonById[speciesId];
+        },
+        recommendedMovesets: {
+          'mega-threat': {
+            fastMove: 'FAST',
+            chargedMove1: 'THREAT_NORMAL',
+            chargedMove2: null,
+          },
+          'plain-threat': {
+            fastMove: 'FAST',
+            chargedMove1: 'THREAT_NORMAL',
+            chargedMove2: null,
+          },
+        },
+        moves: {
+          FAST: { type: 'normal' },
+          THREAT_NORMAL: { type: 'normal' },
+          MEGA_MOVE: {
+            type: 'electric',
+            power: 70,
+            energy: 45,
+            isMegaMove: true,
+          },
+        },
+      });
+
+    const megaThreatResult = scoreOrderedLineup(
+      { lead: 'ground', switch: 'ground', closer: 'ground' },
+      createThreatContext('mega-threat'),
+      { includeThreatScore: false },
+    );
+    const plainThreatResult = scoreOrderedLineup(
+      { lead: 'ground', switch: 'ground', closer: 'ground' },
+      createThreatContext('plain-threat'),
+      { includeThreatScore: false },
+    );
+
+    expect(
+      megaThreatResult.scoreBreakdown.components.defensiveRatio,
+    ).toBeGreaterThan(
+      plainThreatResult.scoreBreakdown.components.defensiveRatio,
+    );
+  });
+
   test('combines lineup scoring through normalized weighted optimizer components', () => {
     const waterPressure = scoreOrderedLineup(
       {
@@ -1700,7 +1843,10 @@ function createContext(
   overrides: Partial<LineupScoringContext> & {
     matchupRatings?: Record<string, Record<string, number>>;
     matchupQualityScores?: Record<string, number>;
-    moves?: Record<string, { type: string }>;
+    moves?: Record<
+      string,
+      { type: string; power?: number; energy?: number; isMegaMove?: boolean }
+    >;
     pressureScores?: Record<string, Record<string, number>>;
     rankingScores?: Record<string, number>;
     categoryScores?: Record<
@@ -1713,6 +1859,8 @@ function createContext(
         fastMove: string | null;
         chargedMove1: string | null;
         chargedMove2: string | null;
+        additionalChargedMove?: string;
+        megaLevel?: 4;
       }
     >;
     roleScores?: Record<

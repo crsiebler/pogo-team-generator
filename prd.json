@@ -129,8 +129,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: preserve the canonical weighted optimizer contract and keep the additional move fixed rather than independently selectable."
+      "passes": true,
+      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: preserve the canonical weighted optimizer contract and keep the additional move fixed rather than independently selectable. Review: initial staged review found a roster test path bypass; the override was removed, the focused test passed, and targeted re-review passed with no findings."
     },
     {
       "id": "US-008",

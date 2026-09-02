@@ -8,6 +8,11 @@ import {
 } from './lineupScoring';
 import { scoreMatchupRating } from './matchupScoring';
 import {
+  getDiagnosticChargedMoveIds,
+  getDiagnosticMovePower,
+  resolveDiagnosticMoveset,
+} from './moveDiagnostics';
+import {
   createNormalizedScoreBreakdown,
   type OptimizerScoreBreakdown,
   type OptimizerScoreComponents,
@@ -893,31 +898,43 @@ function calculateMoveConsistency(
     return 0.5;
   }
 
-  const chargedMoves = [moveset.chargedMove1, moveset.chargedMove2]
-    .filter((moveId): moveId is string => moveId !== null)
-    .map((moveId) => context.getMove?.(moveId))
-    .filter((move): move is NonNullable<typeof move> => move !== undefined);
+  const effectiveMoveset = resolveRosterDiagnosticMoveset(
+    pokemon,
+    moveset,
+    context,
+  );
+  const chargedMoves = getDiagnosticChargedMoveIds(effectiveMoveset)
+    .map((moveId) => ({ moveId, move: context.getMove?.(moveId) }))
+    .filter(
+      (
+        entry,
+      ): entry is { moveId: string; move: NonNullable<typeof entry.move> } =>
+        entry.move !== undefined,
+    );
   if (chargedMoves.length === 0) {
     return 0.5;
   }
 
-  const dpeValues = chargedMoves.map((move) =>
+  const dpeValues = chargedMoves.map(({ move, moveId }) =>
     move.power !== undefined && move.energy !== undefined && move.energy !== 0
-      ? move.power / Math.abs(move.energy)
+      ? (getDiagnosticMovePower(move, moveId, effectiveMoveset) ?? move.power) /
+        Math.abs(move.energy)
       : 1,
   );
-  const energyCosts = chargedMoves.map((move) => Math.abs(move.energy ?? 55));
+  const energyCosts = chargedMoves.map(({ move }) =>
+    Math.abs(move.energy ?? 55),
+  );
   const averageDpe = average(dpeValues);
   const dpeSpread = Math.max(...dpeValues) - Math.min(...dpeValues);
   const energySpread = Math.max(...energyCosts) - Math.min(...energyCosts);
-  const moveTypes = new Set(chargedMoves.map((move) => move.type));
+  const moveTypes = new Set(chargedMoves.map(({ move }) => move.type));
   const hasUsefulSecondMove = chargedMoves.length > 1 && moveTypes.size > 1;
   const neutralDamageScore = calculateUsefulNeutralDamageScore(
     [...moveTypes],
     context,
   );
   const baitDependencePenalty = chargedMoves.some(
-    (move) => (move.power ?? 0) <= 45 && Math.abs(move.energy ?? 100) <= 40,
+    ({ move }) => (move.power ?? 0) <= 45 && Math.abs(move.energy ?? 100) <= 40,
   )
     ? 0.25
     : 0;
@@ -1240,10 +1257,14 @@ function getExpectedThreatAttackTypes(
     return pokemon.types;
   }
 
+  const effectiveMoveset = resolveRosterDiagnosticMoveset(
+    pokemon,
+    moveset,
+    context,
+  );
   const moveIds = [
-    moveset.fastMove,
-    moveset.chargedMove1,
-    moveset.chargedMove2,
+    effectiveMoveset.fastMove,
+    ...getDiagnosticChargedMoveIds(effectiveMoveset),
   ].filter((moveId): moveId is string => moveId !== null);
   if (moveIds.length === 0) {
     return pokemon.types;
@@ -1294,6 +1315,27 @@ function getAssignedRosterMoveset(
   return (
     context.movesetAssignment?.variantsBySpeciesId[speciesId] ??
     context.getRecommendedMoveset?.(speciesId)
+  );
+}
+
+function resolveRosterDiagnosticMoveset(
+  pokemon: NonNullable<
+    ReturnType<PlayPokemonRosterScoringContext['getPokemon']>
+  >,
+  moveset: NonNullable<
+    ReturnType<NonNullable<LineupScoringContext['getRecommendedMoveset']>>
+  >,
+  context: PlayPokemonRosterScoringContext,
+): NonNullable<typeof moveset> {
+  const hasBoundVariant =
+    context.movesetAssignment?.variantsBySpeciesId[pokemon.speciesId] !==
+    undefined;
+
+  return resolveDiagnosticMoveset(
+    pokemon,
+    moveset,
+    (moveId) => context.getMove?.(moveId),
+    !hasBoundVariant,
   );
 }
 

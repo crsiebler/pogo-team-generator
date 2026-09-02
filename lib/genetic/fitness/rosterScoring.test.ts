@@ -1777,6 +1777,72 @@ describe('scorePlayPokemonRoster', () => {
     );
   });
 
+  test('uses the fixed Mega move and Level 4 power in consistency scoring', () => {
+    const baseContext = createTypeCoverageContext();
+    const mega = {
+      ...baseContext.getPokemon('normal-a')!,
+      speciesId: 'mega',
+      extraChargedMoves: ['MEGA_MOVE'],
+      tags: ['mega'],
+    };
+    const plain = {
+      ...baseContext.getPokemon('normal-a')!,
+      speciesId: 'plain',
+    };
+    const context = {
+      ...baseContext,
+      getPokemon: (speciesId: string) => {
+        if (speciesId === 'mega') {
+          return mega;
+        }
+        if (speciesId === 'plain') {
+          return plain;
+        }
+        return baseContext.getPokemon(speciesId);
+      },
+      getRecommendedMoveset: (speciesId: string) =>
+        speciesId === 'mega' || speciesId === 'plain'
+          ? {
+              fastMove: 'FAST',
+              chargedMove1: 'CHARGED_A',
+              chargedMove2: 'CHARGED_B',
+            }
+          : baseContext.getRecommendedMoveset?.(speciesId),
+      getMove: (moveId: string) => {
+        if (moveId === 'FAST') {
+          return { type: 'normal', power: 1, energy: 0 };
+        }
+        if (moveId === 'CHARGED_A' || moveId === 'CHARGED_B') {
+          return { type: 'normal', power: 40, energy: 40 };
+        }
+        if (moveId === 'MEGA_MOVE') {
+          return {
+            type: 'grass',
+            power: 70,
+            energy: 45,
+            isMegaMove: true,
+          };
+        }
+        return baseContext.getMove?.(moveId);
+      },
+    };
+
+    const megaResult = scorePlayPokemonRoster(
+      ['mega', 'water-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a'],
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+    const plainResult = scorePlayPokemonRoster(
+      ['plain', 'water-a', 'grass-a', 'ground-a', 'fire-a', 'flying-a'],
+      context,
+      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+    );
+
+    expect(megaResult.scoreBreakdown.components.consistency).toBeGreaterThan(
+      plainResult.scoreBreakdown.components.consistency,
+    );
+  });
+
   test('penalizes brittle low-bulk rosters using defense hp over attack', () => {
     const bulkyRoster = [
       'bulky-a',

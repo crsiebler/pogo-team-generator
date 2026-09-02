@@ -23,6 +23,12 @@ import {
 } from '@/lib/data/simulations';
 import { scoreMatchupRating } from '@/lib/genetic/fitness/matchupScoring';
 import {
+  getDiagnosticChargedMoveIds,
+  resolveDiagnosticMoveset,
+  type DiagnosticMoveData,
+  type DiagnosticMoveset,
+} from '@/lib/genetic/fitness/moveDiagnostics';
+import {
   createNormalizedScoreBreakdown,
   type OptimizerScoreBreakdown,
   type OptimizerScoreComponents,
@@ -52,17 +58,8 @@ import type {
   MovesetVariantId,
 } from '@/lib/types';
 
-interface LineupMoveset {
-  fastMove: string | null;
-  chargedMove1: string | null;
-  chargedMove2: string | null;
-}
-
-interface LineupMoveData {
-  type: string;
-  power?: number;
-  energy?: number;
-}
+type LineupMoveset = DiagnosticMoveset;
+type LineupMoveData = DiagnosticMoveData;
 
 type LineupRankingCategory = 'chargers' | 'attackers' | 'consistency';
 const unavailableRoleRankingCategories = new WeakMap<
@@ -670,13 +667,16 @@ function getExpectedThreatAttackTypes(
   pokemon: Pokemon,
   context: LineupScoringContext,
 ): string[] {
-  const moveset = getContextMoveset(pokemon, context);
+  const moveset = getEffectiveContextMoveset(pokemon, context);
   const moveTypes = [
     moveset.fastMove,
     moveset.chargedMove1,
     moveset.chargedMove2,
+    moveset.additionalChargedMove,
   ]
-    .filter((moveId): moveId is string => moveId !== null)
+    .filter(
+      (moveId): moveId is string => moveId !== null && moveId !== undefined,
+    )
     .map((moveId) => getContextMove(moveId, context)?.type)
     .filter((moveType): moveType is string => moveType !== undefined);
 
@@ -688,11 +688,10 @@ function getLineupAttackingTypes(
   context: LineupScoringContext,
   teamSpeciesIds: readonly string[],
 ): string[] {
-  const moveset = getContextMoveset(pokemon, context, teamSpeciesIds);
+  const moveset = getEffectiveContextMoveset(pokemon, context, teamSpeciesIds);
   const moveIds = [
     moveset.fastMove,
-    moveset.chargedMove1,
-    moveset.chargedMove2,
+    ...getDiagnosticChargedMoveIds(moveset),
   ].filter((moveId): moveId is string => moveId !== null);
   if (moveIds.length === 0) {
     return pokemon.types;
@@ -1132,9 +1131,12 @@ function calculateMoveCoverage(
   const teamSpeciesIds = pokemon.map((entry) => entry.speciesId);
   return average(
     pokemon.map((entry) => {
-      const recommended = getContextMoveset(entry, context, teamSpeciesIds);
-      const chargedMoves = [recommended.chargedMove1, recommended.chargedMove2]
-        .filter((moveId): moveId is string => moveId !== null)
+      const recommended = getEffectiveContextMoveset(
+        entry,
+        context,
+        teamSpeciesIds,
+      );
+      const chargedMoves = getDiagnosticChargedMoveIds(recommended)
         .map((moveId) => getContextMove(moveId, context))
         .filter((move): move is NonNullable<typeof move> => move !== undefined);
       const moveTypes = new Set(chargedMoves.map((move) => move.type));
@@ -1158,16 +1160,25 @@ function calculateEnergyPressure(
   const teamSpeciesIds = pokemon.map((entry) => entry.speciesId);
   return average(
     pokemon.map((entry) => {
-      const recommended = getContextMoveset(entry, context, teamSpeciesIds);
-      if (!recommended.fastMove || !recommended.chargedMove1) {
+      const recommended = getEffectiveContextMoveset(
+        entry,
+        context,
+        teamSpeciesIds,
+      );
+      const chargedMoveIds = getDiagnosticChargedMoveIds(recommended);
+      if (!recommended.fastMove || chargedMoveIds.length === 0) {
         return 0.5;
       }
 
       return clamp01(
-        getContextPressureScore(
-          recommended.fastMove,
-          recommended.chargedMove1,
-          context,
+        average(
+          chargedMoveIds.map((chargedMoveId) =>
+            getContextPressureScore(
+              recommended.fastMove!,
+              chargedMoveId,
+              context,
+            ),
+          ),
         ) * 2,
       );
     }),
@@ -1202,6 +1213,24 @@ function getContextMoveset(
   }
 
   return getRecommendedMovesetForPokemon(pokemon, context.formatId);
+}
+
+function getEffectiveContextMoveset(
+  pokemon: Pokemon,
+  context: LineupScoringContext,
+  teamSpeciesIds?: readonly string[],
+): LineupMoveset {
+  const moveset = getContextMoveset(pokemon, context, teamSpeciesIds);
+  const hasBoundVariant =
+    context.movesetAssignment?.variantsBySpeciesId[pokemon.speciesId] !==
+    undefined;
+
+  return resolveDiagnosticMoveset(
+    pokemon,
+    moveset,
+    (moveId) => getContextMove(moveId, context),
+    !hasBoundVariant,
+  );
 }
 
 function getContextMove(

@@ -158,6 +158,11 @@ In `lib/genetic/algorithm.ts`, keep returned `Chromosome.fitness` synchronized w
 
 For optimizer weighted scoring, import the canonical score contract from `lib/genetic/fitness/scoreBreakdown.ts`; keep components normalized to 0..1 before aggregation and treat only validity or legality as hard constraints.
 
+For optimizer paper diagnostics, use `lib/genetic/fitness/moveDiagnostics.ts` to
+resolve synchronized fixed Mega moves and apply the Level 4 power bonus. Keep
+fixed moves outside selectable moveset identity and do not fold status effects
+into raw damage or energy calculations.
+
 For ordered lineup scoring in `lib/genetic/fitness/lineupScoring.ts`, `scoreOrderedLineup(...)` returns `scoreBreakdown` and sets `score` from the normalized weighted optimizer contract; use those components for aggregation and explanations rather than adding ad hoc lineup score weights, compute lineup offensive/defensive ratio components through `typeEffectivenessRatios.ts`, weight both offensive defender pools and defensive expected attack-type pools with top-threat priority over full-meta, and keep top-threat ratio pools bounded to the top-threat limit.
 
 For soft matchup quality in optimizer scoring, use `scoreMatchupRating(...)` from `lib/genetic/fitness/matchupScoring.ts` so close battle ratings produce intermediate scores. Keep explicit 500/600/400 threshold checks when the output is a categorical count or label such as covered threats, weaknesses, dominating matchups, or overwhelming losses.
