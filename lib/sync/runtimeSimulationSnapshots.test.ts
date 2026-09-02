@@ -272,6 +272,34 @@ describe('runtime simulation snapshot preparation', () => {
     expect(reads).toEqual([fallbackFile.targetPath]);
   });
 
+  it('parses Mega opponents with an automatic extra charged move', () => {
+    const input = createPreparedInput();
+    const csvFiles = input.csvFiles.map((file) => ({
+      ...file,
+      contents: file.contents.replace(
+        'Venusaur VW+FP/SB',
+        'Malamar (Mega) Psy+FoP/SP/Psb+',
+      ),
+    }));
+    const snapshots = prepareRuntimeSimulationSnapshots(
+      input.manifests,
+      csvFiles,
+      {
+        ...dependencies,
+        resolveOpponentSpeciesId: (name) =>
+          name === 'Malamar (Mega)'
+            ? 'malamar_mega'
+            : dependencies.resolveOpponentSpeciesId(name),
+      },
+    );
+    const snapshot = parseRuntimeSimulationSnapshotJson(
+      snapshots.find(({ formatId }) => formatId === 'great-league')?.contents ??
+        '',
+    );
+
+    expect(snapshot.dictionaries.opponents).toContain('malamar_mega');
+  });
+
   it('encodes missing opponent rows without substituting a default rating', () => {
     const input = createPreparedInput();
     const charmanderId = 'ember--flamethrower--flame_charge' as const;

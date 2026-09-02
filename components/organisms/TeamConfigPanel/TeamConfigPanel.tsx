@@ -7,7 +7,7 @@ import { Option, Select } from '@/components/atoms';
 import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
 import {
-  getBattleFormats,
+  getSelectableBattleFormats,
   isBattleFrontierFormatId,
   isBattleFormatId,
   type BattleFormatId,
@@ -91,7 +91,7 @@ export function TeamConfigPanel({
           value={selectedFormatId}
           onChange={handleFormatChange}
         >
-          {getBattleFormats().map((format) => (
+          {getSelectableBattleFormats().map((format) => (
             <Option key={format.id} value={format.id}>
               {format.label}
             </Option>

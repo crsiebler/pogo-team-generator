@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { TeamConfigPanel } from './TeamConfigPanel';
-import { getBattleFormats } from '@/lib/data/battleFormats';
+import { getSelectableBattleFormats } from '@/lib/data/battleFormats';
 
 vi.mock('@/components/molecules', () => ({
   ModeSelector: () => <div>Mode Selector</div>,
@@ -55,8 +55,9 @@ describe('TeamConfigPanel', () => {
       .getAllByRole('option')
       .map((option) => option.textContent);
     expect(optionLabels).toEqual(
-      getBattleFormats().map((format) => format.label),
+      getSelectableBattleFormats().map((format) => format.label),
     );
+    expect(optionLabels).not.toContain('Scroll Cup');
   });
 
   it('calls onFormatChange when the selected format changes', () => {

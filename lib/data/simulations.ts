@@ -63,9 +63,8 @@ export function extractSpeciesNameFromSimulationCell(value: string): string {
   }
 
   const trailingToken = trimmedValue.slice(lastSpaceIndex + 1);
-  const isMovesetToken = /^[A-Za-z0-9]+\+[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)+$/.test(
-    trailingToken,
-  );
+  const isMovesetToken =
+    /^[A-Za-z0-9]+\+[A-Za-z0-9+]+(?:\/[A-Za-z0-9+]+)+$/.test(trailingToken);
 
   if (!isMovesetToken) {
     return trimmedValue;
