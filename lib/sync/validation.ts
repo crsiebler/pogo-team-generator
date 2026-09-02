@@ -85,6 +85,17 @@ export function validatePokemonJson(data: unknown): {
       errors.push(`Pokemon ${index}: legacyMoves must contain strings`);
     }
 
+    if (
+      p.extraChargedMoves !== undefined &&
+      !Array.isArray(p.extraChargedMoves)
+    ) {
+      errors.push(
+        `Pokemon ${index}: extraChargedMoves must be array if present`,
+      );
+    } else if (p.extraChargedMoves?.some((move) => typeof move !== 'string')) {
+      errors.push(`Pokemon ${index}: extraChargedMoves must contain strings`);
+    }
+
     if (typeof p.released !== 'boolean')
       errors.push(`Pokemon ${index}: released must be boolean`);
   });
@@ -134,6 +145,8 @@ export function validateMovesJson(data: unknown): {
       errors.push(`Move ${index}: archetype must be string if present`);
     if (typeof m.turns !== 'number')
       errors.push(`Move ${index}: turns must be number`);
+    if (m.isMegaMove !== undefined && typeof m.isMegaMove !== 'boolean')
+      errors.push(`Move ${index}: isMegaMove must be boolean if present`);
 
     const hasValidStatStages = (value: unknown): boolean => {
       return (

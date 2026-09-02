@@ -2,3 +2,34 @@
 
 Run initialized for `ralph/additional-mega-charged-attacks` from
 `tasks/prd-additional-mega-charged-attacks.md`.
+
+## 2026-09-01 18:57 MST - US-001
+- What was implemented: Added optional `extraChargedMoves` and `isMegaMove` fields to runtime and sync contracts, validated both fields at the gamemaster boundary, and added valid, malformed, and checked-in dataset coverage.
+- Files changed: `lib/types.ts`, `lib/sync/types.ts`, `lib/sync/validation.ts`, `lib/sync/gamemaster.test.ts`, `progress.txt`
+- Commit message: `feat: US-001 - Validate additional Mega attack data`
+- Auto approval: `disabled`
+- Checks:
+  - `npx tsc --noEmit --incremental false` (pass)
+  - `npm run lint` (pass)
+  - `npx prettier --check lib/types.ts lib/sync/types.ts lib/sync/validation.ts lib/sync/gamemaster.test.ts` (pass)
+  - `npx vitest run lib/sync/gamemaster.test.ts --maxWorkers 1 --no-file-parallelism` (pass, 14 tests)
+  - `npm test` (pass, 88 files and 1056 tests)
+- Implementation agents:
+  - Recommended: `typescript-pro`, `test-automator`
+  - Used: `typescript-pro`; skipped `test-automator` because the standard-mode budget required only the smallest useful domain review and the focused tests were straightforward.
+- Local review:
+  - Reviewer: `ralph-reviewer`
+  - Passes: initial
+  - Findings: none; residual risk recorded that semantic eligibility and move-reference rules remain deferred to US-002.
+  - Review duration and reviewer session ID when available: completed; `ses_fa029688cffeHehOxxNJckY1Tn`
+- Decisions (why):
+  - Kept both fields optional so existing synchronized data remains valid while present-but-malformed values fail validation.
+  - Kept validation structural only; semantic eligibility and move-reference rules belong to US-002.
+- **Learnings for future iterations:**
+  - The gamemaster boundary in `lib/sync/validation.ts` is the authoritative validation point for synchronized Pokemon and move JSON.
+  - Optional synchronized arrays should distinguish omission from invalid `null`, scalar, or non-string elements.
+- Known issues / follow-ups:
+  - None for US-001.
+- Next iteration start:
+  - Implement US-002 eligibility resolution from synchronized tags and move metadata.
+---

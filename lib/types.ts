@@ -72,6 +72,7 @@ export interface Pokemon {
   chargedMoves: string[];
   eliteMoves?: string[];
   legacyMoves?: string[];
+  extraChargedMoves?: string[];
   level25CP?: number;
   tags: string[];
   defaultIVs: {
@@ -111,6 +112,7 @@ export interface Move {
   buffsOpponent?: MoveStatStages;
   buffTarget?: MoveEffectTarget;
   buffApplyChance?: string;
+  isMegaMove?: boolean;
 }
 
 export interface RankedPokemon {
