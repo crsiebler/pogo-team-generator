@@ -4,6 +4,7 @@ import { getBattleFormats } from '@/lib/data/battleFormats';
 import {
   getMovesetVariantManifestPath,
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
   serializeMovesetVariantManifest,
   type MovesetVariantManifest,
   type MovesetVariantManifestCandidate,
@@ -75,6 +76,7 @@ function createPreparedInput(): {
     const manifest: MovesetVariantManifest = {
       metadata: {
         schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+        megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
         policyVersion: 'ranking-evidence-v1',
         formatId: format.id,
         cup: format.cup,
@@ -176,6 +178,8 @@ describe('runtime simulation snapshot preparation', () => {
         'vine_whip--sludge_bomb--power_whip',
       ],
     });
+    expect(snapshot.manifest.megaLevel).toBe(MOVESET_VARIANT_MEGA_LEVEL);
+    expect(snapshot.additionalChargedMoveBySpecies).toEqual([null]);
     expect(snapshot.variants).toEqual([
       [0, 0, 2, 0, 1],
       [0, 1, 3, 0, 1],
@@ -188,6 +192,41 @@ describe('runtime simulation snapshot preparation', () => {
     expect(snapshot.ratings).not.toContain(
       String(RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING),
     );
+  });
+
+  it('preserves a species additional move in the snapshot dictionary', () => {
+    const input = createPreparedInput();
+    const manifests = input.manifests.map((preparedManifest) => {
+      if (preparedManifest.formatId !== 'great-league') {
+        return preparedManifest;
+      }
+      const manifest = JSON.parse(
+        preparedManifest.contents,
+      ) as MovesetVariantManifest;
+      const changedManifest: MovesetVariantManifest = {
+        ...manifest,
+        species: manifest.species.map((species, index) =>
+          index === 0
+            ? { ...species, additionalChargedMove: 'FRENZY_PLANT_PLUS' }
+            : species,
+        ),
+      };
+      return {
+        ...preparedManifest,
+        contents: serializeMovesetVariantManifest(changedManifest),
+      };
+    });
+    const prepared = prepareRuntimeSimulationSnapshots(
+      manifests,
+      input.csvFiles,
+      dependencies,
+    ).find(({ formatId }) => formatId === 'great-league')!;
+    const snapshot = parseRuntimeSimulationSnapshotJson(prepared.contents);
+
+    expect(snapshot.dictionaries.moves).toContain('FRENZY_PLANT_PLUS');
+    expect(snapshot.additionalChargedMoveBySpecies).toEqual([
+      snapshot.dictionaries.moves.indexOf('FRENZY_PLANT_PLUS'),
+    ]);
   });
 
   it('ignores inactive CSVs and produces byte-identical shuffled input', () => {

@@ -5,6 +5,7 @@ import { getBattleFormats } from '@/lib/data/battleFormats';
 import {
   getMovesetVariantManifestPath,
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
   serializeMovesetVariantManifest,
   type MovesetVariantManifest,
   type MovesetVariantManifestCandidate,
@@ -66,6 +67,7 @@ function createPreparedManifests(): readonly PreparedMovesetVariantManifest[] {
     const manifest: MovesetVariantManifest = {
       metadata: {
         schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+        megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
         policyVersion: 'ranking-evidence-v1',
         formatId: format.id,
         cup: format.cup,

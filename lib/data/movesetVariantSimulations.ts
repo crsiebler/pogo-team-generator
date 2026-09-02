@@ -3,6 +3,7 @@ import { parse } from 'csv-parse/sync';
 import { normalizeToChoosableSpeciesId } from './aliases';
 import { getBattleFormatById, type BattleFormatId } from './battleFormats';
 import {
+  MOVESET_VARIANT_MEGA_LEVEL,
   MOVESET_VARIANT_SCENARIOS,
   MovesetVariantManifestValidationError,
   getMovesetVariantManifestPath,
@@ -120,6 +121,7 @@ function readFiniteCsvNumber(value: unknown): number | undefined {
 
 function toMovesetVariant(
   candidate: MovesetVariantManifestCandidate,
+  additionalChargedMove?: string,
 ): MovesetVariant {
   return {
     id: candidate.id,
@@ -127,6 +129,12 @@ function toMovesetVariant(
     chargedMove1: candidate.chargedMove1,
     chargedMove2: candidate.chargedMove2,
     isDefault: candidate.isDefault,
+    ...(additionalChargedMove
+      ? {
+          additionalChargedMove,
+          megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
+        }
+      : {}),
   };
 }
 
@@ -181,7 +189,7 @@ export function createMovesetVariantSimulationLoader(
     } catch (error) {
       const incompatible =
         error instanceof MovesetVariantManifestValidationError &&
-        /^manifest\.metadata\.(schemaVersion|formatId|cup|cp)$/.test(
+        /^manifest\.metadata\.(schemaVersion|megaLevel|formatId|cup|cp)$/.test(
           error.path,
         );
       throw new MovesetVariantSimulationDataError(
@@ -530,7 +538,9 @@ export function createMovesetVariantSimulationLoader(
       for (const candidate of activeCandidates) {
         loadCandidateMatchups(canonicalSpeciesId, candidate.id, formatId);
       }
-      return activeCandidates.map(toMovesetVariant);
+      return activeCandidates.map((candidate) =>
+        toMovesetVariant(candidate, species.additionalChargedMove),
+      );
     },
     getMatchupResult: (
       speciesId: string,

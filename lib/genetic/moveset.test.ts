@@ -5,6 +5,7 @@ import {
   getAssignedMovesetVariantId,
   getRecommendedMovesetForPokemon,
   getSimulationBackedMovesetForTeam,
+  parseRosterMovesetAssignment,
   resolveRankedDefaultRosterMovesetAssignment,
   resolveRosterMovesetAssignment,
   RosterMovesetAssignmentValidationError,
@@ -246,6 +247,85 @@ describe('roster moveset assignments', () => {
         isDefault: false,
       }),
     ).not.toBe(baseline);
+  });
+
+  it('keeps selectable variant identity stable while fingerprinting Mega metadata', () => {
+    const additionalMoveVariant: MovesetVariant = {
+      ...defaultVariant,
+      additionalChargedMove: 'MEGA_DRAIN',
+      megaLevel: 4,
+    };
+    const baseline = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      authorityBySpeciesId: { golisopod: manifestPolicy },
+      variantsBySpeciesId: { golisopod: defaultVariant },
+    });
+    const withAdditionalMove = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      authorityBySpeciesId: { golisopod: manifestPolicy },
+      variantsBySpeciesId: { golisopod: additionalMoveVariant },
+    });
+
+    expect(additionalMoveVariant.id).toBe(defaultVariant.id);
+    expect(withAdditionalMove.fingerprint).not.toBe(baseline.fingerprint);
+  });
+
+  it('preserves Mega metadata when parsing and rejects legacy fingerprints', () => {
+    const assignment = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      authorityBySpeciesId: { golisopod: manifestPolicy },
+      variantsBySpeciesId: {
+        golisopod: {
+          ...defaultVariant,
+          additionalChargedMove: 'MEGA_DRAIN',
+          megaLevel: 4,
+        },
+      },
+    });
+    const serialized = JSON.parse(JSON.stringify(assignment)) as unknown;
+
+    expect(
+      parseRosterMovesetAssignment(serialized, ['golisopod'], 'great-league')
+        .variantsBySpeciesId.golisopod,
+    ).toMatchObject({
+      additionalChargedMove: 'MEGA_DRAIN',
+      megaLevel: 4,
+    });
+    expect(() =>
+      parseRosterMovesetAssignment(
+        {
+          ...(serialized as Record<string, unknown>),
+          fingerprint: assignment.fingerprint.replace(
+            'roster-moveset-assignment-v3',
+            'roster-moveset-assignment-v2',
+          ),
+        },
+        ['golisopod'],
+        'great-league',
+      ),
+    ).toThrowError(RosterMovesetAssignmentValidationError);
+  });
+
+  it('rejects an inconsistent serialized Mega level', () => {
+    const assignment = createRosterMovesetAssignment({
+      formatId: 'great-league',
+      authorityBySpeciesId: { golisopod: manifestPolicy },
+      variantsBySpeciesId: {
+        golisopod: {
+          ...defaultVariant,
+          additionalChargedMove: 'MEGA_DRAIN',
+          megaLevel: 4,
+        },
+      },
+    });
+    const serialized = JSON.parse(JSON.stringify(assignment)) as {
+      variantsBySpeciesId: Record<string, Record<string, unknown>>;
+    } & Record<string, unknown>;
+    serialized.variantsBySpeciesId.golisopod!.megaLevel = 3;
+
+    expect(() =>
+      parseRosterMovesetAssignment(serialized, ['golisopod'], 'great-league'),
+    ).toThrowError(RosterMovesetAssignmentValidationError);
   });
 
   it('includes each species authority in mixed-assignment fingerprints', () => {
@@ -512,6 +592,31 @@ describe('roster moveset assignments', () => {
               'golisopod',
             );
           },
+          getPokemon: (speciesId: string) => pokemonById.get(speciesId),
+          getRankedDefault: () => defaultVariant,
+        }),
+      ).toThrowError(RosterMovesetAssignmentValidationError);
+    });
+
+    it('rejects manifest assignments whose Mega metadata is no longer active', () => {
+      const assignedVariant: MovesetVariant = {
+        ...alternateVariant,
+        additionalChargedMove: 'MEGA_DRAIN',
+        megaLevel: 4,
+      };
+      const assignment = createAuthorityAssignment(
+        { golisopod: manifestPolicy },
+        { golisopod: assignedVariant },
+      );
+
+      expect(() =>
+        validateRosterMovesetAssignmentAuthority(assignment, {
+          ensureSimulationData: () => undefined,
+          getManifestPolicyIdentity: () => ({
+            schemaVersion: 1,
+            policyVersion: 'ranking-evidence-v1',
+          }),
+          getActiveVariants: () => [alternateVariant],
           getPokemon: (speciesId: string) => pokemonById.get(speciesId),
           getRankedDefault: () => defaultVariant,
         }),

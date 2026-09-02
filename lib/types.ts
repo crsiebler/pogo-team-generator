@@ -33,6 +33,10 @@ export type MovesetAcquisitionRequirements = Readonly<{
 export interface MovesetVariant extends Moveset {
   readonly id: MovesetVariantId;
   readonly isDefault: boolean;
+  /** Fixed species-specific Mega move, excluded from variant identity. */
+  readonly additionalChargedMove?: string;
+  /** Fixed Mega level used when the additional move is active. */
+  readonly megaLevel?: 4;
 }
 
 /** Policy authority used to resolve one species in a fixed roster assignment. */

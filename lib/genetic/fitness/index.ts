@@ -79,7 +79,7 @@ const FAST_LINEUP_AWARE_CONFIG: LineupAwareFitnessConfig = {
   includeDiagnostics: false,
   recommendationLimit: 0,
 };
-const LINEUP_AWARE_CACHE_VERSION = 2;
+const LINEUP_AWARE_CACHE_VERSION = 3;
 
 /** Read-only cache counters for one cache namespace. */
 export interface LineupAwareFitnessCacheStats {

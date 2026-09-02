@@ -26,6 +26,284 @@ function isOverallRankingPath(filePath: string): boolean {
 }
 
 describe('generateSimulations', () => {
+  it('sets Mega Level 4 and the fixed additional move for eligible targets and opponents', () => {
+    const rankings = [
+      {
+        speciesId: 'charizard_mega_x',
+        moveset: ['DRAGON_BREATH', 'BLAST_BURN', 'DRAGON_CLAW'],
+      },
+      {
+        speciesId: 'venusaur_mega',
+        moveset: ['VINE_WHIP', 'FRENZY_PLANT', 'SLUDGE_BOMB'],
+      },
+    ];
+    const targetStates: Array<{
+      speciesId: string;
+      megaLevel?: number;
+      moveset: Array<string | undefined>;
+    }> = [];
+    let targets: Array<{
+      speciesId: string;
+      megaLevel?: number;
+      moveset: Array<string | undefined>;
+    }> = [];
+    const context = vm.createContext({
+      __flushPvpokeAjax: () => undefined,
+      GameMaster: {
+        getInstance: () => ({
+          rankings: { megaoverall1500: rankings },
+          loadRankingData: () => undefined,
+          getCupById: (cup: string) => ({ name: cup }),
+          generateFilteredPokemonList: () => [
+            new (context.Pokemon as new (speciesId: string) => unknown)(
+              'charizard_mega_x',
+            ),
+          ],
+        }),
+      },
+      Battle: function Battle(this: Record<string, unknown>) {
+        this.setCP = () => undefined;
+        this.setCup = () => undefined;
+        this.setCustomCup = () => undefined;
+        return this;
+      },
+      RankerMaster: {
+        getInstance: () => ({
+          applySettings: () => undefined,
+          setShieldMode: () => undefined,
+          setTargets: (nextTargets: typeof targets) => {
+            targets = nextTargets;
+          },
+          setRecommendMoveUsage: () => undefined,
+          rank: (team: typeof targetStates) => {
+            const selected = team[0];
+            targetStates.push(selected);
+            return {
+              csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\n${targets
+                .map(
+                  (target) =>
+                    `${target.speciesId} ${target.moveset.filter(Boolean).join('/')},500,0,0`,
+                )
+                .join('\n')}\n`,
+            };
+          },
+        }),
+      },
+      getDefaultMultiBattleSettings: () => ({ shields: 0 }),
+      Pokemon: function Pokemon(
+        this: {
+          speciesId: string;
+          megaLevel?: number;
+          moveset: Array<string | undefined>;
+          initialize: () => void;
+          selectRecommendedMoveset: () => void;
+          selectMove: (
+            moveType: 'fast' | 'charged' | 'extra-charged',
+            moveId: string,
+            index?: number,
+          ) => void;
+          setMegaLevel: (level: number) => void;
+          resetMoves: () => void;
+        },
+        speciesId: string,
+      ) {
+        this.speciesId = speciesId;
+        this.moveset = [];
+        this.initialize = () => undefined;
+        this.selectRecommendedMoveset = () => undefined;
+        this.selectMove = (moveType, moveId, index = 0) => {
+          this.moveset[moveType === 'fast' ? 0 : index + 1] = moveId;
+        };
+        this.setMegaLevel = (level) => {
+          this.megaLevel = level;
+        };
+        this.resetMoves = () => undefined;
+      },
+    });
+
+    generateScenarioCsvFromEngine(
+      { context },
+      {
+        id: 'mega-great-league',
+        label: 'Mega Great League',
+        cup: 'mega',
+        cp: 1500,
+      },
+      'charizard_mega_x',
+      0,
+      {
+        fastMove: 'DRAGON_BREATH',
+        chargedMove1: 'BLAST_BURN',
+        chargedMove2: 'DRAGON_CLAW',
+        additionalChargedMove: 'DRAGON_CLAW_PLUS',
+      },
+      {
+        charizard_mega_x: {
+          fastMove: 'DRAGON_BREATH',
+          chargedMove1: 'BLAST_BURN',
+          chargedMove2: 'DRAGON_CLAW',
+          additionalChargedMove: 'DRAGON_CLAW_PLUS',
+        },
+        venusaur_mega: {
+          fastMove: 'VINE_WHIP',
+          chargedMove1: 'FRENZY_PLANT',
+          chargedMove2: 'SLUDGE_BOMB',
+          additionalChargedMove: 'FRENZY_PLANT_PLUS',
+        },
+      },
+    );
+
+    expect(targetStates).toEqual([
+      expect.objectContaining({
+        speciesId: 'charizard_mega_x',
+        megaLevel: 4,
+        moveset: [
+          'DRAGON_BREATH',
+          'BLAST_BURN',
+          'DRAGON_CLAW',
+          'DRAGON_CLAW_PLUS',
+        ],
+      }),
+    ]);
+    expect(targets).toEqual([
+      expect.objectContaining({
+        speciesId: 'charizard_mega_x',
+        megaLevel: 4,
+        moveset: [
+          'DRAGON_BREATH',
+          'BLAST_BURN',
+          'DRAGON_CLAW',
+          'DRAGON_CLAW_PLUS',
+        ],
+      }),
+      expect.objectContaining({
+        speciesId: 'venusaur_mega',
+        megaLevel: 4,
+        moveset: [
+          'VINE_WHIP',
+          'FRENZY_PLANT',
+          'SLUDGE_BOMB',
+          'FRENZY_PLANT_PLUS',
+        ],
+      }),
+    ]);
+  });
+
+  it('does not select ranking fourth moves for ordinary Mega or non-Mega Pokemon', () => {
+    const rankings = [
+      {
+        speciesId: 'camerupt_mega',
+        moveset: ['EMBER', 'EARTH_POWER', 'OVERHEAT', 'ERUPTION_PLUS'],
+      },
+      {
+        speciesId: 'cramorant',
+        moveset: ['WATER_GUN', 'SURF', 'HURRICANE', 'ROOST'],
+      },
+    ];
+    const selectedMovesets: Array<Array<string | undefined>> = [];
+    const megaLevelCalls: Array<{ speciesId: string; level: number }> = [];
+    let targets: Array<{ moveset: Array<string | undefined> }> = [];
+    const context = vm.createContext({
+      __flushPvpokeAjax: () => undefined,
+      GameMaster: {
+        getInstance: () => ({
+          rankings: { megaoverall1500: rankings },
+          loadRankingData: () => undefined,
+          getCupById: (cup: string) => ({ name: cup }),
+          generateFilteredPokemonList: () => [],
+        }),
+      },
+      Battle: function Battle(this: Record<string, unknown>) {
+        this.setCP = () => undefined;
+        this.setCup = () => undefined;
+        this.setCustomCup = () => undefined;
+        return this;
+      },
+      RankerMaster: {
+        getInstance: () => ({
+          applySettings: () => undefined,
+          setShieldMode: () => undefined,
+          setTargets: (nextTargets: typeof targets) => {
+            targets = nextTargets;
+          },
+          setRecommendMoveUsage: () => undefined,
+          rank: () => {
+            selectedMovesets.push([]);
+            return {
+              csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\n${targets
+                .map((target) => target.moveset.join('/'))
+                .join('\n')},500,0,0\n`,
+            };
+          },
+        }),
+      },
+      getDefaultMultiBattleSettings: () => ({ shields: 0 }),
+      Pokemon: function Pokemon(
+        this: {
+          speciesId: string;
+          moveset: Array<string | undefined>;
+          initialize: () => void;
+          selectRecommendedMoveset: () => void;
+          selectMove: (
+            moveType: 'fast' | 'charged' | 'extra-charged',
+            moveId: string,
+            index?: number,
+          ) => void;
+          setMegaLevel: (level: number) => void;
+          resetMoves: () => void;
+        },
+        speciesId: string,
+      ) {
+        this.speciesId = speciesId;
+        this.moveset = [];
+        this.initialize = () => undefined;
+        this.selectRecommendedMoveset = () => undefined;
+        this.selectMove = (moveType, moveId, index = 0) => {
+          this.moveset[moveType === 'fast' ? 0 : index + 1] = moveId;
+        };
+        this.setMegaLevel = (level) => {
+          megaLevelCalls.push({ speciesId, level });
+        };
+        this.resetMoves = () => undefined;
+      },
+    });
+
+    generateScenarioCsvFromEngine(
+      { context },
+      {
+        id: 'mega-great-league',
+        label: 'Mega Great League',
+        cup: 'mega',
+        cp: 1500,
+      },
+      'camerupt_mega',
+      0,
+      {
+        fastMove: 'EMBER',
+        chargedMove1: 'EARTH_POWER',
+        chargedMove2: 'OVERHEAT',
+      },
+      {
+        camerupt_mega: {
+          fastMove: 'EMBER',
+          chargedMove1: 'EARTH_POWER',
+          chargedMove2: 'OVERHEAT',
+        },
+        cramorant: {
+          fastMove: 'WATER_GUN',
+          chargedMove1: 'SURF',
+          chargedMove2: 'HURRICANE',
+        },
+      },
+    );
+
+    expect(targets.every(({ moveset }) => moveset.length > 0)).toBe(true);
+    expect(targets).toHaveLength(2);
+    expect(targets[0]?.moveset).toEqual(['EMBER', 'EARTH_POWER', 'OVERHEAT']);
+    expect(targets[1]?.moveset).toEqual(['WATER_GUN', 'SURF', 'HURRICANE']);
+    expect(megaLevelCalls).toEqual([]);
+  });
+
   it('forces the selected Pokemon onto the format-specific recommended moveset', () => {
     const context = vm.createContext({
       __flushPvpokeAjax: () => undefined,
@@ -68,7 +346,7 @@ describe('generateSimulations', () => {
             };
 
             return {
-              csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\nDecidueye ${selectedPokemon.fastMove.moveId}/${selectedPokemon.chargedMoves[0].moveId}/${selectedPokemon.chargedMoves[1].moveId}/${selectedPokemon.chargedMoves[2].moveId},500,0,0\n`,
+              csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\nDecidueye ${selectedPokemon.fastMove.moveId}/${selectedPokemon.chargedMoves[0].moveId}/${selectedPokemon.chargedMoves[1].moveId},500,0,0\n`,
             };
           },
         }),
@@ -127,9 +405,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(csvText).toContain(
-      'Decidueye ASTONISH/FRENZY_PLANT/SPIRIT_SHACKLE/SPIRIT_SHACKLE_PLUS',
-    );
+    expect(csvText).toContain('Decidueye ASTONISH/FRENZY_PLANT/SPIRIT_SHACKLE');
   });
 
   it('forces sanitized defaults onto every ranked opponent', () => {

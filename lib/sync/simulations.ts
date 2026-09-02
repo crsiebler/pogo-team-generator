@@ -8,6 +8,7 @@ import { resolvePvpokeSourcePath } from './source';
 import { SyncRunOptions, SimulationData, SimulationsCsv } from './types';
 import { logError } from './utils';
 import { logValidationErrors, validateSimulationsCsv } from './validation';
+import { resolveAdditionalChargedMove } from '@/lib/data/additionalMegaMove';
 import {
   moveNameToMoveId,
   normalizeToChoosableSpeciesId,
@@ -20,6 +21,7 @@ import {
 import { createMoveAvailabilityResolver } from '@/lib/data/moveAvailability';
 import {
   MAX_MOVESET_CANDIDATES,
+  MOVESET_VARIANT_MEGA_LEVEL,
   MOVESET_VARIANT_SCENARIOS,
 } from '@/lib/data/movesetVariantManifest';
 import { getMovesetVariantId } from '@/lib/data/movesetVariants';
@@ -48,6 +50,7 @@ interface RecommendedMoveIds {
   fastMove: string;
   chargedMove1: string;
   chargedMove2: string | null;
+  additionalChargedMove?: string;
 }
 
 type RecommendedMovesBySpeciesId = Readonly<Record<string, RecommendedMoveIds>>;
@@ -70,6 +73,8 @@ interface SimulationPokemonData {
   chargedMoves: string[];
   eliteMoves?: string[];
   legacyMoves?: string[];
+  extraChargedMoves?: string[];
+  tags?: string[];
   released: boolean;
 }
 
@@ -77,6 +82,7 @@ interface SimulationMoveData {
   moveId: string;
   name: string;
   energyGain: number;
+  isMegaMove?: boolean;
 }
 
 interface PvpokeVmRuntime {
@@ -355,6 +361,11 @@ function getRecommendedMoveIds(
     return undefined;
   }
 
+  const additionalChargedMove = resolveAdditionalChargedMove(
+    pokemon,
+    (moveId) => moveById.get(moveId),
+  );
+
   return {
     fastMove: resolveMoveId(ranking['Fast Move'], 'fast', pokemon, moveById),
     chargedMove1: resolveMoveId(
@@ -366,6 +377,7 @@ function getRecommendedMoveIds(
     chargedMove2: ranking['Charged Move 2']
       ? resolveMoveId(ranking['Charged Move 2'], 'charged', pokemon, moveById)
       : null,
+    ...(additionalChargedMove ? { additionalChargedMove } : {}),
   };
 }
 
@@ -839,6 +851,9 @@ export function generateScenarioCsvFromEngine(
     recommendedMoves?.chargedMove1 ?? null;
   runtime.context.__selectedChargedMove2 =
     recommendedMoves?.chargedMove2 ?? null;
+  runtime.context.__selectedAdditionalChargedMove =
+    recommendedMoves?.additionalChargedMove ?? null;
+  runtime.context.__megaLevel = MOVESET_VARIANT_MEGA_LEVEL;
   runtime.context.__recommendedMovesBySpeciesId = recommendedMovesBySpeciesId;
   runtime.context.__normalizeToChoosableSpeciesId =
     normalizeToChoosableSpeciesId;
@@ -865,12 +880,13 @@ export function generateScenarioCsvFromEngine(
           continue;
         }
 
-        const extraChargedMove = ranking.moveset?.[3];
         ranking.moveset = [
           recommendedMoves.fastMove,
           recommendedMoves.chargedMove1,
           recommendedMoves.chargedMove2,
-          ...(extraChargedMove ? [extraChargedMove] : []),
+          ...(recommendedMoves.additionalChargedMove
+            ? [recommendedMoves.additionalChargedMove]
+            : []),
         ];
         const existing = sanitizedRankingsBySpeciesId.get(canonicalSpeciesId);
         if (!existing || ranking.speciesId === canonicalSpeciesId) {
@@ -920,11 +936,21 @@ export function generateScenarioCsvFromEngine(
 
         const pokemon = new Pokemon(canonicalSpeciesId, 0, battle);
         pokemon.initialize(globalThis.__leagueCp);
+        if (
+          recommendedMoves.additionalChargedMove &&
+          typeof pokemon.setMegaLevel === 'function'
+        ) {
+           pokemon.setMegaLevel(globalThis.__megaLevel);
+        }
         pokemon.selectMove('fast', recommendedMoves.fastMove);
         pokemon.selectMove('charged', recommendedMoves.chargedMove1, 0);
         pokemon.selectMove('charged', recommendedMoves.chargedMove2, 1);
-        if (ranking.moveset[3]) {
-          pokemon.selectMove('extra-charged', ranking.moveset[3], 2);
+        if (recommendedMoves.additionalChargedMove) {
+          pokemon.selectMove(
+            'extra-charged',
+            recommendedMoves.additionalChargedMove,
+            2,
+          );
         }
         pokemon.resetMoves();
         sanitizedTargetsBySpeciesId.set(canonicalSpeciesId, pokemon);
@@ -934,11 +960,13 @@ export function generateScenarioCsvFromEngine(
         eligiblePokemon.find((pokemon) => pokemon.speciesId === globalThis.__speciesId) ||
         new Pokemon(globalThis.__speciesId, 0, battle);
       selectedPokemon.initialize(globalThis.__leagueCp);
+      if (
+        globalThis.__selectedAdditionalChargedMove &&
+        typeof selectedPokemon.setMegaLevel === 'function'
+      ) {
+           selectedPokemon.setMegaLevel(globalThis.__megaLevel);
+      }
       selectedPokemon.selectRecommendedMoveset('overall');
-      const selectedRanking = sanitizedRankingsBySpeciesId.get(
-        globalThis.__normalizeToChoosableSpeciesId(globalThis.__speciesId)
-      );
-
       if (globalThis.__selectedFastMove) {
         selectedPokemon.selectMove('fast', globalThis.__selectedFastMove);
       }
@@ -951,8 +979,12 @@ export function generateScenarioCsvFromEngine(
         selectedPokemon.selectMove('charged', globalThis.__selectedChargedMove2, 1);
       }
 
-      if (selectedRanking?.moveset[3]) {
-        selectedPokemon.selectMove('extra-charged', selectedRanking.moveset[3], 2);
+      if (globalThis.__selectedAdditionalChargedMove) {
+        selectedPokemon.selectMove(
+          'extra-charged',
+          globalThis.__selectedAdditionalChargedMove,
+          2,
+        );
       }
 
       selectedPokemon.resetMoves();

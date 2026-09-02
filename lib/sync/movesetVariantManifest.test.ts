@@ -601,12 +601,14 @@ describe('moveset variant manifest publication', () => {
     const snapshotFormat = { id: format.id, cup: format.cup, cp: format.cp };
     const snapshotManifest = {
       schemaVersion: manifestValue.metadata.schemaVersion,
+      megaLevel: manifestValue.metadata.megaLevel,
       policyVersion: manifestValue.metadata.policyVersion,
       digest: createMovesetVariantSourceDigest('manifest', manifestContents)
         .digest,
       sourceDigests: manifestValue.metadata.sourceDigests,
     };
     const defaultVariantBySpecies = [0] as const;
+    const additionalChargedMoveBySpecies = [null] as const;
     const opponentIterationOrderBySpecies = [[0]] as const;
     const encoding = {
       kind: 'uint16-le-base64',
@@ -644,6 +646,7 @@ describe('moveset variant manifest publication', () => {
               dictionaries,
               variants,
               defaultVariantBySpecies,
+              additionalChargedMoveBySpecies,
               opponentIterationOrderBySpecies,
               shape,
               ratings,
@@ -652,6 +655,7 @@ describe('moveset variant manifest publication', () => {
           dictionaries,
           variants,
           defaultVariantBySpecies,
+          additionalChargedMoveBySpecies,
           opponentIterationOrderBySpecies,
           shape,
           ratings,
@@ -667,6 +671,7 @@ describe('moveset variant manifest publication', () => {
     cp: 1500,
     speciesId: 'bulbasaur',
     pvpokeScorePrior: 90,
+    additionalChargedMove: 'FRENZY_PLANT_PLUS',
     retainedFastMoves: ['VINE_WHIP', 'TACKLE'],
     retainedChargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB'],
     rejections: [],
@@ -772,6 +777,7 @@ describe('moveset variant manifest publication', () => {
     expect(manifest.species).toEqual([
       expect.objectContaining({
         speciesId: 'bulbasaur',
+        additionalChargedMove: 'FRENZY_PLANT_PLUS',
         defaultVariantId: defaultId,
         candidates: [
           expect.objectContaining({

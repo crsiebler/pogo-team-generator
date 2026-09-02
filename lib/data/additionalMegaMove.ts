@@ -3,13 +3,13 @@ import { getPokemonBySpeciesId } from './pokemon';
 import type { Move, Pokemon } from '@/lib/types';
 
 /** Pokemon fields used to resolve a fixed additional charged move. */
-export type AdditionalChargedMovePokemon = Pick<
-  Pokemon,
-  'tags' | 'extraChargedMoves'
->;
+export type AdditionalChargedMovePokemon = Pick<Pokemon, 'extraChargedMoves'> &
+  Partial<Pick<Pokemon, 'tags'>>;
 
 /** Move lookup used by additional charged move resolution. */
-export type AdditionalChargedMoveLookup = (moveId: string) => Move | undefined;
+export type AdditionalChargedMoveLookup = (
+  moveId: string,
+) => Pick<Move, 'isMegaMove'> | undefined;
 
 /**
  * Resolve the fixed additional charged move for one eligible Mega form.

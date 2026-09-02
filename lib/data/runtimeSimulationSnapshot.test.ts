@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { getBattleFormatById } from './battleFormats';
+import { MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION } from './movesetVariantManifest';
 import {
   RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,
   RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION,
   createRuntimeSimulationSnapshotActiveRatingsDigest,
   decodeRuntimeSimulationSnapshotRatings,
   getRuntimeSimulationSnapshotPath,
+  parseRuntimeSimulationSnapshot,
   parseRuntimeSimulationSnapshotJson,
   serializeRuntimeSimulationSnapshot,
   type RuntimeSimulationSnapshot,
@@ -32,12 +34,14 @@ function createSnapshot(): RuntimeSimulationSnapshot {
   const variants = [[0, 0, 2, 0, 1]] as const;
   const format = { id: 'great-league', cup: 'all', cp: 1500 } as const;
   const manifest = {
-    schemaVersion: 1 as const,
+    schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+    megaLevel: 4 as const,
     policyVersion: 'ranking-evidence-v1',
     digest,
     sourceDigests: [{ key: 'fixture', algorithm: 'sha256' as const, digest }],
   };
   const defaultVariantBySpecies = [0] as const;
+  const additionalChargedMoveBySpecies = [null] as const;
   const opponentIterationOrderBySpecies = [[0]] as const;
   const encoding = {
     kind: 'uint16-le-base64',
@@ -63,6 +67,7 @@ function createSnapshot(): RuntimeSimulationSnapshot {
       dictionaries,
       variants,
       defaultVariantBySpecies,
+      additionalChargedMoveBySpecies,
       opponentIterationOrderBySpecies,
       shape,
       ratings: encodedRatings,
@@ -71,6 +76,7 @@ function createSnapshot(): RuntimeSimulationSnapshot {
     dictionaries,
     variants,
     defaultVariantBySpecies,
+    additionalChargedMoveBySpecies,
     opponentIterationOrderBySpecies,
     shape,
     ratings: encodedRatings,
@@ -151,7 +157,7 @@ describe('runtime simulation snapshot contract', () => {
     } as unknown as RuntimeSimulationSnapshot;
     const changedSchema = {
       ...snapshot,
-      schemaVersion: 3,
+      schemaVersion: 4,
     } as unknown as RuntimeSimulationSnapshot;
 
     expect(
@@ -160,6 +166,48 @@ describe('runtime simulation snapshot contract', () => {
     expect(
       createRuntimeSimulationSnapshotActiveRatingsDigest(changedSchema),
     ).not.toBe(snapshot.activeRatingsDigest);
+  });
+
+  it('binds additional-move metadata into active rating identity', () => {
+    const snapshot = createSnapshot();
+    const dictionaries = {
+      ...snapshot.dictionaries,
+      moves: [...snapshot.dictionaries.moves, 'MEGA_PLUS'].sort(),
+    };
+    const withAdditional = {
+      ...snapshot,
+      dictionaries,
+      additionalChargedMoveBySpecies: [dictionaries.moves.indexOf('MEGA_PLUS')],
+    } as unknown as RuntimeSimulationSnapshot;
+
+    expect(
+      createRuntimeSimulationSnapshotActiveRatingsDigest(withAdditional),
+    ).not.toBe(snapshot.activeRatingsDigest);
+  });
+
+  it('rejects missing, invalid, and selectable additional-move references', () => {
+    const snapshot = createSnapshot();
+    expect(() =>
+      parseRuntimeSimulationSnapshotJson(
+        JSON.stringify({ ...snapshot, additionalChargedMoveBySpecies: [] }),
+      ),
+    ).toThrow(/additionalChargedMoveBySpecies/i);
+
+    const invalidReference = {
+      ...snapshot,
+      additionalChargedMoveBySpecies: [99],
+    } as unknown as RuntimeSimulationSnapshot;
+    expect(() => parseRuntimeSimulationSnapshot(invalidReference)).toThrow(
+      /additionalChargedMoveBySpecies/i,
+    );
+
+    const selectableReference = {
+      ...snapshot,
+      additionalChargedMoveBySpecies: [0],
+    } as unknown as RuntimeSimulationSnapshot;
+    expect(() => parseRuntimeSimulationSnapshot(selectableReference)).toThrow(
+      /selectable charged moves/i,
+    );
   });
 
   it('derives one fixed snapshot path from the battle-format catalog', () => {

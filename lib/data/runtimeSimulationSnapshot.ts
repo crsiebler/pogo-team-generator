@@ -7,6 +7,7 @@ import {
 } from './battleFormats';
 import {
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
   MOVESET_VARIANT_SCENARIOS,
   type MovesetVariantSourceDigest,
 } from './movesetVariantManifest';
@@ -14,7 +15,7 @@ import { getMovesetVariantId } from './movesetVariants';
 import type { MovesetVariantId } from '@/lib/types';
 
 /** Current repository-owned compact simulation snapshot schema version. */
-export const RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION = 2 as const;
+export const RUNTIME_SIMULATION_SNAPSHOT_SCHEMA_VERSION = 3 as const;
 
 /** Sentinel used when an explicit variant/opponent/scenario row is unavailable. */
 export const RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING = 0xffff;
@@ -39,6 +40,7 @@ export function getRuntimeSimulationSnapshotPath(format: BattleFormat): string {
 /** Manifest identity retained by one compact runtime simulation snapshot. */
 export interface RuntimeSimulationSnapshotManifestIdentity {
   readonly schemaVersion: typeof MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION;
+  readonly megaLevel: typeof MOVESET_VARIANT_MEGA_LEVEL;
   readonly policyVersion: string;
   readonly digest: string;
   readonly sourceDigests: readonly MovesetVariantSourceDigest[];
@@ -90,6 +92,7 @@ export interface RuntimeSimulationSnapshot {
   readonly dictionaries: RuntimeSimulationSnapshotDictionaries;
   readonly variants: readonly RuntimeSimulationSnapshotVariant[];
   readonly defaultVariantBySpecies: readonly number[];
+  readonly additionalChargedMoveBySpecies: readonly (number | null)[];
   readonly opponentIterationOrderBySpecies: readonly (readonly number[])[];
   readonly shape: readonly [
     variantCount: number,
@@ -109,6 +112,7 @@ export type RuntimeSimulationSnapshotActiveRatingsIdentity = Pick<
   | 'dictionaries'
   | 'variants'
   | 'defaultVariantBySpecies'
+  | 'additionalChargedMoveBySpecies'
   | 'opponentIterationOrderBySpecies'
   | 'shape'
   | 'ratings'
@@ -184,6 +188,7 @@ export function createRuntimeSimulationSnapshotActiveRatingsDigest(
         dictionaries: identity.dictionaries,
         variants: identity.variants,
         defaultVariantBySpecies: identity.defaultVariantBySpecies,
+        additionalChargedMoveBySpecies: identity.additionalChargedMoveBySpecies,
         opponentIterationOrderBySpecies:
           identity.opponentIterationOrderBySpecies,
         shape: identity.shape,
@@ -273,8 +278,15 @@ function readManifestIdentity(
       `must be ${MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION}`,
     );
   }
+  if (record.megaLevel !== MOVESET_VARIANT_MEGA_LEVEL) {
+    fail(
+      'snapshot.manifest.megaLevel',
+      `must be ${MOVESET_VARIANT_MEGA_LEVEL}`,
+    );
+  }
   return {
     schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+    megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
     policyVersion: readString(
       record.policyVersion,
       'snapshot.manifest.policyVersion',
@@ -447,6 +459,43 @@ function readDefaults(
   });
 }
 
+function readAdditionalChargedMoves(
+  value: unknown,
+  speciesCount: number,
+  dictionaries: RuntimeSimulationSnapshotDictionaries,
+  variants: readonly RuntimeSimulationSnapshotVariant[],
+): (number | null)[] {
+  if (!Array.isArray(value) || value.length !== speciesCount) {
+    fail(
+      'snapshot.additionalChargedMoveBySpecies',
+      'must contain one nullable move index per species',
+    );
+  }
+  return value.map((entry, speciesIndex) => {
+    if (entry === null) {
+      return null;
+    }
+    const moveIndex = readBoundedIndex(
+      entry,
+      `snapshot.additionalChargedMoveBySpecies[${speciesIndex}]`,
+      dictionaries.moves.length,
+    );
+    const selectableMoveIndexes = variants
+      .filter(([variantSpeciesIndex]) => variantSpeciesIndex === speciesIndex)
+      .flatMap(([, , , chargedMove1Index, chargedMove2Index]) => [
+        chargedMove1Index,
+        chargedMove2Index,
+      ]);
+    if (selectableMoveIndexes.includes(moveIndex)) {
+      fail(
+        `snapshot.additionalChargedMoveBySpecies[${speciesIndex}]`,
+        'must be distinct from selectable charged moves',
+      );
+    }
+    return moveIndex;
+  });
+}
+
 function readOpponentIterationOrderBySpecies(
   value: unknown,
   speciesCount: number,
@@ -581,6 +630,12 @@ export function parseRuntimeSimulationSnapshot(
     dictionaries.species.length,
     variants,
   );
+  const additionalChargedMoveBySpecies = readAdditionalChargedMoves(
+    record.additionalChargedMoveBySpecies,
+    dictionaries.species.length,
+    dictionaries,
+    variants,
+  );
   const opponentIterationOrderBySpecies = readOpponentIterationOrderBySpecies(
     record.opponentIterationOrderBySpecies,
     dictionaries.species.length,
@@ -612,6 +667,7 @@ export function parseRuntimeSimulationSnapshot(
       dictionaries,
       variants,
       defaultVariantBySpecies,
+      additionalChargedMoveBySpecies,
       opponentIterationOrderBySpecies,
       shape,
       ratings,
@@ -631,6 +687,7 @@ export function parseRuntimeSimulationSnapshot(
     dictionaries,
     variants,
     defaultVariantBySpecies,
+    additionalChargedMoveBySpecies,
     opponentIterationOrderBySpecies,
     shape,
     ratings,

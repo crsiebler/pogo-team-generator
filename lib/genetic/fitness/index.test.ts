@@ -191,6 +191,7 @@ describe('lineup-aware fitness entry point', () => {
 
   it('builds deterministic format-scoped cache keys for lineup scoring', () => {
     const lineup = { lead: 'a', switch: 'b', closer: 'c' };
+    expect(JSON.parse(getLineupAwareFitnessCacheKey(lineup))[0]).toBe(3);
 
     expect(
       getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-tsuki-cup'),

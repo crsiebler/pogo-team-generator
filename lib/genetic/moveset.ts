@@ -212,7 +212,9 @@ function matchesMovesetVariant(
     actual.fastMove === expected.fastMove &&
     actual.chargedMove1 === expected.chargedMove1 &&
     actual.chargedMove2 === expected.chargedMove2 &&
-    actual.isDefault === expected.isDefault
+    actual.isDefault === expected.isDefault &&
+    actual.additionalChargedMove === expected.additionalChargedMove &&
+    actual.megaLevel === expected.megaLevel
   );
 }
 
@@ -362,7 +364,7 @@ export function createRosterMovesetAssignment(
     ),
   );
   const fingerprint = JSON.stringify([
-    'roster-moveset-assignment-v2',
+    'roster-moveset-assignment-v3',
     input.formatId,
     ...sortedVariants.map(([speciesId, variant]) => [
       speciesId,
@@ -374,6 +376,8 @@ export function createRosterMovesetAssignment(
       variant.chargedMove1,
       variant.chargedMove2,
       variant.isDefault,
+      variant.additionalChargedMove ?? null,
+      variant.megaLevel ?? null,
     ]),
   ]);
 
@@ -576,6 +580,37 @@ export function parseRosterMovesetAssignment(
       );
     }
     validateMoveSlots(speciesId, moveset);
+    const rawAdditionalChargedMove = candidate.additionalChargedMove;
+    let additionalChargedMove: string | undefined;
+    if (rawAdditionalChargedMove !== undefined) {
+      additionalChargedMove = readBoundedString(
+        rawAdditionalChargedMove,
+        `${speciesId}.additionalChargedMove`,
+      );
+      validateCanonicalMoveId(
+        additionalChargedMove,
+        `${speciesId}.additionalChargedMove`,
+      );
+      if (
+        additionalChargedMove === moveset.chargedMove1 ||
+        additionalChargedMove === moveset.chargedMove2
+      ) {
+        throw new RosterMovesetAssignmentValidationError(
+          `Roster moveset assignment additional move for ${speciesId} must be distinct from selectable charged moves.`,
+        );
+      }
+    }
+    const megaLevel = candidate.megaLevel;
+    if (megaLevel !== undefined && megaLevel !== 4) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment Mega level for ${speciesId} must be 4 when present.`,
+      );
+    }
+    if ((additionalChargedMove === undefined) !== (megaLevel === undefined)) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment additional move and Mega level for ${speciesId} must be provided together.`,
+      );
+    }
     const id = readBoundedString(candidate.id, `${speciesId}.id`, 512);
     if (id !== getMovesetVariantId(moveset)) {
       throw new RosterMovesetAssignmentValidationError(
@@ -591,6 +626,9 @@ export function parseRosterMovesetAssignment(
       ...moveset,
       id: id as MovesetVariantId,
       isDefault: candidate.isDefault,
+      ...(additionalChargedMove !== undefined
+        ? { additionalChargedMove, megaLevel: 4 as const }
+        : {}),
     };
   }
 

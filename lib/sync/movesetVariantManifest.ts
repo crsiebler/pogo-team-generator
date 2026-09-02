@@ -13,6 +13,7 @@ import {
   MAX_ACTIVE_MOVESET_VARIANTS,
   MAX_MOVESET_CANDIDATES,
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
   MOVESET_VARIANT_POLICY_VERSION,
   MOVESET_VARIANT_SCENARIOS,
   parseMovesetVariantManifestJson,
@@ -636,6 +637,9 @@ function buildManifestSpecies(
 
   return {
     speciesId: candidateSet.speciesId,
+    ...(candidateSet.additionalChargedMove
+      ? { additionalChargedMove: candidateSet.additionalChargedMove }
+      : {}),
     defaultVariantId: defaultCandidate.id,
     evidence: {
       pvpokeScorePrior: candidateSet.pvpokeScorePrior,
@@ -1149,6 +1153,7 @@ export function buildMovesetVariantManifest(
   const manifest: MovesetVariantManifest = {
     metadata: {
       schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+      megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
       policyVersion: input.policyVersion,
       formatId: input.format.id,
       cup: input.format.cup,
