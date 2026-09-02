@@ -33,3 +33,44 @@ Run initialized for `ralph/additional-mega-charged-attacks` from
 - Next iteration start:
   - Implement US-002 eligibility resolution from synchronized tags and move metadata.
 ---
+## 2026-09-01 19:06 MST - US-002 Review Completion
+- Local review: `ralph-reviewer` initial staged review passed with no findings.
+- Findings: none; no remediation or targeted re-review required.
+- Review duration and reviewer session ID when available: completed; `ses_fa021b8f4ffeSQDAqq05mnj3Q5`
+- Learning candidate disposition: `data-derived-extra-move-eligibility` was not promoted to `memory.json` because the bounded-memory policy requires an `accepted_fixed` finding; no suppressions were added.
+- Final metadata: US-002 is marked `passes: true` in `prd.json`; `memory.json` remains the valid empty bounded memory.
+- Final consistency check: pending after metadata staging.
+---
+## 2026-09-01 19:05 MST - US-002
+- What was implemented: Added data-driven resolution for the fixed additional Charged Attack. Eligibility requires the `mega` tag, exactly one additional move reference, and a referenced move with `isMegaMove: true`; malformed, ordinary Mega, and non-Mega extra-move forms resolve no move.
+- Files changed: `lib/data/additionalMegaMove.ts`, `lib/data/additionalMegaMove.test.ts`, `progress.txt`
+- Commit message: `feat: US-002 - Resolve species-specific eligibility`
+- Auto approval: `disabled`
+- Checks:
+  - `npx tsc --noEmit --incremental false` (pass)
+  - `npm run lint` (pass)
+  - `npx prettier --check lib/data/additionalMegaMove.ts lib/data/additionalMegaMove.test.ts` (pass)
+  - `npx vitest run lib/data/additionalMegaMove.test.ts --maxWorkers 1 --no-file-parallelism` (pass, 19 tests)
+  - `npm test` (pass, 89 files and 1075 tests)
+- Implementation agents:
+  - Recommended: `backend-developer`, `test-automator`
+  - Used: skipped; the resolver is a small pure data-layer function with clear existing lookup patterns and focused tests.
+- Local review:
+  - Reviewer: `ralph-reviewer`
+  - Passes: pending initial staged review
+  - Findings: pending
+  - Review duration and reviewer session ID when available: pending
+- Decisions (why):
+  - Kept the pure resolver injectable with a default move lookup so sync-shaped data can be tested without global state while runtime callers can resolve by species ID.
+  - Rejected arrays with zero or multiple entries rather than selecting an arbitrary move, preserving the fixed single-move contract.
+- **Learnings for future iterations:**
+  - Additional-move eligibility belongs in a pure data-layer resolver backed by synchronized Pokemon and move records; later sync and simulation phases should consume it instead of maintaining species lists.
+  - Some synchronized Pokemon records omit `tags`, so runtime eligibility checks must treat missing tags as non-Mega rather than assuming the field exists.
+- Known issues / follow-ups:
+  - None for US-002.
+- Next iteration start:
+  - Preserve the fixed additional move through ranking and candidate synchronization in US-003.
+---
+## 2026-09-01 19:07 MST - US-002 Final Consistency
+- Final consistency check: passed. Cached files are `lib/data/additionalMegaMove.test.ts`, `lib/data/additionalMegaMove.ts`, `prd.json`, and `progress.txt`; no story files remain unstaged. The pre-existing unrelated `.opencode/package-lock.json` change remains unstaged.
+---
