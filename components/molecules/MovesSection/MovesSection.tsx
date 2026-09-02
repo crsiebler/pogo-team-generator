@@ -5,12 +5,18 @@ interface MovesSectionProps {
   fastMove?: string;
   chargedMove1?: string;
   chargedMove2?: string;
+  additionalChargedMove?: string;
+}
+
+function formatMoveName(moveName: string): string {
+  return moveName.replace(/_PLUS$/, '+').replace(/_/g, ' ');
 }
 
 export function MovesSection({
   fastMove,
   chargedMove1,
   chargedMove2,
+  additionalChargedMove,
 }: MovesSectionProps) {
   const labelClasses =
     'mb-1 block text-xs font-semibold text-gray-600 sm:text-sm dark:text-gray-400';
@@ -52,6 +58,19 @@ export function MovesSection({
           )}
         </div>
       </div>
+
+      {additionalChargedMove && (
+        <div>
+          <Typography variant="span" className={labelClasses}>
+            Additional Charged Attack
+          </Typography>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge color="primary">
+              {formatMoveName(additionalChargedMove)}
+            </Badge>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

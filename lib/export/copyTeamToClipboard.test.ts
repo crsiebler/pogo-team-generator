@@ -36,6 +36,18 @@ const assignment: RosterMovesetAssignment = {
   fingerprint: 'clipboard-assignment',
 };
 
+const megaAssignment: RosterMovesetAssignment = {
+  ...assignment,
+  variantsBySpeciesId: {
+    ...assignment.variantsBySpeciesId,
+    scizor_shadow: {
+      ...assignment.variantsBySpeciesId.scizor_shadow!,
+      additionalChargedMove: 'VOLT_TACKLE_PLUS',
+      megaLevel: 4,
+    },
+  },
+};
+
 const regularRequirements: MovesetAcquisitionRequirements = {
   fastMove: { kind: 'regular' },
   chargedMove1: { kind: 'regular' },
@@ -82,6 +94,20 @@ describe('copyTeamToClipboard', () => {
 
     expect(mockWriteText).toHaveBeenCalledWith(
       'altaria,DRAGON_BREATH,SKY_ATTACK,MOONBLAST\nscizor_shadow-shadow,BULLET_PUNCH,NIGHT_SLASH,TRAILBLAZE',
+    );
+  });
+
+  it('copies the complete eligible Mega configuration', async () => {
+    await copyTeamToClipboard(['scizor_shadow'], megaAssignment, {
+      scizor_shadow: regularRequirements,
+    });
+
+    expect(mockWriteText).toHaveBeenCalledWith(
+      [
+        'scizor_shadow-shadow,BULLET_PUNCH,NIGHT_SLASH,TRAILBLAZE,VOLT_TACKLE_PLUS',
+        '# Battle configuration',
+        '# scizor_shadow-shadow: Fixed additional Charged Attack VOLT_TACKLE_PLUS; Mega Level 4',
+      ].join('\n'),
     );
   });
 

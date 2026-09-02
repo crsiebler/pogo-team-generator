@@ -31,4 +31,29 @@ describe('MovesSection', () => {
     expect(screen.getByText('⭐ Water Gun')).toBeInTheDocument();
     expect(screen.getByText('⭐ Hydro Pump')).toBeInTheDocument();
   });
+
+  it('renders a distinct additional charged attack without a Mega level label', () => {
+    render(<MovesSection additionalChargedMove="Frenzy_Plant" />);
+
+    expect(screen.getByText('Additional Charged Attack')).toBeInTheDocument();
+    expect(screen.getByText('Frenzy Plant')).toBeInTheDocument();
+    expect(screen.queryByText('Mega Level 4')).not.toBeInTheDocument();
+    expect(screen.queryByText('⭐ Frenzy Plant')).not.toBeInTheDocument();
+  });
+
+  it('uses PvPoke plus notation for additional Mega moves', () => {
+    render(<MovesSection additionalChargedMove="DYNAMIC_PUNCH_PLUS" />);
+
+    expect(screen.getByText('DYNAMIC PUNCH+')).toBeInTheDocument();
+    expect(screen.queryByText('DYNAMIC PUNCH PLUS')).not.toBeInTheDocument();
+  });
+
+  it('does not render an additional attack section without a move', () => {
+    render(<MovesSection />);
+
+    expect(
+      screen.queryByText('Additional Charged Attack'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Mega Level 4')).not.toBeInTheDocument();
+  });
 });

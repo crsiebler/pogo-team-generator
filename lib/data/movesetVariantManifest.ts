@@ -13,7 +13,10 @@ import type {
 } from '@/lib/types';
 
 /** Current repository-owned moveset variant manifest schema version. */
-export const MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION = 1 as const;
+export const MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION = 2 as const;
+
+/** Fixed Mega level used when additional Charged Attacks are simulated. */
+export const MOVESET_VARIANT_MEGA_LEVEL = 4 as const;
 
 /** Current moveset derivation policy accepted by sync and runtime artifacts. */
 export const MOVESET_VARIANT_POLICY_VERSION = 'ranking-evidence-v1' as const;
@@ -69,6 +72,7 @@ export interface MovesetVariantDerivationSettings {
 /** Reproducibility and format metadata for a manifest. */
 export interface MovesetVariantManifestMetadata {
   readonly schemaVersion: typeof MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION;
+  readonly megaLevel: typeof MOVESET_VARIANT_MEGA_LEVEL;
   readonly policyVersion: string;
   readonly formatId: BattleFormatId;
   readonly cup: BattleFormat['cup'];
@@ -121,6 +125,7 @@ export interface MovesetVariantSpeciesEvidence {
 /** One species and its bounded, simulation-addressable candidates. */
 export interface MovesetVariantManifestSpecies {
   readonly speciesId: string;
+  readonly additionalChargedMove?: string;
   readonly defaultVariantId: MovesetVariantId;
   readonly evidence: MovesetVariantSpeciesEvidence;
   readonly candidates: readonly MovesetVariantManifestCandidate[];
@@ -465,6 +470,9 @@ function readMetadata(
       `must be ${MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION}`,
     );
   }
+  if (record.megaLevel !== MOVESET_VARIANT_MEGA_LEVEL) {
+    fail(`${path}.megaLevel`, `must be ${MOVESET_VARIANT_MEGA_LEVEL}`);
+  }
   const formatId = readString(record.formatId, `${path}.formatId`);
   const format = getBattleFormatById(formatId);
   if (!format) {
@@ -478,6 +486,7 @@ function readMetadata(
   }
   return {
     schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+    megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
     policyVersion: readString(record.policyVersion, `${path}.policyVersion`),
     formatId: format.id,
     cup: format.cup,
@@ -669,6 +678,27 @@ function readSpecies(
   const candidates = candidateValues.map((entry, index) =>
     readCandidate(entry, `${path}.candidates[${index}]`, speciesId),
   );
+  const additionalChargedMove =
+    record.additionalChargedMove === undefined
+      ? undefined
+      : readCanonicalMoveId(
+          record.additionalChargedMove,
+          `${path}.additionalChargedMove`,
+        );
+  if (
+    additionalChargedMove !== undefined &&
+    candidates.some(
+      (candidate) =>
+        candidate.fastMove === additionalChargedMove ||
+        candidate.chargedMove1 === additionalChargedMove ||
+        candidate.chargedMove2 === additionalChargedMove,
+    )
+  ) {
+    fail(
+      `${path}.additionalChargedMove`,
+      'must be distinct from selectable candidate moves',
+    );
+  }
   const candidateIds = new Set<MovesetVariantId>();
   for (const candidate of candidates) {
     if (candidateIds.has(candidate.id)) {
@@ -749,6 +779,7 @@ function readSpecies(
   }
   return {
     speciesId,
+    ...(additionalChargedMove ? { additionalChargedMove } : {}),
     defaultVariantId,
     evidence: readSpeciesEvidence(record.evidence, `${path}.evidence`),
     candidates,

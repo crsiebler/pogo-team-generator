@@ -4,6 +4,7 @@ import { syncConfig } from './config';
 import { fetchMovesData, fetchPokemonData } from './gamemaster';
 import { validateMovesJson, validatePokemonJson } from './validation';
 import movesData from '@/data/moves.json';
+import pokemonData from '@/data/pokemon.json';
 
 const validPokemonData = {
   dex: 1,
@@ -59,6 +60,7 @@ describe('gamemaster local sync', () => {
           ...validPokemonData,
           eliteMoves: ['FRENZY_PLANT', 1],
           legacyMoves: 'TACKLE',
+          extraChargedMoves: ['MEGA_CRUNCH', 1],
         },
       ]),
     ).toEqual({
@@ -66,6 +68,31 @@ describe('gamemaster local sync', () => {
       errors: [
         'Pokemon 0: eliteMoves must contain strings',
         'Pokemon 0: legacyMoves must be array if present',
+        'Pokemon 0: extraChargedMoves must contain strings',
+      ],
+    });
+  });
+
+  it('accepts optional additional charged moves when they are strings', () => {
+    expect(
+      validatePokemonJson([
+        { ...validPokemonData },
+        { ...validPokemonData, extraChargedMoves: ['MEGA_CRUNCH'] },
+      ]),
+    ).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects malformed additional charged move lists', () => {
+    expect(
+      validatePokemonJson([
+        { ...validPokemonData, extraChargedMoves: null },
+        { ...validPokemonData, extraChargedMoves: 'MEGA_CRUNCH' },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Pokemon 0: extraChargedMoves must be array if present',
+        'Pokemon 1: extraChargedMoves must be array if present',
       ],
     });
   });
@@ -127,8 +154,64 @@ describe('gamemaster local sync', () => {
     ).toEqual({ valid: true, errors: [] });
   });
 
+  it('accepts optional Mega move flags when they are booleans', () => {
+    const move = {
+      moveId: 'VINE_WHIP',
+      name: 'Vine Whip',
+      type: 'Grass',
+      power: 5,
+      energy: 0,
+      energyGain: 8,
+      cooldown: 500,
+      archetype: 'Fast',
+      turns: 2,
+    };
+
+    expect(
+      validateMovesJson([
+        move,
+        { ...move, isMegaMove: true },
+        { ...move, isMegaMove: false },
+      ]),
+    ).toEqual({ valid: true, errors: [] });
+  });
+
+  it('rejects malformed Mega move flags', () => {
+    const move = {
+      moveId: 'VINE_WHIP',
+      name: 'Vine Whip',
+      type: 'Grass',
+      power: 5,
+      energy: 0,
+      energyGain: 8,
+      cooldown: 500,
+      archetype: 'Fast',
+      turns: 2,
+    };
+
+    expect(
+      validateMovesJson([
+        { ...move, isMegaMove: null },
+        { ...move, isMegaMove: 'true' },
+      ]),
+    ).toEqual({
+      valid: false,
+      errors: [
+        'Move 0: isMegaMove must be boolean if present',
+        'Move 1: isMegaMove must be boolean if present',
+      ],
+    });
+  });
+
   it('validates every checked-in move status shape', () => {
     expect(validateMovesJson(movesData)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('validates every checked-in Pokemon shape', () => {
+    expect(validatePokemonJson(pokemonData)).toEqual({
+      valid: true,
+      errors: [],
+    });
   });
 
   it('rejects malformed status-effect fields', () => {

@@ -33,6 +33,10 @@ export type MovesetAcquisitionRequirements = Readonly<{
 export interface MovesetVariant extends Moveset {
   readonly id: MovesetVariantId;
   readonly isDefault: boolean;
+  /** Fixed species-specific Mega move, excluded from variant identity. */
+  readonly additionalChargedMove?: string;
+  /** Fixed Mega level used when the additional move is active. */
+  readonly megaLevel?: 4;
 }
 
 /** Policy authority used to resolve one species in a fixed roster assignment. */
@@ -72,6 +76,7 @@ export interface Pokemon {
   chargedMoves: string[];
   eliteMoves?: string[];
   legacyMoves?: string[];
+  extraChargedMoves?: string[];
   level25CP?: number;
   tags: string[];
   defaultIVs: {
@@ -90,6 +95,8 @@ export interface Pokemon {
     fastMove: string | null;
     chargedMove1: string | null;
     chargedMove2: string | null;
+    additionalChargedMove?: string;
+    megaLevel?: 4;
     isDefault?: boolean;
     authority?: MovesetAssignmentPolicyIdentity;
     acquisitionRequirements?: MovesetAcquisitionRequirements;
@@ -111,6 +118,7 @@ export interface Move {
   buffsOpponent?: MoveStatStages;
   buffTarget?: MoveEffectTarget;
   buffApplyChance?: string;
+  isMegaMove?: boolean;
 }
 
 export interface RankedPokemon {

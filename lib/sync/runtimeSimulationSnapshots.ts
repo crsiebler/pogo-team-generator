@@ -305,13 +305,16 @@ function buildSnapshot(
     ),
   ].sort(compareAscii);
   const moves = [
-    ...new Set(
-      activeVariants.flatMap(({ candidate }) => [
+    ...new Set([
+      ...activeVariants.flatMap(({ candidate }) => [
         candidate.fastMove,
         candidate.chargedMove1,
         candidate.chargedMove2,
       ]),
-    ),
+      ...manifest.species.flatMap(({ additionalChargedMove }) =>
+        additionalChargedMove ? [additionalChargedMove] : [],
+      ),
+    ]),
   ].sort(compareAscii);
   const variantIds = [
     ...new Set(activeVariants.map(({ candidate }) => candidate.id)),
@@ -320,6 +323,14 @@ function buildSnapshot(
   const opponentIndexes = getIndexMap(opponents);
   const moveIndexes = getIndexMap(moves);
   const variantIdIndexes = getIndexMap(variantIds);
+  const additionalChargedMoveBySpecies = species.map((speciesId) => {
+    const additionalChargedMove = manifest.species.find(
+      (entry) => entry.speciesId === speciesId,
+    )?.additionalChargedMove;
+    return additionalChargedMove === undefined
+      ? null
+      : getRequiredIndex(moveIndexes, additionalChargedMove);
+  });
   const variants: RuntimeSimulationSnapshotVariant[] = activeVariants.map(
     ({ speciesId, candidate }) => [
       getRequiredIndex(speciesIndexes, speciesId),
@@ -370,6 +381,7 @@ function buildSnapshot(
   const snapshotFormat = { id: format.id, cup: format.cup, cp: format.cp };
   const snapshotManifest = {
     schemaVersion: manifest.metadata.schemaVersion,
+    megaLevel: manifest.metadata.megaLevel,
     policyVersion: manifest.metadata.policyVersion,
     digest: sha256(serializeMovesetVariantManifest(manifest)),
     sourceDigests: [...manifest.metadata.sourceDigests].sort((left, right) =>
@@ -399,6 +411,7 @@ function buildSnapshot(
       dictionaries,
       variants,
       defaultVariantBySpecies,
+      additionalChargedMoveBySpecies,
       opponentIterationOrderBySpecies,
       shape,
       ratings: encodedRatings,
@@ -407,6 +420,7 @@ function buildSnapshot(
     dictionaries,
     variants,
     defaultVariantBySpecies,
+    additionalChargedMoveBySpecies,
     opponentIterationOrderBySpecies,
     shape,
     ratings: encodedRatings,

@@ -4,6 +4,7 @@ import { getBattleFormatById, type BattleFormatId } from './battleFormats';
 import {
   MAX_ACTIVE_MOVESET_VARIANTS,
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
   MOVESET_VARIANT_POLICY_VERSION,
 } from './movesetVariantManifest';
 import {
@@ -110,6 +111,7 @@ interface PreparedFormat {
   readonly opponents: readonly string[];
   readonly opponentIndexes: ReadonlyMap<string, number>;
   readonly species: ReadonlyMap<string, PreparedSpecies>;
+  readonly additionalChargedMovesBySpecies: ReadonlyMap<string, string | null>;
   readonly defaultMatrix: RuntimeMatchupMatrix;
   readonly policyIdentity: Readonly<{
     schemaVersion: number;
@@ -357,7 +359,7 @@ function classifySnapshotValidationError(
   error: RuntimeSimulationSnapshotValidationError,
 ): MovesetVariantSimulationDataError {
   const incompatible =
-    /^snapshot\.(schemaVersion|format|manifest\.schemaVersion)/.test(
+    /^snapshot\.(schemaVersion|format|manifest\.(schemaVersion|megaLevel))/.test(
       error.path,
     );
   const malformed = error.message.includes('must be valid JSON');
@@ -399,6 +401,7 @@ function prepareFormat(
   if (
     snapshot.manifest.schemaVersion !==
       MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION ||
+    snapshot.manifest.megaLevel !== MOVESET_VARIANT_MEGA_LEVEL ||
     snapshot.manifest.policyVersion !== MOVESET_VARIANT_POLICY_VERSION
   ) {
     throw new MovesetVariantSimulationDataError(
@@ -414,6 +417,15 @@ function prepareFormat(
     ratings[index] = bytes.readUInt16LE(index * 2);
   }
   const variantsBySpecies = new Map<string, PreparedVariant[]>();
+  const additionalChargedMovesBySpecies = new Map(
+    snapshot.dictionaries.species.map((speciesId, speciesIndex) => {
+      const moveIndex = snapshot.additionalChargedMoveBySpecies[speciesIndex];
+      return [
+        speciesId,
+        moveIndex === null ? null : snapshot.dictionaries.moves[moveIndex]!,
+      ] as const;
+    }),
+  );
   snapshot.variants.forEach((variant, variantIndex) => {
     const [
       speciesIndex,
@@ -430,6 +442,13 @@ function prepareFormat(
         fastMove: snapshot.dictionaries.moves[fastMoveIndex]!,
         chargedMove1: snapshot.dictionaries.moves[charge1Index]!,
         chargedMove2: snapshot.dictionaries.moves[charge2Index]!,
+        ...(additionalChargedMovesBySpecies.get(speciesId)
+          ? {
+              additionalChargedMove:
+                additionalChargedMovesBySpecies.get(speciesId)!,
+              megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
+            }
+          : {}),
         isDefault:
           snapshot.defaultVariantBySpecies[speciesIndex] === variantIndex,
       }),
@@ -510,6 +529,7 @@ function prepareFormat(
     opponents: snapshot.dictionaries.opponents,
     opponentIndexes,
     species,
+    additionalChargedMovesBySpecies,
     defaultMatrix,
     policyIdentity: Object.freeze({
       schemaVersion: snapshot.manifest.schemaVersion,

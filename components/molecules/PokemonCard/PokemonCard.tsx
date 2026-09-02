@@ -49,6 +49,9 @@ export function PokemonCard({ pokemon }: PokemonCardProps) {
         fastMove={pokemon.recommendedMoveset?.fastMove || undefined}
         chargedMove1={pokemon.recommendedMoveset?.chargedMove1 || undefined}
         chargedMove2={pokemon.recommendedMoveset?.chargedMove2 || undefined}
+        additionalChargedMove={
+          pokemon.recommendedMoveset?.additionalChargedMove
+        }
       />
 
       {pokemon.tags?.includes('shadow') && (

@@ -98,6 +98,24 @@ function createAssignment(
   });
 }
 
+function createMegaAssignment(): RosterMovesetAssignment {
+  const assignment = createAssignment();
+  const variant = assignment.variantsBySpeciesId.mewtwo!;
+
+  return createRosterMovesetAssignment({
+    formatId: assignment.formatId,
+    authorityBySpeciesId: assignment.authorityBySpeciesId,
+    variantsBySpeciesId: {
+      ...assignment.variantsBySpeciesId,
+      mewtwo: {
+        ...variant,
+        additionalChargedMove: 'MEGA_PSYSTRIKE',
+        megaLevel: 4,
+      },
+    },
+  });
+}
+
 describe('POST /api/team-details format-aware movesets', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -209,6 +227,40 @@ describe('POST /api/team-details format-aware movesets', () => {
     expect(validateRosterMovesetAssignmentAuthority).toHaveBeenCalledWith(
       movesetAssignment,
     );
+  });
+
+  it('returns assigned Mega metadata without acquisition requirements for it', async () => {
+    const movesetAssignment = createMegaAssignment();
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        formatId: 'great-league',
+        movesetAssignment,
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      pokemon: Array<{
+        recommendedMoveset: Record<string, unknown>;
+      }>;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.pokemon[0]?.recommendedMoveset).toMatchObject({
+      additionalChargedMove: 'MEGA_PSYSTRIKE',
+      megaLevel: 4,
+      acquisitionRequirements: {
+        fastMove: { kind: 'eventExclusive' },
+        chargedMove1: { kind: 'elite' },
+        chargedMove2: { kind: 'regular' },
+      },
+    });
+    expect(
+      payload.pokemon[0]?.recommendedMoveset.acquisitionRequirements,
+    ).not.toHaveProperty('additionalChargedMove');
   });
 
   it.each(['manifest', 'ranked-default-fallback', 'mixed'] as const)(

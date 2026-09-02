@@ -1,3 +1,4 @@
+import { resolveAdditionalChargedMove } from '@lib/data/additionalMegaMove';
 import { normalizeMoveId } from '@lib/data/aliases';
 import type { BattleFormatId } from '@lib/data/battleFormats';
 import { getMovesetAvailability } from '@lib/data/moveAvailability';
@@ -170,11 +171,19 @@ const MAX_ASSIGNMENT_STRING_LENGTH = 128;
 const MAX_ASSIGNMENT_FINGERPRINT_LENGTH = 16_384;
 export const MAX_ROSTER_MOVESET_ASSIGNMENTS = 3 ** 6;
 
-function toDefaultMovesetVariant(moveset: Moveset): MovesetVariant {
+function toDefaultMovesetVariant(
+  moveset: Moveset,
+  pokemon?: Pokemon,
+): MovesetVariant {
+  const additionalChargedMove = resolveAdditionalChargedMove(pokemon);
+
   return {
     ...moveset,
     id: getMovesetVariantId(moveset),
     isDefault: true,
+    ...(additionalChargedMove
+      ? { additionalChargedMove, megaLevel: 4 as const }
+      : {}),
   };
 }
 
@@ -212,7 +221,9 @@ function matchesMovesetVariant(
     actual.fastMove === expected.fastMove &&
     actual.chargedMove1 === expected.chargedMove1 &&
     actual.chargedMove2 === expected.chargedMove2 &&
-    actual.isDefault === expected.isDefault
+    actual.isDefault === expected.isDefault &&
+    actual.additionalChargedMove === expected.additionalChargedMove &&
+    actual.megaLevel === expected.megaLevel
   );
 }
 
@@ -240,6 +251,7 @@ export function getSimulationBackedMovesetForTeam(
         pokemon,
         formatId,
       ),
+      pokemon,
     );
   }
   return {
@@ -362,7 +374,7 @@ export function createRosterMovesetAssignment(
     ),
   );
   const fingerprint = JSON.stringify([
-    'roster-moveset-assignment-v2',
+    'roster-moveset-assignment-v3',
     input.formatId,
     ...sortedVariants.map(([speciesId, variant]) => [
       speciesId,
@@ -374,6 +386,8 @@ export function createRosterMovesetAssignment(
       variant.chargedMove1,
       variant.chargedMove2,
       variant.isDefault,
+      variant.additionalChargedMove ?? null,
+      variant.megaLevel ?? null,
     ]),
   ]);
 
@@ -576,6 +590,37 @@ export function parseRosterMovesetAssignment(
       );
     }
     validateMoveSlots(speciesId, moveset);
+    const rawAdditionalChargedMove = candidate.additionalChargedMove;
+    let additionalChargedMove: string | undefined;
+    if (rawAdditionalChargedMove !== undefined) {
+      additionalChargedMove = readBoundedString(
+        rawAdditionalChargedMove,
+        `${speciesId}.additionalChargedMove`,
+      );
+      validateCanonicalMoveId(
+        additionalChargedMove,
+        `${speciesId}.additionalChargedMove`,
+      );
+      if (
+        additionalChargedMove === moveset.chargedMove1 ||
+        additionalChargedMove === moveset.chargedMove2
+      ) {
+        throw new RosterMovesetAssignmentValidationError(
+          `Roster moveset assignment additional move for ${speciesId} must be distinct from selectable charged moves.`,
+        );
+      }
+    }
+    const megaLevel = candidate.megaLevel;
+    if (megaLevel !== undefined && megaLevel !== 4) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment Mega level for ${speciesId} must be 4 when present.`,
+      );
+    }
+    if ((additionalChargedMove === undefined) !== (megaLevel === undefined)) {
+      throw new RosterMovesetAssignmentValidationError(
+        `Roster moveset assignment additional move and Mega level for ${speciesId} must be provided together.`,
+      );
+    }
     const id = readBoundedString(candidate.id, `${speciesId}.id`, 512);
     if (id !== getMovesetVariantId(moveset)) {
       throw new RosterMovesetAssignmentValidationError(
@@ -591,6 +636,9 @@ export function parseRosterMovesetAssignment(
       ...moveset,
       id: id as MovesetVariantId,
       isDefault: candidate.isDefault,
+      ...(additionalChargedMove !== undefined
+        ? { additionalChargedMove, megaLevel: 4 as const }
+        : {}),
     };
   }
 
@@ -709,7 +757,7 @@ export function validateRosterMovesetAssignmentAuthority(
         `Roster moveset assignment ranked-default authority for ${speciesId} is unavailable.`,
       );
     }
-    const rankedDefault = toDefaultMovesetVariant(rankedMoveset);
+    const rankedDefault = toDefaultMovesetVariant(rankedMoveset, pokemon);
     if (!matchesMovesetVariant(assignedVariant, rankedDefault)) {
       throw new RosterMovesetAssignmentValidationError(
         `Roster moveset assignment ranked default for ${speciesId} is not current.`,
@@ -802,6 +850,7 @@ export function resolveRosterMovesetAssignment(
       }
       variantsBySpeciesId[pokemon.speciesId] = toDefaultMovesetVariant(
         dependencies.getRankedDefault(pokemon, formatId),
+        pokemon,
       );
       authorityBySpeciesId[pokemon.speciesId] = RANKED_DEFAULT_POLICY_IDENTITY;
     }
@@ -863,7 +912,10 @@ export function enumerateRosterMovesetAssignments(
         throw error;
       }
       variants = [
-        toDefaultMovesetVariant(dependencies.getRankedDefault(entry, formatId)),
+        toDefaultMovesetVariant(
+          dependencies.getRankedDefault(entry, formatId),
+          entry,
+        ),
       ];
       authority = RANKED_DEFAULT_POLICY_IDENTITY;
     }
@@ -937,6 +989,7 @@ export function resolveRankedDefaultRosterMovesetAssignment(
     }
     variantsBySpeciesId[pokemon.speciesId] = toDefaultMovesetVariant(
       dependencies.getRankedDefault(pokemon, formatId),
+      pokemon,
     );
     authorityBySpeciesId[pokemon.speciesId] = RANKED_DEFAULT_POLICY_IDENTITY;
   }

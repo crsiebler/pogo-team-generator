@@ -4,6 +4,7 @@ import {
   MAX_ACTIVE_MOVESET_VARIANTS,
   MAX_MOVESET_CANDIDATES,
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
   type MovesetVariantManifest,
   type MovesetVariantManifestCandidate,
 } from './movesetVariantManifest';
@@ -94,6 +95,7 @@ function createManifest(
   return {
     metadata: {
       schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+      megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
       policyVersion: 'ranking-evidence-v1',
       formatId: 'great-league',
       cup: 'all',
@@ -127,6 +129,7 @@ function createManifest(
       {
         speciesId: 'golisopod',
         defaultVariantId,
+        additionalChargedMove: 'MEGA_DRAIN',
         evidence: {
           pvpokeScorePrior: 91.2,
           retainedFastMoves: ['WATERFALL', 'SHADOW_CLAW', 'FURY_CUTTER'],
@@ -222,8 +225,25 @@ describe('manifest-backed moveset variant simulation loading', () => {
     const loader = createLoader(files, reads);
 
     expect(
-      loader.getActiveVariants('golisopod', 'great-league').map(({ id }) => id),
-    ).toEqual([defaultVariantId, alternateVariantId]);
+      loader
+        .getActiveVariants('golisopod', 'great-league')
+        .map(({ id, additionalChargedMove, megaLevel }) => ({
+          id,
+          additionalChargedMove,
+          megaLevel,
+        })),
+    ).toEqual([
+      {
+        id: defaultVariantId,
+        additionalChargedMove: 'MEGA_DRAIN',
+        megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
+      },
+      {
+        id: alternateVariantId,
+        additionalChargedMove: 'MEGA_DRAIN',
+        megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
+      },
+    ]);
     expect(
       loader.getMatchupResult(
         'golisopod',

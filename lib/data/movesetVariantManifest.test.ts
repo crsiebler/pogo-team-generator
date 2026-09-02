@@ -3,6 +3,7 @@ import {
   MAX_ACTIVE_MOVESET_VARIANTS,
   MAX_MOVESET_CANDIDATES,
   MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
   MovesetVariantManifestValidationError,
   getMovesetVariantManifestPath,
   parseMovesetVariantManifest,
@@ -74,6 +75,7 @@ function createManifest(): MovesetVariantManifest {
   return {
     metadata: {
       schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+      megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
       policyVersion: 'ranking-evidence-v1',
       formatId: 'great-league',
       cup: 'all',
@@ -124,6 +126,49 @@ function createMutableManifest(): Mutable<MovesetVariantManifest> {
 }
 
 describe('moveset variant manifest validation', () => {
+  it('round trips fixed Mega metadata and an additional move', () => {
+    const manifest = createMutableManifest();
+    manifest.species[0]!.additionalChargedMove = 'MEGA_PLUS';
+
+    const parsed = parseMovesetVariantManifest(manifest);
+
+    expect(parsed.metadata.megaLevel).toBe(MOVESET_VARIANT_MEGA_LEVEL);
+    expect(parsed.species[0]?.additionalChargedMove).toBe('MEGA_PLUS');
+  });
+
+  it.each([
+    ['schemaVersion', { schemaVersion: 1 }],
+    ['megaLevel', { megaLevel: 3 }],
+  ])('rejects stale or unsupported %s metadata', (_name, metadata) => {
+    const manifest = createMutableManifest();
+    Object.assign(manifest.metadata, metadata);
+
+    expect(() => parseMovesetVariantManifest(manifest)).toThrow(
+      MovesetVariantManifestValidationError,
+    );
+  });
+
+  it.each(['mega_plus', 'MEGA/PLUS'])(
+    'rejects noncanonical additional move %s',
+    (additionalChargedMove) => {
+      const manifest = createMutableManifest();
+      manifest.species[0]!.additionalChargedMove = additionalChargedMove;
+
+      expect(() => parseMovesetVariantManifest(manifest)).toThrow(
+        /additionalChargedMove.*canonical move id/i,
+      );
+    },
+  );
+
+  it('rejects an additional move that is selectable in a candidate', () => {
+    const manifest = createMutableManifest();
+    manifest.species[0]!.additionalChargedMove = 'AQUA_JET';
+
+    expect(() => parseMovesetVariantManifest(manifest)).toThrow(
+      /distinct from selectable candidate moves/i,
+    );
+  });
+
   it('defines the format-scoped repository manifest path', () => {
     expect(
       getMovesetVariantManifestPath({
@@ -408,7 +453,7 @@ describe('moveset variant manifest validation', () => {
       mutate: (manifest: Mutable<MovesetVariantManifest>) => {
         (
           manifest.metadata as unknown as { schemaVersion: number }
-        ).schemaVersion = 2;
+        ).schemaVersion = 1;
       },
     },
     {

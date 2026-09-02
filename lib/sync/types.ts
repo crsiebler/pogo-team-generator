@@ -31,6 +31,7 @@ export interface PokemonData {
   chargedMoves: string[];
   eliteMoves?: string[];
   legacyMoves?: string[];
+  extraChargedMoves?: string[];
   tags?: string[];
   defaultIVs: {
     cp500: number[];

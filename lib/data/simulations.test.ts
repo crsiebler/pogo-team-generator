@@ -196,6 +196,12 @@ describe('format-aware simulation loading', () => {
               chargedMove1,
               chargedMove2,
               isDefault,
+              ...(species.additionalChargedMove
+                ? {
+                    additionalChargedMove: species.additionalChargedMove,
+                    megaLevel: 4,
+                  }
+                : {}),
             }),
           ),
         );

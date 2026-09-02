@@ -17,7 +17,7 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @test-automator. Implementation notes: preserve existing synced data and validate new optional fields at the gamemaster boundary."
     },
     {
@@ -36,7 +36,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @backend-developer, @test-automator. Implementation notes: derive eligibility from synchronized data so future eligible forms work without code changes."
     },
     {
@@ -53,7 +53,7 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @data-engineer, @typescript-pro. Implementation notes: keep the fixed attack separate from moveset variant identity and candidate substitution."
     },
     {
@@ -73,7 +73,7 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @backend-developer, @debugger. Implementation notes: set Mega Level explicitly for both simulation targets and opponents instead of relying on PvPoke defaults."
     },
     {
@@ -92,7 +92,7 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @architect-reviewer, @performance-engineer. Implementation notes: version manifest, snapshot, and digest identity together and regenerate affected assets."
     },
     {
@@ -110,7 +110,7 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @typescript-pro, @architect-reviewer. Implementation notes: keep the fixed attack outside selectable variant identity but include all battle-affecting metadata in assignment fingerprints."
     },
     {
@@ -129,8 +129,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: preserve the canonical weighted optimizer contract and keep the additional move fixed rather than independently selectable."
+      "passes": true,
+      "notes": "Recommended agents: @performance-engineer, @test-automator. Implementation notes: preserve the canonical weighted optimizer contract and keep the additional move fixed rather than independently selectable. Review: initial staged review found a roster test path bypass; the override was removed, the focused test passed, and targeted re-review passed with no findings."
     },
     {
       "id": "US-008",
@@ -148,7 +148,7 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @react-specialist, @accessibility-tester. Implementation notes: reuse existing move display components and keep the additional attack clearly non-selectable."
     },
     {
@@ -165,7 +165,7 @@
         "Typecheck passes"
       ],
       "priority": 9,
-      "passes": false,
+      "passes": true,
       "notes": "Recommended agents: @backend-developer, @test-automator. Implementation notes: verify target export syntax before changing serialized rows and preserve existing non-Mega output."
     },
     {

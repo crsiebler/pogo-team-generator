@@ -1,5 +1,9 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import {
+  MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+  MOVESET_VARIANT_MEGA_LEVEL,
+} from './movesetVariantManifest';
 import { createRuntimeSimulationRepository } from './runtimeSimulationRepository';
 import {
   RUNTIME_SIMULATION_SNAPSHOT_MISSING_RATING,
@@ -21,21 +25,23 @@ function createSnapshot(
   const dictionaries = {
     species: ['bulbasaur'],
     opponents: ['ivysaur', 'venusaur'],
-    moves: ['POWER_WHIP', 'SLUDGE_BOMB', 'TACKLE', 'VINE_WHIP'],
+    moves: ['MEGA_PLUS', 'POWER_WHIP', 'SLUDGE_BOMB', 'TACKLE', 'VINE_WHIP'],
     variantIds: [alternateVariantId, defaultVariantId],
   } as const;
   const variants = [
-    [0, 0, 2, 0, 1],
-    [0, 1, 3, 0, 1],
+    [0, 0, 3, 1, 2],
+    [0, 1, 4, 1, 2],
   ] as const;
   const format = { id: 'great-league', cup: 'all', cp: 1500 } as const;
   const manifest = {
-    schemaVersion: 1 as const,
+    schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
+    megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
     policyVersion: 'ranking-evidence-v1',
     digest,
     sourceDigests: [{ key: 'fixture', algorithm: 'sha256' as const, digest }],
   };
   const defaultVariantBySpecies = [1] as const;
+  const additionalChargedMoveBySpecies = [0] as const;
   const opponentIterationOrderBySpecies = [[0]] as const;
   const encoding = {
     kind: 'uint16-le-base64',
@@ -78,6 +84,7 @@ function createSnapshot(
       dictionaries,
       variants,
       defaultVariantBySpecies,
+      additionalChargedMoveBySpecies,
       opponentIterationOrderBySpecies,
       shape,
       ratings,
@@ -86,6 +93,7 @@ function createSnapshot(
     dictionaries,
     variants,
     defaultVariantBySpecies,
+    additionalChargedMoveBySpecies,
     opponentIterationOrderBySpecies,
     shape,
     ratings,
@@ -150,16 +158,31 @@ describe('runtime simulation snapshot repository', () => {
     expect(reads).toEqual([snapshotPath]);
     expect(limits).toEqual([RUNTIME_SIMULATION_SNAPSHOT_MAX_JSON_BYTES]);
     expect(repository.getManifestPolicyIdentity('great-league')).toEqual({
-      schemaVersion: 1,
+      schemaVersion: MOVESET_VARIANT_MANIFEST_SCHEMA_VERSION,
       policyVersion: 'ranking-evidence-v1',
     });
     expect(
       repository
         .getActiveVariants('bulbasaur', 'great-league')
-        .map(({ id, isDefault }) => ({ id, isDefault })),
+        .map(({ id, isDefault, additionalChargedMove, megaLevel }) => ({
+          id,
+          isDefault,
+          additionalChargedMove,
+          megaLevel,
+        })),
     ).toEqual([
-      { id: defaultVariantId, isDefault: true },
-      { id: alternateVariantId, isDefault: false },
+      {
+        id: defaultVariantId,
+        isDefault: true,
+        additionalChargedMove: 'MEGA_PLUS',
+        megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
+      },
+      {
+        id: alternateVariantId,
+        isDefault: false,
+        additionalChargedMove: 'MEGA_PLUS',
+        megaLevel: MOVESET_VARIANT_MEGA_LEVEL,
+      },
     ]);
     expect(
       repository.getShieldScenarioMatchupResult(
