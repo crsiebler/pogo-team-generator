@@ -566,9 +566,9 @@ export function parseRankingSourceEntries(
         `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moveset must contain strings`,
       );
     }
-    if (entry.moveset.length > 3) {
+    if (entry.moveset.length > 4) {
       throw new Error(
-        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moveset must contain at most three strings`,
+        `[sync-rankings] Invalid ${context} ranking source entry ${entryIndex}: moveset must contain at most four strings`,
       );
     }
     if (!isRecord(entry.moves)) {
@@ -591,7 +591,10 @@ export function parseRankingSourceEntries(
     );
   });
 
-  return data as RankingSourceEntry[];
+  return (data as RankingSourceEntry[]).map((entry) => ({
+    ...entry,
+    moveset: entry.moveset.filter((moveId) => moveId.toLowerCase() !== 'none'),
+  }));
 }
 
 /**
@@ -630,10 +633,10 @@ export function parseMovesetOverrides(
     }
     if (
       override.chargedMoves !== undefined &&
-      override.chargedMoves.length !== 2
+      (override.chargedMoves.length < 2 || override.chargedMoves.length > 3)
     ) {
       throw new Error(
-        `${prefix}: chargedMoves must contain exactly two strings`,
+        `${prefix}: chargedMoves must contain two or three strings`,
       );
     }
     if (

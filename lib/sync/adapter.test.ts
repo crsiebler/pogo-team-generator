@@ -27,6 +27,15 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'scroll')).toBe(
       '/source/pvpoke/src/data/rankings/scroll/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 1500, 'mega')).toBe(
+      '/source/pvpoke/src/data/rankings/mega/overall/rankings-1500.json',
+    );
+    expect(adapter.getRankingFilePath('overall', 2500, 'mega')).toBe(
+      '/source/pvpoke/src/data/rankings/mega/overall/rankings-2500.json',
+    );
+    expect(adapter.getRankingFilePath('overall', 10000, 'mega')).toBe(
+      '/source/pvpoke/src/data/rankings/mega/overall/rankings-10000.json',
+    );
     expect(adapter.getRankingFilePath('overall', 1500, 'copadiluvio')).toBe(
       '/source/pvpoke/src/data/rankings/copadiluvio/overall/rankings-1500.json',
     );
@@ -189,9 +198,6 @@ describe('createPvpokeAdapter', () => {
     expect(() =>
       adapter.getRankingFilePath('overall', 10000, 'premier' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: premier');
-    expect(() =>
-      adapter.getRankingFilePath('overall', 10000, 'mega' as never),
-    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: mega');
     expect(() =>
       adapter.getRankingFilePath('overall', 2500, 'fantasy' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: fantasy');

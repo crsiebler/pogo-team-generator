@@ -416,6 +416,38 @@ describe('deriveMovesetCandidates', () => {
     expect(withoutBaseline.candidates).toEqual([]);
   });
 
+  it('uses the regular moveset slots from Mega rankings with an extra move', () => {
+    const evidence = createEvidence(
+      [
+        createObserved(
+          'overall',
+          ['FAST_A', 'CHARGED_A', 'CHARGED_B', 'CHARGED_C'],
+          true,
+        ),
+      ],
+      [createUsage('FAST_A', 3)],
+      [
+        createUsage('CHARGED_A', 3),
+        createUsage('CHARGED_B', 2),
+        createUsage('CHARGED_C', 1),
+      ],
+    );
+
+    const result = deriveMovesetCandidates({
+      evidence,
+      pokemonTypes: ['water'],
+      moves: allMoves,
+      getMoveAvailability: allowAvailableMoves,
+    });
+
+    expect(result.candidates[0]).toMatchObject({
+      fastMove: 'FAST_A',
+      chargedMove1: 'CHARGED_A',
+      chargedMove2: 'CHARGED_B',
+      isDefault: true,
+    });
+  });
+
   it('rejects unavailable exact and speculative moves', () => {
     const evidence = createEvidence(
       [

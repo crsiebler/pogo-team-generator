@@ -31,6 +31,7 @@ import {
   type RuntimeSimulationSnapshot,
   type RuntimeSimulationSnapshotVariant,
 } from '@/lib/data/runtimeSimulationSnapshot';
+import { extractSpeciesNameFromSimulationCell } from '@/lib/data/simulations';
 import type { PokemonData } from '@/lib/sync/types';
 import type { MovesetVariantId } from '@/lib/types';
 
@@ -76,18 +77,6 @@ function compareAscii(left: string, right: string): number {
 
 function sha256(value: string): string {
   return createHash('sha256').update(value).digest('hex');
-}
-
-function extractSpeciesName(value: string): string {
-  const trimmed = value.trim();
-  const lastSpaceIndex = trimmed.lastIndexOf(' ');
-  if (lastSpaceIndex === -1) {
-    return trimmed;
-  }
-  const token = trimmed.slice(lastSpaceIndex + 1);
-  return /^[A-Za-z0-9]+\+[A-Za-z0-9]+(?:\/[A-Za-z0-9]+)+$/.test(token)
-    ? trimmed.slice(0, lastSpaceIndex).trim()
-    : trimmed;
 }
 
 function readStrictFiniteNumber(value: unknown): number | undefined {
@@ -158,7 +147,9 @@ function parseSimulationCsv(
     const hp = readStrictFiniteNumber(record['HP Remaining']);
     const speciesId =
       typeof pokemon === 'string'
-        ? dependencies.resolveOpponentSpeciesId(extractSpeciesName(pokemon))
+        ? dependencies.resolveOpponentSpeciesId(
+            extractSpeciesNameFromSimulationCell(pokemon),
+          )
         : undefined;
     if (
       !speciesId ||

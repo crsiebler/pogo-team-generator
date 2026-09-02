@@ -15,6 +15,7 @@ describe('simulation evidence species cells', () => {
   it.each([
     ['Castform H+WBR/EB', 'Castform'],
     ['Sealeo (Shadow) PS+S/BS', 'Sealeo (Shadow)'],
+    ['Malamar (Mega) Psy+FoP/SP/Psb+', 'Malamar (Mega)'],
   ])('extracts the species name from %s', (cell, expected) => {
     expect(extractSpeciesNameFromSimulationCell(cell)).toBe(expected);
   });
@@ -34,7 +35,12 @@ describe('generateSimulations', () => {
             ligaultraoverall2500: [
               {
                 speciesId: 'decidueye',
-                moveset: ['ASTONISH', 'FRENZY_PLANT', 'SPIRIT_SHACKLE'],
+                moveset: [
+                  'ASTONISH',
+                  'FRENZY_PLANT',
+                  'SPIRIT_SHACKLE',
+                  'SPIRIT_SHACKLE_PLUS',
+                ],
               },
             ],
           },
@@ -62,7 +68,7 @@ describe('generateSimulations', () => {
             };
 
             return {
-              csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\nDecidueye ${selectedPokemon.fastMove.moveId}/${selectedPokemon.chargedMoves[0].moveId}/${selectedPokemon.chargedMoves[1].moveId},500,0,0\n`,
+              csv: `Pokemon,Battle Rating,Energy Remaining,HP Remaining\nDecidueye ${selectedPokemon.fastMove.moveId}/${selectedPokemon.chargedMoves[0].moveId}/${selectedPokemon.chargedMoves[1].moveId}/${selectedPokemon.chargedMoves[2].moveId},500,0,0\n`,
             };
           },
         }),
@@ -81,7 +87,7 @@ describe('generateSimulations', () => {
         this.initialize = () => undefined;
         this.selectRecommendedMoveset = () => undefined;
         this.selectMove = (
-          moveType: 'fast' | 'charged',
+          moveType: 'fast' | 'charged' | 'extra-charged',
           moveId: string,
           index?: number,
         ) => {
@@ -112,9 +118,18 @@ describe('generateSimulations', () => {
         chargedMove1: 'FRENZY_PLANT',
         chargedMove2: 'SPIRIT_SHACKLE',
       },
+      {
+        decidueye: {
+          fastMove: 'ASTONISH',
+          chargedMove1: 'FRENZY_PLANT',
+          chargedMove2: 'SPIRIT_SHACKLE',
+        },
+      },
     );
 
-    expect(csvText).toContain('Decidueye ASTONISH/FRENZY_PLANT/SPIRIT_SHACKLE');
+    expect(csvText).toContain(
+      'Decidueye ASTONISH/FRENZY_PLANT/SPIRIT_SHACKLE/SPIRIT_SHACKLE_PLUS',
+    );
   });
 
   it('forces sanitized defaults onto every ranked opponent', () => {
@@ -501,7 +516,8 @@ describe('generateSimulations', () => {
         | 'copadiluvio'
         | 'tsuki'
         | 'ligaultra'
-        | 'coupedusillage';
+        | 'coupedusillage'
+        | 'mega';
       cp: 1500 | 2500 | 10000;
       speciesId: string;
       shields: number;
@@ -555,7 +571,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(24);
+    expect(generatedCalls).toHaveLength(33);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -570,6 +586,24 @@ describe('generateSimulations', () => {
     });
     expect(generatedCalls).toContainEqual({
       cup: 'all',
+      cp: 10000,
+      speciesId: 'bulbasaur',
+      shields: 2,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'mega',
+      cp: 1500,
+      speciesId: 'bulbasaur',
+      shields: 0,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'mega',
+      cp: 2500,
+      speciesId: 'bulbasaur',
+      shields: 1,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'mega',
       cp: 10000,
       speciesId: 'bulbasaur',
       shields: 2,

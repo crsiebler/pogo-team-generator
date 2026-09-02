@@ -26,6 +26,7 @@ const RANKING_CUPS = [
   'tsuki',
   'ligaultra',
   'coupedusillage',
+  'mega',
 ] as const;
 
 export type RankingCategory = (typeof RANKING_CATEGORIES)[number];

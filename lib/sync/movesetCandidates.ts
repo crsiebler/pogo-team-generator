@@ -89,7 +89,7 @@ interface RankedMoveCandidate extends MoveMechanicsCandidate {
 }
 
 function toMoveset(moveIds: readonly string[]): Moveset | null {
-  if (moveIds.length !== 3) {
+  if (moveIds.length < 3 || moveIds.length > 4) {
     return null;
   }
   const [fastMove, chargedMove1, chargedMove2] = moveIds;

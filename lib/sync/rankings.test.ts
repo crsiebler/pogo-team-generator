@@ -462,6 +462,7 @@ describe('rankings local sync', () => {
             | 'tsuki'
             | 'ligaultra'
             | 'coupedusillage'
+            | 'mega'
             | undefined,
         ) => Promise<
           Array<{
@@ -485,7 +486,8 @@ describe('rankings local sync', () => {
             cup === 'copadiluvio' ||
             cup === 'tsuki' ||
             cup === 'ligaultra' ||
-            cup === 'coupedusillage',
+            cup === 'coupedusillage' ||
+            cup === 'mega',
         ).toBe(true);
         expect(categories).toContain(category);
         const cupIndex = [
@@ -495,6 +497,7 @@ describe('rankings local sync', () => {
           'tsuki',
           'ligaultra',
           'coupedusillage',
+          'mega',
         ].indexOf(cup ?? 'all');
         const usageSentinel =
           categories.indexOf(category) * 100_000 + leagueCp * 10 + cupIndex;
@@ -921,13 +924,13 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(56);
-    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(8);
-    expect(result.rankings).toHaveLength(174);
-    expect(result.categoryEvidence).toHaveLength(56);
-    expect(result.overrideEvidence).toHaveLength(8);
-    expect(result.aggregatedEvidence).toHaveLength(26);
-    expect(result.candidateSets).toHaveLength(26);
+    expect(readRankingJson).toHaveBeenCalledTimes(77);
+    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(11);
+    expect(result.rankings).toHaveLength(237);
+    expect(result.categoryEvidence).toHaveLength(77);
+    expect(result.overrideEvidence).toHaveLength(11);
+    expect(result.aggregatedEvidence).toHaveLength(35);
+    expect(result.candidateSets).toHaveLength(35);
     expect(result.simulationSpeciesIdsByFormatId.get('great-league')).toEqual([
       'bulbasaur',
       'golisopod',
@@ -1026,6 +1029,7 @@ describe('rankings local sync', () => {
         'tsuki',
         'ligaultra',
         'coupedusillage',
+        'mega',
       ].indexOf(evidence.cup);
       expect(evidence.entries[0].moves.fastMoves[0].uses).toBe(
         categories.indexOf(evidence.category) * 100_000 +
@@ -1084,7 +1088,7 @@ describe('rankings local sync', () => {
       ],
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(56);
+    expect(writeFile).toHaveBeenCalledTimes(77);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -1351,7 +1355,7 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(result.rankings).toHaveLength(56);
+    expect(result.rankings).toHaveLength(77);
     expect(
       result.rankings.every((entry) => entry.Pokemon === 'Bulbasaur'),
     ).toBe(true);
@@ -1602,7 +1606,24 @@ describe('ranking source validation', () => {
     ).toBeNull();
   });
 
-  it('retains incomplete source sets but rejects oversized observed sets', () => {
+  it('normalizes missing move sentinels out of incomplete source sets', () => {
+    expect(
+      parseRankingSourceEntries(
+        [
+          {
+            speciesId: 'unown',
+            speciesName: 'Unown',
+            score: 27,
+            moveset: ['HIDDEN_POWER_PSYCHIC', 'STRUGGLE', 'none'],
+            moves: { fastMoves: [], chargedMoves: [] },
+          },
+        ],
+        'overall',
+      )[0].moveset,
+    ).toEqual(['HIDDEN_POWER_PSYCHIC', 'STRUGGLE']);
+  });
+
+  it('retains incomplete and Mega source sets but rejects oversized observed sets', () => {
     expect(
       parseRankingSourceEntries(
         [
@@ -1617,6 +1638,20 @@ describe('ranking source validation', () => {
         'overall',
       )[0].moveset,
     ).toEqual(['TACKLE', 'STRUGGLE']);
+    expect(
+      parseRankingSourceEntries(
+        [
+          {
+            speciesId: 'malamar_mega',
+            speciesName: 'Malamar (Mega)',
+            score: 90,
+            moveset: ['PSYWAVE', 'FOUL_PLAY', 'SUPER_POWER', 'PSYBEAM_PLUS'],
+            moves: { fastMoves: [], chargedMoves: [] },
+          },
+        ],
+        'overall',
+      )[0].moveset,
+    ).toEqual(['PSYWAVE', 'FOUL_PLAY', 'SUPER_POWER', 'PSYBEAM_PLUS']);
     expect(() =>
       parseRankingSourceEntries(
         [
@@ -1624,14 +1659,20 @@ describe('ranking source validation', () => {
             speciesId: 'bulbasaur',
             speciesName: 'Bulbasaur',
             score: 90,
-            moveset: ['VINE_WHIP', 'POWER_WHIP', 'SLUDGE_BOMB', 'SEED_BOMB'],
+            moveset: [
+              'VINE_WHIP',
+              'POWER_WHIP',
+              'SLUDGE_BOMB',
+              'SEED_BOMB',
+              'RETURN',
+            ],
             moves: { fastMoves: [], chargedMoves: [] },
           },
         ],
         'overall',
       ),
     ).toThrowError(
-      '[sync-rankings] Invalid overall ranking source entry 0: moveset must contain at most three strings',
+      '[sync-rankings] Invalid overall ranking source entry 0: moveset must contain at most four strings',
     );
   });
 
@@ -1689,13 +1730,34 @@ describe('ranking source validation', () => {
         [
           {
             speciesId: 'bulbasaur',
-            chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB', 'SEED_BOMB'],
+            chargedMoves: ['POWER_WHIP', 'SLUDGE_BOMB', 'SEED_BOMB', 'RETURN'],
           },
         ],
         'cp1500 all',
       ),
     ).toThrowError(
-      '[sync-rankings] Invalid cp1500 all moveset override 0: chargedMoves must contain exactly two strings',
+      '[sync-rankings] Invalid cp1500 all moveset override 0: chargedMoves must contain two or three strings',
     );
+  });
+
+  it('accepts three charged-move override options as candidate evidence', () => {
+    expect(
+      parseMovesetOverrides(
+        [
+          {
+            speciesId: 'chesnaught_mega',
+            fastMove: 'LOW_KICK',
+            chargedMoves: ['THUNDER_PUNCH', 'SUPER_POWER', 'SEED_BOMB_PLUS'],
+          },
+        ],
+        'cp1500 mega',
+      ),
+    ).toEqual([
+      {
+        speciesId: 'chesnaught_mega',
+        fastMove: 'LOW_KICK',
+        chargedMoves: ['THUNDER_PUNCH', 'SUPER_POWER', 'SEED_BOMB_PLUS'],
+      },
+    ]);
   });
 });

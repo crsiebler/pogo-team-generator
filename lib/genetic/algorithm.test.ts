@@ -810,12 +810,70 @@ describe('generateTeam format-aware candidate selection', () => {
     );
   });
 
+  it('expands GBL generation when a one-Mega automatic pool cannot fill a team', async () => {
+    const automaticNames = new Set<string>([
+      'Kyogre (Primal)',
+      'Mewtwo (Mega X)',
+      'Dialga (Origin)',
+    ]);
+    const fullRankedNames = new Set<string>([...automaticNames, 'Lugia']);
+    const automaticPokemon = [
+      createPokemon('kyogre_primal', 'Kyogre (Primal)'),
+      createPokemon('mewtwo_mega_x', 'Mewtwo (Mega X)'),
+      createPokemon('dialga_origin', 'Dialga (Origin)'),
+    ];
+    const fullRankedPokemon = [
+      ...automaticPokemon,
+      createPokemon('lugia', 'Lugia'),
+    ];
+
+    vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
+      automaticNames,
+    );
+    vi.mocked(getRankedPokemonNames).mockReturnValue(fullRankedNames);
+    vi.mocked(getRankedPokemonForFormat).mockImplementation((requestedNames) =>
+      requestedNames === automaticNames ? automaticPokemon : fullRankedPokemon,
+    );
+    vi.mocked(getMegaMasterTeamLegality).mockImplementation((team) => {
+      const megaCount = team.filter(
+        (speciesId) =>
+          speciesId.includes('_mega_') || speciesId.endsWith('_primal'),
+      ).length;
+
+      return {
+        isLegal: megaCount <= 1,
+        megaCount,
+        violations: megaCount > 1 ? ['mega-limit'] : [],
+      };
+    });
+    vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
+      createChromosomeWithTeam(['kyogre_primal', 'dialga_origin', 'lugia']),
+    ]);
+
+    await generateTeam({
+      mode: 'GBL',
+      formatId: 'mega-master-league',
+      populationSize: 1,
+      generations: 0,
+    });
+
+    expect(getRankedPokemonNames).toHaveBeenCalledWith('mega-master-league');
+    expect(initializeAnchorFirstPopulation).toHaveBeenCalledWith(
+      1,
+      ['kyogre_primal', 'mewtwo_mega_x', 'dialga_origin', 'lugia'],
+      3,
+      expect.objectContaining({ formatId: 'mega-master-league' }),
+    );
+  });
+
   it('passes the selected format into next-generation operators', async () => {
     vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
-      new Set<string>(['Mew']),
+      new Set<string>(['Mew', 'Mewtwo', 'Dragonite']),
     );
     vi.mocked(getRankedPokemonForFormat).mockReturnValue([
       createPokemon('mew', 'Mew'),
+      createPokemon('mewtwo', 'Mewtwo'),
+      createPokemon('dragonite', 'Dragonite'),
     ]);
 
     await generateTeam({
@@ -827,7 +885,7 @@ describe('generateTeam format-aware candidate selection', () => {
 
     expect(createNextGeneration).toHaveBeenCalledWith(
       expect.any(Array),
-      ['mew'],
+      ['mew', 'mewtwo', 'dragonite'],
       'GBL',
       expect.objectContaining({
         formatId: 'battle-frontier-coupe-du-sillage',
@@ -845,6 +903,7 @@ describe('generateTeam format-aware candidate selection', () => {
       createPokemon('swampert_mega', 'Swampert (Mega)'),
       createPokemon('gallade_mega', 'Gallade (Mega)'),
       createPokemon('dragonite', 'Dragonite'),
+      createPokemon('lugia', 'Lugia'),
     ]);
     vi.mocked(initializeAnchorFirstPopulation).mockReturnValue([
       createChromosomeWithTeam(illegalTeam),
@@ -852,10 +911,17 @@ describe('generateTeam format-aware candidate selection', () => {
     vi.mocked(getBestChromosome).mockReturnValue(
       createChromosomeWithTeam(illegalTeam),
     );
-    vi.mocked(getMegaMasterTeamLegality).mockReturnValue({
-      isLegal: false,
-      megaCount: 2,
-      violations: ['mega-limit'],
+    vi.mocked(getMegaMasterTeamLegality).mockImplementation((team) => {
+      const megaCount = team.filter((speciesId) =>
+        speciesId.includes('_mega'),
+      ).length;
+      const isLegal = megaCount <= 1;
+
+      return {
+        isLegal,
+        megaCount,
+        violations: isLegal ? [] : ['mega-limit'],
+      };
     });
 
     await expect(

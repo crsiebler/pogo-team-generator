@@ -7,7 +7,8 @@ export interface BattleFormat {
     | 'copadiluvio'
     | 'tsuki'
     | 'ligaultra'
-    | 'coupedusillage';
+    | 'coupedusillage'
+    | 'mega';
   cp: 1500 | 2500 | 10000;
 }
 
@@ -16,8 +17,11 @@ export interface BattleFormat {
  */
 export type BattleFormatId =
   | 'great-league'
+  | 'mega-great-league'
   | 'ultra-league'
+  | 'mega-ultra-league'
   | 'master-league'
+  | 'mega-master-league'
   | 'scroll-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
@@ -35,15 +39,33 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 1500,
   },
   {
+    id: 'mega-great-league',
+    label: 'Mega Great League',
+    cup: 'mega',
+    cp: 1500,
+  },
+  {
     id: 'ultra-league',
     label: 'Ultra League',
     cup: 'all',
     cp: 2500,
   },
   {
+    id: 'mega-ultra-league',
+    label: 'Mega Ultra League',
+    cup: 'mega',
+    cp: 2500,
+  },
+  {
     id: 'master-league',
     label: 'Master League',
     cup: 'all',
+    cp: 10000,
+  },
+  {
+    id: 'mega-master-league',
+    label: 'Mega Master League',
+    cup: 'mega',
     cp: 10000,
   },
   {
@@ -84,8 +106,24 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
 export const DEFAULT_BATTLE_FORMAT_ID: BattleFormatId = 'great-league';
 
 const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
+  'mega-great-league',
+  'mega-ultra-league',
+  'mega-master-league',
   'battle-frontier-coupe-du-sillage',
 ]);
+
+const selectableBattleFormatIds: readonly BattleFormatId[] = [
+  'great-league',
+  'ultra-league',
+  'master-league',
+  'mega-great-league',
+  'mega-ultra-league',
+  'mega-master-league',
+  'battle-frontier-copa-diluvio',
+  'battle-frontier-tsuki-cup',
+  'battle-frontier-liga-ultra',
+  'battle-frontier-coupe-du-sillage',
+];
 
 const battleFormatLookup: ReadonlyMap<BattleFormatId, BattleFormat> = new Map(
   BATTLE_FORMATS.map((format) => [format.id, format]),
@@ -96,6 +134,20 @@ const battleFormatLookup: ReadonlyMap<BattleFormatId, BattleFormat> = new Map(
  */
 export function getBattleFormats(): readonly BattleFormat[] {
   return BATTLE_FORMATS;
+}
+
+/**
+ * Returns battle formats exposed in the team configuration selector.
+ */
+export function getSelectableBattleFormats(): readonly BattleFormat[] {
+  return selectableBattleFormatIds.map((formatId) => {
+    const format = battleFormatLookup.get(formatId);
+    if (!format) {
+      throw new Error(`Selectable battle format '${formatId}' is unsupported`);
+    }
+
+    return format;
+  });
 }
 
 /**

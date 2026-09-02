@@ -223,7 +223,7 @@ export async function generateTeam(
   );
 
   if (
-    teamSize === 6 &&
+    (teamSize === 6 || hasOneMegaLimitForFormat(formatId)) &&
     !canBuildLegalUniqueTeam(filteredPokemon, anchorPokemon, teamSize, formatId)
   ) {
     candidateNames = getRankedPokemonNames(formatId);
