@@ -52,7 +52,6 @@ export function PokemonCard({ pokemon }: PokemonCardProps) {
         additionalChargedMove={
           pokemon.recommendedMoveset?.additionalChargedMove
         }
-        megaLevel={pokemon.recommendedMoveset?.megaLevel}
       />
 
       {pokemon.tags?.includes('shadow') && (

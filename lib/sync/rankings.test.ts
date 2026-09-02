@@ -272,6 +272,40 @@ describe('ranking move evidence aggregation', () => {
     ).toBe(true);
   });
 
+  it('retains the fourth Mega move separately from selectable charged evidence', () => {
+    const [evidence] = aggregateRankingMoveEvidence(
+      [
+        createCategoryEvidence('overall', [
+          createRankingSourceEntry(
+            'malamar_mega',
+            [{ moveId: 'PSYWAVE', uses: 10 }],
+            [
+              { moveId: 'FOUL_PLAY', uses: 8 },
+              { moveId: 'SUPER_POWER', uses: 2 },
+            ],
+            ['PSYWAVE', 'FOUL_PLAY', 'SUPER_POWER', 'PSYBEAM_PLUS'],
+          ),
+        ]),
+      ],
+      [],
+    );
+
+    expect(evidence.additionalChargedMove).toBe('PSYBEAM_PLUS');
+    const observedEvidence = evidence.movesetEvidence.find(
+      (entry) => entry.source === 'observed',
+    );
+    expect(observedEvidence?.moveset).toEqual([
+      'PSYWAVE',
+      'FOUL_PLAY',
+      'SUPER_POWER',
+      'PSYBEAM_PLUS',
+    ]);
+    expect(evidence.chargedMoves.map(({ moveId }) => moveId)).toEqual([
+      'FOUL_PLAY',
+      'SUPER_POWER',
+    ]);
+  });
+
   it('produces byte-identical format-scoped evidence for shuffled inputs', () => {
     const greatOverall = createCategoryEvidence('overall', [
       createRankingSourceEntry(

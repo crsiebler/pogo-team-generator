@@ -448,6 +448,95 @@ describe('deriveMovesetCandidates', () => {
     });
   });
 
+  it('retains a fixed fourth move without including it in candidate identity', () => {
+    const evidence = createEvidence(
+      [
+        createObserved(
+          'overall',
+          ['FAST_A', 'CHARGED_A', 'CHARGED_B', 'MEGA_PLUS'],
+          true,
+        ),
+        createObserved('leads', [
+          'FAST_B',
+          'CHARGED_A',
+          'CHARGED_C',
+          'MEGA_PLUS',
+        ]),
+      ],
+      [createUsage('FAST_A', 3), createUsage('FAST_B', 2)],
+      [
+        createUsage('CHARGED_A', 3),
+        createUsage('CHARGED_B', 2),
+        createUsage('CHARGED_C', 1),
+        createUsage('MEGA_PLUS', 10),
+      ],
+    );
+
+    const result = deriveMovesetCandidates({
+      evidence,
+      pokemonTypes: ['water'],
+      moves: [...allMoves, createMove('MEGA_PLUS', 'charged', 'electric')],
+      getMoveAvailability: allowAvailableMoves,
+    });
+
+    expect(result.additionalChargedMove).toBe('MEGA_PLUS');
+    expect(result.retainedChargedMoves).not.toContain('MEGA_PLUS');
+    expect(
+      result.candidates.every(({ chargedMove1, chargedMove2 }) =>
+        [chargedMove1, chargedMove2].includes('MEGA_PLUS'),
+      ),
+    ).toBe(false);
+
+    const withoutFixedMove = deriveMovesetCandidates({
+      evidence: {
+        ...evidence,
+        movesetEvidence: evidence.movesetEvidence.map((entry) =>
+          entry.source === 'observed'
+            ? { ...entry, moveset: entry.moveset.slice(0, 3) }
+            : entry,
+        ),
+      },
+      pokemonTypes: ['water'],
+      moves: [...allMoves, createMove('MEGA_PLUS', 'charged', 'electric')],
+      getMoveAvailability: allowAvailableMoves,
+      additionalChargedMove: 'MEGA_PLUS',
+    });
+    expect(result.candidates.map(({ id }) => id)).toEqual(
+      expect.arrayContaining(withoutFixedMove.candidates.map(({ id }) => id)),
+    );
+  });
+
+  it('rejects conflicting fixed moves in ranking evidence', () => {
+    expect(() =>
+      deriveMovesetCandidates({
+        evidence: createEvidence(
+          [
+            createObserved(
+              'overall',
+              ['FAST_A', 'CHARGED_A', 'CHARGED_B', 'MEGA_PLUS'],
+              true,
+            ),
+            createObserved('leads', [
+              'FAST_A',
+              'CHARGED_A',
+              'CHARGED_B',
+              'OTHER_PLUS',
+            ]),
+          ],
+          [],
+          [],
+        ),
+        pokemonTypes: ['water'],
+        moves: [
+          ...allMoves,
+          createMove('MEGA_PLUS', 'charged'),
+          createMove('OTHER_PLUS', 'charged'),
+        ],
+        getMoveAvailability: allowAvailableMoves,
+      }),
+    ).toThrowError(/conflicting additional charged moves/);
+  });
+
   it('rejects unavailable exact and speculative moves', () => {
     const evidence = createEvidence(
       [

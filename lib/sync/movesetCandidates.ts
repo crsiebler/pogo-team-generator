@@ -44,6 +44,8 @@ export interface DeriveMovesetCandidatesInput {
   readonly pokemonTypes: readonly string[];
   readonly moves: readonly Move[];
   readonly getMoveAvailability: MoveAvailabilityResolver;
+  /** Fixed fourth move from a valid four-element Mega ranking moveset. */
+  readonly additionalChargedMove?: string;
 }
 
 /** Deterministic candidates and the bounded move pools used for expansion. */
@@ -58,6 +60,8 @@ export interface DerivedMovesetCandidateSet {
   readonly cp: number;
   readonly speciesId: string;
   readonly pvpokeScorePrior: number | null;
+  /** Fixed Mega move, excluded from selectable variant identity and pools. */
+  readonly additionalChargedMove?: string;
   readonly retainedFastMoves: readonly string[];
   readonly retainedChargedMoves: readonly string[];
   readonly rejections: readonly RankedMovesetRejection[];
@@ -202,7 +206,7 @@ function getStrongestMoveSources(
         addSource(evidence.fastMove, 'override');
       }
       if (slot === 'charged') {
-        for (const moveId of evidence.chargedMoves ?? []) {
+        for (const moveId of (evidence.chargedMoves ?? []).slice(0, 2)) {
           addSource(moveId, 'override');
         }
       }
@@ -230,6 +234,7 @@ function buildRankedMoveCandidates(
   slot: 'fast' | 'charged',
   defaultMoveset: Moveset | null,
   getMoveAvailability: MoveAvailabilityResolver,
+  additionalChargedMove?: string,
 ): RankedMoveCandidate[] {
   const usageEntries =
     slot === 'fast' ? evidence.fastMoves : evidence.chargedMoves;
@@ -264,6 +269,7 @@ function buildRankedMoveCandidates(
   }
 
   return Array.from(sourceByMoveId.entries())
+    .filter(([moveId]) => moveId !== additionalChargedMove)
     .filter(
       ([moveId]) =>
         getMoveAvailability(evidence.speciesId, moveId, evidence.formatId)
@@ -518,6 +524,36 @@ function deduplicateCandidates(
   return Array.from(byId.values()).sort(compareRankedCandidates);
 }
 
+function getEvidenceAdditionalChargedMove(
+  evidence: AggregatedRankingMoveEvidence,
+): string | undefined {
+  const additionalMoveIds = new Set(
+    evidence.movesetEvidence.flatMap((source) => {
+      if (source.source === 'observed') {
+        if (source.moveset.length !== 4) {
+          return [];
+        }
+        const moveId = source.moveset[3];
+        return moveId ? [moveId] : [];
+      }
+
+      if (source.chargedMoves?.length !== 3) {
+        return [];
+      }
+      const moveId = source.chargedMoves[2];
+      return moveId ? [moveId] : [];
+    }),
+  );
+
+  if (additionalMoveIds.size > 1) {
+    throw new Error(
+      `[sync-candidates] ${evidence.formatId}/${evidence.speciesId} has conflicting additional charged moves: ${Array.from(additionalMoveIds).sort().join(', ')}`,
+    );
+  }
+
+  return Array.from(additionalMoveIds)[0];
+}
+
 /**
  * Derive bounded exact and single-substitution moveset candidates from ranking
  * evidence without generating a full legal movepool product.
@@ -526,6 +562,19 @@ export function deriveMovesetCandidates(
   input: DeriveMovesetCandidatesInput,
 ): DerivedMovesetCandidateSet {
   const { evidence, getMoveAvailability } = input;
+  const evidenceAdditionalChargedMove =
+    getEvidenceAdditionalChargedMove(evidence);
+  if (
+    input.additionalChargedMove !== undefined &&
+    evidenceAdditionalChargedMove !== undefined &&
+    input.additionalChargedMove !== evidenceAdditionalChargedMove
+  ) {
+    throw new Error(
+      `[sync-candidates] ${evidence.formatId}/${evidence.speciesId} additional charged move metadata does not match ranking evidence`,
+    );
+  }
+  const additionalChargedMove =
+    input.additionalChargedMove ?? evidenceAdditionalChargedMove;
   const defaultSource = getPreferredOverallEvidence(evidence);
   const defaultMoveset = defaultSource
     ? toMoveset(defaultSource.moveset)
@@ -541,12 +590,14 @@ export function deriveMovesetCandidates(
     'fast',
     defaultMoveset,
     getMoveAvailability,
+    additionalChargedMove,
   );
   const chargedMoveCandidates = buildRankedMoveCandidates(
     evidence,
     'charged',
     defaultMoveset,
     getMoveAvailability,
+    additionalChargedMove,
   );
   const mechanics = rankViableMoves({
     pokemonTypes: input.pokemonTypes,
@@ -627,6 +678,7 @@ export function deriveMovesetCandidates(
     cp: evidence.cp,
     speciesId: evidence.speciesId,
     pvpokeScorePrior: evidence.pvpokeScorePrior,
+    ...(additionalChargedMove ? { additionalChargedMove } : {}),
     retainedFastMoves,
     retainedChargedMoves,
     rejections,

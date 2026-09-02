@@ -1,6 +1,7 @@
 {
   "metadata": {
     "schemaVersion": 2,
+    "megaLevel": 4,
     "policyVersion": "ranking-evidence-v1",
     "formatId": "mega-great-league",
     "cup": "mega",
@@ -9,7 +10,7 @@
       {
         "key": "formats/mega-great-league.json",
         "algorithm": "sha256",
-        "digest": "5a9259eb68844a04080cc69b8f45aa8ad73a17c0b3b0f0fd0a04ba328c65862d"
+        "digest": "7b70ee4030837735d120dd52e0d80ef9d044e36343bc9e3a44dcac16b3a668b3"
       },
       {
         "key": "moves.json",
@@ -41,8 +42,7 @@
         "attackers": 1,
         "consistency": 1
       }
-    },
-    "megaLevel": 4
+    }
   },
   "species": [
     {
@@ -5134,6 +5134,7 @@
     },
     {
       "speciesId": "malamar_mega",
+      "additionalChargedMove": "PSYBEAM_PLUS",
       "defaultVariantId": "psywave--super_power--foul_play",
       "evidence": {
         "pvpokeScorePrior": 89,
@@ -5193,8 +5194,7 @@
           },
           "active": true
         }
-      ],
-      "additionalChargedMove": "PSYBEAM_PLUS"
+      ]
     },
     {
       "speciesId": "malamar_shadow",

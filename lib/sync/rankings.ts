@@ -15,6 +15,7 @@ import {
 } from './types';
 import { logError } from './utils';
 import { logValidationErrors, validateRankingsCsv } from './validation';
+import { resolveAdditionalChargedMove } from '@/lib/data/additionalMegaMove';
 import {
   normalizeMoveId,
   resolveSpeciesAlias,
@@ -147,6 +148,7 @@ export interface AggregatedRankingMoveEvidence {
   readonly cp: number;
   readonly speciesId: string;
   readonly pvpokeScorePrior: number | null;
+  readonly additionalChargedMove?: string;
   readonly movesetEvidence: readonly RankingMovesetEvidence[];
   readonly fastMoves: readonly AggregatedMoveUsageEvidence[];
   readonly chargedMoves: readonly AggregatedMoveUsageEvidence[];
@@ -199,6 +201,7 @@ interface MutableAggregatedRankingMoveEvidence {
   readonly cp: number;
   readonly speciesId: string;
   pvpokeScorePrior: number | null;
+  additionalChargedMove?: string;
   readonly movesetEvidence: RankingMovesetEvidence[];
   readonly fastMoveContributions: Map<string, MoveUsageContribution[]>;
   readonly chargedMoveContributions: Map<string, MoveUsageContribution[]>;
@@ -253,6 +256,7 @@ function addMoveUsage(
   category: RankingCategory,
   entries: readonly RankingMoveUsageEntry[],
   slot: 'fast' | 'charged',
+  excludedMoveIds: ReadonlySet<string> = new Set(),
 ): void {
   const contributions =
     slot === 'fast'
@@ -262,6 +266,9 @@ function addMoveUsage(
     slot === 'fast' ? group.fastMoveOverallUses : group.chargedMoveOverallUses;
 
   for (const usage of normalizeMoveUsageEntries(entries)) {
+    if (excludedMoveIds.has(usage.moveId)) {
+      continue;
+    }
     if (category === 'overall') {
       const moveOverallUses = overallUses.get(usage.moveId) ?? [];
       moveOverallUses.push(usage.rawUse);
@@ -405,12 +412,40 @@ export function aggregateRankingMoveEvidence(
       if (evidence.category === 'overall') {
         group.pvpokeScorePrior = entry.score;
       }
+      const additionalMoveIds = new Set(
+        entry.sourceEntries.flatMap((sourceEntry) => {
+          if (sourceEntry.moveset.length !== 4) {
+            return [];
+          }
+          const moveId = normalizeMoveId(sourceEntry.moveset[3] ?? '');
+          return moveId ? [moveId] : [];
+        }),
+      );
+      if (additionalMoveIds.size > 1) {
+        throw new Error(
+          `[sync-rankings] Conflicting additional charged moves for '${entry.canonicalSpeciesId}' in ${evidence.formatId}/${evidence.category}: ${Array.from(additionalMoveIds).sort().join(', ')}`,
+        );
+      }
+      const additionalChargedMove = Array.from(additionalMoveIds)[0];
+      if (
+        additionalChargedMove !== undefined &&
+        group.additionalChargedMove !== undefined &&
+        group.additionalChargedMove !== additionalChargedMove
+      ) {
+        throw new Error(
+          `[sync-rankings] Conflicting additional charged moves for '${entry.canonicalSpeciesId}' in ${evidence.formatId}: '${group.additionalChargedMove}' and '${additionalChargedMove}'`,
+        );
+      }
+      if (additionalChargedMove !== undefined) {
+        group.additionalChargedMove = additionalChargedMove;
+      }
       addMoveUsage(group, evidence.category, entry.moves.fastMoves, 'fast');
       addMoveUsage(
         group,
         evidence.category,
         entry.moves.chargedMoves,
         'charged',
+        additionalMoveIds,
       );
 
       for (const [sourceIndex, sourceEntry] of entry.sourceEntries.entries()) {
@@ -440,6 +475,22 @@ export function aggregateRankingMoveEvidence(
         evidence.cp,
         alias.canonicalSpeciesId,
       );
+      const additionalChargedMove =
+        override.chargedMoves?.length === 3
+          ? normalizeMoveId(override.chargedMoves[2])
+          : undefined;
+      if (
+        additionalChargedMove !== undefined &&
+        group.additionalChargedMove !== undefined &&
+        group.additionalChargedMove !== additionalChargedMove
+      ) {
+        throw new Error(
+          `[sync-rankings] Conflicting additional charged moves for '${alias.canonicalSpeciesId}' in ${evidence.formatId}: '${group.additionalChargedMove}' and '${additionalChargedMove}'`,
+        );
+      }
+      if (additionalChargedMove !== undefined) {
+        group.additionalChargedMove = additionalChargedMove;
+      }
       group.movesetEvidence.push({
         source: 'override',
         evidencePriority: 0,
@@ -463,6 +514,9 @@ export function aggregateRankingMoveEvidence(
         cp: group.cp,
         speciesId: group.speciesId,
         pvpokeScorePrior: group.pvpokeScorePrior,
+        ...(group.additionalChargedMove
+          ? { additionalChargedMove: group.additionalChargedMove }
+          : {}),
         movesetEvidence: [...group.movesetEvidence].sort(
           compareMovesetEvidence,
         ),
@@ -729,6 +783,65 @@ export function normalizeRankingSourceEntries(
       right.score - left.score || left.speciesId.localeCompare(right.speciesId)
     );
   });
+}
+
+/**
+ * Validate and resolve a ranking entry's fixed fourth move against synchronized
+ * Pokemon and move data.
+ */
+export function resolveRankingAdditionalChargedMove(
+  ranking: NormalizedRankingSourceEntry,
+  pokemon: PokemonData | undefined,
+  moveById: ReadonlyMap<string, MovesData>,
+  context: string,
+  overrideAdditionalMoves: readonly string[] = [],
+): string | undefined {
+  const sourceAdditionalMoves = ranking.sourceEntries.flatMap((sourceEntry) => {
+    if (sourceEntry.moveset.length !== 4) {
+      return [];
+    }
+    const moveId = normalizeMoveId(sourceEntry.moveset[3] ?? '');
+    return moveId ? [moveId] : [];
+  });
+  const providedAdditionalMoves = [
+    ...sourceAdditionalMoves,
+    ...overrideAdditionalMoves.map(normalizeMoveId),
+  ];
+  const hasAdditionalMove = providedAdditionalMoves.length > 0;
+  const expectedAdditionalMove = pokemon
+    ? resolveAdditionalChargedMove(pokemon, (moveId) => moveById.get(moveId))
+    : undefined;
+
+  if (hasAdditionalMove && !pokemon) {
+    throw new Error(
+      `[sync-rankings] Missing synchronized Pokemon '${ranking.canonicalSpeciesId}' for ${context} four-move ranking`,
+    );
+  }
+
+  if (hasAdditionalMove && expectedAdditionalMove === undefined) {
+    throw new Error(
+      `[sync-rankings] Incompatible additional charged move data for '${ranking.canonicalSpeciesId}' in ${context}: expected a Mega-tagged Pokemon with exactly one valid extraChargedMoves reference and a matching four-element ranking moveset or three-option override`,
+    );
+  }
+
+  if (expectedAdditionalMove !== undefined) {
+    const move = moveById.get(expectedAdditionalMove);
+    if (!move || move.energyGain > 0) {
+      throw new Error(
+        `[sync-rankings] Additional move '${expectedAdditionalMove}' for '${ranking.canonicalSpeciesId}' in ${context} is not a charged move`,
+      );
+    }
+
+    for (const sourceMove of providedAdditionalMoves) {
+      if (sourceMove !== expectedAdditionalMove) {
+        throw new Error(
+          `[sync-rankings] Additional move '${sourceMove}' for '${ranking.canonicalSpeciesId}' in ${context} does not match synchronized move '${expectedAdditionalMove}'`,
+        );
+      }
+    }
+  }
+
+  return expectedAdditionalMove;
 }
 
 interface RankingSyncDependencies {
@@ -1066,8 +1179,53 @@ export async function scrapeRankings(
       categoryEvidence,
       overrideEvidence,
     );
+    const additionalMovesByFormatAndSpecies = new Map<string, string[]>();
+    for (const evidence of overrideEvidence) {
+      for (const override of evidence.entries) {
+        if (override.chargedMoves?.length !== 3) {
+          continue;
+        }
+        const key = `${evidence.formatId}|${resolveSpeciesAlias(override.speciesId).canonicalSpeciesId}`;
+        const additionalMoves =
+          additionalMovesByFormatAndSpecies.get(key) ?? [];
+        additionalMoves.push(normalizeMoveId(override.chargedMoves[2]));
+        additionalMovesByFormatAndSpecies.set(key, additionalMoves);
+      }
+    }
+    for (const evidence of categoryEvidence) {
+      for (const ranking of evidence.entries) {
+        const key = `${evidence.formatId}|${ranking.canonicalSpeciesId}`;
+        const additionalChargedMove = resolveRankingAdditionalChargedMove(
+          ranking,
+          pokemonBySpeciesId.get(ranking.canonicalSpeciesId),
+          moveById,
+          `${evidence.formatId}/${evidence.category}`,
+          additionalMovesByFormatAndSpecies.get(key),
+        );
+        if (additionalChargedMove === undefined) {
+          continue;
+        }
+        const existing = additionalMovesByFormatAndSpecies.get(key) ?? [];
+        if (!existing.includes(additionalChargedMove)) {
+          existing.push(additionalChargedMove);
+          additionalMovesByFormatAndSpecies.set(key, existing);
+        }
+      }
+    }
+    const validatedAggregatedEvidence = aggregatedEvidence.map((evidence) => {
+      const additionalChargedMove = Array.from(
+        new Set(
+          additionalMovesByFormatAndSpecies.get(
+            `${evidence.formatId}|${evidence.speciesId}`,
+          ),
+        ),
+      )[0];
+      return additionalChargedMove === undefined
+        ? evidence
+        : { ...evidence, additionalChargedMove };
+    });
     const getMoveAvailability = createMoveAvailabilityResolver(pokemonData);
-    const candidateSets = aggregatedEvidence.flatMap((evidence) => {
+    const candidateSets = validatedAggregatedEvidence.flatMap((evidence) => {
       const pokemon = pokemonBySpeciesId.get(evidence.speciesId);
       return pokemon
         ? [
@@ -1130,6 +1288,7 @@ export async function scrapeRankings(
                   selectedDefault.fastMove,
                   selectedDefault.chargedMove1,
                   selectedDefault.chargedMove2,
+                  ...(ranking.moveset.length === 4 ? [ranking.moveset[3]] : []),
                 ],
               }
             : ranking;

@@ -73,7 +73,6 @@ describe('PokemonCard', () => {
 
     expect(screen.getByText('Additional Charged Attack')).toBeInTheDocument();
     expect(screen.getByText('Wild Charge')).toBeInTheDocument();
-    expect(screen.getByText('Mega Level 4')).toBeInTheDocument();
   });
 
   it('renders shadow badge when pokemon is shadow', () => {
