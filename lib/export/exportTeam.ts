@@ -43,6 +43,7 @@ export function exportTeam(
 
   const lines: string[] = [];
   const acquisitionLines: string[] = [];
+  const battleConfigurationLines: string[] = [];
 
   team.forEach((speciesId) => {
     const exportName = convertSpeciesIdToExportFormat(speciesId);
@@ -56,9 +57,29 @@ export function exportTeam(
       throw new Error(`Missing acquisition requirements for ${speciesId}.`);
     }
 
-    lines.push(
-      `${exportName},${moveset.fastMove},${moveset.chargedMove1},${moveset.chargedMove2}`,
-    );
+    const exportedMoves = [
+      moveset.fastMove,
+      moveset.chargedMove1,
+      moveset.chargedMove2,
+    ];
+    if (moveset.additionalChargedMove) {
+      exportedMoves.push(moveset.additionalChargedMove);
+    }
+    lines.push(`${exportName},${exportedMoves.join(',')}`);
+
+    const battleConfiguration = [
+      moveset.additionalChargedMove
+        ? `Fixed additional Charged Attack ${moveset.additionalChargedMove}`
+        : null,
+      moveset.megaLevel !== undefined
+        ? `Mega Level ${moveset.megaLevel}`
+        : null,
+    ].filter((value): value is string => value !== null);
+    if (battleConfiguration.length > 0) {
+      battleConfigurationLines.push(
+        `# ${exportName}: ${battleConfiguration.join('; ')}`,
+      );
+    }
 
     const specialRequirements = [
       formatAcquisitionRequirement(
@@ -87,6 +108,9 @@ export function exportTeam(
 
   if (acquisitionLines.length > 0) {
     lines.push('# Acquisition requirements', ...acquisitionLines);
+  }
+  if (battleConfigurationLines.length > 0) {
+    lines.push('# Battle configuration', ...battleConfigurationLines);
   }
 
   return lines.join('\n');

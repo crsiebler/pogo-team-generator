@@ -36,6 +36,36 @@ const assignment: RosterMovesetAssignment = {
   fingerprint: 'export-assignment',
 };
 
+const megaAssignment: RosterMovesetAssignment = {
+  ...assignment,
+  variantsBySpeciesId: {
+    ...assignment.variantsBySpeciesId,
+    scizor_shadow: {
+      ...assignment.variantsBySpeciesId.scizor_shadow!,
+      additionalChargedMove: 'VOLT_TACKLE_PLUS',
+      megaLevel: 4,
+    },
+  },
+};
+
+const nonEligibleMegaAssignment: RosterMovesetAssignment = {
+  ...assignment,
+  authorityBySpeciesId: {
+    ...assignment.authorityBySpeciesId,
+    blastoise_mega: assignment.authorityBySpeciesId.altaria!,
+  },
+  variantsBySpeciesId: {
+    ...assignment.variantsBySpeciesId,
+    blastoise_mega: {
+      id: 'water_gun--hydro_cannon--ice_beam',
+      fastMove: 'WATER_GUN',
+      chargedMove1: 'HYDRO_CANNON',
+      chargedMove2: 'ICE_BEAM',
+      isDefault: true,
+    },
+  },
+};
+
 const regularRequirements: MovesetAcquisitionRequirements = {
   fastMove: { kind: 'regular' },
   chargedMove1: { kind: 'regular' },
@@ -77,6 +107,39 @@ describe('exportTeam', () => {
         '# scizor_shadow-shadow: NIGHT_SLASH (Elite Charged TM)',
       ].join('\n'),
     );
+  });
+
+  it('exports a fixed additional move and Mega level annotation', () => {
+    const result = exportTeam(['scizor_shadow'], megaAssignment, {
+      scizor_shadow: regularRequirements,
+    });
+
+    expect(result).toBe(
+      [
+        'scizor_shadow-shadow,BULLET_PUNCH,NIGHT_SLASH,TRAILBLAZE,VOLT_TACKLE_PLUS',
+        '# Battle configuration',
+        '# scizor_shadow-shadow: Fixed additional Charged Attack VOLT_TACKLE_PLUS; Mega Level 4',
+      ].join('\n'),
+    );
+  });
+
+  it('leaves noneligible Mega rows in the standard four-field format', () => {
+    const result = exportTeam(['blastoise_mega'], nonEligibleMegaAssignment, {
+      blastoise_mega: regularRequirements,
+    });
+
+    expect(result).toBe('blastoise_mega,WATER_GUN,HYDRO_CANNON,ICE_BEAM');
+    expect(result).not.toContain('# Battle configuration');
+  });
+
+  it('keeps non-Mega rows unchanged beside an eligible Mega row', () => {
+    const result = exportTeam(['altaria', 'scizor_shadow'], megaAssignment, {
+      altaria: regularRequirements,
+      scizor_shadow: regularRequirements,
+    });
+
+    expect(result).toContain('altaria,DRAGON_BREATH,SKY_ATTACK,MOONBLAST');
+    expect(result).not.toContain('altaria,DRAGON_BREATH,SKY_ATTACK,MOONBLAST,');
   });
 
   it('rejects a roster member missing from the scored assignment', () => {

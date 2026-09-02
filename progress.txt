@@ -287,3 +287,52 @@ Run initialized for `ralph/additional-mega-charged-attacks` from
 - Final metadata: US-008 is marked `passes: true` in `prd.json`.
 - Final consistency check: passed; staged files are the complete US-008 story set and only unrelated pre-existing work remains unstaged.
 ---
+## 2026-09-01 22:13 MST - US-009
+- What was implemented: Extended PvPoke team export rows with the scored assignment's fixed additional Charged Attack when present, and added a separate Battle configuration annotation identifying the move as fixed and recording Mega Level 4. Existing noneligible rows and selectable-move acquisition text remain unchanged.
+- Files changed: `lib/export/exportTeam.ts`, `lib/export/exportTeam.test.ts`, `lib/export/copyTeamToClipboard.test.ts`, `progress.txt`
+- Commit message: `feat: US-009 - Export the complete battle configuration`
+- Auto approval: `disabled`
+- Checks:
+  - `npx tsc --noEmit --incremental false` (pass)
+  - `npm run lint` (pass)
+  - `npx prettier --check lib/export/exportTeam.ts lib/export/exportTeam.test.ts lib/export/copyTeamToClipboard.test.ts` (pass)
+  - `npx vitest run lib/export/exportTeam.test.ts lib/export/copyTeamToClipboard.test.ts --maxWorkers 1 --no-file-parallelism` (pass, 2 files and 13 tests)
+  - `npm test` (pass, 90 files and 1107 tests)
+- Implementation agents:
+  - Recommended: `backend-developer`, `test-automator`
+  - Used: `backend-developer` (`ses_f9f89f081ffeMcKtVJB3Crl0tK`); skipped `test-automator` because the standard-mode budget allowed one implementation advisor and the existing export tests provided a direct test seam.
+- Local review:
+  - Reviewer: pending staged review
+  - Passes: pending
+  - Findings: pending
+  - Review duration and reviewer session ID when available: pending
+- Decisions (why):
+  - Used PvPoke's supported fifth CSV move field for the fixed attack rather than adding an unsupported sixth field, which PvPoke interprets as level/IV data.
+  - Kept Mega Level and fixed-move semantics in a comment sidecar because the CSV field cannot express non-selectability or Mega Level.
+  - Read all exported move IDs directly from `RosterMovesetAssignment`; acquisition metadata continues to describe only the three selectable slots.
+- **Learnings for future iterations:**
+  - PvPoke team imports accept `species,fast,charged1,charged2,extraCharged` and treat later fields as custom level/IV values.
+  - Export annotations should remain separate from acquisition requirements so inherent additional attacks are not mislabeled as obtainable moves.
+- Known issues / follow-ups:
+  - None for US-009.
+- Next iteration start:
+  - Review and commit US-009, then regenerate and validate affected assets in US-010.
+---
+## 2026-09-01 22:17 MST - US-009 Review Stabilization
+- Local review: `ralph-reviewer` initial staged review requested one medium-severity test coverage remediation.
+- Findings: `export-tests-missing-noneligible-mega-form` accepted_fixed; added a `blastoise_mega` ordinary-Mega fixture and asserted unchanged four-field output with no battle configuration annotation.
+- Verification: `npx vitest run lib/export/exportTeam.test.ts lib/export/copyTeamToClipboard.test.ts --maxWorkers 1 --no-file-parallelism` passed with 2 files and 14 tests; `npx tsc --noEmit --incremental false` passed; `npm run lint` passed; targeted Prettier check passed after formatting.
+- Targeted re-review: pending on the revised complete staged diff.
+---
+## 2026-09-01 22:18 MST - US-009 Review Completion
+- Local review: `ralph-reviewer` initial review found `export-tests-missing-noneligible-mega-form`; the accepted fix was verified by the targeted re-review.
+- Passes: initial review requested one medium finding; targeted re-review passed with no findings.
+- Findings: `export-tests-missing-noneligible-mega-form` accepted_fixed with the `blastoise_mega` ordinary-Mega regression; focused tests, typecheck, lint, and formatting passed after remediation.
+- Review duration and reviewer session ID when available: targeted review completed; `ses_f9f74e8abffepT3qmuNBHLVs0z`.
+- Learning candidate disposition: no reusable learning candidate was returned; `memory.json` remains unchanged.
+- Final metadata: pending `prd.json` update and final consistency check.
+---
+## 2026-09-01 22:19 MST - US-009 Final Consistency
+- Final metadata: US-009 is marked `passes: true` in `prd.json`; `memory.json` remains valid and unchanged.
+- Final consistency check: passed. Cached files are the complete US-009 story set plus `prd.json` and `progress.txt`; no selected story files remain unstaged. Pre-existing unrelated `.opencode/package-lock.json`, sync changes, and `artifacts/` remain outside the commit.
+---
