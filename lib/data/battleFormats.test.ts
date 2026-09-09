@@ -14,12 +14,11 @@ describe('battle format catalog', () => {
   it('contains the supported formats in priority order', () => {
     expect(BATTLE_FORMATS.map((format) => format.label)).toEqual([
       'Great League',
-      'Mega Great League',
+      'Great League: Mega Edition',
       'Ultra League',
-      'Mega Ultra League',
+      'Ultra League: Mega Edition',
       'Master League',
-      'Mega Master League',
-      'Scroll Cup',
+      'Master League: Mega Edition',
       'Battle Frontier (Copa Diluvio)',
       'Battle Frontier (Tsuki Cup)',
       'Battle Frontier (Liga Ultra)',
@@ -38,7 +37,6 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('mega-ultra-league')).toBe(true);
     expect(isBattleFormatId('master-league')).toBe(true);
     expect(isBattleFormatId('mega-master-league')).toBe(true);
-    expect(isBattleFormatId('scroll-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-copa-diluvio')).toBe(true);
     expect(isBattleFormatId('battle-frontier-tsuki-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-liga-ultra')).toBe(true);
@@ -67,30 +65,23 @@ describe('battle format catalog', () => {
 
     expect(getBattleFormatById('mega-great-league')).toEqual({
       id: 'mega-great-league',
-      label: 'Mega Great League',
+      label: 'Great League: Mega Edition',
       cup: 'mega',
       cp: 1500,
     });
 
     expect(getBattleFormatById('mega-ultra-league')).toEqual({
       id: 'mega-ultra-league',
-      label: 'Mega Ultra League',
+      label: 'Ultra League: Mega Edition',
       cup: 'mega',
       cp: 2500,
     });
 
     expect(getBattleFormatById('mega-master-league')).toEqual({
       id: 'mega-master-league',
-      label: 'Mega Master League',
+      label: 'Master League: Mega Edition',
       cup: 'mega',
       cp: 10000,
-    });
-
-    expect(getBattleFormatById('scroll-cup')).toEqual({
-      id: 'scroll-cup',
-      label: 'Scroll Cup',
-      cup: 'scroll',
-      cp: 1500,
     });
 
     expect(getBattleFormatById('battle-frontier-copa-diluvio')).toEqual({
@@ -166,7 +157,6 @@ describe('battle format catalog', () => {
     );
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
     expect(isBattleFrontierFormatId('mega-master-league')).toBe(false);
-    expect(isBattleFrontierFormatId('scroll-cup')).toBe(false);
   });
 
   it('identifies formats with a one-Mega team limit', () => {
@@ -177,7 +167,6 @@ describe('battle format catalog', () => {
       true,
     );
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
-    expect(hasOneMegaLimitForFormat('scroll-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat(undefined)).toBe(false);
   });

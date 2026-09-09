@@ -91,8 +91,8 @@
     "moveId": "AIR_CUTTER",
     "name": "Air Cutter",
     "type": "flying",
-    "power": 45,
-    "energy": 35,
+    "power": 60,
+    "energy": 40,
     "energyGain": 0,
     "cooldown": 500,
     "buffs": [
@@ -100,9 +100,9 @@
       0
     ],
     "buffTarget": "self",
-    "buffApplyChance": ".3",
-    "archetype": "Boost Spam",
-    "turns": 1
+    "buffApplyChance": ".125",
+    "turns": 1,
+    "archetype": "Boost Spam"
   },
   {
     "moveId": "AIR_SLASH",
@@ -299,11 +299,11 @@
     "name": "Bite",
     "abbreviation": "Bi",
     "type": "dark",
-    "power": 4,
+    "power": 2,
     "energy": 0,
-    "energyGain": 2,
+    "energyGain": 4,
     "cooldown": 500,
-    "archetype": "Heavy Damage",
+    "archetype": "Fast Charge",
     "turns": 1
   },
   {
@@ -322,7 +322,7 @@
     "name": "Blaze Kick",
     "type": "fire",
     "power": 60,
-    "energy": 40,
+    "energy": 35,
     "energyGain": 0,
     "cooldown": 500,
     "archetype": "Spam/Bait",
@@ -362,12 +362,12 @@
     "moveId": "BODY_SLAM",
     "name": "Body Slam",
     "type": "normal",
-    "power": 55,
-    "energy": 35,
+    "power": 65,
+    "energy": 40,
     "energyGain": 0,
     "cooldown": 500,
-    "archetype": "Spam/Bait",
-    "turns": 1
+    "turns": 1,
+    "archetype": "Spam/Bait"
   },
   {
     "moveId": "BONE_CLUB",
@@ -470,12 +470,12 @@
     "name": "Brine",
     "abbreviation": "Bri",
     "type": "water",
-    "power": 60,
-    "energy": 50,
+    "power": 100,
+    "energy": 60,
     "energyGain": 0,
     "cooldown": 500,
-    "archetype": "General",
-    "turns": 1
+    "turns": 1,
+    "archetype": "High Energy"
   },
   {
     "moveId": "BRUTAL_SWING",
@@ -505,8 +505,8 @@
     "name": "Bubble Beam",
     "abbreviation": "BuB",
     "type": "water",
-    "power": 25,
-    "energy": 40,
+    "power": 50,
+    "energy": 50,
     "energyGain": 0,
     "cooldown": 500,
     "buffs": [
@@ -515,8 +515,8 @@
     ],
     "buffTarget": "opponent",
     "buffApplyChance": "1",
-    "archetype": "Debuff Spam",
-    "turns": 1
+    "turns": 1,
+    "archetype": "Debuff"
   },
   {
     "moveId": "BUG_BITE",
@@ -553,8 +553,8 @@
     "name": "Bulldoze",
     "abbreviation": "Bd",
     "type": "ground",
-    "power": 45,
-    "energy": 45,
+    "power": 80,
+    "energy": 55,
     "energyGain": 0,
     "cooldown": 500,
     "buffs": [
@@ -562,9 +562,9 @@
       -1
     ],
     "buffTarget": "opponent",
-    "buffApplyChance": ".5",
-    "archetype": "Debuff Spam",
-    "turns": 1
+    "buffApplyChance": "1",
+    "turns": 1,
+    "archetype": "High Energy Debuff"
   },
   {
     "moveId": "BULLET_PUNCH",
@@ -592,7 +592,7 @@
     "moveId": "CHARGE_BEAM",
     "name": "Charge Beam",
     "type": "electric",
-    "power": 5,
+    "power": 6,
     "energy": 0,
     "energyGain": 11,
     "cooldown": 1500,
@@ -793,7 +793,7 @@
     "name": "Dark Pulse",
     "type": "dark",
     "power": 80,
-    "energy": 50,
+    "energy": 45,
     "energyGain": 0,
     "cooldown": 500,
     "archetype": "General",
@@ -872,7 +872,7 @@
     "name": "Double Iron Bash",
     "abbreviation": "DbI",
     "type": "steel",
-    "power": 55,
+    "power": 70,
     "energy": 35,
     "energyGain": 0,
     "cooldown": 500,
@@ -986,12 +986,18 @@
     "moveId": "DRAINING_KISS",
     "name": "Draining Kiss",
     "type": "fairy",
-    "power": 60,
+    "power": 80,
     "energy": 55,
     "energyGain": 0,
     "cooldown": 500,
-    "archetype": "High Energy",
-    "turns": 1
+    "archetype": "High Energy Boost",
+    "turns": 1,
+    "buffTarget": "self",
+    "buffs": [
+      0,
+      1
+    ],
+    "buffApplyChance": "1"
   },
   {
     "moveId": "DRAIN_PUNCH",
@@ -1228,6 +1234,25 @@
     "buffApplyChance": "1",
     "archetype": "Boost Spam",
     "turns": 1
+  },
+  {
+    "moveId": "FELL_STINGER_PLUS",
+    "name": "Fell Stinger",
+    "abbreviation": "FeS",
+    "type": "bug",
+    "power": 40,
+    "energy": 35,
+    "energyGain": 0,
+    "cooldown": 500,
+    "buffs": [
+      1,
+      0
+    ],
+    "buffTarget": "self",
+    "buffApplyChance": "1",
+    "archetype": "Boost Spam",
+    "turns": 1,
+    "isMegaMove": true
   },
   {
     "moveId": "FIRE_BLAST",
@@ -1635,6 +1660,7 @@
     "archetype": "Debuff",
     "turns": 1,
     "damageMethod": "percentMaxHP",
+    "unlisted": true,
     "tags": [
       "instant",
       "ignoresFaint",
@@ -1660,6 +1686,7 @@
     "archetype": "Debuff",
     "turns": 1,
     "damageMethod": "percentMaxHP",
+    "unlisted": true,
     "tags": [
       "instant",
       "ignoresFaint",
@@ -1952,11 +1979,11 @@
     "name": "High Horsepower",
     "type": "ground",
     "power": 100,
-    "energy": 60,
+    "energy": 55,
     "energyGain": 0,
     "cooldown": 500,
-    "archetype": "Nuke",
-    "turns": 1
+    "turns": 1,
+    "archetype": "Nuke"
   },
   {
     "moveId": "HIGH_JUMP_KICK",
@@ -2161,18 +2188,18 @@
     "name": "Infestation",
     "abbreviation": "Inf",
     "type": "bug",
-    "power": 6,
+    "power": 10,
     "energy": 0,
     "energyGain": 12,
     "cooldown": 1500,
-    "archetype": "Fast Charge",
+    "archetype": "Multipurpose",
     "turns": 3
   },
   {
     "moveId": "IRON_HEAD",
     "name": "Iron Head",
     "type": "steel",
-    "power": 70,
+    "power": 85,
     "energy": 50,
     "energyGain": 0,
     "cooldown": 500,
@@ -2333,11 +2360,11 @@
     "moveId": "LOW_KICK",
     "name": "Low Kick",
     "type": "fighting",
-    "power": 5,
+    "power": 6,
     "energy": 0,
     "energyGain": 8,
     "cooldown": 1000,
-    "archetype": "Fast Charge",
+    "archetype": "Multipurpose",
     "turns": 2
   },
   {
@@ -2356,7 +2383,7 @@
     "name": "Lunge",
     "abbreviation": "Lu",
     "type": "bug",
-    "power": 60,
+    "power": 70,
     "energy": 45,
     "energyGain": 0,
     "cooldown": 500,
@@ -2416,10 +2443,10 @@
     "abbreviation": "MgB",
     "type": "steel",
     "power": 70,
-    "energy": 45,
+    "energy": 40,
     "energyGain": 0,
     "cooldown": 500,
-    "archetype": "General",
+    "archetype": "Spam/Bait",
     "turns": 1
   },
   {
@@ -2520,12 +2547,12 @@
     "name": "Mirror Coat",
     "abbreviation": "MrC",
     "type": "psychic",
-    "power": 60,
-    "energy": 55,
+    "power": 75,
+    "energy": 45,
     "energyGain": 0,
     "cooldown": 500,
-    "archetype": "High Energy",
-    "turns": 1
+    "turns": 1,
+    "archetype": "General"
   },
   {
     "moveId": "MIRROR_SHOT",
@@ -2567,8 +2594,8 @@
     "moveId": "MOONBLAST",
     "name": "Moonblast",
     "type": "fairy",
-    "power": 110,
-    "energy": 60,
+    "power": 90,
+    "energy": 50,
     "energyGain": 0,
     "cooldown": 500,
     "buffs": [
@@ -2577,7 +2604,7 @@
     ],
     "buffTarget": "opponent",
     "buffApplyChance": ".1",
-    "archetype": "Debuff Nuke",
+    "archetype": "Debuff",
     "turns": 1
   },
   {
@@ -2936,7 +2963,7 @@
     "moveId": "POISON_FANG",
     "name": "Poison Fang",
     "type": "poison",
-    "power": 45,
+    "power": 50,
     "energy": 40,
     "energyGain": 0,
     "cooldown": 500,
@@ -3134,7 +3161,7 @@
     "moveId": "PSYCHO_BOOST",
     "name": "Psycho Boost",
     "type": "psychic",
-    "power": 70,
+    "power": 85,
     "energy": 35,
     "energyGain": 0,
     "cooldown": 500,
@@ -3220,8 +3247,8 @@
     "moveId": "RAGE_FIST",
     "name": "Rage Fist",
     "type": "ghost",
-    "power": 50,
-    "energy": 35,
+    "power": 55,
+    "energy": 40,
     "energyGain": 0,
     "cooldown": 500,
     "buffs": [
@@ -3230,7 +3257,7 @@
     ],
     "buffTarget": "self",
     "buffApplyChance": "1",
-    "archetype": "Boost",
+    "archetype": "Boost Spam",
     "turns": 1
   },
   {
@@ -3445,8 +3472,8 @@
     "moveId": "SAND_TOMB",
     "name": "Sand Tomb",
     "type": "ground",
-    "power": 40,
-    "energy": 40,
+    "power": 55,
+    "energy": 45,
     "energyGain": 0,
     "cooldown": 500,
     "buffs": [
@@ -3455,8 +3482,8 @@
     ],
     "buffTarget": "opponent",
     "buffApplyChance": "1",
-    "archetype": "Debuff Spam",
-    "turns": 1
+    "turns": 1,
+    "archetype": "Debuff"
   },
   {
     "moveId": "SCALD",
@@ -3499,11 +3526,11 @@
     "name": "Scratch",
     "abbreviation": "Scr",
     "type": "normal",
-    "power": 4,
+    "power": 3,
     "energy": 0,
-    "energyGain": 2,
+    "energyGain": 4,
     "cooldown": 500,
-    "archetype": "Heavy Damage",
+    "archetype": "Multipurpose",
     "turns": 1
   },
   {
@@ -3565,7 +3592,7 @@
     "moveId": "SHADOW_BALL",
     "name": "Shadow Ball",
     "type": "ghost",
-    "power": 100,
+    "power": 90,
     "energy": 50,
     "energyGain": 0,
     "cooldown": 500,
@@ -3607,7 +3634,7 @@
     "abbreviation": "ShF",
     "type": "ghost",
     "power": 120,
-    "energy": 90,
+    "energy": 65,
     "energyGain": 0,
     "cooldown": 500,
     "archetype": "Nuke",
@@ -4049,11 +4076,11 @@
     "moveId": "TAKE_DOWN",
     "name": "Take Down",
     "type": "normal",
-    "power": 5,
+    "power": 14,
     "energy": 0,
-    "energyGain": 8,
+    "energyGain": 9,
     "cooldown": 1500,
-    "archetype": "Low Quality",
+    "archetype": "Multipurpose",
     "turns": 3
   },
   {

@@ -125,7 +125,7 @@ describe('generateSimulations', () => {
       { context },
       {
         id: 'mega-great-league',
-        label: 'Mega Great League',
+        label: 'Great League: Mega Edition',
         cup: 'mega',
         cp: 1500,
       },
@@ -272,7 +272,7 @@ describe('generateSimulations', () => {
       { context },
       {
         id: 'mega-great-league',
-        label: 'Mega Great League',
+        label: 'Great League: Mega Edition',
         cup: 'mega',
         cp: 1500,
       },
@@ -788,7 +788,6 @@ describe('generateSimulations', () => {
     const generatedCalls: Array<{
       cup:
         | 'all'
-        | 'scroll'
         | 'copadiluvio'
         | 'tsuki'
         | 'ligaultra'
@@ -847,7 +846,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(33);
+    expect(generatedCalls).toHaveLength(30);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -885,7 +884,7 @@ describe('generateSimulations', () => {
       shields: 2,
     });
     expect(generatedCalls).toContainEqual({
-      cup: 'scroll',
+      cup: 'tsuki',
       cp: 1500,
       speciesId: 'bulbasaur',
       shields: 1,
@@ -928,7 +927,7 @@ describe('generateSimulations', () => {
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(
-      path.join('data', 'simulations', 'cp1500', 'scroll', 'bulbasaur_1-1.csv'),
+      path.join('data', 'simulations', 'cp1500', 'tsuki', 'bulbasaur_1-1.csv'),
       VALID_SIMULATION_CSV,
     );
     expect(writeFile).toHaveBeenCalledWith(

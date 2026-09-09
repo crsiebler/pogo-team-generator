@@ -21,7 +21,6 @@ const RANKING_CATEGORIES = [
 ] as const;
 const RANKING_CUPS = [
   'all',
-  'scroll',
   'copadiluvio',
   'tsuki',
   'ligaultra',

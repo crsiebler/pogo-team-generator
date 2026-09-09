@@ -19,12 +19,6 @@ const formats: readonly BattleFormat[] = [
     cup: 'all',
     cp: 1500,
   },
-  {
-    id: 'scroll-cup',
-    label: 'Scroll Cup',
-    cup: 'scroll',
-    cp: 1500,
-  },
 ];
 const execFileAsync = promisify(execFile);
 
@@ -50,7 +44,7 @@ function createCandidateSet(
 ): DerivedMovesetCandidateSet {
   return {
     formatId,
-    cup: formatId === 'scroll-cup' ? 'scroll' : 'all',
+    cup: 'all',
     cp: 1500,
     speciesId,
     pvpokeScorePrior: 90,
@@ -81,7 +75,6 @@ describe('simulation projection', () => {
       ],
       simulationSpeciesIdsByFormatId: new Map([
         ['great-league', ['quagsire', 'golisopod']],
-        ['scroll-cup', []],
       ]),
       existingFilenamesByFormatId: new Map([
         [
@@ -120,18 +113,6 @@ describe('simulation projection', () => {
         staleVariantFiles: [
           'data/simulations/cp1500/all/golisopod--waterfall--liquidation--aerial_ace_0-0.csv',
         ],
-      },
-      {
-        formatId: 'scroll-cup',
-        label: 'Scroll Cup',
-        cup: 'scroll',
-        cp: 1500,
-        candidateSpecies: 0,
-        candidateVariants: 0,
-        alternateVariants: 0,
-        shieldScenarioCsvs: 0,
-        species: [],
-        staleVariantFiles: [],
       },
     ]);
     expect(projection.totals).toEqual({

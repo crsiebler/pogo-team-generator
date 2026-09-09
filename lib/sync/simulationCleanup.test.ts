@@ -153,7 +153,7 @@ describe('deleteStaleVariantSimulationFiles', () => {
   it('validates every manifest boundary before reading or deleting files', async () => {
     const valid = createPreparedManifest(getFormat('great-league'));
     const invalid = {
-      ...createPreparedManifest(getFormat('scroll-cup')),
+      ...createPreparedManifest(getFormat('battle-frontier-tsuki-cup')),
       targetPath: 'data/simulations/cp1500/all/moveset-variants.json',
     };
     const readDirectory = vi.fn();
@@ -165,7 +165,7 @@ describe('deleteStaleVariantSimulationFiles', () => {
         readDirectory,
         unlink,
       }),
-    ).rejects.toThrow('Manifest target must match scroll-cup');
+    ).rejects.toThrow('Manifest target must match battle-frontier-tsuki-cup');
 
     expect(readDirectory).not.toHaveBeenCalled();
     expect(unlink).not.toHaveBeenCalled();
@@ -179,7 +179,7 @@ describe('deleteStaleVariantSimulationFiles', () => {
     const deleted = await deleteStaleVariantSimulationFiles(
       [
         createPreparedManifest(getFormat('great-league')),
-        createPreparedManifest(getFormat('scroll-cup')),
+        createPreparedManifest(getFormat('battle-frontier-tsuki-cup')),
       ],
       {
         realpath: identityRealpath,
@@ -193,7 +193,7 @@ describe('deleteStaleVariantSimulationFiles', () => {
 
     expect(deleted).toEqual([
       `data/simulations/cp1500/all/${staleFilename}`,
-      `data/simulations/cp1500/scroll/${staleFilename}`,
+      `data/simulations/cp1500/tsuki/${staleFilename}`,
     ]);
   });
 

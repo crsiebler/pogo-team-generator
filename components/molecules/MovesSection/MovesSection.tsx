@@ -31,7 +31,7 @@ export function MovesSection({
         </Typography>
         <div className="flex flex-wrap gap-1">
           {fastMove ? (
-            <Badge color="green">⭐ {fastMove.replace(/_/g, ' ')}</Badge>
+            <Badge color="green">⭐ {formatMoveName(fastMove)}</Badge>
           ) : (
             <Typography variant="span" className={noRecommendationClasses}>
               No recommendation
@@ -46,10 +46,10 @@ export function MovesSection({
         </Typography>
         <div className="flex flex-wrap gap-1">
           {chargedMove1 && (
-            <Badge color="purple">⭐ {chargedMove1.replace(/_/g, ' ')}</Badge>
+            <Badge color="purple">⭐ {formatMoveName(chargedMove1)}</Badge>
           )}
           {chargedMove2 && (
-            <Badge color="purple">⭐ {chargedMove2.replace(/_/g, ' ')}</Badge>
+            <Badge color="purple">⭐ {formatMoveName(chargedMove2)}</Badge>
           )}
           {!chargedMove1 && !chargedMove2 && (
             <Typography variant="span" className={noRecommendationClasses}>

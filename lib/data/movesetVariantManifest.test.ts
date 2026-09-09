@@ -471,7 +471,7 @@ describe('moveset variant manifest validation', () => {
     {
       name: 'mismatched cup',
       mutate: (manifest: Mutable<MovesetVariantManifest>) => {
-        manifest.metadata.cup = 'scroll';
+        manifest.metadata.cup = 'tsuki';
       },
     },
     {
