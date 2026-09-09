@@ -56,4 +56,16 @@ describe('MovesSection', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Mega Level 4')).not.toBeInTheDocument();
   });
+
+  it('preserves PvPoke plus notation for Mega moves', () => {
+    render(
+      <MovesSection
+        chargedMove1="Dynamic Punch+"
+        chargedMove2="VOLT_TACKLE_PLUS"
+      />,
+    );
+
+    expect(screen.getByText('⭐ Dynamic Punch+')).toBeInTheDocument();
+    expect(screen.getByText('⭐ VOLT TACKLE+')).toBeInTheDocument();
+  });
 });

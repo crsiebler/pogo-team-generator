@@ -5,9 +5,11 @@ A Next.js app that builds competitive Pokemon GO PvP teams with a format-aware g
 ## Supported Formats
 
 - Great League
+- Great League: Mega Edition
 - Ultra League
+- Ultra League: Mega Edition
 - Master League
-- Mega Master League
+- Master League: Mega Edition
 - Fantasy Cup
 - Summer Cup
 - Battle Frontier (Copa Diluvio)

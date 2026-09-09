@@ -3,7 +3,6 @@ export interface BattleFormat {
   label: string;
   cup:
     | 'all'
-    | 'scroll'
     | 'copadiluvio'
     | 'tsuki'
     | 'ligaultra'
@@ -22,7 +21,6 @@ export type BattleFormatId =
   | 'mega-ultra-league'
   | 'master-league'
   | 'mega-master-league'
-  | 'scroll-cup'
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
@@ -40,7 +38,7 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
   },
   {
     id: 'mega-great-league',
-    label: 'Mega Great League',
+    label: 'Great League: Mega Edition',
     cup: 'mega',
     cp: 1500,
   },
@@ -52,7 +50,7 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
   },
   {
     id: 'mega-ultra-league',
-    label: 'Mega Ultra League',
+    label: 'Ultra League: Mega Edition',
     cup: 'mega',
     cp: 2500,
   },
@@ -64,15 +62,9 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
   },
   {
     id: 'mega-master-league',
-    label: 'Mega Master League',
+    label: 'Master League: Mega Edition',
     cup: 'mega',
     cp: 10000,
-  },
-  {
-    id: 'scroll-cup',
-    label: 'Scroll Cup',
-    cup: 'scroll',
-    cp: 1500,
   },
   {
     id: 'battle-frontier-copa-diluvio',
