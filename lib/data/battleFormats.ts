@@ -7,6 +7,7 @@ export interface BattleFormat {
     | 'tsuki'
     | 'ligaultra'
     | 'coupedusillage'
+    | 'willpower'
     | 'mega';
   cp: 1500 | 2500 | 10000;
 }
@@ -24,7 +25,8 @@ export type BattleFormatId =
   | 'battle-frontier-copa-diluvio'
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
-  | 'battle-frontier-coupe-du-sillage';
+  | 'battle-frontier-coupe-du-sillage'
+  | 'willpower-cup';
 
 /**
  * Catalog of supported battle formats.
@@ -34,6 +36,12 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     id: 'great-league',
     label: 'Great League',
     cup: 'all',
+    cp: 1500,
+  },
+  {
+    id: 'willpower-cup',
+    label: 'Willpower Cup: Great League Edition',
+    cup: 'willpower',
     cp: 1500,
   },
   {
@@ -106,6 +114,7 @@ const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
 
 const selectableBattleFormatIds: readonly BattleFormatId[] = [
   'great-league',
+  'willpower-cup',
   'ultra-league',
   'master-league',
   'mega-great-league',
