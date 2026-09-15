@@ -10,17 +10,17 @@
       {
         "key": "formats/mega-master-league.json",
         "algorithm": "sha256",
-        "digest": "0bdf97c8d8a7e452a968170ae7543d548fb3f13bc3161163ed58900ee287fdcf"
+        "digest": "934b016488d6dcceabbcd6ec42877256db7a2e557a9d45d15cdc8cb783ae9d86"
       },
       {
         "key": "moves.json",
         "algorithm": "sha256",
-        "digest": "0a22992ae4b7890f625a403e649d6861af3d5162d45f5ff4ddd7adf21d915b9e"
+        "digest": "4d675669c2563ea3498c9d65e53f24c256e6f62dbf9d1a5a2d97dc9e6adf9d1c"
       },
       {
         "key": "pokemon.json",
         "algorithm": "sha256",
-        "digest": "cdb8c2458900e10bc187c2efd05f430d23bb0e4184ba3d7b219317bc69c27ca0"
+        "digest": "28b651671feb6ffc375ebc7cc1a267b15f100ccb1f3d013963585518ac2b9504"
       }
     ],
     "derivationSettings": {
@@ -490,7 +490,7 @@
       "speciesId": "annihilape",
       "defaultVariantId": "counter--rage_fist--ice_punch",
       "evidence": {
-        "pvpokeScorePrior": 63.6,
+        "pvpokeScorePrior": 63.5,
         "retainedFastMoves": [
           "COUNTER",
           "LOW_KICK"
@@ -806,7 +806,7 @@
       "speciesId": "blaziken_mega",
       "defaultVariantId": "ember--blast_burn--aura_sphere",
       "evidence": {
-        "pvpokeScorePrior": 66.2,
+        "pvpokeScorePrior": 66.3,
         "retainedFastMoves": [
           "EMBER",
           "COUNTER"
@@ -1375,7 +1375,7 @@
       "additionalChargedMove": "MYSTICAL_FIRE_PLUS",
       "defaultVariantId": "scratch--psyshock--blast_burn",
       "evidence": {
-        "pvpokeScorePrior": 84.4,
+        "pvpokeScorePrior": 84.5,
         "retainedFastMoves": [
           "SCRATCH",
           "FIRE_SPIN"
@@ -1438,7 +1438,7 @@
       "speciesId": "dialga",
       "defaultVariantId": "dragon_breath--iron_head--draco_meteor",
       "evidence": {
-        "pvpokeScorePrior": 79.2,
+        "pvpokeScorePrior": 79.1,
         "retainedFastMoves": [
           "DRAGON_BREATH",
           "METAL_CLAW"
@@ -2632,7 +2632,7 @@
       "speciesId": "gengar_mega",
       "defaultVariantId": "shadow_claw--shadow_punch--shadow_ball",
       "evidence": {
-        "pvpokeScorePrior": 75.5,
+        "pvpokeScorePrior": 75.6,
         "retainedFastMoves": [
           "SHADOW_CLAW",
           "HEX"
@@ -3576,26 +3576,27 @@
     },
     {
       "speciesId": "houndoom_mega",
-      "defaultVariantId": "incinerate--trailblaze--foul_play",
+      "additionalChargedMove": "DARK_PULSE_PLUS",
+      "defaultVariantId": "incinerate--trailblaze--flamethrower",
       "evidence": {
-        "pvpokeScorePrior": 66.7,
+        "pvpokeScorePrior": 70.1,
         "retainedFastMoves": [
           "INCINERATE",
           "SNARL"
         ],
         "retainedChargedMoves": [
-          "FOUL_PLAY",
           "TRAILBLAZE",
           "FLAMETHROWER",
+          "FOUL_PLAY",
           "CRUNCH"
         ],
         "rejections": []
       },
       "candidates": [
         {
-          "id": "incinerate--trailblaze--foul_play",
+          "id": "incinerate--trailblaze--flamethrower",
           "fastMove": "INCINERATE",
-          "chargedMove1": "FOUL_PLAY",
+          "chargedMove1": "FLAMETHROWER",
           "chargedMove2": "TRAILBLAZE",
           "isDefault": true,
           "evidence": {
@@ -3604,7 +3605,7 @@
               "overall"
             ],
             "sourceVariantIds": [
-              "incinerate--trailblaze--foul_play"
+              "incinerate--trailblaze--flamethrower"
             ]
           },
           "acquisitionRequirements": {
@@ -4772,7 +4773,7 @@
       "speciesId": "latias_shadow",
       "defaultVariantId": "dragon_breath--mist_ball--aura_sphere",
       "evidence": {
-        "pvpokeScorePrior": 65.9,
+        "pvpokeScorePrior": 65.8,
         "retainedFastMoves": [
           "DRAGON_BREATH",
           "CHARM"
@@ -5024,7 +5025,7 @@
       "speciesId": "lopunny_mega",
       "defaultVariantId": "low_kick--triple_axel--shadow_ball",
       "evidence": {
-        "pvpokeScorePrior": 62.1,
+        "pvpokeScorePrior": 62,
         "retainedFastMoves": [
           "LOW_KICK",
           "POUND"
@@ -5276,7 +5277,7 @@
       "speciesId": "lunala",
       "defaultVariantId": "shadow_claw--shadow_ball--moonblast",
       "evidence": {
-        "pvpokeScorePrior": 70.9,
+        "pvpokeScorePrior": 71,
         "retainedFastMoves": [
           "SHADOW_CLAW",
           "CONFUSION"
@@ -5843,7 +5844,7 @@
       "speciesId": "mewtwo",
       "defaultVariantId": "psycho_cut--shadow_ball--psystrike",
       "evidence": {
-        "pvpokeScorePrior": 64.5,
+        "pvpokeScorePrior": 64.6,
         "retainedFastMoves": [
           "PSYCHO_CUT",
           "CONFUSION"
@@ -7799,7 +7800,7 @@
       "speciesId": "steelix_mega",
       "defaultVariantId": "dragon_tail--psychic_fangs--earthquake",
       "evidence": {
-        "pvpokeScorePrior": 63.7,
+        "pvpokeScorePrior": 63.6,
         "retainedFastMoves": [
           "DRAGON_TAIL",
           "THUNDER_FANG"
@@ -7925,7 +7926,7 @@
       "speciesId": "sylveon",
       "defaultVariantId": "fairy_wind--shadow_ball--draining_kiss",
       "evidence": {
-        "pvpokeScorePrior": 69.5,
+        "pvpokeScorePrior": 69.4,
         "retainedFastMoves": [
           "FAIRY_WIND",
           "QUICK_ATTACK"

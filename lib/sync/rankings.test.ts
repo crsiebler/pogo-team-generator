@@ -495,6 +495,7 @@ describe('rankings local sync', () => {
             | 'tsuki'
             | 'ligaultra'
             | 'coupedusillage'
+            | 'willpower'
             | 'mega'
             | undefined,
         ) => Promise<
@@ -519,6 +520,7 @@ describe('rankings local sync', () => {
             cup === 'tsuki' ||
             cup === 'ligaultra' ||
             cup === 'coupedusillage' ||
+            cup === 'willpower' ||
             cup === 'mega',
         ).toBe(true);
         expect(categories).toContain(category);
@@ -528,6 +530,7 @@ describe('rankings local sync', () => {
           'tsuki',
           'ligaultra',
           'coupedusillage',
+          'willpower',
           'mega',
         ].indexOf(cup ?? 'all');
         const usageSentinel =
@@ -955,13 +958,13 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(70);
-    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(10);
-    expect(result.rankings).toHaveLength(216);
-    expect(result.categoryEvidence).toHaveLength(70);
-    expect(result.overrideEvidence).toHaveLength(10);
-    expect(result.aggregatedEvidence).toHaveLength(32);
-    expect(result.candidateSets).toHaveLength(32);
+    expect(readRankingJson).toHaveBeenCalledTimes(77);
+    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(11);
+    expect(result.rankings).toHaveLength(237);
+    expect(result.categoryEvidence).toHaveLength(77);
+    expect(result.overrideEvidence).toHaveLength(11);
+    expect(result.aggregatedEvidence).toHaveLength(35);
+    expect(result.candidateSets).toHaveLength(35);
     expect(result.simulationSpeciesIdsByFormatId.get('great-league')).toEqual([
       'bulbasaur',
       'golisopod',
@@ -1059,6 +1062,7 @@ describe('rankings local sync', () => {
         'tsuki',
         'ligaultra',
         'coupedusillage',
+        'willpower',
         'mega',
       ].indexOf(evidence.cup);
       expect(evidence.entries[0].moves.fastMoves[0].uses).toBe(
@@ -1118,7 +1122,7 @@ describe('rankings local sync', () => {
       ],
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(70);
+    expect(writeFile).toHaveBeenCalledTimes(77);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -1385,7 +1389,7 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(result.rankings).toHaveLength(70);
+    expect(result.rankings).toHaveLength(77);
     expect(
       result.rankings.every((entry) => entry.Pokemon === 'Bulbasaur'),
     ).toBe(true);

@@ -39,6 +39,9 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'tsuki')).toBe(
       '/source/pvpoke/src/data/rankings/tsuki/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 1500, 'willpower')).toBe(
+      '/source/pvpoke/src/data/rankings/willpower/overall/rankings-1500.json',
+    );
     expect(adapter.getRankingFilePath('overall', 2500, 'ligaultra')).toBe(
       '/source/pvpoke/src/data/rankings/ligaultra/overall/rankings-2500.json',
     );

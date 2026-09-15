@@ -792,6 +792,7 @@ describe('generateSimulations', () => {
         | 'tsuki'
         | 'ligaultra'
         | 'coupedusillage'
+        | 'willpower'
         | 'mega';
       cp: 1500 | 2500 | 10000;
       speciesId: string;
@@ -846,7 +847,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(30);
+    expect(generatedCalls).toHaveLength(33);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,
@@ -912,6 +913,12 @@ describe('generateSimulations', () => {
       cp: 10000,
       speciesId: 'bulbasaur',
       shields: 1,
+    });
+    expect(generatedCalls).toContainEqual({
+      cup: 'willpower',
+      cp: 1500,
+      speciesId: 'bulbasaur',
+      shields: 0,
     });
 
     expect(writeFile).toHaveBeenCalledWith(

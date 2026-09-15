@@ -14,6 +14,7 @@ describe('battle format catalog', () => {
   it('contains the supported formats in priority order', () => {
     expect(BATTLE_FORMATS.map((format) => format.label)).toEqual([
       'Great League',
+      'Willpower Cup: Great League Edition',
       'Great League: Mega Edition',
       'Ultra League',
       'Ultra League: Mega Edition',
@@ -32,6 +33,7 @@ describe('battle format catalog', () => {
 
   it('validates known format ids', () => {
     expect(isBattleFormatId('great-league')).toBe(true);
+    expect(isBattleFormatId('willpower-cup')).toBe(true);
     expect(isBattleFormatId('mega-great-league')).toBe(true);
     expect(isBattleFormatId('ultra-league')).toBe(true);
     expect(isBattleFormatId('mega-ultra-league')).toBe(true);
@@ -60,6 +62,13 @@ describe('battle format catalog', () => {
       id: 'great-league',
       label: 'Great League',
       cup: 'all',
+      cp: 1500,
+    });
+
+    expect(getBattleFormatById('willpower-cup')).toEqual({
+      id: 'willpower-cup',
+      label: 'Willpower Cup: Great League Edition',
+      cup: 'willpower',
       cp: 1500,
     });
 
@@ -136,6 +145,7 @@ describe('battle format catalog', () => {
   it('returns selectable formats with Mega leagues after Master League', () => {
     expect(getSelectableBattleFormats().map(({ id }) => id)).toEqual([
       'great-league',
+      'willpower-cup',
       'ultra-league',
       'master-league',
       'mega-great-league',
