@@ -125,7 +125,7 @@ describe('generateSimulations', () => {
       { context },
       {
         id: 'mega-great-league',
-        label: 'Great League: Mega Edition',
+        label: 'Mega Great League',
         cup: 'mega',
         cp: 1500,
       },
@@ -272,7 +272,7 @@ describe('generateSimulations', () => {
       { context },
       {
         id: 'mega-great-league',
-        label: 'Great League: Mega Edition',
+        label: 'Mega Great League',
         cup: 'mega',
         cp: 1500,
       },

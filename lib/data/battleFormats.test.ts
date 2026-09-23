@@ -15,19 +15,19 @@ describe('battle format catalog', () => {
     expect(BATTLE_FORMATS.map((format) => format.label)).toEqual([
       'Great League',
       'Willpower Cup: Great League Edition',
-      'Great League: Mega Edition',
+      'Mega Great League',
       'Ultra League',
-      'Ultra League: Mega Edition',
+      'Mega Ultra League',
       'Master League',
-      'Master League: Mega Edition',
+      'Mega Master League',
       'Battle Frontier (Copa Diluvio)',
       'Battle Frontier (Tsuki Cup)',
       'Battle Frontier (Liga Ultra)',
       'Battle Frontier (Coupe du Sillage)',
-      'LAIC 2027 Cup: Great League Edition',
-      'Retro Cup: Great League Edition',
-      'Spectral Cup: Great League Edition',
-      'Cauldron Cup: Ultra League Edition',
+      'LAIC 2027 Championship Series Cup',
+      'Retro Cup',
+      'Battle Frontier (Spectral)',
+      'Battle Frontier (Cauldron)',
       'Battle Frontier (Master)',
     ]);
   });
@@ -83,21 +83,21 @@ describe('battle format catalog', () => {
 
     expect(getBattleFormatById('mega-great-league')).toEqual({
       id: 'mega-great-league',
-      label: 'Great League: Mega Edition',
+      label: 'Mega Great League',
       cup: 'mega',
       cp: 1500,
     });
 
     expect(getBattleFormatById('mega-ultra-league')).toEqual({
       id: 'mega-ultra-league',
-      label: 'Ultra League: Mega Edition',
+      label: 'Mega Ultra League',
       cup: 'mega',
       cp: 2500,
     });
 
     expect(getBattleFormatById('mega-master-league')).toEqual({
       id: 'mega-master-league',
-      label: 'Master League: Mega Edition',
+      label: 'Mega Master League',
       cup: 'mega',
       cp: 10000,
     });
@@ -137,7 +137,7 @@ describe('battle format catalog', () => {
     expect(getBattleFormatById('master-premier-cup')).toBeUndefined();
     expect(getBattleFormatById('retro-cup')).toEqual({
       id: 'retro-cup',
-      label: 'Retro Cup: Great League Edition',
+      label: 'Retro Cup',
       cup: 'retro',
       cp: 1500,
     });
@@ -151,19 +151,19 @@ describe('battle format catalog', () => {
     expect(getBattleFormatById('battle-frontier-ul-retro')).toBeUndefined();
     expect(getBattleFormatById('laic-2027-cup')).toEqual({
       id: 'laic-2027-cup',
-      label: 'LAIC 2027 Cup: Great League Edition',
+      label: 'LAIC 2027 Championship Series Cup',
       cup: 'laic2027',
       cp: 1500,
     });
     expect(getBattleFormatById('spectral-cup')).toEqual({
       id: 'spectral-cup',
-      label: 'Spectral Cup: Great League Edition',
+      label: 'Battle Frontier (Spectral)',
       cup: 'spectral',
       cp: 1500,
     });
     expect(getBattleFormatById('cauldron-cup')).toEqual({
       id: 'cauldron-cup',
-      label: 'Cauldron Cup: Ultra League Edition',
+      label: 'Battle Frontier (Cauldron)',
       cup: 'cauldron',
       cp: 2500,
     });
@@ -179,21 +179,16 @@ describe('battle format catalog', () => {
     expect(getBattleFormats()).toEqual(BATTLE_FORMATS);
   });
 
-  it('returns selectable formats with Mega leagues after Master League', () => {
+  it('returns selectable formats in PvPoke dropdown order', () => {
     expect(getSelectableBattleFormats().map(({ id }) => id)).toEqual([
       'great-league',
-      'willpower-cup',
       'ultra-league',
       'master-league',
       'mega-great-league',
       'mega-ultra-league',
       'mega-master-league',
-      'battle-frontier-copa-diluvio',
-      'battle-frontier-tsuki-cup',
-      'battle-frontier-liga-ultra',
-      'battle-frontier-coupe-du-sillage',
-      'laic-2027-cup',
       'retro-cup',
+      'laic-2027-cup',
       'spectral-cup',
       'cauldron-cup',
       'battle-frontier-master',
