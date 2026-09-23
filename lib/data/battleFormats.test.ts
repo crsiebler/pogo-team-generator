@@ -202,6 +202,8 @@ describe('battle format catalog', () => {
     expect(isBattleFrontierFormatId('battle-frontier-coupe-du-sillage')).toBe(
       true,
     );
+    expect(isBattleFrontierFormatId('spectral-cup')).toBe(true);
+    expect(isBattleFrontierFormatId('cauldron-cup')).toBe(true);
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
     expect(isBattleFrontierFormatId('mega-master-league')).toBe(false);
   });
@@ -213,6 +215,8 @@ describe('battle format catalog', () => {
     expect(hasOneMegaLimitForFormat('battle-frontier-coupe-du-sillage')).toBe(
       true,
     );
+    expect(hasOneMegaLimitForFormat('laic-2027-cup')).toBe(true);
+    expect(hasOneMegaLimitForFormat('cauldron-cup')).toBe(true);
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat(undefined)).toBe(false);

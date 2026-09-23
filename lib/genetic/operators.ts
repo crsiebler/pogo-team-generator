@@ -1,20 +1,8 @@
 import type { BattleFormatId } from '@lib/data/battleFormats';
-import { hasOneMegaLimitForFormat } from '@lib/data/battleFormats';
 import { getDexNumber, validateTeamUniqueness } from '@lib/data/pokemon';
 import type { Chromosome, TournamentMode } from '../types';
 import { cloneChromosome, getMutableSlots, isAnchorSlot } from './chromosome';
-import { getMegaMasterTeamLegality } from '@/lib/data/megaMasterRules';
-
-function isLegalMegaMasterTeam(
-  team: readonly string[],
-  formatId?: BattleFormatId,
-): boolean {
-  if (!hasOneMegaLimitForFormat(formatId)) {
-    return true;
-  }
-
-  return getMegaMasterTeamLegality(team).isLegal;
-}
+import { isTeamLegalForFormat } from './teamLegality';
 
 /**
  * Tournament selection - pick best of N random chromosomes
@@ -109,7 +97,7 @@ export function crossover(
     }
   }
 
-  if (!isLegalMegaMasterTeam(child.team, formatId)) {
+  if (!isTeamLegalForFormat(child.team, formatId)) {
     return cloneChromosome(parent1);
   }
 
@@ -186,7 +174,7 @@ export function mutate(
     }
   }
 
-  if (!isLegalMegaMasterTeam(mutated.team, formatId)) {
+  if (!isTeamLegalForFormat(mutated.team, formatId)) {
     return chromosome;
   }
 

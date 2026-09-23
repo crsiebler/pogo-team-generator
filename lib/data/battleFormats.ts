@@ -150,6 +150,8 @@ const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
   'mega-ultra-league',
   'mega-master-league',
   'battle-frontier-coupe-du-sillage',
+  'laic-2027-cup',
+  'cauldron-cup',
 ]);
 
 const selectableBattleFormatIds: readonly BattleFormatId[] = [
@@ -224,5 +226,9 @@ export function getBattleFormatById(
  * Returns whether a supported format is part of the Battle Frontier series.
  */
 export function isBattleFrontierFormatId(formatId: BattleFormatId): boolean {
-  return formatId.startsWith('battle-frontier-');
+  return (
+    formatId.startsWith('battle-frontier-') ||
+    formatId === 'spectral-cup' ||
+    formatId === 'cauldron-cup'
+  );
 }
