@@ -56,6 +56,7 @@ import {
   resolveRankedDefaultRosterMovesetAssignment,
 } from './moveset';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
+import { isTeamLegalForFormat } from './teamLegality';
 
 const DEFAULT_SCORED_FINALIST_LIMIT = 10;
 
@@ -138,12 +139,23 @@ function canBuildLegalUniqueTeam(
     }
   }
 
-  if (hasOneMegaLimitForFormat(formatId)) {
-    const currentLegality = getMegaMasterTeamLegality(currentTeam);
+  if (!isTeamLegalForFormat(currentTeam, formatId)) {
+    return false;
+  }
 
-    if (!currentLegality.isLegal) {
-      return false;
-    }
+  if (formatId === 'battle-frontier-master') {
+    const legalCandidates = pokemonPool.filter((candidate) => {
+      if (usedDexNumbers.has(candidate.dex)) {
+        return false;
+      }
+
+      return isTeamLegalForFormat(
+        [...currentTeam, candidate.speciesId],
+        formatId,
+      );
+    });
+
+    return currentTeam.length + legalCandidates.length >= teamSize;
   }
 
   let legalNonMegaCount = 0;
@@ -160,12 +172,9 @@ function canBuildLegalUniqueTeam(
       continue;
     }
 
-    const candidateLegality = getMegaMasterTeamLegality([
-      ...currentTeam,
-      candidate.speciesId,
-    ]);
-
-    if (!candidateLegality.isLegal) {
+    if (
+      !isTeamLegalForFormat([...currentTeam, candidate.speciesId], formatId)
+    ) {
       continue;
     }
 
@@ -562,10 +571,13 @@ function validateFinalTeam(
     console.log('✅ All anchors verified in final team');
   }
 
-  if (
-    hasOneMegaLimitForFormat(formatId) &&
-    !getMegaMasterTeamLegality(chromosome.team).isLegal
-  ) {
+  if (!isTeamLegalForFormat(chromosome.team, formatId)) {
+    if (formatId === 'battle-frontier-master') {
+      throw new Error(
+        'Final Battle Frontier Master team is illegal. This should never happen.',
+      );
+    }
+
     throw new Error(
       'Final one-Mega-limit team is illegal. This should never happen.',
     );

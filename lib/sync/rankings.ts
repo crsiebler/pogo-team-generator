@@ -70,7 +70,7 @@ export interface NormalizedRankingSourceEntry extends RankingSourceEntry {
 /** One explicit PvPoke moveset override retained for candidate derivation. */
 export interface PvpokeMovesetOverride {
   speciesId: string;
-  fastMove?: string;
+  fastMove?: string | string[];
   chargedMoves?: string[];
   weight?: number;
 }
@@ -497,7 +497,13 @@ export function aggregateRankingMoveEvidence(
         sourceSpeciesId: alias.sourceSpeciesId,
         ...(override.fastMove === undefined
           ? {}
-          : { fastMove: normalizeMoveId(override.fastMove) }),
+          : {
+              fastMove: normalizeMoveId(
+                Array.isArray(override.fastMove)
+                  ? override.fastMove[0]
+                  : override.fastMove,
+              ),
+            }),
         ...(override.chargedMoves === undefined
           ? {}
           : { chargedMoves: override.chargedMoves.map(normalizeMoveId) }),
@@ -672,11 +678,17 @@ export function parseMovesetOverrides(
     if (typeof override.speciesId !== 'string') {
       throw new Error(`${prefix}: speciesId must be a string`);
     }
-    if (
-      override.fastMove !== undefined &&
-      typeof override.fastMove !== 'string'
-    ) {
-      throw new Error(`${prefix}: fastMove must be a string if present`);
+    if (override.fastMove !== undefined) {
+      const isValidFastMove =
+        typeof override.fastMove === 'string' ||
+        (Array.isArray(override.fastMove) &&
+          override.fastMove.length === 1 &&
+          typeof override.fastMove[0] === 'string');
+      if (!isValidFastMove) {
+        throw new Error(
+          `${prefix}: fastMove must be a string or a single-item string array if present`,
+        );
+      }
     }
     if (
       override.chargedMoves !== undefined &&

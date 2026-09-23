@@ -1,6 +1,6 @@
 import path from 'path';
 import { describe, expect, it, vi } from 'vitest';
-import { RankingCategory } from './adapter';
+import { RankingCategory, type RankingCup } from './adapter';
 import {
   aggregateRankingMoveEvidence,
   getSimulationSpeciesIds,
@@ -489,15 +489,7 @@ describe('rankings local sync', () => {
         (
           category: RankingCategory,
           leagueCp: number,
-          cup:
-            | 'all'
-            | 'copadiluvio'
-            | 'tsuki'
-            | 'ligaultra'
-            | 'coupedusillage'
-            | 'willpower'
-            | 'mega'
-            | undefined,
+          cup: RankingCup | undefined,
         ) => Promise<
           Array<{
             speciesId: string;
@@ -514,25 +506,11 @@ describe('rankings local sync', () => {
       >()
       .mockImplementation(async (category, leagueCp, cup) => {
         expect([1500, 2500, 10000]).toContain(leagueCp);
-        expect(
-          cup === 'all' ||
-            cup === 'copadiluvio' ||
-            cup === 'tsuki' ||
-            cup === 'ligaultra' ||
-            cup === 'coupedusillage' ||
-            cup === 'willpower' ||
-            cup === 'mega',
-        ).toBe(true);
+        expect(cup).toBeTypeOf('string');
         expect(categories).toContain(category);
-        const cupIndex = [
-          'all',
-          'copadiluvio',
-          'tsuki',
-          'ligaultra',
-          'coupedusillage',
-          'willpower',
-          'mega',
-        ].indexOf(cup ?? 'all');
+        const cupIndex = getBattleFormats().findIndex(
+          (format) => format.cup === (cup ?? 'all'),
+        );
         const usageSentinel =
           categories.indexOf(category) * 100_000 + leagueCp * 10 + cupIndex;
 
@@ -958,13 +936,13 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(77);
-    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(11);
-    expect(result.rankings).toHaveLength(237);
-    expect(result.categoryEvidence).toHaveLength(77);
-    expect(result.overrideEvidence).toHaveLength(11);
-    expect(result.aggregatedEvidence).toHaveLength(35);
-    expect(result.candidateSets).toHaveLength(35);
+    expect(readRankingJson).toHaveBeenCalledTimes(112);
+    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(16);
+    expect(result.rankings).toHaveLength(342);
+    expect(result.categoryEvidence).toHaveLength(112);
+    expect(result.overrideEvidence).toHaveLength(16);
+    expect(result.aggregatedEvidence).toHaveLength(50);
+    expect(result.candidateSets).toHaveLength(50);
     expect(result.simulationSpeciesIdsByFormatId.get('great-league')).toEqual([
       'bulbasaur',
       'golisopod',
@@ -1056,15 +1034,9 @@ describe('rankings local sync', () => {
         .map(({ category }) => category),
     ).toEqual(categories);
     for (const evidence of result.categoryEvidence) {
-      const cupIndex = [
-        'all',
-        'copadiluvio',
-        'tsuki',
-        'ligaultra',
-        'coupedusillage',
-        'willpower',
-        'mega',
-      ].indexOf(evidence.cup);
+      const cupIndex = getBattleFormats().findIndex(
+        (format) => format.cup === evidence.cup,
+      );
       expect(evidence.entries[0].moves.fastMoves[0].uses).toBe(
         categories.indexOf(evidence.category) * 100_000 +
           evidence.cp * 10 +
@@ -1122,7 +1094,7 @@ describe('rankings local sync', () => {
       ],
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(77);
+    expect(writeFile).toHaveBeenCalledTimes(112);
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -1389,7 +1361,7 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(result.rankings).toHaveLength(77);
+    expect(result.rankings).toHaveLength(112);
     expect(
       result.rankings.every((entry) => entry.Pokemon === 'Bulbasaur'),
     ).toBe(true);
@@ -1793,5 +1765,14 @@ describe('ranking source validation', () => {
         chargedMoves: ['THUNDER_PUNCH', 'SUPER_POWER', 'SEED_BOMB_PLUS'],
       },
     ]);
+  });
+
+  it('accepts single-item fast-move arrays from PvPoke overrides', () => {
+    expect(
+      parseMovesetOverrides(
+        [{ speciesId: 'celebi', fastMove: ['CONFUSION'] }],
+        'cp10000 battlefrontiermaster',
+      ),
+    ).toEqual([{ speciesId: 'celebi', fastMove: ['CONFUSION'] }]);
   });
 });

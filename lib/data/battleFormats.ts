@@ -8,7 +8,12 @@ export interface BattleFormat {
     | 'ligaultra'
     | 'coupedusillage'
     | 'willpower'
-    | 'mega';
+    | 'mega'
+    | 'laic2027'
+    | 'retro'
+    | 'spectral'
+    | 'cauldron'
+    | 'battlefrontiermaster';
   cp: 1500 | 2500 | 10000;
 }
 
@@ -26,6 +31,11 @@ export type BattleFormatId =
   | 'battle-frontier-tsuki-cup'
   | 'battle-frontier-liga-ultra'
   | 'battle-frontier-coupe-du-sillage'
+  | 'laic-2027-cup'
+  | 'retro-cup'
+  | 'spectral-cup'
+  | 'cauldron-cup'
+  | 'battle-frontier-master'
   | 'willpower-cup';
 
 /**
@@ -46,7 +56,7 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
   },
   {
     id: 'mega-great-league',
-    label: 'Great League: Mega Edition',
+    label: 'Mega Great League',
     cup: 'mega',
     cp: 1500,
   },
@@ -58,7 +68,7 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
   },
   {
     id: 'mega-ultra-league',
-    label: 'Ultra League: Mega Edition',
+    label: 'Mega Ultra League',
     cup: 'mega',
     cp: 2500,
   },
@@ -70,7 +80,7 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
   },
   {
     id: 'mega-master-league',
-    label: 'Master League: Mega Edition',
+    label: 'Mega Master League',
     cup: 'mega',
     cp: 10000,
   },
@@ -98,6 +108,36 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cup: 'coupedusillage',
     cp: 10000,
   },
+  {
+    id: 'laic-2027-cup',
+    label: 'LAIC 2027 Championship Series Cup',
+    cup: 'laic2027',
+    cp: 1500,
+  },
+  {
+    id: 'retro-cup',
+    label: 'Retro Cup',
+    cup: 'retro',
+    cp: 1500,
+  },
+  {
+    id: 'spectral-cup',
+    label: 'Battle Frontier (Spectral)',
+    cup: 'spectral',
+    cp: 1500,
+  },
+  {
+    id: 'cauldron-cup',
+    label: 'Battle Frontier (Cauldron)',
+    cup: 'cauldron',
+    cp: 2500,
+  },
+  {
+    id: 'battle-frontier-master',
+    label: 'Battle Frontier (Master)',
+    cup: 'battlefrontiermaster',
+    cp: 10000,
+  },
 ];
 
 /**
@@ -110,20 +150,22 @@ const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
   'mega-ultra-league',
   'mega-master-league',
   'battle-frontier-coupe-du-sillage',
+  'laic-2027-cup',
+  'cauldron-cup',
 ]);
 
 const selectableBattleFormatIds: readonly BattleFormatId[] = [
   'great-league',
-  'willpower-cup',
   'ultra-league',
   'master-league',
   'mega-great-league',
   'mega-ultra-league',
   'mega-master-league',
-  'battle-frontier-copa-diluvio',
-  'battle-frontier-tsuki-cup',
-  'battle-frontier-liga-ultra',
-  'battle-frontier-coupe-du-sillage',
+  'retro-cup',
+  'laic-2027-cup',
+  'spectral-cup',
+  'cauldron-cup',
+  'battle-frontier-master',
 ];
 
 const battleFormatLookup: ReadonlyMap<BattleFormatId, BattleFormat> = new Map(
@@ -184,5 +226,9 @@ export function getBattleFormatById(
  * Returns whether a supported format is part of the Battle Frontier series.
  */
 export function isBattleFrontierFormatId(formatId: BattleFormatId): boolean {
-  return formatId.startsWith('battle-frontier-');
+  return (
+    formatId.startsWith('battle-frontier-') ||
+    formatId === 'spectral-cup' ||
+    formatId === 'cauldron-cup'
+  );
 }

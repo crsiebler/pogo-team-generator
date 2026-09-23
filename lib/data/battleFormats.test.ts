@@ -15,15 +15,20 @@ describe('battle format catalog', () => {
     expect(BATTLE_FORMATS.map((format) => format.label)).toEqual([
       'Great League',
       'Willpower Cup: Great League Edition',
-      'Great League: Mega Edition',
+      'Mega Great League',
       'Ultra League',
-      'Ultra League: Mega Edition',
+      'Mega Ultra League',
       'Master League',
-      'Master League: Mega Edition',
+      'Mega Master League',
       'Battle Frontier (Copa Diluvio)',
       'Battle Frontier (Tsuki Cup)',
       'Battle Frontier (Liga Ultra)',
       'Battle Frontier (Coupe du Sillage)',
+      'LAIC 2027 Championship Series Cup',
+      'Retro Cup',
+      'Battle Frontier (Spectral)',
+      'Battle Frontier (Cauldron)',
+      'Battle Frontier (Master)',
     ]);
   });
 
@@ -43,6 +48,11 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('battle-frontier-tsuki-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-liga-ultra')).toBe(true);
     expect(isBattleFormatId('battle-frontier-coupe-du-sillage')).toBe(true);
+    expect(isBattleFormatId('laic-2027-cup')).toBe(true);
+    expect(isBattleFormatId('retro-cup')).toBe(true);
+    expect(isBattleFormatId('spectral-cup')).toBe(true);
+    expect(isBattleFormatId('cauldron-cup')).toBe(true);
+    expect(isBattleFormatId('battle-frontier-master')).toBe(true);
   });
 
   it('rejects unknown format ids', () => {
@@ -51,7 +61,6 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('spring-cup')).toBe(false);
     expect(isBattleFormatId('jungle-cup')).toBe(false);
     expect(isBattleFormatId('master-premier-cup')).toBe(false);
-    expect(isBattleFormatId('retro-cup')).toBe(false);
     expect(isBattleFormatId('fantasy-cup')).toBe(false);
     expect(isBattleFormatId('summer-cup')).toBe(false);
     expect(isBattleFormatId('')).toBe(false);
@@ -74,21 +83,21 @@ describe('battle format catalog', () => {
 
     expect(getBattleFormatById('mega-great-league')).toEqual({
       id: 'mega-great-league',
-      label: 'Great League: Mega Edition',
+      label: 'Mega Great League',
       cup: 'mega',
       cp: 1500,
     });
 
     expect(getBattleFormatById('mega-ultra-league')).toEqual({
       id: 'mega-ultra-league',
-      label: 'Ultra League: Mega Edition',
+      label: 'Mega Ultra League',
       cup: 'mega',
       cp: 2500,
     });
 
     expect(getBattleFormatById('mega-master-league')).toEqual({
       id: 'mega-master-league',
-      label: 'Master League: Mega Edition',
+      label: 'Mega Master League',
       cup: 'mega',
       cp: 10000,
     });
@@ -126,7 +135,12 @@ describe('battle format catalog', () => {
     expect(getBattleFormatById('spring-cup')).toBeUndefined();
     expect(getBattleFormatById('jungle-cup')).toBeUndefined();
     expect(getBattleFormatById('master-premier-cup')).toBeUndefined();
-    expect(getBattleFormatById('retro-cup')).toBeUndefined();
+    expect(getBattleFormatById('retro-cup')).toEqual({
+      id: 'retro-cup',
+      label: 'Retro Cup',
+      cup: 'retro',
+      cp: 1500,
+    });
     expect(getBattleFormatById('fantasy-cup')).toBeUndefined();
     expect(getBattleFormatById('summer-cup')).toBeUndefined();
     expect(getBattleFormatById('naic-2026-championship-cup')).toBeUndefined();
@@ -135,26 +149,49 @@ describe('battle format catalog', () => {
       getBattleFormatById('battle-frontier-spellcraft-cup'),
     ).toBeUndefined();
     expect(getBattleFormatById('battle-frontier-ul-retro')).toBeUndefined();
-    expect(getBattleFormatById('battle-frontier-master')).toBeUndefined();
+    expect(getBattleFormatById('laic-2027-cup')).toEqual({
+      id: 'laic-2027-cup',
+      label: 'LAIC 2027 Championship Series Cup',
+      cup: 'laic2027',
+      cp: 1500,
+    });
+    expect(getBattleFormatById('spectral-cup')).toEqual({
+      id: 'spectral-cup',
+      label: 'Battle Frontier (Spectral)',
+      cup: 'spectral',
+      cp: 1500,
+    });
+    expect(getBattleFormatById('cauldron-cup')).toEqual({
+      id: 'cauldron-cup',
+      label: 'Battle Frontier (Cauldron)',
+      cup: 'cauldron',
+      cp: 2500,
+    });
+    expect(getBattleFormatById('battle-frontier-master')).toEqual({
+      id: 'battle-frontier-master',
+      label: 'Battle Frontier (Master)',
+      cup: 'battlefrontiermaster',
+      cp: 10000,
+    });
   });
 
   it('returns a read-only format list via helper', () => {
     expect(getBattleFormats()).toEqual(BATTLE_FORMATS);
   });
 
-  it('returns selectable formats with Mega leagues after Master League', () => {
+  it('returns selectable formats in PvPoke dropdown order', () => {
     expect(getSelectableBattleFormats().map(({ id }) => id)).toEqual([
       'great-league',
-      'willpower-cup',
       'ultra-league',
       'master-league',
       'mega-great-league',
       'mega-ultra-league',
       'mega-master-league',
-      'battle-frontier-copa-diluvio',
-      'battle-frontier-tsuki-cup',
-      'battle-frontier-liga-ultra',
-      'battle-frontier-coupe-du-sillage',
+      'retro-cup',
+      'laic-2027-cup',
+      'spectral-cup',
+      'cauldron-cup',
+      'battle-frontier-master',
     ]);
   });
 
@@ -165,6 +202,8 @@ describe('battle format catalog', () => {
     expect(isBattleFrontierFormatId('battle-frontier-coupe-du-sillage')).toBe(
       true,
     );
+    expect(isBattleFrontierFormatId('spectral-cup')).toBe(true);
+    expect(isBattleFrontierFormatId('cauldron-cup')).toBe(true);
     expect(isBattleFrontierFormatId('great-league')).toBe(false);
     expect(isBattleFrontierFormatId('mega-master-league')).toBe(false);
   });
@@ -176,6 +215,8 @@ describe('battle format catalog', () => {
     expect(hasOneMegaLimitForFormat('battle-frontier-coupe-du-sillage')).toBe(
       true,
     );
+    expect(hasOneMegaLimitForFormat('laic-2027-cup')).toBe(true);
+    expect(hasOneMegaLimitForFormat('cauldron-cup')).toBe(true);
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat(undefined)).toBe(false);

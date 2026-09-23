@@ -125,7 +125,7 @@ describe('generateSimulations', () => {
       { context },
       {
         id: 'mega-great-league',
-        label: 'Great League: Mega Edition',
+        label: 'Mega Great League',
         cup: 'mega',
         cp: 1500,
       },
@@ -272,7 +272,7 @@ describe('generateSimulations', () => {
       { context },
       {
         id: 'mega-great-league',
-        label: 'Great League: Mega Edition',
+        label: 'Mega Great League',
         cup: 'mega',
         cp: 1500,
       },
@@ -793,7 +793,12 @@ describe('generateSimulations', () => {
         | 'ligaultra'
         | 'coupedusillage'
         | 'willpower'
-        | 'mega';
+        | 'mega'
+        | 'laic2027'
+        | 'retro'
+        | 'spectral'
+        | 'cauldron'
+        | 'battlefrontiermaster';
       cp: 1500 | 2500 | 10000;
       speciesId: string;
       shields: number;
@@ -847,7 +852,7 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(33);
+    expect(generatedCalls).toHaveLength(48);
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,

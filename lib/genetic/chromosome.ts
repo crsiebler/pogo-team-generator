@@ -1,7 +1,4 @@
-import {
-  hasOneMegaLimitForFormat,
-  type BattleFormatId,
-} from '@lib/data/battleFormats';
+import type { BattleFormatId } from '@lib/data/battleFormats';
 import type { CandidateProfile } from '@lib/data/candidateProfiles';
 import { rankAnchorCompanionPairs } from '@lib/data/companionPairRanking';
 import type { RankedAnchorCompanionPair } from '@lib/data/companionPairRanking';
@@ -21,7 +18,7 @@ import {
 } from '@lib/data/simulations';
 import { calculateEffectiveness } from '../coverage/typeChart';
 import type { Chromosome, TournamentMode } from '../types';
-import { getMegaMasterTeamLegality } from '@/lib/data/megaMasterRules';
+import { isTeamLegalForFormat } from './teamLegality';
 
 export interface AnchorFirstPopulationOptions {
   anchorPokemon?: string[];
@@ -35,16 +32,6 @@ export interface AnchorFirstPopulationOptions {
 }
 
 const ANCHOR_FIRST_RANDOM_FRACTION = 0.25;
-
-function isLegalMegaMasterCandidate(
-  currentTeam: string[],
-  candidateSpeciesId: string,
-): boolean {
-  const partialTeam = currentTeam.filter(Boolean);
-
-  return getMegaMasterTeamLegality([...partialTeam, candidateSpeciesId])
-    .isLegal;
-}
 
 /**
  * Create a new chromosome with optional anchors
@@ -128,7 +115,6 @@ export function createRandomChromosome(
   anchorPokemon?: string[],
   formatId?: BattleFormatId,
 ): Chromosome {
-  const enforceOneMegaLimit = hasOneMegaLimitForFormat(formatId);
   const team: string[] = Array(teamSize).fill('');
   const anchors: number[] = [];
   const usedDexNumbers = new Set<number>();
@@ -185,10 +171,7 @@ export function createRandomChromosome(
         continue;
       }
 
-      if (
-        enforceOneMegaLimit &&
-        !isLegalMegaMasterCandidate(team, candidateSpecies)
-      ) {
+      if (!isTeamLegalForFormat([...team, candidateSpecies], formatId)) {
         attempts++;
         continue;
       }
@@ -404,10 +387,7 @@ export function createRandomChromosome(
           return false;
         }
 
-        if (
-          enforceOneMegaLimit &&
-          !isLegalMegaMasterCandidate(team, candidate)
-        ) {
+        if (!isTeamLegalForFormat([...team, candidate], formatId)) {
           return false;
         }
 
@@ -463,14 +443,8 @@ export function createRandomChromosome(
     }
   }
 
-  if (enforceOneMegaLimit) {
-    const legality = getMegaMasterTeamLegality(team);
-
-    if (!legality.isLegal) {
-      throw new Error(
-        `Failed to create a legal one-Mega-limit team: ${legality.violations.join(', ')}`,
-      );
-    }
+  if (!isTeamLegalForFormat(team, formatId)) {
+    throw new Error('Failed to create a legal team for the selected format.');
   }
 
   return finalTeam;
@@ -618,10 +592,7 @@ function isValidAnchorFirstSeed(
     return false;
   }
 
-  if (
-    hasOneMegaLimitForFormat(formatId) &&
-    !getMegaMasterTeamLegality(team).isLegal
-  ) {
+  if (!isTeamLegalForFormat(team, formatId)) {
     return false;
   }
 

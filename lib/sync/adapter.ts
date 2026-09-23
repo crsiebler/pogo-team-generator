@@ -27,6 +27,11 @@ const RANKING_CUPS = [
   'coupedusillage',
   'willpower',
   'mega',
+  'laic2027',
+  'retro',
+  'spectral',
+  'cauldron',
+  'battlefrontiermaster',
 ] as const;
 
 export type RankingCategory = (typeof RANKING_CATEGORIES)[number];
