@@ -24,6 +24,11 @@ describe('battle format catalog', () => {
       'Battle Frontier (Tsuki Cup)',
       'Battle Frontier (Liga Ultra)',
       'Battle Frontier (Coupe du Sillage)',
+      'LAIC 2027 Cup: Great League Edition',
+      'Retro Cup: Great League Edition',
+      'Spectral Cup: Great League Edition',
+      'Cauldron Cup: Ultra League Edition',
+      'Battle Frontier (Master)',
     ]);
   });
 
@@ -43,6 +48,11 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('battle-frontier-tsuki-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-liga-ultra')).toBe(true);
     expect(isBattleFormatId('battle-frontier-coupe-du-sillage')).toBe(true);
+    expect(isBattleFormatId('laic-2027-cup')).toBe(true);
+    expect(isBattleFormatId('retro-cup')).toBe(true);
+    expect(isBattleFormatId('spectral-cup')).toBe(true);
+    expect(isBattleFormatId('cauldron-cup')).toBe(true);
+    expect(isBattleFormatId('battle-frontier-master')).toBe(true);
   });
 
   it('rejects unknown format ids', () => {
@@ -51,7 +61,6 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('spring-cup')).toBe(false);
     expect(isBattleFormatId('jungle-cup')).toBe(false);
     expect(isBattleFormatId('master-premier-cup')).toBe(false);
-    expect(isBattleFormatId('retro-cup')).toBe(false);
     expect(isBattleFormatId('fantasy-cup')).toBe(false);
     expect(isBattleFormatId('summer-cup')).toBe(false);
     expect(isBattleFormatId('')).toBe(false);
@@ -126,7 +135,12 @@ describe('battle format catalog', () => {
     expect(getBattleFormatById('spring-cup')).toBeUndefined();
     expect(getBattleFormatById('jungle-cup')).toBeUndefined();
     expect(getBattleFormatById('master-premier-cup')).toBeUndefined();
-    expect(getBattleFormatById('retro-cup')).toBeUndefined();
+    expect(getBattleFormatById('retro-cup')).toEqual({
+      id: 'retro-cup',
+      label: 'Retro Cup: Great League Edition',
+      cup: 'retro',
+      cp: 1500,
+    });
     expect(getBattleFormatById('fantasy-cup')).toBeUndefined();
     expect(getBattleFormatById('summer-cup')).toBeUndefined();
     expect(getBattleFormatById('naic-2026-championship-cup')).toBeUndefined();
@@ -135,7 +149,30 @@ describe('battle format catalog', () => {
       getBattleFormatById('battle-frontier-spellcraft-cup'),
     ).toBeUndefined();
     expect(getBattleFormatById('battle-frontier-ul-retro')).toBeUndefined();
-    expect(getBattleFormatById('battle-frontier-master')).toBeUndefined();
+    expect(getBattleFormatById('laic-2027-cup')).toEqual({
+      id: 'laic-2027-cup',
+      label: 'LAIC 2027 Cup: Great League Edition',
+      cup: 'laic2027',
+      cp: 1500,
+    });
+    expect(getBattleFormatById('spectral-cup')).toEqual({
+      id: 'spectral-cup',
+      label: 'Spectral Cup: Great League Edition',
+      cup: 'spectral',
+      cp: 1500,
+    });
+    expect(getBattleFormatById('cauldron-cup')).toEqual({
+      id: 'cauldron-cup',
+      label: 'Cauldron Cup: Ultra League Edition',
+      cup: 'cauldron',
+      cp: 2500,
+    });
+    expect(getBattleFormatById('battle-frontier-master')).toEqual({
+      id: 'battle-frontier-master',
+      label: 'Battle Frontier (Master)',
+      cup: 'battlefrontiermaster',
+      cp: 10000,
+    });
   });
 
   it('returns a read-only format list via helper', () => {
@@ -155,6 +192,11 @@ describe('battle format catalog', () => {
       'battle-frontier-tsuki-cup',
       'battle-frontier-liga-ultra',
       'battle-frontier-coupe-du-sillage',
+      'laic-2027-cup',
+      'retro-cup',
+      'spectral-cup',
+      'cauldron-cup',
+      'battle-frontier-master',
     ]);
   });
 
