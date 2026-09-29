@@ -2,9 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import pokemonData from '@/data/pokemon.json';
+import retainedPointRules from '@/tests/fixtures/battleFrontierMasterPointRules.json';
 
 type BattleFrontierMasterCup = {
-  tierRules: {
+  tierRules?: {
     tiers: Array<{
       points: number;
       pokemon: string[];
@@ -38,7 +39,7 @@ function parsePointsCsv(csvText: string): Array<{
 }
 
 describe('Battle Frontier Master points CSV', () => {
-  it('stores the current cycle point table with canonical species ids', () => {
+  it('preserves published point values and canonical species ids when the current cup omits tiers', () => {
     const csvText = readBattleFrontierMasterPointsCsv();
     const rows = parsePointsCsv(csvText);
     const canonicalSpeciesIds = new Set(
@@ -70,7 +71,10 @@ describe('Battle Frontier Master points CSV', () => {
       expect(row.points).toBeGreaterThan(0);
     }
 
-    const expectedRows = currentCycleCup.tierRules.tiers.flatMap((tier) =>
+    // PvPoke no longer publishes tiers for the current cup. Keep checking every
+    // retained point value against its pinned source until new tiers are supplied.
+    const tierRules = currentCycleCup.tierRules ?? retainedPointRules.tierRules;
+    const expectedRows = tierRules.tiers.flatMap((tier) =>
       tier.pokemon.map((speciesId) => ({
         speciesId,
         points: tier.points,
