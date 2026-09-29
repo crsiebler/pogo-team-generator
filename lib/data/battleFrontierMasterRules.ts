@@ -11,8 +11,8 @@ export const BATTLE_FRONTIER_MASTER_MAX_POINTS = 11;
 export const BATTLE_FRONTIER_MASTER_MAX_FIVE_POINT_POKEMON = 1;
 export const BATTLE_FRONTIER_MASTER_MAX_MEGAS = 1;
 
-// Dormant support for prior Battle Frontier Master point-system cycles. Current
-// Battle Frontier metas use the active PvPoke ranking cup restrictions instead.
+// Retained evaluator for prior Battle Frontier Master point-system cycles.
+// Runtime entry points must enforce battleFormats availability before using it.
 
 export type BattleFrontierMasterLegalityViolation =
   | 'points-cap'
@@ -35,7 +35,7 @@ interface BattleFrontierMasterRulesData {
 let cachedRulesData: BattleFrontierMasterRulesData | null = null;
 
 /**
- * Load and cache the active Battle Frontier Master point table.
+ * Load and cache the retained Battle Frontier Master point table.
  */
 function getBattleFrontierMasterRulesData(): BattleFrontierMasterRulesData {
   if (cachedRulesData) {

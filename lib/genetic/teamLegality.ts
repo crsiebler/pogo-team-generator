@@ -1,4 +1,5 @@
 import {
+  assertBattleFormatAvailable,
   hasOneMegaLimitForFormat,
   type BattleFormatId,
 } from '@lib/data/battleFormats';
@@ -12,6 +13,9 @@ export function isTeamLegalForFormat(
   team: readonly string[],
   formatId: BattleFormatId | undefined,
 ): boolean {
+  if (formatId !== undefined) {
+    assertBattleFormatAvailable(formatId);
+  }
   if (formatId === 'battle-frontier-master') {
     return getBattleFrontierMasterTeamLegality([...team]).isLegal;
   }

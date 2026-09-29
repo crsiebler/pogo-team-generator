@@ -288,7 +288,11 @@ describe('POST /api/generate-team', () => {
     );
   });
 
-  it.each(getBattleFormats().map(({ id }) => [id]))(
+  it.each(
+    getBattleFormats()
+      .filter(({ unavailableReason }) => !unavailableReason)
+      .map(({ id }) => [id]),
+  )(
     'passes %s formatId to team generation for end-to-end requests',
     async (formatId) => {
       const request = new Request('http://localhost/api/generate-team', {
