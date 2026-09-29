@@ -15,6 +15,8 @@ export interface BattleFormat {
     | 'cauldron'
     | 'battlefrontiermaster';
   cp: 1500 | 2500 | 10000;
+  /** Blocks runtime use while keeping metadata available to sync tooling. */
+  unavailableReason?: string;
 }
 
 /**
@@ -137,6 +139,8 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'Battle Frontier (Master)',
     cup: 'battlefrontiermaster',
     cp: 10000,
+    unavailableReason:
+      'Battle Frontier (Master) is unavailable until current cycle rules are verified and synchronized. Choose another format.',
   },
 ];
 
@@ -183,14 +187,37 @@ export function getBattleFormats(): readonly BattleFormat[] {
  * Returns battle formats exposed in the team configuration selector.
  */
 export function getSelectableBattleFormats(): readonly BattleFormat[] {
-  return selectableBattleFormatIds.map((formatId) => {
-    const format = battleFormatLookup.get(formatId);
-    if (!format) {
-      throw new Error(`Selectable battle format '${formatId}' is unsupported`);
-    }
+  return selectableBattleFormatIds
+    .map((formatId) => {
+      const format = battleFormatLookup.get(formatId);
+      if (!format) {
+        throw new Error(
+          `Selectable battle format '${formatId}' is unsupported`,
+        );
+      }
 
-    return format;
-  });
+      return format;
+    })
+    .filter((format) => !format.unavailableReason);
+}
+
+/** An otherwise recognized format lacks verified rules for runtime use. */
+export class BattleFormatUnavailableError extends Error {
+  constructor(
+    public readonly formatId: BattleFormatId,
+    reason: string,
+  ) {
+    super(reason);
+    this.name = 'BattleFormatUnavailableError';
+  }
+}
+
+/** Reject runtime requests for formats awaiting verified current rules. */
+export function assertBattleFormatAvailable(formatId: BattleFormatId): void {
+  const reason = battleFormatLookup.get(formatId)?.unavailableReason;
+  if (reason) {
+    throw new BattleFormatUnavailableError(formatId, reason);
+  }
 }
 
 /**

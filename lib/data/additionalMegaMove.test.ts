@@ -9,11 +9,13 @@ import { filterPokemon } from './pokemon';
 import type { Move } from '@/lib/types';
 
 const eligibleMegaMoves = {
+  beedrill_mega: 'FELL_STINGER_PLUS',
   chesnaught_mega: 'SEED_BOMB_PLUS',
   delphox_mega: 'MYSTICAL_FIRE_PLUS',
   dragonite_mega: 'OUTRAGE_PLUS',
   falinks_mega: 'BRICK_BREAK_PLUS',
   greninja_mega: 'SURF_PLUS',
+  houndoom_mega: 'DARK_PULSE_PLUS',
   malamar_mega: 'PSYBEAM_PLUS',
   mewtwo_mega_x: 'DYNAMIC_PUNCH_PLUS',
   mewtwo_mega_y: 'FUTURE_SIGHT_PLUS',
@@ -21,6 +23,7 @@ const eligibleMegaMoves = {
   raichu_mega_y: 'ZAP_CANNON_PLUS',
   skarmory_mega: 'DRILL_PECK_PLUS',
   starmie_mega: 'LIQUIDATION_PLUS',
+  staraptor_mega: 'BRAVE_BIRD_PLUS',
   victreebel_mega: 'ACID_SPRAY_PLUS',
 } as const;
 

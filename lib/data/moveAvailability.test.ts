@@ -17,7 +17,6 @@ const LEGACY_MOVE_EXPECTATIONS = [
   ['starmie', 'QUICK_ATTACK', 'excluded'],
   ['starmie_mega', 'QUICK_ATTACK', 'excluded'],
   ['porygon', 'QUICK_ATTACK', 'excluded'],
-  ['mewtwo', 'COUNTER', 'eventExclusive'],
   ['mewtwo_mega_x', 'COUNTER', 'eventExclusive'],
   ['mewtwo_mega_y', 'COUNTER', 'eventExclusive'],
   ['pichu', 'QUICK_ATTACK', 'excluded'],
@@ -65,6 +64,19 @@ describe('getMoveAvailability', () => {
     expect(
       getMoveAvailability('venusaur', 'FRENZY_PLANT', 'great-league'),
     ).toEqual({ kind: 'elite' });
+  });
+
+  it('classifies ordinary Mewtwo Counter as Elite while Mega forms retain legacy access', () => {
+    expect(getMoveAvailability('mewtwo', 'COUNTER', 'master-league')).toEqual({
+      kind: 'elite',
+    });
+    for (const speciesId of ['mewtwo_mega_x', 'mewtwo_mega_y']) {
+      expect(
+        getMoveAvailability(speciesId, 'COUNTER', 'master-league'),
+      ).toEqual({
+        kind: 'eventExclusive',
+      });
+    }
   });
 
   it('rejects Frustration unconditionally', () => {

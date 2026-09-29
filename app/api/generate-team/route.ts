@@ -4,6 +4,8 @@ import { buildPokemonContributionAnalysis } from '@/lib/analysis/pokemonContribu
 import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalysis';
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import {
+  assertBattleFormatAvailable,
+  BattleFormatUnavailableError,
   isBattleFrontierFormatId,
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
@@ -72,6 +74,8 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+
+    assertBattleFormatAvailable(resolvedFormatId);
 
     if (!mode || (mode !== 'PlayPokemon' && mode !== 'GBL')) {
       return NextResponse.json(
@@ -220,6 +224,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     if (
+      error instanceof BattleFormatUnavailableError ||
       error instanceof MissingRankingDataError ||
       error instanceof MissingSimulationDataError
     ) {

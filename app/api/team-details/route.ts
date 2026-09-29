@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
+  assertBattleFormatAvailable,
+  BattleFormatUnavailableError,
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
@@ -90,6 +92,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    assertBattleFormatAvailable(resolvedFormatId);
     const parsedAssignment = parseRosterMovesetAssignment(
       movesetAssignment,
       team,
@@ -125,7 +128,10 @@ export async function POST(request: NextRequest) {
       pokemon: pokemonData,
     });
   } catch (error) {
-    if (error instanceof RosterMovesetAssignmentValidationError) {
+    if (
+      error instanceof BattleFormatUnavailableError ||
+      error instanceof RosterMovesetAssignmentValidationError
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 

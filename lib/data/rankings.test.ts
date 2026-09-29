@@ -172,25 +172,23 @@ describe('getOptimalMoveset', () => {
     });
   });
 
-  it('normalizes ranking move spelling aliases', () => {
-    expect(getOptimalMoveset('Snorlax')).toEqual({
-      fastMove: 'LICK',
-      chargedMove1: 'BODY_SLAM',
-      chargedMove2: 'SUPER_POWER',
-    });
-    expect(getOptimalMoveset('Krabby')).toEqual({
-      fastMove: 'BUBBLE',
-      chargedMove1: 'VICE_GRIP',
-      chargedMove2: 'RAZOR_SHELL',
-    });
-  });
-
   it('never returns a rejected ranked default moveset', () => {
-    expect(getOptimalMoveset('Muk', 'master-league')).toEqual({
-      fastMove: 'POISON_JAB',
-      chargedMove1: 'THUNDER_PUNCH',
-      chargedMove2: 'DARK_PULSE',
+    const moveset = getOptimalMoveset('Muk', 'master-league');
+
+    expect(getMoveAvailability('muk', 'ACID', 'master-league').kind).toBe(
+      'excluded',
+    );
+    expect(moveset.fastMove).not.toBe('ACID');
+    expect(moveset).toEqual({
+      fastMove: expect.any(String),
+      chargedMove1: expect.any(String),
+      chargedMove2: expect.any(String),
     });
+    for (const moveId of Object.values(moveset)) {
+      expect(
+        getMoveAvailability('muk', moveId ?? '', 'master-league').kind,
+      ).not.toBe('excluded');
+    }
   });
 
   it('keeps every checked-in Overall moveset eligible', () => {

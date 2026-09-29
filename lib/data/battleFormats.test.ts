@@ -172,6 +172,7 @@ describe('battle format catalog', () => {
       label: 'Battle Frontier (Master)',
       cup: 'battlefrontiermaster',
       cp: 10000,
+      unavailableReason: expect.stringContaining('current cycle rules'),
     });
   });
 
@@ -191,7 +192,6 @@ describe('battle format catalog', () => {
       'laic-2027-cup',
       'spectral-cup',
       'cauldron-cup',
-      'battle-frontier-master',
     ]);
   });
 

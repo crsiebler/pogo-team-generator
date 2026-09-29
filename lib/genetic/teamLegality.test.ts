@@ -2,19 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { isTeamLegalForFormat } from './teamLegality';
 
 describe('format team legality', () => {
-  it('enforces Battle Frontier Master point and Mega limits', () => {
-    expect(
+  it('rejects Battle Frontier Master until current rules are verified', () => {
+    expect(() =>
       isTeamLegalForFormat(
         ['palkia_origin', 'eternatus', 'swampert_mega'],
         'battle-frontier-master',
       ),
-    ).toBe(false);
-    expect(
+    ).toThrow(/current cycle rules/);
+    expect(() =>
       isTeamLegalForFormat(
         ['palkia_origin', 'mewtwo', 'gallade_mega'],
         'battle-frontier-master',
       ),
-    ).toBe(true);
+    ).toThrow(/current cycle rules/);
   });
 
   it('enforces one Mega for Mega-enabled cup formats', () => {

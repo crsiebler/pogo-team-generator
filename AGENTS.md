@@ -123,6 +123,13 @@ All code must be built, linted, and tested with full compliance to these steps:
 
 ---
 
+### 2.9 Pokémon GO Meta Search Strings
+
+- Use `.agents/skills/generate-pogo-search-strings/SKILL.md` when generating or troubleshooting Pokémon GO inventory search strings for metas or cups. This project-local skill covers PvPoke rule extraction, regional-form search bugs, Mega-only candidate exceptions, and verification limits.
+- Keep source-derived search expectations distinct from actual in-game observations; an offline Boolean model does not validate the game's parser.
+
+---
+
 ## 3. Copilot/AI Developer Rules
 
 - Prefer clarity and explicitness over brevity.

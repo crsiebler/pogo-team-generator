@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
+  assertBattleFormatAvailable,
+  BattleFormatUnavailableError,
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFrontierFormatId,
   isBattleFormatId,
@@ -25,6 +27,7 @@ export async function GET(request: Request) {
       );
     }
 
+    assertBattleFormatAvailable(formatId);
     const pokemonNames = Array.from(getRankedPokemonNames(formatId)).filter(
       (pokemonName) => {
         if (!isBattleFrontierFormatId(formatId)) {
@@ -46,6 +49,9 @@ export async function GET(request: Request) {
       count: pokemonNames.length,
     });
   } catch (error) {
+    if (error instanceof BattleFormatUnavailableError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error fetching Pokémon list:', error);
     return NextResponse.json(
       { error: 'Failed to fetch Pokémon list' },

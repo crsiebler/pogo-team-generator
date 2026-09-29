@@ -7,6 +7,7 @@ import { buildShieldScenarioAnalysis } from '@/lib/analysis/shieldScenarioAnalys
 import { buildThreatAnalysis } from '@/lib/analysis/threatAnalysis';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
+  getBattleFormats,
   isBattleFrontierFormatId,
 } from '@/lib/data/battleFormats';
 import {
@@ -287,16 +288,11 @@ describe('POST /api/generate-team', () => {
     );
   });
 
-  it.each([
-    ['great-league'],
-    ['ultra-league'],
-    ['master-league'],
-    ['scroll-cup'],
-    ['battle-frontier-copa-diluvio'],
-    ['battle-frontier-tsuki-cup'],
-    ['battle-frontier-liga-ultra'],
-    ['battle-frontier-coupe-du-sillage'],
-  ] as const)(
+  it.each(
+    getBattleFormats()
+      .filter(({ unavailableReason }) => !unavailableReason)
+      .map(({ id }) => [id]),
+  )(
     'passes %s formatId to team generation for end-to-end requests',
     async (formatId) => {
       const request = new Request('http://localhost/api/generate-team', {
@@ -1021,26 +1017,28 @@ describe('POST /api/generate-team', () => {
     });
   });
 
-  it.each([['little-cup'], ['kanto-cup'], ['spring-cup']] as const)(
-    'returns 400 for invalid formatId %s',
-    async (formatId) => {
-      const request = new Request('http://localhost/api/generate-team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'PlayPokemon',
-          formatId,
-        }),
-      });
+  it.each([
+    ['little-cup'],
+    ['kanto-cup'],
+    ['spring-cup'],
+    ['scroll-cup'],
+  ] as const)('returns 400 for invalid formatId %s', async (formatId) => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'PlayPokemon',
+        formatId,
+      }),
+    });
 
-      const response = await POST(request as NextRequest);
-      const responseBody = (await response.json()) as { error: string };
+    const response = await POST(request as NextRequest);
+    const responseBody = (await response.json()) as { error: string };
 
-      expect(response.status).toBe(400);
-      expect(responseBody.error).toBe(`Invalid battle format: ${formatId}`);
-      expect(generateTeam).not.toHaveBeenCalled();
-    },
-  );
+    expect(response.status).toBe(400);
+    expect(responseBody.error).toBe(`Invalid battle format: ${formatId}`);
+    expect(generateTeam).not.toHaveBeenCalled();
+  });
 
   it('returns 400 when Battle Frontier requests use GBL mode', async () => {
     const request = new Request('http://localhost/api/generate-team', {

@@ -1,4 +1,5 @@
 import {
+  assertBattleFormatAvailable,
   DEFAULT_BATTLE_FORMAT_ID,
   hasOneMegaLimitForFormat,
   type BattleFormatId,
@@ -213,6 +214,7 @@ export async function generateTeam(
     simulateMovesetVariants = false,
   } = options;
 
+  assertBattleFormatAvailable(formatId);
   const teamSize = mode === 'GBL' ? 3 : 6;
   ensureSimulationDataAvailable(formatId);
   const movesetPolicy =

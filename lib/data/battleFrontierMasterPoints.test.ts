@@ -1,10 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import {
+  assertBattleFormatAvailable,
+  BattleFormatUnavailableError,
+  getBattleFormatById,
+  getSelectableBattleFormats,
+} from './battleFormats';
 import pokemonData from '@/data/pokemon.json';
+import retainedPointRules from '@/tests/fixtures/battleFrontierMasterPointRules.json';
 
 type BattleFrontierMasterCup = {
-  tierRules: {
+  tierRules?: {
     tiers: Array<{
       points: number;
       pokemon: string[];
@@ -38,7 +45,7 @@ function parsePointsCsv(csvText: string): Array<{
 }
 
 describe('Battle Frontier Master points CSV', () => {
-  it('stores the current cycle point table with canonical species ids', () => {
+  it('requires current tiers or makes the format unavailable', () => {
     const csvText = readBattleFrontierMasterPointsCsv();
     const rows = parsePointsCsv(csvText);
     const canonicalSpeciesIds = new Set(
@@ -70,6 +77,19 @@ describe('Battle Frontier Master points CSV', () => {
       expect(row.points).toBeGreaterThan(0);
     }
 
+    if (!currentCycleCup.tierRules) {
+      expect(
+        getBattleFormatById('battle-frontier-master')?.unavailableReason,
+      ).toEqual(expect.any(String));
+      expect(() =>
+        assertBattleFormatAvailable('battle-frontier-master'),
+      ).toThrow(BattleFormatUnavailableError);
+      expect(getSelectableBattleFormats().map(({ id }) => id)).not.toContain(
+        'battle-frontier-master',
+      );
+      return;
+    }
+
     const expectedRows = currentCycleCup.tierRules.tiers.flatMap((tier) =>
       tier.pokemon.map((speciesId) => ({
         speciesId,
@@ -78,5 +98,14 @@ describe('Battle Frontier Master points CSV', () => {
     );
 
     expect(rows).toEqual(expectedRows);
+  });
+
+  it('retains the archived point table for historical rule regression tests only', () => {
+    const expectedRows = retainedPointRules.tierRules.tiers.flatMap((tier) =>
+      tier.pokemon.map((speciesId) => ({ speciesId, points: tier.points })),
+    );
+    expect(parsePointsCsv(readBattleFrontierMasterPointsCsv())).toEqual(
+      expectedRows,
+    );
   });
 });
