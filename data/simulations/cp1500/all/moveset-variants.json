@@ -10,7 +10,7 @@
       {
         "key": "formats/great-league.json",
         "algorithm": "sha256",
-        "digest": "b2c097f8aed14d45512dca6f8f7e49c3828274732264710ec5032c29a855c646"
+        "digest": "98eb7dff2d8a4f518dd9197f2c65a3081a4d29bc774b08756b46229854c7fdfa"
       },
       {
         "key": "moves.json",
@@ -20,7 +20,7 @@
       {
         "key": "pokemon.json",
         "algorithm": "sha256",
-        "digest": "af770b1a01d721017a82a977dd33039eaf606fd06680368cb7c74f12181217fe"
+        "digest": "42074887f2210502ddb6f8b56caf66d3fb4368b79715cf92c96c44764367beae"
       }
     ],
     "derivationSettings": {
@@ -488,7 +488,7 @@
       "speciesId": "aromatisse",
       "defaultVariantId": "fairy_wind--psyshock--moonblast",
       "evidence": {
-        "pvpokeScorePrior": 86.2,
+        "pvpokeScorePrior": 86.3,
         "retainedFastMoves": [
           "FAIRY_WIND",
           "CHARM"
@@ -800,7 +800,7 @@
       "speciesId": "castform_sunny",
       "defaultVariantId": "ember--weather_ball_fire--solar_beam",
       "evidence": {
-        "pvpokeScorePrior": 86.8,
+        "pvpokeScorePrior": 86.9,
         "retainedFastMoves": [
           "EMBER",
           "TACKLE"
@@ -1801,7 +1801,7 @@
       "speciesId": "dondozo",
       "defaultVariantId": "waterfall--surf--outrage",
       "evidence": {
-        "pvpokeScorePrior": 89.6,
+        "pvpokeScorePrior": 89.7,
         "retainedFastMoves": [
           "WATERFALL",
           "WATER_GUN"
@@ -1906,6 +1906,69 @@
             "0-0": "doublade_0-0.csv",
             "1-1": "doublade_1-1.csv",
             "2-2": "doublade_2-2.csv"
+          },
+          "completeness": {
+            "0-0": true,
+            "1-1": true,
+            "2-2": true
+          },
+          "evaluationCounts": {
+            "0-0": 100,
+            "1-1": 100,
+            "2-2": 100
+          },
+          "active": true
+        }
+      ]
+    },
+    {
+      "speciesId": "dragalge",
+      "defaultVariantId": "acid--outrage--aqua_tail",
+      "evidence": {
+        "pvpokeScorePrior": 84.9,
+        "retainedFastMoves": [
+          "ACID",
+          "DRAGON_TAIL"
+        ],
+        "retainedChargedMoves": [
+          "AQUA_TAIL",
+          "OUTRAGE",
+          "SLUDGE_BOMB",
+          "FOCUS_BLAST"
+        ],
+        "rejections": []
+      },
+      "candidates": [
+        {
+          "id": "acid--outrage--aqua_tail",
+          "fastMove": "ACID",
+          "chargedMove1": "AQUA_TAIL",
+          "chargedMove2": "OUTRAGE",
+          "isDefault": true,
+          "evidence": {
+            "kind": "preferred",
+            "sourceCategories": [
+              "overall"
+            ],
+            "sourceVariantIds": [
+              "acid--outrage--aqua_tail"
+            ]
+          },
+          "acquisitionRequirements": {
+            "fastMove": {
+              "kind": "regular"
+            },
+            "chargedMove1": {
+              "kind": "regular"
+            },
+            "chargedMove2": {
+              "kind": "regular"
+            }
+          },
+          "storageKeys": {
+            "0-0": "dragalge_0-0.csv",
+            "1-1": "dragalge_1-1.csv",
+            "2-2": "dragalge_2-2.csv"
           },
           "completeness": {
             "0-0": true,
@@ -2051,7 +2114,7 @@
       "speciesId": "drapion",
       "defaultVariantId": "poison_sting--crunch--aqua_tail",
       "evidence": {
-        "pvpokeScorePrior": 86.4,
+        "pvpokeScorePrior": 86.3,
         "retainedFastMoves": [
           "POISON_STING",
           "INFESTATION"
@@ -2533,6 +2596,69 @@
             "0-0": "electrode_hisuian_0-0.csv",
             "1-1": "electrode_hisuian_1-1.csv",
             "2-2": "electrode_hisuian_2-2.csv"
+          },
+          "completeness": {
+            "0-0": true,
+            "1-1": true,
+            "2-2": true
+          },
+          "evaluationCounts": {
+            "0-0": 100,
+            "1-1": 100,
+            "2-2": 100
+          },
+          "active": true
+        }
+      ]
+    },
+    {
+      "speciesId": "emolga",
+      "defaultVariantId": "thunder_shock--discharge--acrobatics",
+      "evidence": {
+        "pvpokeScorePrior": 85,
+        "retainedFastMoves": [
+          "THUNDER_SHOCK",
+          "QUICK_ATTACK"
+        ],
+        "retainedChargedMoves": [
+          "ACROBATICS",
+          "DISCHARGE",
+          "AERIAL_ACE",
+          "THUNDERBOLT"
+        ],
+        "rejections": []
+      },
+      "candidates": [
+        {
+          "id": "thunder_shock--discharge--acrobatics",
+          "fastMove": "THUNDER_SHOCK",
+          "chargedMove1": "ACROBATICS",
+          "chargedMove2": "DISCHARGE",
+          "isDefault": true,
+          "evidence": {
+            "kind": "preferred",
+            "sourceCategories": [
+              "overall"
+            ],
+            "sourceVariantIds": [
+              "thunder_shock--discharge--acrobatics"
+            ]
+          },
+          "acquisitionRequirements": {
+            "fastMove": {
+              "kind": "regular"
+            },
+            "chargedMove1": {
+              "kind": "regular"
+            },
+            "chargedMove2": {
+              "kind": "regular"
+            }
+          },
+          "storageKeys": {
+            "0-0": "emolga_0-0.csv",
+            "1-1": "emolga_1-1.csv",
+            "2-2": "emolga_2-2.csv"
           },
           "completeness": {
             "0-0": true,
@@ -3182,7 +3308,7 @@
       "speciesId": "gligar_shadow",
       "defaultVariantId": "wing_attack--night_slash--dig",
       "evidence": {
-        "pvpokeScorePrior": 86.7,
+        "pvpokeScorePrior": 86.8,
         "retainedFastMoves": [
           "WING_ATTACK",
           "FURY_CUTTER"
@@ -3241,10 +3367,73 @@
       ]
     },
     {
+      "speciesId": "golisopod_shadow",
+      "defaultVariantId": "fury_cutter--x_scissor--aqua_jet",
+      "evidence": {
+        "pvpokeScorePrior": 86,
+        "retainedFastMoves": [
+          "FURY_CUTTER",
+          "SHADOW_CLAW"
+        ],
+        "retainedChargedMoves": [
+          "AQUA_JET",
+          "X_SCISSOR",
+          "RAZOR_SHELL",
+          "AERIAL_ACE"
+        ],
+        "rejections": []
+      },
+      "candidates": [
+        {
+          "id": "fury_cutter--x_scissor--aqua_jet",
+          "fastMove": "FURY_CUTTER",
+          "chargedMove1": "AQUA_JET",
+          "chargedMove2": "X_SCISSOR",
+          "isDefault": true,
+          "evidence": {
+            "kind": "preferred",
+            "sourceCategories": [
+              "overall"
+            ],
+            "sourceVariantIds": [
+              "fury_cutter--x_scissor--aqua_jet"
+            ]
+          },
+          "acquisitionRequirements": {
+            "fastMove": {
+              "kind": "regular"
+            },
+            "chargedMove1": {
+              "kind": "regular"
+            },
+            "chargedMove2": {
+              "kind": "regular"
+            }
+          },
+          "storageKeys": {
+            "0-0": "golisopod_shadow_0-0.csv",
+            "1-1": "golisopod_shadow_1-1.csv",
+            "2-2": "golisopod_shadow_2-2.csv"
+          },
+          "completeness": {
+            "0-0": true,
+            "1-1": true,
+            "2-2": true
+          },
+          "evaluationCounts": {
+            "0-0": 100,
+            "1-1": 100,
+            "2-2": 100
+          },
+          "active": true
+        }
+      ]
+    },
+    {
       "speciesId": "goodra",
       "defaultVariantId": "dragon_breath--thunder_punch--aqua_tail",
       "evidence": {
-        "pvpokeScorePrior": 86.8,
+        "pvpokeScorePrior": 86.7,
         "retainedFastMoves": [
           "DRAGON_BREATH",
           "WATER_GUN"
@@ -3559,7 +3748,7 @@
       "speciesId": "greninja_shadow",
       "defaultVariantId": "water_shuriken--hydro_cannon--brutal_swing",
       "evidence": {
-        "pvpokeScorePrior": 85.7,
+        "pvpokeScorePrior": 85.6,
         "retainedFastMoves": [
           "WATER_SHURIKEN",
           "BUBBLE"
@@ -3937,7 +4126,7 @@
       "speciesId": "hydreigon",
       "defaultVariantId": "dragon_breath--fly--brutal_swing",
       "evidence": {
-        "pvpokeScorePrior": 87.1,
+        "pvpokeScorePrior": 88.6,
         "retainedFastMoves": [
           "DRAGON_BREATH",
           "BITE"
@@ -4000,7 +4189,7 @@
       "speciesId": "hydreigon_shadow",
       "defaultVariantId": "dragon_breath--fly--brutal_swing",
       "evidence": {
-        "pvpokeScorePrior": 89.3,
+        "pvpokeScorePrior": 90.8,
         "retainedFastMoves": [
           "DRAGON_BREATH",
           "BITE"
@@ -4378,7 +4567,7 @@
       "speciesId": "klefki",
       "defaultVariantId": "astonish--foul_play--draining_kiss",
       "evidence": {
-        "pvpokeScorePrior": 85.3,
+        "pvpokeScorePrior": 85.2,
         "retainedFastMoves": [
           "ASTONISH",
           "TACKLE"
@@ -5008,7 +5197,7 @@
       "speciesId": "marowak_shadow",
       "defaultVariantId": "mud_slap--rock_slide--bone_club",
       "evidence": {
-        "pvpokeScorePrior": 88.3,
+        "pvpokeScorePrior": 88.2,
         "retainedFastMoves": [
           "MUD_SLAP",
           "ROCK_SMASH"
@@ -5134,7 +5323,7 @@
       "speciesId": "melmetal",
       "defaultVariantId": "thunder_shock--dynamic_punch--double_iron_bash",
       "evidence": {
-        "pvpokeScorePrior": 94.5,
+        "pvpokeScorePrior": 94.4,
         "retainedFastMoves": [
           "THUNDER_SHOCK"
         ],
@@ -5322,7 +5511,7 @@
       "speciesId": "miltank",
       "defaultVariantId": "rollout--high_horsepower--body_slam",
       "evidence": {
-        "pvpokeScorePrior": 86.7,
+        "pvpokeScorePrior": 86.6,
         "retainedFastMoves": [
           "ROLLOUT",
           "TACKLE"
@@ -5510,7 +5699,7 @@
       "speciesId": "morgrem",
       "defaultVariantId": "sucker_punch--play_rough--foul_play",
       "evidence": {
-        "pvpokeScorePrior": 86.1,
+        "pvpokeScorePrior": 86,
         "retainedFastMoves": [
           "SUCKER_PUNCH",
           "BITE"
@@ -5698,7 +5887,7 @@
       "speciesId": "muk_alolan_shadow",
       "defaultVariantId": "poison_jab--ice_punch--brutal_swing",
       "evidence": {
-        "pvpokeScorePrior": 86.4,
+        "pvpokeScorePrior": 86.5,
         "retainedFastMoves": [
           "POISON_JAB",
           "BITE"
@@ -5761,7 +5950,7 @@
       "speciesId": "murkrow_shadow",
       "defaultVariantId": "peck--foul_play--drill_peck",
       "evidence": {
-        "pvpokeScorePrior": 85.8,
+        "pvpokeScorePrior": 85.9,
         "retainedFastMoves": [
           "PECK",
           "FEINT_ATTACK"
@@ -5949,7 +6138,7 @@
       "speciesId": "ninetales_alolan_shadow",
       "defaultVariantId": "powder_snow--weather_ball_ice--chilling_water",
       "evidence": {
-        "pvpokeScorePrior": 88.6,
+        "pvpokeScorePrior": 88.7,
         "retainedFastMoves": [
           "POWDER_SNOW",
           "CHARM"
@@ -6200,7 +6389,7 @@
       "speciesId": "orthworm",
       "defaultVariantId": "mud_slap--rock_tomb--iron_head",
       "evidence": {
-        "pvpokeScorePrior": 85.5,
+        "pvpokeScorePrior": 85.4,
         "retainedFastMoves": [
           "MUD_SLAP",
           "IRON_TAIL"
@@ -6432,69 +6621,6 @@
             "0-0": "persian_0-0.csv",
             "1-1": "persian_1-1.csv",
             "2-2": "persian_2-2.csv"
-          },
-          "completeness": {
-            "0-0": true,
-            "1-1": true,
-            "2-2": true
-          },
-          "evaluationCounts": {
-            "0-0": 100,
-            "1-1": 100,
-            "2-2": 100
-          },
-          "active": true
-        }
-      ]
-    },
-    {
-      "speciesId": "persian_shadow",
-      "defaultVariantId": "scratch--power_gem--night_slash",
-      "evidence": {
-        "pvpokeScorePrior": 84.9,
-        "retainedFastMoves": [
-          "SCRATCH",
-          "FEINT_ATTACK"
-        ],
-        "retainedChargedMoves": [
-          "NIGHT_SLASH",
-          "POWER_GEM",
-          "FOUL_PLAY",
-          "PLAY_ROUGH"
-        ],
-        "rejections": []
-      },
-      "candidates": [
-        {
-          "id": "scratch--power_gem--night_slash",
-          "fastMove": "SCRATCH",
-          "chargedMove1": "NIGHT_SLASH",
-          "chargedMove2": "POWER_GEM",
-          "isDefault": true,
-          "evidence": {
-            "kind": "preferred",
-            "sourceCategories": [
-              "overall"
-            ],
-            "sourceVariantIds": [
-              "scratch--power_gem--night_slash"
-            ]
-          },
-          "acquisitionRequirements": {
-            "fastMove": {
-              "kind": "regular"
-            },
-            "chargedMove1": {
-              "kind": "elite"
-            },
-            "chargedMove2": {
-              "kind": "regular"
-            }
-          },
-          "storageKeys": {
-            "0-0": "persian_shadow_0-0.csv",
-            "1-1": "persian_shadow_1-1.csv",
-            "2-2": "persian_shadow_2-2.csv"
           },
           "completeness": {
             "0-0": true,
@@ -6828,7 +6954,7 @@
       "speciesId": "regidrago",
       "defaultVariantId": "dragon_breath--vice_grip--dragon_energy",
       "evidence": {
-        "pvpokeScorePrior": 87.3,
+        "pvpokeScorePrior": 87.4,
         "retainedFastMoves": [
           "DRAGON_BREATH",
           "BITE"
@@ -7773,7 +7899,7 @@
       "speciesId": "spidops",
       "defaultVariantId": "shadow_claw--rock_tomb--lunge",
       "evidence": {
-        "pvpokeScorePrior": 88.7,
+        "pvpokeScorePrior": 88.9,
         "retainedFastMoves": [
           "SHADOW_CLAW",
           "BUG_BITE"
@@ -7897,7 +8023,7 @@
       "speciesId": "steelix",
       "defaultVariantId": "thunder_fang--psychic_fangs--crunch",
       "evidence": {
-        "pvpokeScorePrior": 85.5,
+        "pvpokeScorePrior": 85.4,
         "retainedFastMoves": [
           "THUNDER_FANG",
           "DRAGON_TAIL"
@@ -7960,7 +8086,7 @@
       "speciesId": "steelix_shadow",
       "defaultVariantId": "thunder_fang--psychic_fangs--crunch",
       "evidence": {
-        "pvpokeScorePrior": 87.7,
+        "pvpokeScorePrior": 87.6,
         "retainedFastMoves": [
           "THUNDER_FANG",
           "DRAGON_TAIL"
@@ -8085,7 +8211,7 @@
       "speciesId": "stunfisk_galarian",
       "defaultVariantId": "mud_shot--rock_slide--earthquake",
       "evidence": {
-        "pvpokeScorePrior": 87.8,
+        "pvpokeScorePrior": 87.6,
         "retainedFastMoves": [
           "MUD_SHOT",
           "METAL_CLAW"
@@ -8129,69 +8255,6 @@
             "0-0": "stunfisk_galarian_0-0.csv",
             "1-1": "stunfisk_galarian_1-1.csv",
             "2-2": "stunfisk_galarian_2-2.csv"
-          },
-          "completeness": {
-            "0-0": true,
-            "1-1": true,
-            "2-2": true
-          },
-          "evaluationCounts": {
-            "0-0": 100,
-            "1-1": 100,
-            "2-2": 100
-          },
-          "active": true
-        }
-      ]
-    },
-    {
-      "speciesId": "swalot",
-      "defaultVariantId": "infestation--sludge--ice_beam",
-      "evidence": {
-        "pvpokeScorePrior": 84.9,
-        "retainedFastMoves": [
-          "INFESTATION",
-          "MUD_SHOT"
-        ],
-        "retainedChargedMoves": [
-          "SLUDGE",
-          "ICE_BEAM",
-          "SLUDGE_BOMB",
-          "GUNK_SHOT"
-        ],
-        "rejections": []
-      },
-      "candidates": [
-        {
-          "id": "infestation--sludge--ice_beam",
-          "fastMove": "INFESTATION",
-          "chargedMove1": "SLUDGE",
-          "chargedMove2": "ICE_BEAM",
-          "isDefault": true,
-          "evidence": {
-            "kind": "preferred",
-            "sourceCategories": [
-              "overall"
-            ],
-            "sourceVariantIds": [
-              "infestation--sludge--ice_beam"
-            ]
-          },
-          "acquisitionRequirements": {
-            "fastMove": {
-              "kind": "regular"
-            },
-            "chargedMove1": {
-              "kind": "regular"
-            },
-            "chargedMove2": {
-              "kind": "regular"
-            }
-          },
-          "storageKeys": {
-            "0-0": "swalot_0-0.csv",
-            "1-1": "swalot_1-1.csv",
-            "2-2": "swalot_2-2.csv"
           },
           "completeness": {
             "0-0": true,
@@ -8337,7 +8400,7 @@
       "speciesId": "talonflame",
       "defaultVariantId": "incinerate--fly--brave_bird",
       "evidence": {
-        "pvpokeScorePrior": 88,
+        "pvpokeScorePrior": 88.1,
         "retainedFastMoves": [
           "INCINERATE",
           "PECK"
@@ -8588,7 +8651,7 @@
       "speciesId": "torkoal",
       "defaultVariantId": "ember--overheat--flame_wheel",
       "evidence": {
-        "pvpokeScorePrior": 85.9,
+        "pvpokeScorePrior": 86,
         "retainedFastMoves": [
           "EMBER",
           "FIRE_SPIN"
@@ -8651,7 +8714,7 @@
       "speciesId": "toucannon",
       "defaultVariantId": "peck--drill_peck--beak_blast",
       "evidence": {
-        "pvpokeScorePrior": 85.3,
+        "pvpokeScorePrior": 85.5,
         "retainedFastMoves": [
           "PECK",
           "BULLET_SEED"
@@ -8714,7 +8777,7 @@
       "speciesId": "toucannon_shadow",
       "defaultVariantId": "peck--drill_peck--beak_blast",
       "evidence": {
-        "pvpokeScorePrior": 85.2,
+        "pvpokeScorePrior": 85.3,
         "retainedFastMoves": [
           "PECK",
           "BULLET_SEED"
@@ -9028,7 +9091,7 @@
       "speciesId": "vigoroth_shadow",
       "defaultVariantId": "scratch--rock_slide--brick_break",
       "evidence": {
-        "pvpokeScorePrior": 90.1,
+        "pvpokeScorePrior": 90,
         "retainedFastMoves": [
           "SCRATCH",
           "COUNTER"
@@ -9280,7 +9343,7 @@
       "speciesId": "wartortle_shadow",
       "defaultVariantId": "bite--ice_beam--aqua_jet",
       "evidence": {
-        "pvpokeScorePrior": 85.5,
+        "pvpokeScorePrior": 85.4,
         "retainedFastMoves": [
           "BITE",
           "WATER_GUN"
@@ -9386,69 +9449,6 @@
             "0-0": "wigglytuff_0-0.csv",
             "1-1": "wigglytuff_1-1.csv",
             "2-2": "wigglytuff_2-2.csv"
-          },
-          "completeness": {
-            "0-0": true,
-            "1-1": true,
-            "2-2": true
-          },
-          "evaluationCounts": {
-            "0-0": 100,
-            "1-1": 100,
-            "2-2": 100
-          },
-          "active": true
-        }
-      ]
-    },
-    {
-      "speciesId": "zweilous",
-      "defaultVariantId": "dragon_breath--dark_pulse--body_slam",
-      "evidence": {
-        "pvpokeScorePrior": 84.9,
-        "retainedFastMoves": [
-          "DRAGON_BREATH",
-          "BITE"
-        ],
-        "retainedChargedMoves": [
-          "DARK_PULSE",
-          "BODY_SLAM",
-          "DRAGON_PULSE",
-          "RETURN"
-        ],
-        "rejections": []
-      },
-      "candidates": [
-        {
-          "id": "dragon_breath--dark_pulse--body_slam",
-          "fastMove": "DRAGON_BREATH",
-          "chargedMove1": "BODY_SLAM",
-          "chargedMove2": "DARK_PULSE",
-          "isDefault": true,
-          "evidence": {
-            "kind": "preferred",
-            "sourceCategories": [
-              "overall"
-            ],
-            "sourceVariantIds": [
-              "dragon_breath--dark_pulse--body_slam"
-            ]
-          },
-          "acquisitionRequirements": {
-            "fastMove": {
-              "kind": "regular"
-            },
-            "chargedMove1": {
-              "kind": "regular"
-            },
-            "chargedMove2": {
-              "kind": "regular"
-            }
-          },
-          "storageKeys": {
-            "0-0": "zweilous_0-0.csv",
-            "1-1": "zweilous_1-1.csv",
-            "2-2": "zweilous_2-2.csv"
           },
           "completeness": {
             "0-0": true,
