@@ -233,7 +233,7 @@ optimizer and UI changes follow the same assumptions and output contract.
 
 **Acceptance Criteria:**
 
-- [ ] `.opencode/skills/gbl-optimizer/SKILL.md` is updated with new optimizer
+- [ ] `.agents/skills/gbl-optimizer/SKILL.md` is updated with new optimizer
       guidance.
 - [ ] Root `AGENTS.md` is updated with any relevant contributor guidance.
 - [ ] Optimizer docs are updated to describe new scoring concepts.
@@ -362,7 +362,7 @@ optimizer and UI changes follow the same assumptions and output contract.
 - Add or update performance validation for representative generation workloads.
 - Browser verification is required for Summary Statistics and Recommended
   Lineups UI changes.
-- Documentation updates must include `.opencode/skills/gbl-optimizer/SKILL.md`,
+- Documentation updates must include `.agents/skills/gbl-optimizer/SKILL.md`,
   root `AGENTS.md`, optimizer docs under `docs/`, and new or updated UI output
   contract documentation.
 

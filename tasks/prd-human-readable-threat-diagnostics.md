@@ -40,14 +40,14 @@ that I can quickly understand which Pokemon threaten my team.
 
 - [ ] Threat list items render only `threat.pokemon`.
 - [ ] Threat list items do not show rank, answer count, risk score, or raw
-  threat values.
+      threat values.
 - [ ] Example old text is removed:
-  `Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49)`.
+      `Samurott (Shadow) (Rank #16, Answers: 0, Risk: 0.49)`.
 - [ ] Example new text is shown: `Samurott (Shadow)`.
 - [ ] Existing list caps remain unchanged unless otherwise required.
 - [ ] Existing `Showing top 5 of N` summaries remain unchanged.
 - [ ] Tests in `components/organisms/AnalysisPanel/AnalysisPanel.test.tsx`
-  assert the new display contract.
+      assert the new display contract.
 - [ ] Typecheck passes.
 - [ ] Tests pass.
 - [ ] Verify in browser using dev-browser skill.
@@ -61,7 +61,7 @@ neutral, strong, or elite against threats.
 **Acceptance Criteria:**
 
 - [ ] `renderThreatScoreCard` no longer displays raw score boxes for `Overall`,
-  `Top Meta`, or `Full Meta`.
+      `Top Meta`, or `Full Meta`.
 - [ ] The Threat Score card displays exactly one team-level quality pill.
 - [ ] The pill text is human-readable, such as `Team threat profile: strong`.
 - [ ] The pill has an accessible label such as `Team threat profile: strong`.
@@ -72,7 +72,7 @@ neutral, strong, or elite against threats.
   - `<= 0.45`: `neutral`
   - `> 0.45`: `weak`
 - [ ] Thresholds are covered by tests and can be adjusted in future calibration
-  work.
+      work.
 - [ ] Typecheck passes.
 - [ ] Tests pass.
 - [ ] Verify in browser using dev-browser skill.
@@ -86,9 +86,9 @@ closer, and weaknesses without duplicate or confusing quality labels.
 
 - [ ] Recommended Lineup cards no longer render `lineup-quality-pill`.
 - [ ] Recommended Lineup cards do not display `weak`, `neutral`, `strong`, or
-  `elite` quality pills.
+      `elite` quality pills.
 - [ ] Recommended Lineup cards continue to display lead, switch, closer, and
-  weakness lists.
+      weakness lists.
 - [ ] Recommended Lineup cards continue to omit numeric lineup scores.
 - [ ] Recommended Lineup cards retain blue diagnostic styling.
 - [ ] Tests assert that Recommended Lineups render zero lineup quality pills.
@@ -105,17 +105,17 @@ appropriate anchor and companion pools.
 **Acceptance Criteria:**
 
 - [ ] Candidate quality bands are derived from the selected format's ranking
-  export instead of fixed global score cutoffs.
+      export instead of fixed global score cutoffs.
 - [ ] The banding logic considers PvPoke `Score`, rank percentile, score
-  density, and meaningful score dropoffs where present.
+      density, and meaningful score dropoffs where present.
 - [ ] The open Great League export can still produce broad pools similar to the
-  observed example where strong candidates extend deeper into the rankings.
+      observed example where strong candidates extend deeper into the rankings.
 - [ ] The `cp1500/naic2026` export produces narrower top-anchor and companion
-  pools that reflect its smaller, steeper ranking distribution.
+      pools that reflect its smaller, steeper ranking distribution.
 - [ ] Band derivation preserves enough minimum candidates for limited metas and
-  caps maximum candidates for wide metas to prevent search explosion.
+      caps maximum candidates for wide metas to prevent search explosion.
 - [ ] Tests cover both a dense open-meta score curve and a smaller limited-meta
-  score curve.
+      score curve.
 - [ ] Typecheck passes.
 - [ ] Tests pass.
 
@@ -128,21 +128,21 @@ more like viable meta teams than collections of niche core-breakers.
 **Acceptance Criteria:**
 
 - [ ] The genetic algorithm seeds its initial population from dynamically
-  selected elite or preferred anchors before random full-team construction.
+      selected elite or preferred anchors before random full-team construction.
 - [ ] The generator evaluates anchor plus companion pairs before expanding to a
-  complete team.
+      complete team.
 - [ ] Companion ranking considers PvPoke rank, PvPoke Score, simulation matchup
-  coverage, safety rank, consistency rank, bulk, and offensive/defensive typing.
+      coverage, safety rank, consistency rank, bulk, and offensive/defensive typing.
 - [ ] Pair ranking rewards companions that cover the anchor's important meta
-  losses without creating severe shared weaknesses.
+      losses without creating severe shared weaknesses.
 - [ ] Complete team expansion ranks candidate thirds by remaining team
-  weaknesses, playable lineup quality, and broad meta coverage.
+      weaknesses, playable lineup quality, and broad meta coverage.
 - [ ] Existing final lineup and roster scoring remains the canonical final score
-  so rank quality is a search prior, not a strict tier-list override.
+      so rank quality is a search prior, not a strict tier-list override.
 - [ ] Fixed-seed tests demonstrate deterministic anchor-first population output.
 - [ ] Regression tests keep examples like `Lickilicky / Altaria / Empoleon` and
-  `Feraligatr / Quagsire / Altaria` plausible for the open Great League export
-  when supported by current data.
+      `Feraligatr / Quagsire / Altaria` plausible for the open Great League export
+      when supported by current data.
 - [ ] Typecheck passes.
 - [ ] Tests pass.
 
@@ -155,19 +155,19 @@ crowd out safer top-ranked picks.
 **Acceptance Criteria:**
 
 - [ ] Candidates below the dynamically derived flexible companion pool are
-  treated as specialists.
+      treated as specialists.
 - [ ] Specialists are not selected as automatic anchors.
 - [ ] Specialists can enter a team only when they provide unique, measurable
-  coverage against unresolved top-meta threats or a known core weakness.
+      coverage against unresolved top-meta threats or a known core weakness.
 - [ ] Specialist admission considers simulation matchup coverage before type-only
-  coverage.
+      coverage.
 - [ ] Specialist admission is penalized or rejected when the specialist creates a
-  severe shared weakness, reduces viable lineup count, or merely duplicates a
-  stronger generalist's role.
+      severe shared weakness, reduces viable lineup count, or merely duplicates a
+      stronger generalist's role.
 - [ ] Tests show a low-ranked specialist is rejected when it only beats an
-  isolated threat.
+      isolated threat.
 - [ ] Tests show a low-ranked specialist can be admitted when it uniquely patches
-  an otherwise unresolved high-priority weakness.
+      an otherwise unresolved high-priority weakness.
 - [ ] Typecheck passes.
 - [ ] Tests pass.
 
@@ -180,21 +180,21 @@ or lineup quality pills.
 **Acceptance Criteria:**
 
 - [ ] Update `docs/pokemon-go-team-optimization.md` to state that the Threat
-  Score section owns the team-level quality pill.
+      Score section owns the team-level quality pill.
 - [ ] Update `docs/pokemon-go-team-optimization.md` to state that Recommended
-  Lineups do not render quality pills.
+      Lineups do not render quality pills.
 - [ ] Update `components/AGENTS.md` to reflect the new AnalysisPanel display
-  contract.
-- [ ] Update `.opencode/skills/gbl-optimizer/SKILL.md` to reverse the previous
-  contract.
+      contract.
+- [ ] Update `.agents/skills/gbl-optimizer/SKILL.md` to reverse the previous
+      contract.
 - [ ] Documentation explicitly states that raw threat scores are not user-facing
-  in the Threat Score UI.
+      in the Threat Score UI.
 - [ ] Documentation explicitly states that backend threat fields may remain for
-  sorting and diagnostics.
+      sorting and diagnostics.
 - [ ] Documentation describes anchor-first generation, dynamic per-meta score
-  bands, companion ranking, and specialist gating.
+      bands, companion ranking, and specialist gating.
 - [ ] Documentation states that fixed score thresholds such as `92`, `90`, `88`,
-  and `85` are Great League examples only, not global rules.
+      and `85` are Great League examples only, not global rules.
 - [ ] Typecheck passes.
 - [ ] Tests pass.
 
@@ -305,7 +305,7 @@ or lineup quality pills.
 - Relevant docs to update:
   - `docs/pokemon-go-team-optimization.md`
   - `components/AGENTS.md`
-  - `.opencode/skills/gbl-optimizer/SKILL.md`
+  - `.agents/skills/gbl-optimizer/SKILL.md`
 - Algorithm files likely involved in the companion-adjustment work include:
   - `lib/genetic/algorithm.ts`
   - `lib/genetic/chromosome.ts`
