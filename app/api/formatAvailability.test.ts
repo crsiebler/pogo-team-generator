@@ -19,7 +19,7 @@ describe('Battle Frontier Master format requests', () => {
   });
 
   it('returns team details for a roster with multiple Megas', async () => {
-    const team = ['swampert_mega', 'aggron_mega', 'palkia_origin'];
+    const team = ['gallade_mega', 'aggron_mega', 'eternatus'];
     const movesetAssignment = resolveRankedDefaultRosterMovesetAssignment(
       team,
       'battle-frontier-master',
@@ -35,10 +35,11 @@ describe('Battle Frontier Master format requests', () => {
         }),
       }),
     );
-    expect(response.status).toBe(200);
     const payload = (await response.json()) as {
+      error?: string;
       pokemon: Array<{ speciesId: string }>;
     };
+    expect(response.status, payload.error).toBe(200);
     expect(payload.pokemon.map(({ speciesId }) => speciesId)).toEqual(team);
   });
 
@@ -53,7 +54,7 @@ describe('Battle Frontier Master format requests', () => {
       pokemon: string[];
       count: number;
     };
-    expect(payload.pokemon).toContain('Swampert (Mega)');
+    expect(payload.pokemon).toContain('Gallade (Mega)');
     expect(payload.pokemon).toContain('Aggron (Mega)');
     expect(payload.count).toBe(payload.pokemon.length);
     expect(payload).not.toHaveProperty(
