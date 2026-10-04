@@ -10,7 +10,7 @@ This document is the main entry point for a project-agnostic Pokemon GO Battle L
 <!-- Reference: docs/team-optimization/role-scoring.md -->
 <!-- Reference: docs/team-optimization/data-inputs.md -->
 <!-- Reference: docs/team-optimization/validation.md -->
-<!-- OpenCode skill: .opencode/skills/gbl-optimizer/SKILL.md -->
+<!-- Project skill: .agents/skills/gbl-optimizer/SKILL.md -->
 
 ## Core Idea
 
@@ -145,11 +145,11 @@ If a project has enough role data, fully ordered lead/switch/closer scoring is p
 - [Role Scoring](team-optimization/role-scoring.md): lead, switch, closer, charger, attacker, and consistency ranking use.
 - [Data Inputs](team-optimization/data-inputs.md): move availability, ranking evidence, bounded candidates, manifest publication, and sync commands.
 - [Validation](team-optimization/validation.md): regression fixtures and expected edge cases.
-- OpenCode skill `gbl-optimizer`: project skill for agents implementing, refactoring, or reviewing GBL optimizer logic.
+- Project skill `gbl-optimizer`: guidance for agents implementing, refactoring, or reviewing GBL optimizer logic.
 
-## OpenCode Skill
+## Project Skill
 
-This strategy is also packaged as the project OpenCode skill `gbl-optimizer` at `.opencode/skills/gbl-optimizer/SKILL.md`.
+This strategy is also packaged as the project skill `gbl-optimizer` at `.agents/skills/gbl-optimizer/SKILL.md`. OpenCode discovers the skill from this shared location.
 
 Use the skill when changing optimizer scoring, show-6 pick-3 lineups, PvPoke ranking inputs, type effectiveness, coverage, safety, consistency, bulk, roles, or ABC/ABB/ABA strategy.
 

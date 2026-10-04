@@ -1,27 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { getSelectableBattleFormats } from './battleFormats';
+import {
+  assertBattleFormatAvailable,
+  getSelectableBattleFormats,
+} from './battleFormats';
 import { generateTeam } from '@/lib/genetic/algorithm';
 import { isTeamLegalForFormat } from '@/lib/genetic/teamLegality';
 
-describe('unverified Battle Frontier Master rules', () => {
-  it('excludes Master from the selector until current rules are verified', () => {
-    expect(getSelectableBattleFormats().map(({ id }) => id)).not.toContain(
+describe('Battle Frontier Master without point tiers', () => {
+  it('offers Master in the selector', () => {
+    expect(getSelectableBattleFormats().map(({ id }) => id)).toContain(
       'battle-frontier-master',
     );
   });
 
-  it('rejects legality checks instead of using historical point values', () => {
+  it('allows current-cycle rosters without historical point or Mega limits', () => {
     expect(() =>
+      assertBattleFormatAvailable('battle-frontier-master'),
+    ).not.toThrow();
+    expect(
       isTeamLegalForFormat(
-        ['palkia_origin', 'mewtwo'],
+        ['palkia_origin', 'eternatus', 'swampert_mega', 'aggron_mega'],
         'battle-frontier-master',
       ),
-    ).toThrow(/current.*rules/i);
+    ).toBe(true);
   });
 
-  it('rejects direct generation before loading simulation data', async () => {
-    await expect(
-      generateTeam({ mode: 'PlayPokemon', formatId: 'battle-frontier-master' }),
-    ).rejects.toThrow(/current.*rules/i);
+  it('generates a roster that exceeds the historical point and Mega limits', async () => {
+    const anchors = [
+      'palkia_origin',
+      'eternatus',
+      'swampert_mega',
+      'aggron_mega',
+      'xerneas',
+      'reshiram',
+    ];
+    const result = await generateTeam({
+      mode: 'PlayPokemon',
+      formatId: 'battle-frontier-master',
+      anchorPokemon: anchors,
+      populationSize: 2,
+      generations: 1,
+    });
+
+    expect(result.team).toEqual(anchors);
+    expect(Number.isFinite(result.fitness)).toBe(true);
+    expect(result.movesetAssignment?.formatId).toBe('battle-frontier-master');
   });
 });

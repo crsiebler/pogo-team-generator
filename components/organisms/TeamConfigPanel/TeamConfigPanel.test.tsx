@@ -58,6 +58,9 @@ describe('TeamConfigPanel', () => {
       getSelectableBattleFormats().map((format) => format.label),
     );
     expect(optionLabels).not.toContain('Scroll Cup');
+    expect(
+      screen.getByRole('option', { name: 'Battle Frontier (Master)' }),
+    ).toHaveValue('battle-frontier-master');
   });
 
   it('calls onFormatChange when the selected format changes', () => {
@@ -78,10 +81,10 @@ describe('TeamConfigPanel', () => {
     );
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Battle Format' }), {
-      target: { value: 'ultra-league' },
+      target: { value: 'battle-frontier-master' },
     });
 
-    expect(onFormatChange).toHaveBeenCalledWith('ultra-league');
+    expect(onFormatChange).toHaveBeenCalledWith('battle-frontier-master');
   });
 
   it('resets anchor selection UI when the selected format changes', () => {

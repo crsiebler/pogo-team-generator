@@ -3,7 +3,6 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   assertBattleFormatAvailable,
-  BattleFormatUnavailableError,
   getBattleFormatById,
   getSelectableBattleFormats,
 } from './battleFormats';
@@ -45,7 +44,7 @@ function parsePointsCsv(csvText: string): Array<{
 }
 
 describe('Battle Frontier Master points CSV', () => {
-  it('requires current tiers or makes the format unavailable', () => {
+  it('allows a cycle without tiers and keeps archived points out of runtime rules', () => {
     const csvText = readBattleFrontierMasterPointsCsv();
     const rows = parsePointsCsv(csvText);
     const canonicalSpeciesIds = new Set(
@@ -80,11 +79,11 @@ describe('Battle Frontier Master points CSV', () => {
     if (!currentCycleCup.tierRules) {
       expect(
         getBattleFormatById('battle-frontier-master')?.unavailableReason,
-      ).toEqual(expect.any(String));
+      ).toBeUndefined();
       expect(() =>
         assertBattleFormatAvailable('battle-frontier-master'),
-      ).toThrow(BattleFormatUnavailableError);
-      expect(getSelectableBattleFormats().map(({ id }) => id)).not.toContain(
+      ).not.toThrow();
+      expect(getSelectableBattleFormats().map(({ id }) => id)).toContain(
         'battle-frontier-master',
       );
       return;

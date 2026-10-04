@@ -105,7 +105,7 @@ All code must be built, linted, and tested with full compliance to these steps:
 
 - Project-agnostic Pokemon GO Battle League optimization guidance lives in `docs/pokemon-go-team-optimization.md`; read it before changing roster or lineup scoring strategy.
 - Detailed optimization subdocs live under `docs/team-optimization/`, including `scoring-model.md`, `lineup-structures.md`, `coverage-threat-pools.md`, `safety-consistency-bulk.md`, `type-effectiveness.md`, `role-scoring.md`, `data-inputs.md`, and `validation.md`.
-- OpenCode skill `gbl-optimizer` lives in `.opencode/skills/gbl-optimizer/SKILL.md`; use it when changing optimizer scoring, threat analysis, show-6 pick-3 lineup strategy, calibration fixtures, PvPoke ranking sync or runtime inputs, type effectiveness, coverage, safety, consistency, bulk, role ranking, ABC/ABB/ABA strategy, or related Summary Statistics and Recommended Lineups diagnostics UI.
+- Project skill `gbl-optimizer` lives in `.agents/skills/gbl-optimizer/SKILL.md`; use it when changing optimizer scoring, threat analysis, show-6 pick-3 lineup strategy, calibration fixtures, PvPoke ranking sync or runtime inputs, type effectiveness, coverage, safety, consistency, bulk, role ranking, ABC/ABB/ABA strategy, or related Summary Statistics and Recommended Lineups diagnostics UI.
 - Runtime application, component, and optimizer code must not import, require, execute, bundle, or runtime-load PvPoke vendor JavaScript. Local PvPoke engine execution is allowed only in isolated sync/tooling workflows, and the runtime boundary is guarded by `lib/architecture/pvpokeRuntimeBoundary.test.ts`.
 - Follow the refreshed optimizer diagnostics contract in `docs/pokemon-go-team-optimization.md` and `docs/team-optimization/`: Summary Statistics is display-only and uses simple `A`, `B`, `C`, `D`, or `F` grades with no plus/minus modifiers or quality pills; Threat Score is a lower-is-better diagnostic from `scoreBreakdown.threatScore` that owns the one team-level profile pill and does not expose raw threat metadata in the UI; Recommended Lineups use blue diagnostic styling with Lead, Switch, Closer, and semantic weakness lists, but no quality pills or numeric lineup scores.
 - Great League Show-6 Pick-3 calibration fixtures live in `data/calibration/great-league-show6-pick3.json` and load through `lib/data/calibrationFixtures.ts`; treat them as calibration/regression inputs, not exact optimizer score or winner snapshots.
@@ -156,7 +156,7 @@ All code must be built, linted, and tested with full compliance to these steps:
 - `.prettierrc` — Prettier config and plugins
 - `.eslintrc|eslint.config.js|mjs` — ESLint config; Next.js+Prettier+TS plugins
 - `.github/copilot-instructions.md` — AI/agent best practices (referenced here for completeness)
-- `.opencode/skills/` — full workflow automation for formatter, test-runner, refactor-specialist, feature-implementer, git-manager
+- `.agents/skills/` — project skills, including `gbl-optimizer` and `generate-pogo-search-strings`
 - `package.json` scripts — authoritative scripts for build/test/lint
 
 ---
