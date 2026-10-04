@@ -139,8 +139,6 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'Battle Frontier (Master)',
     cup: 'battlefrontiermaster',
     cp: 10000,
-    unavailableReason:
-      'Battle Frontier (Master) is unavailable until current cycle rules are verified and synchronized. Choose another format.',
   },
 ];
 

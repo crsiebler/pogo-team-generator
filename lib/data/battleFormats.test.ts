@@ -172,7 +172,6 @@ describe('battle format catalog', () => {
       label: 'Battle Frontier (Master)',
       cup: 'battlefrontiermaster',
       cp: 10000,
-      unavailableReason: expect.stringContaining('current cycle rules'),
     });
   });
 
@@ -192,6 +191,7 @@ describe('battle format catalog', () => {
       'laic-2027-cup',
       'spectral-cup',
       'cauldron-cup',
+      'battle-frontier-master',
     ]);
   });
 
@@ -218,6 +218,7 @@ describe('battle format catalog', () => {
     expect(hasOneMegaLimitForFormat('laic-2027-cup')).toBe(true);
     expect(hasOneMegaLimitForFormat('cauldron-cup')).toBe(true);
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
+    expect(hasOneMegaLimitForFormat('battle-frontier-master')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat(undefined)).toBe(false);
   });

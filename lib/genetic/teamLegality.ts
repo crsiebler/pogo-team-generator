@@ -3,7 +3,6 @@ import {
   hasOneMegaLimitForFormat,
   type BattleFormatId,
 } from '@lib/data/battleFormats';
-import { getBattleFrontierMasterTeamLegality } from '@lib/data/battleFrontierMasterRules';
 import { getMegaMasterTeamLegality } from '@lib/data/megaMasterRules';
 
 /**
@@ -16,10 +15,6 @@ export function isTeamLegalForFormat(
   if (formatId !== undefined) {
     assertBattleFormatAvailable(formatId);
   }
-  if (formatId === 'battle-frontier-master') {
-    return getBattleFrontierMasterTeamLegality([...team]).isLegal;
-  }
-
   if (hasOneMegaLimitForFormat(formatId)) {
     return getMegaMasterTeamLegality([...team]).isLegal;
   }

@@ -12,7 +12,7 @@ export const BATTLE_FRONTIER_MASTER_MAX_FIVE_POINT_POKEMON = 1;
 export const BATTLE_FRONTIER_MASTER_MAX_MEGAS = 1;
 
 // Retained evaluator for prior Battle Frontier Master point-system cycles.
-// Runtime entry points must enforce battleFormats availability before using it.
+// The current cycle has no point or Mega limits; runtime must not use this helper.
 
 export type BattleFrontierMasterLegalityViolation =
   | 'points-cap'
