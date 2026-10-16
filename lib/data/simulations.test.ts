@@ -71,6 +71,31 @@ describe('format-aware simulation loading', () => {
     ).toBe(352);
   });
 
+  it('loads Little Cup matchups and defaults for every shield scenario', () => {
+    const variants = getActiveMovesetVariants('bronzor', 'little-cup');
+    expect(variants).toHaveLength(1);
+    expect(variants[0].isDefault).toBe(true);
+    for (const shields of [0, 1, 2] as const) {
+      const rating = getShieldScenarioMatchupResult(
+        'bronzor',
+        'deino',
+        shields,
+        'little-cup',
+      );
+      expect(rating).toBeGreaterThanOrEqual(0);
+      expect(rating).toBeLessThanOrEqual(1000);
+      expect(
+        getMovesetVariantShieldScenarioMatchupResult(
+          'bronzor',
+          variants[0].id,
+          'deino',
+          shields,
+          'little-cup',
+        ),
+      ).toBe(rating);
+    }
+  });
+
   it('uses manifest-declared active variants without replacing default matrices', () => {
     expect(
       getMovesetVariantShieldScenarioMatchupResult(

@@ -44,6 +44,28 @@ describe('format-aware rankings loading', () => {
     }
   });
 
+  it('loads Little Cup categories independently of Great League', () => {
+    const littleRankings = getOverallRankings('little-cup');
+    expect(littleRankings.map(({ Pokemon }) => Pokemon)).toContain('Bronzor');
+    expect(littleRankings.map(({ Pokemon }) => Pokemon)).not.toContain(
+      'Azumarill',
+    );
+    expect(littleRankings).not.toBe(getOverallRankings('great-league'));
+    for (const loadRankings of [
+      getOverallRankings,
+      getLeadsRankings,
+      getSwitchesRankings,
+      getClosersRankings,
+      getChargersRankings,
+      getAttackersRankings,
+      getConsistencyRankings,
+    ]) {
+      const rankings = loadRankings('little-cup');
+      expect(rankings.length).toBeGreaterThan(0);
+      expect(rankings.every(({ CP }) => CP <= 500)).toBe(true);
+    }
+  });
+
   it('keeps Great League cache stable after loading other formats', () => {
     const beforeFailure = getOverallRankings();
     getOverallRankings('master-league');

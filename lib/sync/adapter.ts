@@ -29,6 +29,7 @@ const RANKING_CUPS = [
   'mega',
   'laic2027',
   'retro',
+  'little',
   'spectral',
   'cauldron',
   'battlefrontiermaster',

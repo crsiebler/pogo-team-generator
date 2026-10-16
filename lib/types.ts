@@ -80,6 +80,7 @@ export interface Pokemon {
   level25CP?: number;
   tags: string[];
   defaultIVs: {
+    cp500?: number[];
     cp1500?: number[];
     cp2500?: number[];
   };

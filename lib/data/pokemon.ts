@@ -240,6 +240,10 @@ export function getRankedPokemonForFormat(
       }
     }
 
+    if (battleFormat.cp === 500) {
+      return pokemon.defaultIVs.cp500 !== undefined;
+    }
+
     if (battleFormat.cp === 1500) {
       return pokemon.defaultIVs.cp1500 !== undefined;
     }
