@@ -57,9 +57,8 @@ import {
   resolveRankedDefaultRosterMovesetAssignment,
 } from './moveset';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
+import { getFinalistLimit } from './searchDepth';
 import { isTeamLegalForFormat } from './teamLegality';
-
-const DEFAULT_SCORED_FINALIST_LIMIT = 10;
 
 function getCanonicalRoster(
   team: readonly string[],
@@ -82,6 +81,7 @@ function retainDefaultScoredFinalists(
   retained: readonly Chromosome[],
   population: readonly Chromosome[],
   fixedAnchorCount: number,
+  finalistLimit: number,
 ): Chromosome[] {
   const finalistsByRoster = new Map<string, Chromosome>();
 
@@ -106,7 +106,7 @@ function retainDefaultScoredFinalists(
       }
       return firstKey < secondKey ? -1 : firstKey > secondKey ? 1 : 0;
     })
-    .slice(0, DEFAULT_SCORED_FINALIST_LIMIT)
+    .slice(0, finalistLimit)
     .map(([, chromosome]) => chromosome);
 }
 
@@ -214,6 +214,7 @@ export async function generateTeam(
     simulateMovesetVariants = false,
   } = options;
 
+  const finalistLimit = getFinalistLimit();
   assertBattleFormatAvailable(formatId);
   const teamSize = mode === 'GBL' ? 3 : 6;
   ensureSimulationDataAvailable(formatId);
@@ -318,6 +319,7 @@ export async function generateTeam(
             hasRequiredAnchors(chromosome, anchorPokemon),
           ),
           anchorPokemon.length,
+          finalistLimit,
         )
       : [];
 
@@ -404,6 +406,7 @@ export async function generateTeam(
         defaultScoredFinalists,
         population,
         anchorPokemon.length,
+        finalistLimit,
       );
     }
 

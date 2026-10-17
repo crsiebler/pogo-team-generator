@@ -13,6 +13,11 @@ import {
   resolveDiagnosticMoveset,
 } from './moveDiagnostics';
 import {
+  calculateTeamBulk,
+  calculateTeamConsistency,
+  calculateTeamSafety,
+} from './qualitySignals';
+import {
   createNormalizedScoreBreakdown,
   type OptimizerScoreBreakdown,
   type OptimizerScoreComponents,
@@ -38,8 +43,6 @@ const DEFAULT_TOP_LINEUP_DEPTH = 5;
 const PLAY_POKEMON_ORDERED_LINEUP_COUNT = 120;
 const MAX_TOP_THREAT_POOL_SIZE = 50;
 const MAX_FULL_META_THREAT_POOL_SIZE = 100;
-const unavailableConsistencyRankingContexts =
-  new WeakSet<PlayPokemonRosterScoringContext>();
 type SupportingRoleRankingCategory = 'chargers' | 'attackers' | 'consistency';
 const unavailableSupportingRoleRankingCategories = new WeakMap<
   PlayPokemonRosterScoringContext,
@@ -271,7 +274,7 @@ export function scoreFastRosterLineup(
     typeDiversity: 0.5,
     moveCoverage: 0.5,
     energyPressure: 0.5,
-    statBalance: 0.5,
+    statBalance: calculateTeamBulk(speciesIds, context),
     singleAnswerReliability,
     coreBreakerReliability,
     shieldReliability: 0.5,
@@ -285,12 +288,20 @@ export function scoreFastRosterLineup(
         componentScores.coreBreakerReliability * 0.15,
     ),
     coverage: componentScores.matchupCoverage,
-    safety: clamp01(
-      componentScores.singleAnswerReliability * 0.4 +
-        componentScores.coreBreakerReliability * 0.4 +
-        overwhelmingReliability * 0.2,
+    safety: calculateTeamSafety(
+      speciesIds,
+      context,
+      clamp01(
+        componentScores.singleAnswerReliability * 0.4 +
+          componentScores.coreBreakerReliability * 0.4 +
+          overwhelmingReliability * 0.2,
+      ),
     ),
-    consistency: componentScores.rankingQuality,
+    consistency: calculateTeamConsistency(
+      speciesIds,
+      context,
+      () => componentScores.rankingQuality,
+    ),
     bulk: componentScores.statBalance,
     defensiveRatio: typeRatios.defensive,
     offensiveRatio: typeRatios.offensive,
@@ -485,6 +496,8 @@ function calculateThreatPoolCoverage(
 
   return {
     metrics: {
+      softCoverageRate:
+        evaluatedThreatCount > 0 ? softCoverageTotal / evaluatedThreatCount : 0,
       coverageRate:
         evaluatedThreatCount > 0
           ? coveredThreatCount / evaluatedThreatCount
@@ -659,15 +672,19 @@ function createRosterScoreBreakdown(
     context,
     topLineups,
   );
-  const safety = calculateSafetyComponent(
-    metrics,
-    scoredLineups,
-    coverageBreadth,
-    singleAnswerDependencyRate,
-    repeatedWeaknessRate,
+  const safety = calculateTeamSafety(
+    roster,
+    context,
+    calculateSafetyComponent(
+      metrics,
+      scoredLineups,
+      coverageBreadth,
+      singleAnswerDependencyRate,
+      repeatedWeaknessRate,
+    ),
   );
   const consistency = calculateConsistencyComponent(roster, context);
-  const bulk = calculateBulkComponent(roster, context);
+  const bulk = calculateTeamBulk(roster, context);
   const components: OptimizerScoreComponents = {
     synergy: clamp01(
       metrics.topLineupQuality * 0.35 +
@@ -841,16 +858,9 @@ function calculateConsistencyComponent(
   roster: string[],
   context: PlayPokemonRosterScoringContext,
 ): number {
-  const speciesScores = roster.map((speciesId) => {
-    const fallback = calculateFallbackConsistency(speciesId, context);
-    const rankingScore = getOptionalConsistencyRankingScore(speciesId, context);
-
-    return rankingScore === undefined || rankingScore <= 0
-      ? fallback
-      : clamp01(rankingScore * 0.7 + fallback * 0.3);
-  });
-
-  return average(speciesScores);
+  return calculateTeamConsistency(roster, context, (speciesId) =>
+    calculateFallbackConsistency(speciesId, context),
+  );
 }
 
 function calculateFallbackConsistency(
@@ -861,31 +871,6 @@ function calculateFallbackConsistency(
     calculateMoveConsistency(speciesId, context) * 0.55 +
       calculateShieldStability(speciesId, context) * 0.45,
   );
-}
-
-function getOptionalConsistencyRankingScore(
-  speciesId: string,
-  context: PlayPokemonRosterScoringContext,
-): number | undefined {
-  if (!context.getRankingCategoryScore) {
-    return undefined;
-  }
-  if (unavailableConsistencyRankingContexts.has(context)) {
-    return undefined;
-  }
-
-  try {
-    return normalizeScore(
-      context.getRankingCategoryScore(speciesId, 'consistency'),
-    );
-  } catch (error) {
-    // Optional role exports are allowed to be absent; fall back to local reliability proxies.
-    if (error instanceof MissingRankingDataError) {
-      unavailableConsistencyRankingContexts.add(context);
-      return undefined;
-    }
-    throw error;
-  }
 }
 
 function calculateMoveConsistency(
@@ -1013,27 +998,6 @@ function calculateShieldStability(
   });
 
   return stabilityScores.length > 0 ? average(stabilityScores) : 0.5;
-}
-
-function calculateBulkComponent(
-  roster: string[],
-  context: PlayPokemonRosterScoringContext,
-): number {
-  const bulkScores = roster
-    .map((speciesId) => context.getPokemon(speciesId))
-    .filter(
-      (pokemon): pokemon is NonNullable<typeof pokemon> =>
-        pokemon !== undefined,
-    )
-    .map((pokemon) => {
-      const attack = Math.max(1, pokemon.baseStats.atk);
-      const bulkApproximation =
-        (pokemon.baseStats.def * pokemon.baseStats.hp) / attack;
-
-      return clamp01((bulkApproximation - 50) / 250);
-    });
-
-  return bulkScores.length > 0 ? average(bulkScores) : 0.5;
 }
 
 function calculateRosterRoleComponent(
@@ -1446,7 +1410,9 @@ function getEvaluatedPoolCoverageAverage(
 ): number | undefined {
   const evaluatedRates = metrics
     .filter((metric) => metric.evaluatedThreatCount > 0)
-    .map((metric) => normalizeMetricRate(metric.coverageRate));
+    .map((metric) =>
+      normalizeMetricRate(metric.softCoverageRate ?? metric.coverageRate),
+    );
 
   return evaluatedRates.length > 0 ? average(evaluatedRates) : undefined;
 }

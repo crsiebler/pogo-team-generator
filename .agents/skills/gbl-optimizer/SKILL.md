@@ -78,6 +78,16 @@ paths unless final output requires it. Use per-run lineup-aware fitness caches i
 validate cache behavior with `cacheStats` counters rather than timing-only
 assertions.
 
+Keep fast and full scoring aligned through shared quality signals: use format-relative
+ranked Defense * Stamina bulk when available, Switches rankings alongside matchup
+safety, and Consistency exports alongside moveset stability. Follow the formulas
+and fallbacks in `docs/team-optimization/safety-consistency-bulk.md`.
+
+For PlayPokemon, retain canonical distinct finalists across generations and use
+the fixed 100-roster limit in `lib/genetic/searchDepth.ts`. Fully compare retained
+finalists after evolution; preserve deterministic ties and report bounded search
+results without claiming global optimality or exact PvPoke Team Builder grades.
+
 ## Domain Checks
 
 When changing scoring, check for:
@@ -90,7 +100,7 @@ When changing scoring, check for:
 - Offensive move coverage using actual selected move types.
 - Safety via overwhelming losses, no-answer threats, and single-answer threats.
 - Consistency via bait dependence, move DPE, shield stability, and PvPoke consistency data when available.
-- Bulk using stat product or `defense * hp / attack` when direct stat product is unavailable.
+- Bulk using format-relative ranked Defense * Stamina, with the documented stat-based fallback.
 - Role fit using PvPoke Leads, Switches, Closers, Chargers, Attackers, and Consistency exports when available.
 - Lower-is-better Threat Score diagnostics from weighted top-meta and full-meta threat pools.
 - Dynamic per-meta ranking bands, ranked anchor-companion pairs, and specialist gating before broad generation.

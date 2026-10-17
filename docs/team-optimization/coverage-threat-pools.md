@@ -78,3 +78,11 @@ For each ordered lineup, ask:
 - Are top threats covered across realistic shield paths?
 
 Coverage should reward redundancy without overstacking. Two answers to a key threat are valuable; four answers to a niche threat may be wasted if other threats are uncovered.
+
+Each pool retains both categorical `coverageRate` and continuous
+`softCoverageRate`. Roster fitness aggregates the continuous value from its
+lineups, keeping the top-meta/full-meta `0.7/0.3` weighting and excluding
+unevaluated pools. This lets improved battle ratings affect selection even when
+the number of wins stays unchanged. Older injected diagnostics without a soft
+value fall back to categorical coverage. Threat Score remains a separate
+display-only diagnostic outside weighted fitness.

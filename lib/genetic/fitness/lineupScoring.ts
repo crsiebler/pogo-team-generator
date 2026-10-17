@@ -11,6 +11,7 @@ import {
 } from '@/lib/data/pokemon';
 import {
   getAverageRankingScore,
+  getOverallRankings,
   getRankingScore,
   MissingRankingDataError,
 } from '@/lib/data/rankings';
@@ -28,6 +29,12 @@ import {
   type DiagnosticMoveData,
   type DiagnosticMoveset,
 } from '@/lib/genetic/fitness/moveDiagnostics';
+import {
+  calculateTeamBulk,
+  calculateTeamConsistency,
+  calculateTeamSafety,
+  createBulkScoreLookup,
+} from '@/lib/genetic/fitness/qualitySignals';
 import {
   createNormalizedScoreBreakdown,
   type OptimizerScoreBreakdown,
@@ -112,6 +119,7 @@ export interface LineupScoringContext {
   movesetAssignment?: RosterMovesetAssignment;
   getPokemon: (speciesId: string) => Pokemon | undefined;
   getRankingScore: (speciesId: string) => number;
+  getBulkScore?: (speciesId: string) => number | undefined;
   getRoleScore: (speciesId: string, role: LineupRole) => number;
   getRankingCategoryScore?: (
     speciesId: string,
@@ -180,6 +188,7 @@ export type LineupMovesetPolicy = 'team-aware' | 'ranked-default';
 
 /** Data-loading boundaries memoized by one production lineup context. */
 export interface LineupScoringDataDependencies {
+  readonly getOverallRankings?: typeof getOverallRankings;
   readonly getAverageRankingScore: typeof getAverageRankingScore;
   readonly getRankingScore: typeof getRankingScore;
   readonly getMatchupResult: typeof getMatchupResult;
@@ -203,6 +212,9 @@ export function createDefaultLineupScoringContext(
   dataDependencies: LineupScoringDataDependencies = defaultLineupScoringDataDependencies,
 ): LineupScoringContext {
   ensureSimulationDataAvailable(formatId);
+  const bulkScores = createBulkScoreLookup(
+    (dataDependencies.getOverallRankings ?? getOverallRankings)(formatId),
+  );
   const recommendedMovesetCache = new Map<string, LineupMoveset>();
   const rankingScoreCache = new Map<string, number>();
   const roleScoreCache = new Map<string, number>();
@@ -227,6 +239,8 @@ export function createDefaultLineupScoringContext(
     fullMetaThreats,
     formatId,
     getPokemon: getPokemonBySpeciesId,
+    getBulkScore: (speciesId) =>
+      bulkScores.get(speciesIdToSpeciesName(speciesId)),
     getRankingScore: (speciesId) =>
       getCachedValue(rankingScoreCache, speciesId, () =>
         dataDependencies.getAverageRankingScore(
@@ -374,7 +388,7 @@ export function scoreOrderedLineup(
     typeDiversity: calculateTypeDiversity(pokemon),
     moveCoverage: calculateMoveCoverage(pokemon, context),
     energyPressure: calculateEnergyPressure(pokemon, context),
-    statBalance: calculateStatBalance(pokemon),
+    statBalance: calculateTeamBulk(speciesIds, context),
     singleAnswerReliability: calculateSingleAnswerReliability(
       coverage.coverageMetrics.singleAnswerThreatCount,
       coverage.evaluatedThreatCount,
@@ -433,6 +447,7 @@ function createLineupScoreBreakdown(
     context,
   );
   const typeRatios = calculateLineupTypeRatios(pokemon, context);
+  const speciesIds = [lineup.lead, lineup.switch, lineup.closer];
   const components: OptimizerScoreComponents = {
     synergy: clamp01(
       componentScores.typeSynergy * 0.45 +
@@ -445,16 +460,22 @@ function createLineupScoreBreakdown(
       componentScores.matchupCoverage * 0.7 +
         componentScores.moveCoverage * 0.3,
     ),
-    safety: clamp01(
-      componentScores.singleAnswerReliability * 0.35 +
-        componentScores.coreBreakerReliability * 0.35 +
-        componentScores.shieldReliability * 0.2 +
-        structureSafetyAdjustment * 0.1,
+    safety: calculateTeamSafety(
+      speciesIds,
+      context,
+      clamp01(
+        componentScores.singleAnswerReliability * 0.35 +
+          componentScores.coreBreakerReliability * 0.35 +
+          componentScores.shieldReliability * 0.2 +
+          structureSafetyAdjustment * 0.1,
+      ),
     ),
-    consistency: clamp01(
-      componentScores.energyPressure * 0.35 +
-        componentScores.shieldReliability * 0.35 +
-        componentScores.rankingQuality * 0.3,
+    consistency: calculateTeamConsistency(speciesIds, context, () =>
+      clamp01(
+        componentScores.energyPressure * 0.35 +
+          componentScores.shieldReliability * 0.35 +
+          componentScores.rankingQuality * 0.3,
+      ),
     ),
     bulk: componentScores.statBalance,
     defensiveRatio: typeRatios.defensive,
@@ -981,6 +1002,8 @@ function calculateThreatPoolCoverage(
 
   return {
     metrics: {
+      softCoverageRate:
+        evaluatedThreatCount > 0 ? softCoverageTotal / evaluatedThreatCount : 0,
       coverageRate:
         evaluatedThreatCount > 0
           ? coveredThreatCount / evaluatedThreatCount
@@ -1253,36 +1276,6 @@ function getContextPressureScore(
     context.getPressureScore?.(fastMoveId, chargedMoveId) ??
     calculatePressureScore(fastMoveId, chargedMoveId)
   );
-}
-
-function calculateStatBalance(pokemon: Pokemon[]): number {
-  if (pokemon.length === 0) {
-    return 0;
-  }
-
-  let bulkyCount = 0;
-  let balancedCount = 0;
-  let attackWeightedCount = 0;
-
-  for (const entry of pokemon) {
-    const bulkRatio =
-      (entry.baseStats.def + entry.baseStats.hp) / entry.baseStats.atk;
-    if (bulkRatio >= 2.5) {
-      bulkyCount++;
-    } else if (bulkRatio >= 1.8) {
-      balancedCount++;
-    } else {
-      attackWeightedCount++;
-    }
-  }
-
-  let score = 0.55;
-  score += bulkyCount > 0 ? 0.25 : 0;
-  score += balancedCount > 0 ? 0.2 : 0;
-  score -= attackWeightedCount >= 2 ? 0.35 : 0;
-  score -= attackWeightedCount === 3 ? 0.25 : 0;
-
-  return clamp01(score);
 }
 
 function calculateSingleAnswerReliability(

@@ -484,6 +484,7 @@ describe('scoreOrderedLineup', () => {
     );
 
     expect(result.coverageMetrics.topThreatCoverage).toEqual({
+      softCoverageRate: 1,
       coverageRate: 1,
       evaluatedThreatCount: 1,
       noAnswerThreatCount: 0,
@@ -492,6 +493,7 @@ describe('scoreOrderedLineup', () => {
       overwhelmingLossCount: 0,
     });
     expect(result.coverageMetrics.fullMetaCoverage).toEqual({
+      softCoverageRate: 0.625,
       coverageRate: 0.5,
       evaluatedThreatCount: 2,
       noAnswerThreatCount: 1,
@@ -1393,7 +1395,15 @@ describe('scoreOrderedLineup', () => {
           balanced: { switch: 0.9 },
           closer: { closer: 0.9 },
         },
-        categoryScores: uniformCategoryScores(20),
+        // Hold the separately weighted consistency component fixed for this role comparison.
+        categoryScores: Object.fromEntries(
+          Object.entries(uniformCategoryScores(20)).map(
+            ([speciesId, scores]) => [
+              speciesId,
+              { ...scores, consistency: 70 },
+            ],
+          ),
+        ),
         matchupRatings: uniformMatchups(520),
       }),
     );
@@ -1402,7 +1412,14 @@ describe('scoreOrderedLineup', () => {
       createContext({
         rankingScores: uniformScores(80),
         roleScores: uniformRoleScores(0.2),
-        categoryScores: uniformCategoryScores(95),
+        categoryScores: Object.fromEntries(
+          Object.entries(uniformCategoryScores(95)).map(
+            ([speciesId, scores]) => [
+              speciesId,
+              { ...scores, consistency: 70 },
+            ],
+          ),
+        ),
         matchupRatings: uniformMatchups(520),
       }),
     );

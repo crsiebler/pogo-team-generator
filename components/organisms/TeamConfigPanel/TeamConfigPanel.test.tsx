@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { TeamConfigPanel } from './TeamConfigPanel';
 import { getSelectableBattleFormats } from '@/lib/data/battleFormats';
@@ -50,8 +50,11 @@ describe('TeamConfigPanel', () => {
       name: 'Battle Format',
     });
     expect(formatSelect).toHaveValue('great-league');
+    expect(
+      screen.queryByRole('combobox', { name: 'Search depth' }),
+    ).not.toBeInTheDocument();
 
-    const optionLabels = screen
+    const optionLabels = within(formatSelect)
       .getAllByRole('option')
       .map((option) => option.textContent);
     expect(optionLabels).toEqual(

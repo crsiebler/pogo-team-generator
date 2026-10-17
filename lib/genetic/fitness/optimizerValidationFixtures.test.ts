@@ -5,14 +5,98 @@ import {
   type LineupScoringContext,
 } from './lineupScoring';
 import {
+  scoreFastRosterLineup,
   scorePlayPokemonRoster,
   type PlayPokemonRosterScoringContext,
 } from './rosterScoring';
 import { createNormalizedScoreBreakdown } from './scoreBreakdown';
 import { calculateTypeEffectivenessMultiplier } from './typeEffectivenessRatios';
-import type { OrderedLineup, Pokemon } from '@/lib/types';
+import type {
+  LineupAwareFitnessConfig,
+  OrderedLineup,
+  Pokemon,
+} from '@/lib/types';
 
 describe('optimizer validation fixtures', () => {
+  for (const [mode, scoreLineup] of [
+    ['full', scoreOrderedLineup],
+    ['fast', scoreFastRosterLineup],
+  ] as const) {
+    test(`${mode} selection rewards additional bulk within the same stat archetype`, () => {
+      const lineup = { lead: 'alpha', switch: 'bravo', closer: 'charlie' };
+      const makeContext = (def: number): LineupScoringContext =>
+        createLineupContext({
+          getPokemon: (speciesId) =>
+            makePokemon(speciesId, ['normal'], { atk: 120, def, hp: 170 }),
+        });
+      const ordinary = scoreLineup(lineup, makeContext(170));
+      const bulkier = scoreLineup(lineup, makeContext(200));
+
+      expect(bulkier.scoreBreakdown.components.bulk).toBeGreaterThan(
+        ordinary.scoreBreakdown.components.bulk,
+      );
+      expect(bulkier.score).toBeGreaterThan(ordinary.score);
+    });
+
+    test(`${mode} consistency uses the PvPoke consistency category independently of general quality`, () => {
+      const lineup = { lead: 'alpha', switch: 'bravo', closer: 'charlie' };
+      const makeContext = (consistency: number): LineupScoringContext =>
+        createLineupContext({
+          getRankingCategoryScore: (_speciesId, category) =>
+            category === 'consistency' ? consistency : 70,
+        });
+      const volatile = scoreLineup(lineup, makeContext(50));
+      const reliable = scoreLineup(lineup, makeContext(95));
+
+      expect(reliable.scoreBreakdown.components.consistency).toBeGreaterThan(
+        volatile.scoreBreakdown.components.consistency,
+      );
+      expect(reliable.score).toBeGreaterThan(volatile.score);
+    });
+
+    test(`${mode} safety rewards safer Switches rankings with equal matchups`, () => {
+      const lineup = { lead: 'alpha', switch: 'bravo', closer: 'charlie' };
+      const makeContext = (safety: number): LineupScoringContext =>
+        createLineupContext({
+          getRoleScore: (_speciesId, role) =>
+            role === 'switch' ? safety : 0.7,
+        });
+      const risky = scoreLineup(lineup, makeContext(0.3));
+      const safe = scoreLineup(lineup, makeContext(0.9));
+
+      expect(safe.scoreBreakdown.components.safety).toBeGreaterThan(
+        risky.scoreBreakdown.components.safety,
+      );
+      expect(safe.score).toBeGreaterThan(risky.score);
+    });
+  }
+
+  for (const mode of ['fast', 'full'] as const) {
+    test(`${mode} roster coverage rewards stronger answers without changing categorical wins`, () => {
+      const makeContext = (rating: number): PlayPokemonRosterScoringContext =>
+        createRosterContext({ getMatchupRating: () => rating });
+      const config: LineupAwareFitnessConfig =
+        mode === 'fast'
+          ? { mode, includeDiagnostics: false, recommendationLimit: 0 }
+          : { mode, includeDiagnostics: true, recommendationLimit: 0 };
+      const closeWins = scorePlayPokemonRoster(
+        validationRoster,
+        makeContext(510),
+        config,
+      );
+      const strongWins = scorePlayPokemonRoster(
+        validationRoster,
+        makeContext(590),
+        config,
+      );
+
+      expect(strongWins.scoreBreakdown.components.coverage).toBeGreaterThan(
+        closeWins.scoreBreakdown.components.coverage,
+      );
+      expect(strongWins.fitness).toBeGreaterThan(closeWins.fitness);
+    });
+  }
+
   test('allows synergy to beat slightly better coverage in weighted scoring', () => {
     const synergisticLineup = scoreOrderedLineup(
       { lead: 'ground-anchor', switch: 'water-switch', closer: 'water-closer' },

@@ -104,7 +104,7 @@ describe('generateTeam performance safeguards', () => {
       const second = await generateTeam(options);
 
       expect(first.defaultScoredFinalists?.length).toBeGreaterThan(0);
-      expect(first.defaultScoredFinalists?.length).toBeLessThanOrEqual(10);
+      expect(first.defaultScoredFinalists?.length).toBeLessThanOrEqual(100);
       expect(
         second.defaultScoredFinalists?.map(({ team, fitness }) => ({
           team,

@@ -23,6 +23,11 @@ When simulation matrices exist, score safety across shield scenarios:
 
 Overwhelming losses against the top-threat pool should be weighted more heavily than overwhelming losses against rare full-meta Pokemon.
 
+Both lineup scoring paths and roster fitness retain 80% matchup-derived safety
+and blend in 20% mean normalized PvPoke Switches score. Missing Switches scores
+do not replace evaluated matchup safety. This rewards safe pivots while keeping
+shared weaknesses and poor alignment consequential.
+
 ## Consistency
 
 Consistency measures how reliably a Pokemon or lineup performs without requiring perfect bait calls, exact shield timing, or rare alignment.
@@ -38,6 +43,13 @@ Use PvPoke consistency exports when available. If not available, proxy consisten
 - How dependent the Pokemon is on baiting shields.
 
 Pokemon with cheap bait moves are not automatically consistent. Cheap moves can improve pressure, but if a Pokemon only wins by baiting successfully, it should be treated as more volatile.
+
+Full and fast lineup selection use 70% PvPoke Consistency category score and
+30% local reliability evidence, matching the roster-level blend. Missing category
+scores use the local fallback. Fast lineups use general ranking quality as their
+lightweight fallback; full lineups retain energy pressure, shield reliability,
+and general quality. Roster consistency retains move-volatility and shield-path
+proxies. These are optimizer signals, not exact PvPoke Team Builder grades.
 
 ## Bulk
 
@@ -58,6 +70,16 @@ Bulk helps evaluate:
 - Ability to function as a switch or closer.
 
 Bulk should be normalized within the candidate pool. A low-bulk Pokemon can still be useful when it provides essential pressure or coverage, but too many low-bulk Pokemon can make a roster brittle.
+
+Production scoring uses the selected format's normalized ranking exports:
+`Defense * Stamina`, divided by the ranked pool's 90th-percentile bulk and
+bounded to `0..1`. The reference is computed once per scoring context, so the
+same species receives the same bulk score across candidate teams. This uses
+format-specific battle stats instead of counting stat archetypes or assigning
+constant bulk during fast selection. Species without ranked battle stats retain
+the base-stat approximation above, normalized as `(bulk - 50) / 250` and bounded
+to `0..1`; missing or invalid stats contribute neutral bulk. This fallback is an
+approximation, not a reconstruction of a player's IVs or effective battle stats.
 
 ## Combined Use
 

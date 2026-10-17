@@ -222,6 +222,8 @@ export type OrderedLineup = Record<LineupRole, string>;
 
 /** Coverage metrics for one bounded threat pool. */
 export interface ThreatPoolCoverageMetrics {
+  /** Continuous matchup quality; coverageRate remains categorical for labels. */
+  softCoverageRate?: number;
   coverageRate: number;
   evaluatedThreatCount: number;
   noAnswerThreatCount: number;

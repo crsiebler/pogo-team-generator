@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, ReactElement } from 'react';
 import clsx from 'clsx';
 import { Option, Select } from '@/components/atoms';
 import { ModeSelector } from '@/components/molecules';
@@ -12,7 +12,7 @@ import {
   isBattleFormatId,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
-import { TournamentMode } from '@/lib/types';
+import type { TournamentMode } from '@/lib/types';
 
 interface TeamConfigPanelProps {
   pokemonList: string[];
@@ -38,7 +38,7 @@ export function TeamConfigPanel({
   onExclusionsChange,
   onGenerate,
   isGenerating,
-}: TeamConfigPanelProps) {
+}: TeamConfigPanelProps): ReactElement {
   const handleAnchorsChange = useCallback(
     (anchors: string[]) => {
       onAnchorsChange(anchors);

@@ -1331,14 +1331,15 @@ describe('generateTeam format-aware candidate selection', () => {
     ]);
   });
 
-  it('caps finalists at ten in deterministic order for shuffled populations', async () => {
-    const population = Array.from({ length: 12 }, (_, index) =>
+  it('retains 100 finalists by default in deterministic order', async () => {
+    const limit = 100;
+    const population = Array.from({ length: 120 }, (_, index) =>
       createChromosomeWithTeam(
         Array.from(
           { length: 6 },
           (_unused, memberIndex) => `team_${index}_member_${memberIndex}`,
         ),
-        index === 10 ? 11 : index,
+        index === 118 ? 119 : index,
       ),
     );
     configurePlayPokemonPool(population.flatMap(({ team }) => team));
@@ -1355,23 +1356,27 @@ describe('generateTeam format-aware candidate selection', () => {
     const first = await generateTeam({
       mode: 'PlayPokemon',
       formatId: 'great-league',
-      populationSize: 12,
+      populationSize: 120,
       generations: 0,
     });
     const second = await generateTeam({
       mode: 'PlayPokemon',
       formatId: 'great-league',
-      populationSize: 12,
+      populationSize: 120,
       generations: 0,
     });
 
-    expect(first.defaultScoredFinalists).toHaveLength(10);
+    expect(first.defaultScoredFinalists).toHaveLength(limit);
     expect(first.defaultScoredFinalists?.map(({ fitness }) => fitness)).toEqual(
-      [11, 11, 9, 8, 7, 6, 5, 4, 3, 2],
+      [
+        119,
+        119,
+        ...Array.from({ length: limit - 2 }, (_, index) => 117 - index),
+      ],
     );
     expect(
       first.defaultScoredFinalists?.slice(0, 2).map(({ team }) => team),
-    ).toEqual([population[10].team, population[11].team]);
+    ).toEqual([population[118].team, population[119].team]);
     expect(second.defaultScoredFinalists).toEqual(first.defaultScoredFinalists);
   });
 
