@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import type { ReactElement } from 'react';
 import {
   AnalysisPanel,
   ResultsPanel,
@@ -36,7 +37,9 @@ interface PokemonListResponse {
   pokemon: string[];
 }
 
-export function TeamManager({ pokemonList = [] }: TeamManagerProps) {
+export function TeamManager({
+  pokemonList = [],
+}: TeamManagerProps): ReactElement {
   const { showToast } = useToast();
   const [generatedTeam, setGeneratedTeam] =
     useState<GeneratedTeamResult | null>(null);

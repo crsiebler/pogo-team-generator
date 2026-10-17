@@ -288,6 +288,21 @@ describe('POST /api/generate-team', () => {
     );
   });
 
+  it.each([undefined, 'standard', 'deep'])(
+    'ignores obsolete search depth %s and uses the fixed optimizer search',
+    async (searchDepth) => {
+      const request = new Request('http://localhost/api/generate-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'PlayPokemon', searchDepth }),
+      });
+      expect((await POST(request as NextRequest)).status).toBe(200);
+      expect(vi.mocked(generateTeam).mock.calls[0][0]).not.toHaveProperty(
+        'searchDepth',
+      );
+    },
+  );
+
   it.each(
     getBattleFormats()
       .filter(({ unavailableReason }) => !unavailableReason)

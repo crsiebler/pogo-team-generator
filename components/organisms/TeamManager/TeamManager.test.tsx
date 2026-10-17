@@ -269,6 +269,30 @@ describe('TeamManager', () => {
     });
   });
 
+  it.each(['PlayPokemon', 'GBL'] as const)(
+    'generates %s without a search-depth option',
+    async (choice) => {
+      render(<TeamManager />);
+      await waitFor(() =>
+        expect(teamConfigPanelProps.at(-1)?.pokemonList).toContain('Azumarill'),
+      );
+      if (choice === 'GBL') fireEvent.click(screen.getByText('Set GBL Mode'));
+      fireEvent.click(screen.getByText('Generate Team'));
+      await waitFor(() =>
+        expect(fetch).toHaveBeenCalledWith(
+          '/api/generate-team',
+          expect.anything(),
+        ),
+      );
+      const call = vi
+        .mocked(fetch)
+        .mock.calls.find(([url]) => url === '/api/generate-team');
+      const payload = JSON.parse(call![1]!.body as string);
+      expect(payload.mode).toBe(choice);
+      expect(payload).not.toHaveProperty('searchDepth');
+    },
+  );
+
   it('forces PlayPokemon mode for Battle Frontier formats', async () => {
     render(<TeamManager />);
 

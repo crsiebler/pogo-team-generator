@@ -55,7 +55,11 @@ workflows that generate repository-owned data.
 
 PlayPokemon evolution remains ranked-default-only so variant-aware full scoring
 does not enter the genetic algorithm hot path. Across generations, retain up to
-ten canonical, deduplicated default-scored finalists. Canonical identity
+100 canonical, deduplicated default-scored finalists. This deeper comparison is
+always enabled, with no search-depth control. Population size and generation
+count are unchanged. This is a search bound, not a guarantee of a globally
+optimal roster; fewer distinct legal rosters can yield fewer finalists.
+Canonical identity
 preserves explicit anchor order, sorts flexible roster members, and uses the
 canonical roster key for deterministic ties.
 
