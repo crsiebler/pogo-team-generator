@@ -54,6 +54,12 @@ describe('createPvpokeAdapter', () => {
     expect(adapter.getRankingFilePath('overall', 1500, 'retro')).toBe(
       '/source/pvpoke/src/data/rankings/retro/overall/rankings-1500.json',
     );
+    expect(adapter.getRankingFilePath('overall', 500, 'little')).toBe(
+      '/source/pvpoke/src/data/rankings/little/overall/rankings-500.json',
+    );
+    expect(adapter.getMovesetOverridesFilePath(500, 'little')).toBe(
+      '/source/pvpoke/src/data/overrides/little/500.json',
+    );
     expect(adapter.getRankingFilePath('overall', 1500, 'spectral')).toBe(
       '/source/pvpoke/src/data/rankings/spectral/overall/rankings-1500.json',
     );

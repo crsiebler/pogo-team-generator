@@ -699,10 +699,10 @@ export function parseMovesetOverrides(
     }
     if (
       override.chargedMoves !== undefined &&
-      (override.chargedMoves.length < 2 || override.chargedMoves.length > 3)
+      (override.chargedMoves.length < 1 || override.chargedMoves.length > 3)
     ) {
       throw new Error(
-        `${prefix}: chargedMoves must contain two or three strings`,
+        `${prefix}: chargedMoves must contain one to three strings`,
       );
     }
     if (

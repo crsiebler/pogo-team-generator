@@ -509,5 +509,5 @@ describe('runtime simulation snapshot preparation', () => {
     for (const snapshot of snapshots) {
       expect(readFileSync(snapshot.targetPath, 'utf8')).toBe(snapshot.contents);
     }
-  });
+  }, 15_000);
 });

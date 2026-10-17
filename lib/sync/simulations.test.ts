@@ -796,10 +796,11 @@ describe('generateSimulations', () => {
         | 'mega'
         | 'laic2027'
         | 'retro'
+        | 'little'
         | 'spectral'
         | 'cauldron'
         | 'battlefrontiermaster';
-      cp: 1500 | 2500 | 10000;
+      cp: 500 | 1500 | 2500 | 10000;
       speciesId: string;
       shields: number;
     }> = [];
@@ -852,7 +853,25 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(48);
+    expect(generatedCalls).toHaveLength(51);
+    for (const shields of [0, 1, 2]) {
+      expect(generatedCalls).toContainEqual({
+        cup: 'little',
+        cp: 500,
+        speciesId: 'bulbasaur',
+        shields,
+      });
+      expect(writeFile).toHaveBeenCalledWith(
+        path.join(
+          'data',
+          'simulations',
+          'cp500',
+          'little',
+          `bulbasaur_${shields}-${shields}.csv`,
+        ),
+        VALID_SIMULATION_CSV,
+      );
+    }
     expect(generatedCalls).toContainEqual({
       cup: 'all',
       cp: 1500,

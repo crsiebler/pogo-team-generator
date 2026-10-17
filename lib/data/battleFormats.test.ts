@@ -14,6 +14,7 @@ describe('battle format catalog', () => {
   it('contains the supported formats in priority order', () => {
     expect(BATTLE_FORMATS.map((format) => format.label)).toEqual([
       'Great League',
+      'Little Cup',
       'Willpower Cup: Great League Edition',
       'Mega Great League',
       'Ultra League',
@@ -38,6 +39,7 @@ describe('battle format catalog', () => {
 
   it('validates known format ids', () => {
     expect(isBattleFormatId('great-league')).toBe(true);
+    expect(isBattleFormatId('little-cup')).toBe(true);
     expect(isBattleFormatId('willpower-cup')).toBe(true);
     expect(isBattleFormatId('mega-great-league')).toBe(true);
     expect(isBattleFormatId('ultra-league')).toBe(true);
@@ -56,7 +58,6 @@ describe('battle format catalog', () => {
   });
 
   it('rejects unknown format ids', () => {
-    expect(isBattleFormatId('little-cup')).toBe(false);
     expect(isBattleFormatId('kanto-cup')).toBe(false);
     expect(isBattleFormatId('spring-cup')).toBe(false);
     expect(isBattleFormatId('jungle-cup')).toBe(false);
@@ -130,7 +131,12 @@ describe('battle format catalog', () => {
       cp: 10000,
     });
 
-    expect(getBattleFormatById('little-cup')).toBeUndefined();
+    expect(getBattleFormatById('little-cup')).toEqual({
+      id: 'little-cup',
+      label: 'Little Cup',
+      cup: 'little',
+      cp: 500,
+    });
     expect(getBattleFormatById('kanto-cup')).toBeUndefined();
     expect(getBattleFormatById('spring-cup')).toBeUndefined();
     expect(getBattleFormatById('jungle-cup')).toBeUndefined();
@@ -187,7 +193,7 @@ describe('battle format catalog', () => {
       'mega-great-league',
       'mega-ultra-league',
       'mega-master-league',
-      'retro-cup',
+      'little-cup',
       'laic-2027-cup',
       'spectral-cup',
       'cauldron-cup',

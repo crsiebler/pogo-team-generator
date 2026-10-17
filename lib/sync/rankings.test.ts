@@ -505,7 +505,7 @@ describe('rankings local sync', () => {
         >
       >()
       .mockImplementation(async (category, leagueCp, cup) => {
-        expect([1500, 2500, 10000]).toContain(leagueCp);
+        expect([500, 1500, 2500, 10000]).toContain(leagueCp);
         expect(cup).toBeTypeOf('string');
         expect(categories).toContain(category);
         const cupIndex = getBattleFormats().findIndex(
@@ -623,7 +623,7 @@ describe('rankings local sync', () => {
     const readMovesetOverridesJson = vi
       .fn()
       .mockImplementation(async (leagueCp: number, cup?: string) => {
-        expect([1500, 2500, 10000]).toContain(leagueCp);
+        expect([500, 1500, 2500, 10000]).toContain(leagueCp);
         return cup === 'tsuki'
           ? [
               {
@@ -936,13 +936,19 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(readRankingJson).toHaveBeenCalledTimes(112);
-    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(16);
-    expect(result.rankings).toHaveLength(342);
-    expect(result.categoryEvidence).toHaveLength(112);
-    expect(result.overrideEvidence).toHaveLength(16);
-    expect(result.aggregatedEvidence).toHaveLength(50);
-    expect(result.candidateSets).toHaveLength(50);
+    expect(readRankingJson).toHaveBeenCalledTimes(
+      getBattleFormats().length * categories.length,
+    );
+    expect(readMovesetOverridesJson).toHaveBeenCalledTimes(
+      getBattleFormats().length,
+    );
+    expect(result.rankings).toHaveLength(363);
+    expect(result.categoryEvidence).toHaveLength(
+      getBattleFormats().length * categories.length,
+    );
+    expect(result.overrideEvidence).toHaveLength(getBattleFormats().length);
+    expect(result.aggregatedEvidence).toHaveLength(53);
+    expect(result.candidateSets).toHaveLength(53);
     expect(result.simulationSpeciesIdsByFormatId.get('great-league')).toEqual([
       'bulbasaur',
       'golisopod',
@@ -1030,6 +1036,17 @@ describe('rankings local sync', () => {
     );
     expect(
       result.categoryEvidence
+        .filter(({ formatId }) => formatId === 'little-cup')
+        .map(({ cup, cp, category }) => ({ cup, cp, category })),
+    ).toEqual(
+      categories.map((category) => ({ cup: 'little', cp: 500, category })),
+    );
+    expect(writeFile).toHaveBeenCalledWith(
+      path.join('data', 'rankings', 'cp500', 'little', 'overall_rankings.csv'),
+      expect.stringContaining('Bulbasaur,'),
+    );
+    expect(
+      result.categoryEvidence
         .filter(({ formatId }) => formatId === 'great-league')
         .map(({ category }) => category),
     ).toEqual(categories);
@@ -1094,7 +1111,9 @@ describe('rankings local sync', () => {
       ],
     });
 
-    expect(writeFile).toHaveBeenCalledTimes(112);
+    expect(writeFile).toHaveBeenCalledTimes(
+      getBattleFormats().length * categories.length,
+    );
     expect(writeFile).toHaveBeenCalledWith(
       path.join('data', 'rankings', 'cp1500', 'all', 'overall_rankings.csv'),
       expect.stringContaining('Pokemon,Score,Dex,Type 1,Type 2'),
@@ -1361,7 +1380,7 @@ describe('rankings local sync', () => {
       },
     );
 
-    expect(result.rankings).toHaveLength(112);
+    expect(result.rankings).toHaveLength(getBattleFormats().length * 7);
     expect(
       result.rankings.every((entry) => entry.Pokemon === 'Bulbasaur'),
     ).toBe(true);
@@ -1742,8 +1761,26 @@ describe('ranking source validation', () => {
         'cp1500 all',
       ),
     ).toThrowError(
-      '[sync-rankings] Invalid cp1500 all moveset override 0: chargedMoves must contain two or three strings',
+      '[sync-rankings] Invalid cp1500 all moveset override 0: chargedMoves must contain one to three strings',
     );
+    expect(() =>
+      parseMovesetOverrides(
+        [{ speciesId: 'wynaut', chargedMoves: [] }],
+        'cp500 little',
+      ),
+    ).toThrowError('chargedMoves must contain one to three strings');
+  });
+
+  it('retains single charged-move override evidence from Little Cup', () => {
+    const overrides = [
+      {
+        speciesId: 'wynaut',
+        fastMove: 'COUNTER',
+        chargedMoves: ['MIRROR_COAT'],
+        weight: 12,
+      },
+    ];
+    expect(parseMovesetOverrides(overrides, 'cp500 little')).toEqual(overrides);
   });
 
   it('accepts three charged-move override options as candidate evidence', () => {

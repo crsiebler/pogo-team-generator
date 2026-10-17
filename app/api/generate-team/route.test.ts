@@ -1018,7 +1018,7 @@ describe('POST /api/generate-team', () => {
   });
 
   it.each([
-    ['little-cup'],
+    ['unsupported-little-cup'],
     ['kanto-cup'],
     ['spring-cup'],
     ['scroll-cup'],

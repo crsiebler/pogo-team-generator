@@ -11,10 +11,11 @@ export interface BattleFormat {
     | 'mega'
     | 'laic2027'
     | 'retro'
+    | 'little'
     | 'spectral'
     | 'cauldron'
     | 'battlefrontiermaster';
-  cp: 1500 | 2500 | 10000;
+  cp: 500 | 1500 | 2500 | 10000;
   /** Blocks runtime use while keeping metadata available to sync tooling. */
   unavailableReason?: string;
 }
@@ -24,6 +25,7 @@ export interface BattleFormat {
  */
 export type BattleFormatId =
   | 'great-league'
+  | 'little-cup'
   | 'mega-great-league'
   | 'ultra-league'
   | 'mega-ultra-league'
@@ -49,6 +51,12 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'Great League',
     cup: 'all',
     cp: 1500,
+  },
+  {
+    id: 'little-cup',
+    label: 'Little Cup',
+    cup: 'little',
+    cp: 500,
   },
   {
     id: 'willpower-cup',
@@ -163,7 +171,7 @@ const selectableBattleFormatIds: readonly BattleFormatId[] = [
   'mega-great-league',
   'mega-ultra-league',
   'mega-master-league',
-  'retro-cup',
+  'little-cup',
   'laic-2027-cup',
   'spectral-cup',
   'cauldron-cup',

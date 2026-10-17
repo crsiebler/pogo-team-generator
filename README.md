@@ -177,6 +177,7 @@ data/rankings/cp{cp}/{cup}/{category}_rankings.csv
 Examples:
 
 - `data/rankings/cp1500/all/overall_rankings.csv`
+- `data/rankings/cp500/little/overall_rankings.csv`
 - `data/rankings/cp2500/fantasy/leads_rankings.csv`
 - `data/rankings/cp2500/all/switches_rankings.csv`
 
@@ -185,6 +186,15 @@ When source files exist, sync exports seven PvPoke categories for each supported
 `lib/data/rankings.ts` caches parsed rankings per format and throws `MissingRankingDataError` when a selected format has not been synced.
 
 Supported formats are declared in `lib/data/battleFormats.ts`. Adding a new cup or meta requires a catalog entry plus matching PvPoke ranking exports and generated simulation data under the derived `cp{cp}/{cup}` paths; do not substitute data from another cup or CP cap.
+
+Little Cup uses the local `vendor/pvpoke` active `little` format at **500 CP**,
+including its evolution restrictions and bans. Its seven ranking categories,
+shield-scenario CSVs, manifest, and compact runtime snapshot are generated through
+the local sync pipeline. PvPoke's single charged-move overrides are accepted as
+source evidence; the existing candidate policy still requires two distinct
+eligible charged moves, so single-move species such as Wynaut are omitted from
+the optimizer's Overall candidate pool. Retro Cup is hidden from the format
+selector while its catalog entry and existing datasets remain available.
 
 ### Simulations
 
