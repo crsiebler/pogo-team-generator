@@ -1,0 +1,54 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="96"
+  height="96"
+  viewBox="0 0 96 96"
+  fill="none"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">Pokémon GO PvP Team Generator</title>
+  <desc id="desc">
+    Three connected battle balls form a team inside a blue shield.
+  </desc>
+  <defs>
+    <linearGradient
+      id="shield"
+      x1="20"
+      y1="8"
+      x2="76"
+      y2="88"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#3B82F6" />
+      <stop offset="1" stop-color="#1D4ED8" />
+    </linearGradient>
+  </defs>
+  <path
+    d="M48 4 86 18v28c0 22-16 37-38 46C26 83 10 68 10 46V18L48 4Z"
+    fill="url(#shield)"
+  />
+  <path
+    d="M48 10 80 22v24c0 18-13 32-32 40C29 78 16 64 16 46V22L48 10Z"
+    stroke="#93C5FD"
+    stroke-opacity=".55"
+    stroke-width="2"
+  />
+  <path
+    d="m48 31-19 29h38L48 31Z"
+    stroke="#93C5FD"
+    stroke-width="5"
+    stroke-linejoin="round"
+  />
+  <g fill="#EFF6FF" stroke="#1E40AF" stroke-width="3">
+    <circle cx="48" cy="31" r="11" />
+    <circle cx="29" cy="60" r="11" />
+    <circle cx="67" cy="60" r="11" />
+  </g>
+  <path d="M37 31h22M18 60h22m16 0h22" stroke="#1E40AF" stroke-width="3" />
+  <g fill="#60A5FA" stroke="#1E40AF" stroke-width="3">
+    <circle cx="48" cy="31" r="4" />
+    <circle cx="29" cy="60" r="4" />
+    <circle cx="67" cy="60" r="4" />
+  </g>
+</svg>
