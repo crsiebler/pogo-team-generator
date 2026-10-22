@@ -104,6 +104,14 @@ export interface Pokemon {
   };
 }
 
+/** Pokémon details paired with the exact scored moveset and acquisition data. */
+export type PokemonWithMoves = Omit<Pokemon, 'recommendedMoveset'> & {
+  recommendedMoveset: MovesetVariant & {
+    authority: MovesetAssignmentPolicyIdentity;
+    acquisitionRequirements: MovesetAcquisitionRequirements;
+  };
+};
+
 export interface Move {
   moveId: string;
   name: string;
@@ -401,6 +409,18 @@ export interface GenerationAnalysis {
   coreBreakers: CoreBreakerAnalysis;
   shieldScenarios: ShieldScenarioAnalysis;
   pokemonContributions: PokemonContributionAnalysis;
+}
+
+/** Complete server response for one successful team generation. */
+export interface GenerationResponse {
+  team: string[];
+  fitness: number;
+  tournamentSelection?: TournamentSelection;
+  recommendedLineups?: RecommendedLineup[];
+  scoreBreakdown?: OptimizerScoreBreakdown;
+  movesetAssignment: RosterMovesetAssignment;
+  analysis: GenerationAnalysis;
+  pokemon: PokemonWithMoves[];
 }
 
 export type ShieldScenarioKey = '0-0' | '1-1' | '2-2';

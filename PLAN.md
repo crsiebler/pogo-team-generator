@@ -7,9 +7,10 @@
 - Sources: [requirements revision 1](tasks/prd-single-request-team-generation.md),
   FR-1 through FR-6, and the inspected repository paths below.
 - Plan revision: 4 — October 21, 2026; requirements scope remains revision 1.
-- Status: ready for implementation handoff; all stories remain unstarted.
+- Status: execution in progress; checklist completion is finalized by story commits.
 - Authorization: the user requested archival of the completed optimizer plan
-  and preparation of this API plan. This turn is planning only.
+  and preparation of this API plan; baseline checkpoint and team execution were
+  subsequently authorized explicitly. Execution evidence is in progress.md.
 - Scope baseline: HEAD `0156aa54eb612ac9fe84ad0204c10d14aaf02421` plus the
   existing uncommitted application/optimizer work inspected during preparation.
   Preserve that work; do not reset the checkout to HEAD.
@@ -128,7 +129,7 @@ final verification story does not defer all testing until integration.
 
 ### API-001 — Return complete details with the generation response
 
-- [ ] Story complete
+- [x] Story complete
 - Priority: 1
 - Depends on: none
 - Phase / requirements: FR-1 (one generation, no internal HTTP details call),
@@ -143,21 +144,21 @@ final verification story does not defer all testing until integration.
 
 #### Acceptance criteria
 
-- [ ] Add failing route/helper regressions before changing production behavior.
-- [ ] Successful Pick 6 and GBL responses include respectively six and three
+- [x] Add failing route/helper regressions before changing production behavior.
+- [x] Successful Pick 6 and GBL responses include respectively six and three
       ordered display records with moves and acquisition requirements matching the
       returned assignment. Cover manifest and supported ranked-default authorities.
-- [ ] Species IDs, count, ordering, variant properties, authority metadata, and
+- [x] Species IDs, count, ordering, variant properties, authority metadata, and
       acquisition requirements agree with the assignment; there are no missing,
       duplicate, or additional display records. The scored assignment is unchanged.
-- [ ] Generation executes once and obtains details through the shared helper;
+- [x] Generation executes once and obtains details through the shared helper;
       it does not call the details route over HTTP or run moveset selection again.
-- [ ] Missing records or invalid/inconsistent assignments fail explicitly before
+- [x] Missing records or invalid/inconsistent assignments fail explicitly before
       a successful response is returned. Preserve existing format and dataset errors.
-- [ ] `/api/team-details` retains its public contract, bounded request handling,
+- [x] `/api/team-details` retains its public contract, bounded request handling,
       structural parsing, and current authority validation. Both routes produce
       equivalent display records for the same valid team and assignment.
-- [ ] Existing generation response fields, meanings, mode-specific optionality,
+- [x] Existing generation response fields, meanings, mode-specific optionality,
       and diagnostic labels remain intact. Shared response types make required
       display details explicit without making previously optional diagnostics mandatory.
 

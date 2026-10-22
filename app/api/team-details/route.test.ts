@@ -447,6 +447,46 @@ describe('POST /api/team-details format-aware movesets', () => {
     expect(getSimulationBackedMovesetForTeam).not.toHaveBeenCalled();
   });
 
+  it('fails the whole request when a team member has no detail record', async () => {
+    let sableyeLookups = 0;
+    vi.mocked(getPokemonBySpeciesId).mockImplementation((speciesId) => {
+      if (speciesId === 'sableye' && sableyeLookups++ > 0) {
+        return undefined;
+      }
+
+      return {
+        speciesId,
+        speciesName: speciesId === 'mewtwo' ? 'Mewtwo' : 'Sableye',
+        dex: speciesId === 'mewtwo' ? 150 : 302,
+        baseStats: { atk: 1, def: 1, hp: 1 },
+        types: ['psychic'],
+        fastMoves: ['COUNTER'],
+        chargedMoves: ['PSYSTRIKE', 'PSYCHIC'],
+        tags: [],
+        defaultIVs: {},
+        buddyDistance: 3,
+        thirdMoveCost: 10000,
+        released: true,
+      };
+    });
+    const request = new Request('http://localhost/api/team-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: ['mewtwo', 'sableye'],
+        formatId: 'great-league',
+        movesetAssignment: createAssignment(),
+      }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Failed to fetch team details',
+    });
+  });
+
   it.each([
     [
       'a different format',

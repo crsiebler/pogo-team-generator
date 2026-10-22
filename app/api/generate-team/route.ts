@@ -25,8 +25,10 @@ import {
 } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
+import { getTeamDetails } from '@/lib/teamDetails';
 import type {
   GenerationAnalysis,
+  GenerationResponse,
   RecommendedLineup,
   TournamentMode,
 } from '@/lib/types';
@@ -193,6 +195,7 @@ export async function POST(request: NextRequest) {
         'Generated team is missing its scored moveset assignment.',
       );
     }
+    const pokemon = getTeamDetails(result.team, result.movesetAssignment);
 
     const threats = buildThreatAnalysis(result.scoreBreakdown?.threatScore);
 
@@ -216,7 +219,7 @@ export async function POST(request: NextRequest) {
       ),
     };
 
-    return NextResponse.json({
+    const response: GenerationResponse = {
       team: result.team,
       fitness: result.fitness,
       tournamentSelection: result.tournamentSelection,
@@ -226,7 +229,10 @@ export async function POST(request: NextRequest) {
       scoreBreakdown: result.scoreBreakdown,
       movesetAssignment: result.movesetAssignment,
       analysis,
-    });
+      pokemon,
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     if (
       error instanceof BattleFormatUnavailableError ||
