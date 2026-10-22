@@ -20,9 +20,9 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.18",
     "autoprefixer": "^10.4.22",
-    "csv-parse": "^6.1.0",
-    "next": "^16.0.10",
-    "postcss": "^8.5.6",
+    "csv-parse": "^7.0.3",
+    "next": "^16.4.1",
+    "postcss": "^8.5.31",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "tailwindcss": "^4.1.18",
@@ -31,7 +31,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
-    "@next/eslint-plugin-next": "^16.0.10",
+    "@next/eslint-plugin-next": "^16.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/csv-parse": "^1.2.2",
@@ -39,9 +39,10 @@
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.1.12",
     "clsx": "^2.1.1",
     "eslint": "^9.39.2",
-    "eslint-config-next": "^16.0.10",
+    "eslint-config-next": "^16.4.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
@@ -56,12 +57,15 @@
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.49.0",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.0.15"
+    "vitest": "^4.1.12"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "prettier --write",
       "eslint --fix"
     ]
+  },
+  "overrides": {
+    "vite": "^7.3.7"
   }
 }
