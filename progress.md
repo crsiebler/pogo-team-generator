@@ -89,3 +89,54 @@
 - Native story-reviewer `/root/review_api_001`, requested gpt-6-astra/high, returned valid expanded-initial initial-pass JSON: pass, no findings/learnings. Actual effective routing unknown. One initial pass consumed; targeted pass unused. Reviewer inspected the staged candidate read-only; reported residuals are executor-reported checks and final-story coverage/UI still pending.
 - All API-001 acceptance items verified; no implementation changes after review. Provisionally checked only API-001 for its atomic delivery commit. UI-002 and VERIFY-003 remain unchecked.
 - Final checks/review passed; intended commit feat(API-001): return complete details with generation response; commit status pending (Git establishes actual success).
+
+## UI-002 admission
+
+- API-001 delivered at 521e04676b5914168894da8beb11629805c05521 after checks, native review and successful local commit.
+- UI-002 attempt 1 is the sole ready story. Clean task root /Users/corysiebler/Repositories/pogo-team-generator/node_modules/.cache/single-request-team/ui-002; branch codex/ui-002-direct-result; full base 521e04676b5914168894da8beb11629805c05521. Verified predecessor ancestry, clean status and branch.
+- Worker owns TeamManager/ResultsPanel/TeamDisplay implementations and focused tests, new client-safe generation response validator/tests, and components/AGENTS.md. No API/scoring/config edits. Main owns integration, canonical state, review and browser verification.
+- Queue empty; only one implementation eligible due to dependency chain. API reviewer retained; initial pass used, no targeted pass needed. UI review allowance remains unused.
+
+- Dispatched native frontend-developer `/root/ui_002`, requested gpt-6-luna/high, fork none. Main prepares isolated browser verification at 127.0.0.1:3001; no existing service restart/termination. Shared source ownership stays exclusive.
+
+## UI-002 candidate handoff — October 22, 2026
+
+- Worker /root/ui_002 is quiescent and transferred its nine owned files to main. Main integrated only those paths. Pre-change direct-render regression failed on old details fetch/loading; final four focused files / 32 tests, tsc, all changed TS/TSX lint, Prettier and diff checks passed in task root. Task build/tmp/ui-002-\*.log preserves red/green/check outputs.
+- Main owns integration/source candidate and browser verification. UI initial review unused; VERIFY-003 remains dependent on delivered UI commit.
+
+## UI-002 real-response regression found before review
+
+- First real Play! Pokemon browser action produced exactly one POST generate-team, HTTP200, six ordered details, and no details request (capture generation-23, 41,630.86ms). Client rejected the valid response because several dataset records omit tags, while the new guard required a tags array. No partial result/export was shown.
+- Main transfers exclusive bounded remediation ownership back to /root/ui_002 in its existing task root: lib/generationResponse.ts and its tests only. Required correction is compatibility with omitted optional runtime tags while retaining malformed-tag rejection and all assignment/detail checks; add regression from real data. No review pass has been consumed. Integration source remains frozen until worker handoff; main owns canonical state/browser.
+
+- UI worker acknowledged remediation ownership before edits, added an omitted-tags regression that failed on the guard, then corrected only the guard/local response-view typing. Its dataset inspection found tags absent in 524 legitimate records, matching PokemonCard optional chaining. Other required fields were present. Four focused files / 34 tests plus type/lint/format/diff passed; logs ui-002-remediation-\*. Main accepted handoff/quiescence, integrated the two paths, and regained exclusive source ownership.
+
+## UI-002 qualification and initial review admission
+
+- Main focused verification: 137 tests across four UI/validator files plus runtime/vendor architecture passed before tags remediation; worker reran all four UI/validator files after remediation (34 passed). Integrated full npm test after remediation passed 1,220 tests / 105 files. Integrated tsc and full npm run lint passed; changed-file format/diff checks passed.
+- Applied React best-practices guidance: event-driven generation; removed effect waterfall/duplicate derived fetch state; typed prop projection; client-safe validator imports only shared types; no cache/dependency additions. This is a source-quality check, not another native review gate.
+- Rendered evidence: connected IAB at http://127.0.0.1:3002 forwards only to isolated dev app :3001 through a verification-only Node HTTP capture. Original Chrome native controls were unstable; no Chrome compatibility claim. Strict Mode stays enabled.
+- Actual captures: initial rejected Pick6 response generation-23 (41,630.86ms), repaired successful Pick6 generation-25 (41,339.03ms, six cards), GBL generation-27 (2,047.82ms, three cards). Each explicit action made one generation POST and zero team-details calls. Independent setup calls are separate; initial PlayPokemon setup ran twice under Strict Mode.
+- Result appearance observed within 61,771ms for repaired Pick6 and 15,528ms for GBL; these are coarse observation bounds, not exact paint times/benchmarks. Both displayed complete matching moves, correct mode notes and analysis. Starting next generation cleared old cards/export and disabled Generate. The initial malformed rejection showed retry error/no export and a subsequent explicit retry succeeded.
+- Copy export toast succeeded. IAB clipboard.read returned empty despite successful application writes; verified actual copied export by pasting into a temporary controlled anchor input and comparing all non-whitespace characters to exportTeam of the captured response, then clearing the input. Both formats matched all species/moves/acquisition notes; no extra requests. No personal clipboard text was emitted. CSV formatting also remains under existing export tests.
+- Desktop 1280x720 and mobile 390x844 had no horizontal overflow; saved pick6-desktop.png, gbl-desktop.png, gbl-mobile.png under original build/tmp/api-browser-evidence. Visual mobile review passed; temporary viewport reset. Accordion End/Home focus moved correctly. Browser error capture after repaired retry was empty; earlier expected validator rejection remains preserved.
+- Browser HTTP captures and actual payloads: original build/tmp/api-browser-evidence/{requests.jsonl,generation-23.json,generation-25.json,generation-27.json}. Screenshots/traffic contain only local Pokemon test data. Native browser controls and temporary proxy are test tooling, not production changes.
+- UI-002 attempt 1 candidate frozen for native expanded-initial initial review. No previous UI review pass consumed. Full-coverage, cross-route parity integration and complete real-child StrictMode automated flow remain owned by VERIFY-003. Intended commit feat(UI-002): render validated generation details directly; commit status pending.
+
+## UI-002 initial review / bounded remediation
+
+- Exact native reviewer /root/review_ui_002 returned valid changes_requested JSON on initial pass, finding generation-response-unvalidated-diagnostics (high): missing/malformed analysis.pokemonContributions or scoreBreakdown/recommendedLineups can pass parser and crash real AnalysisPanel after state acceptance. Accepted as in-scope correctness failure.
+- One UI initial review consumed; same-session targeted allowance remains one. No replacement reviewer/attempt. Candidate preserved staged, UI completion unchecked.
+- Main transfers exclusive remediation ownership to existing /root/ui_002: lib/generationResponse.ts, its tests, and a new bounded TeamManager diagnostic-validation integration test using real AnalysisPanel (and real result components). Worker must acknowledge before writing; main remains canonical/Git/browser owner. Require parser rejection regressions and valid retry without details calls; omitted optional diagnostics and legitimate missing tags stay accepted.
+
+- UI worker acknowledged bounded diagnostic ownership, reproduced four parser red failures and a real-child StrictMode render/retry failure, then added consumed-diagnostic structure guards. Optional diagnostics remain optional. Five focused files / 42 tests, tsc, all changed lint/format/diff passed. Captured generation-25/27/28 each validated. Logs ui-002-diagnostics-*. Worker and checks quiescent, three owned files handed back and integrated; main owns candidate again.
+
+## UI-002 targeted-review qualification
+
+- Integrated remediation focused suite: 42 tests / 5 files passed; tsc and changed-file Prettier/diff passed. Full sandbox suite ran 1,228 tests: 1,226 passed, two architecture scans exceeded their existing 5s timeout. No assertions or timeouts changed. Normal local-access rerun of architecture passed all 105 tests in 8.86s; full local-access suite pending. Full local-access npm run lint passed.
+- Fresh actual GBL response generation-29 accepted by the diagnostic validator: one POST, three cards and populated analysis, no details call; HTTP duration 6,784.00ms, display observed within 18,583ms (coarse observation bound). Actual copied export matched all non-whitespace characters of captured assigned export. Saved gbl-final-validator.png; prior malformed/optional-tag evidence retained.
+- Candidate ownership main; UI-002 attempt 1 targeted pass remains unused. The next reviewer invocation is only the prior diagnostic-validation finding and remediation regressions.
+
+- Same native UI reviewer /root/review_ui_002 returned valid targeted-pass JSON: pass; resolved generation-response-unvalidated-diagnostics with nested guards and real-child failure/retry proof. Initial and targeted budgets exhausted for UI-002 attempt 1; no new review gate. Disposition accepted_fixed; no learning candidates.
+- First normal-access full run passed 1,227 tests but timed out the unchanged sync subprocess; isolated sync suite then passed 6/6 in 1.34s. A second overlapping full/focused run passed 1,227 tests but exceeded the first architecture test timeout (8.96s body). Preserved all failures; no assertion, timeout, runner/config or implementation edits. Serial full suite then passed all 1,228 tests / 106 files. Full normal-access lint, tsc and focused source checks passed. A journal append initially failed because the shell heredoc lacked project-local TMPDIR; retried with TMPDIR before redirection, no source change.
+- UI-002 has passing qualification/review; provisionally checking only UI-002 criteria for the authorized atomic story commit. VERIFY-003 remains unchecked. Intended commit feat(UI-002): render validated generation details directly; actual delivery established by subsequent Git success.

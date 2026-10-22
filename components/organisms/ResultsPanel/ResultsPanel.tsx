@@ -2,22 +2,24 @@
 
 import clsx from 'clsx';
 import { TeamDisplay } from '@/components/organisms';
-import type { BattleFormatId } from '@/lib/data/battleFormats';
-import type { RosterMovesetAssignment, TournamentMode } from '@/lib/types';
+import type {
+  PokemonWithMoves,
+  RosterMovesetAssignment,
+  TournamentMode,
+} from '@/lib/types';
 
 interface ResultsPanelProps {
   generatedTeam: {
     team: string[];
-    formatId: BattleFormatId;
     movesetAssignment: RosterMovesetAssignment;
+    pokemon: PokemonWithMoves[];
+    mode: TournamentMode;
   } | null;
-  mode: TournamentMode;
   isGenerating: boolean;
 }
 
 export function ResultsPanel({
   generatedTeam,
-  mode,
   isGenerating,
 }: ResultsPanelProps) {
   return (
@@ -112,9 +114,9 @@ export function ResultsPanel({
       {generatedTeam && (
         <TeamDisplay
           team={generatedTeam.team}
-          mode={mode}
-          formatId={generatedTeam.formatId}
+          mode={generatedTeam.mode}
           movesetAssignment={generatedTeam.movesetAssignment}
+          pokemon={generatedTeam.pokemon}
         />
       )}
     </div>

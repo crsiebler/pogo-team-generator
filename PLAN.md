@@ -164,7 +164,7 @@ final verification story does not defer all testing until integration.
 
 ### UI-002 — Render the generation payload without a details request
 
-- [ ] Story complete
+- [x] Story complete
 - Priority: 1
 - Depends on: API-001
 - Phase / requirements: FR-1 (one browser request), FR-2 (consume the complete
@@ -177,23 +177,23 @@ final verification story does not defer all testing until integration.
 
 #### Acceptance criteria
 
-- [ ] Write failing request-count and response-consistency regressions first.
-- [ ] `TeamManager` validates and stores `pokemon` with the scored result and
+- [x] Write failing request-count and response-consistency regressions first.
+- [x] `TeamManager` validates and stores `pokemon` with the scored result and
       passes it through `ResultsPanel` to `TeamDisplay` without changing movesets.
-- [ ] `TeamDisplay` renders from props; remove its details-fetch effect, local
+- [x] `TeamDisplay` renders from props; remove its details-fetch effect, local
       fetched-data state, and separate details-loading stage. Keep Strict Mode enabled.
-- [ ] Cards, acquisition labels, exports, statistics, and analysis reflect the
+- [x] Cards, acquisition labels, exports, statistics, and analysis reflect the
       same response. Export retains the exact assigned moves and acquisition notes.
-- [ ] A malformed, incomplete, out-of-order, or mismatched payload produces the
+- [x] A malformed, incomplete, out-of-order, or mismatched payload produces the
       existing error experience, with no fallback request and no partial export.
-- [ ] Starting a new generation clears the previous result. Request failure or
+- [x] Starting a new generation clears the previous result. Request failure or
       response validation failure permits an explicit retry without stale details
       or acquisition notes. Existing format and dataset error messages are preserved.
-- [ ] Re-rendering and remounting the result do not send network requests.
+- [x] Re-rendering and remounting the result do not send network requests.
       Repeated explicit generation actions each send one request and display their
       own complete results. The existing in-flight Generate control remains disabled.
-- [ ] Format selection and its Pokémon-list loading continue to work independently.
-- [ ] Client validation and display do not import server-owned data loaders or
+- [x] Format selection and its Pokémon-list loading continue to work independently.
+- [x] Client validation and display do not import server-owned data loaders or
       derive replacement movesets. Update the scoped component instructions to
       describe the consolidated response without weakening assignment preservation.
 
