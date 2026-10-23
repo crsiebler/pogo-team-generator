@@ -99,6 +99,60 @@ function omitProperty<T extends object, Key extends keyof T>(
 }
 
 describe('parseGenerationResponse', () => {
+  it('accepts populated threat and core-breaker diagnostics', () => {
+    const response = makeResponse('great-league', 'GBL');
+    response.analysis.threats = {
+      evaluatedCount: 1,
+      entries: [
+        {
+          speciesId: 'jellicent',
+          pokemon: 'Jellicent',
+          rank: 1,
+          teamAnswers: 1,
+          severityTier: 'high',
+        },
+      ],
+    };
+    response.analysis.coreBreakers = {
+      threshold: 2,
+      entries: [
+        { pokemon: 'Jellicent', rank: 1, teamAnswers: 1, severityTier: 'high' },
+      ],
+    };
+    expect(parseGenerationResponse(response, 'great-league', 'GBL')).toBe(
+      response,
+    );
+  });
+
+  it.each(['threats', 'coreBreakers'] as const)(
+    'rejects malformed populated %s entries',
+    (section) => {
+      const response = makeResponse('great-league', 'GBL');
+      const malformed = {
+        ...response,
+        analysis: {
+          ...response.analysis,
+          [section]: {
+            evaluatedCount: 1,
+            threshold: 2,
+            entries: [
+              {
+                speciesId: 'jellicent',
+                pokemon: 'Jellicent',
+                rank: 'first',
+                teamAnswers: 1,
+                severityTier: 'high',
+              },
+            ],
+          },
+        },
+      };
+      expect(() =>
+        parseGenerationResponse(malformed, 'great-league', 'GBL'),
+      ).toThrow('Generation response is invalid. Please try again.');
+    },
+  );
+
   it.each([
     ['PlayPokemon Pick 6', 'play-pokemon', 'PlayPokemon', 6],
     ['GBL Pick 3', 'great-league', 'GBL', 3],
