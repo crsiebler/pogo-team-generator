@@ -1,7 +1,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { createPvpokeAdapter } from './adapter';
 import { syncConfig } from './config';
 import { fetchMovesData, fetchPokemonData } from './gamemaster';
+import { readPlayPokemonRankingExports } from './playPokemonSource';
 import { scrapeRankings, type RankingSyncResult } from './rankings';
 import { resolvePvpokeSourcePath, validatePhase1SourceFiles } from './source';
 import type { MovesData, PokemonData } from './types';
@@ -129,6 +131,7 @@ async function loadReadOnlyRankingData(
 ): Promise<ProjectionRankingData> {
   const noOpDirectory = async (): Promise<void> => undefined;
   const noOpWrite = async (): Promise<void> => undefined;
+  const customExports = await readPlayPokemonRankingExports(sourcePath);
   const [pokemonData, movesData] = await Promise.all([
     fetchPokemonData(
       sourcePath,
@@ -150,6 +153,22 @@ async function loadReadOnlyRankingData(
   const rankingResult = await scrapeRankings(
     { sourcePath, quiet: true },
     {
+      createAdapter: (rankingSourcePath) => {
+        const adapter = createPvpokeAdapter({ sourcePath: rankingSourcePath });
+        return {
+          readRankingJson: async (category, cp, cup) =>
+            cup === 'playpokemon'
+              ? customExports.rankings[category]
+              : adapter.readRankingJson(category, cp, cup),
+          readMovesetOverridesJson: async <T>(
+            cp: number,
+            cup?: Parameters<typeof adapter.readRankingJson>[2],
+          ): Promise<T[]> =>
+            cup === 'playpokemon'
+              ? (customExports.overrides as unknown as T[])
+              : adapter.readMovesetOverridesJson<T>(cp, cup),
+        };
+      },
       readFile: async (filePath: string): Promise<string> => {
         if (filePath.endsWith(path.join('data', 'pokemon.json'))) {
           return JSON.stringify(pokemonData satisfies PokemonData[]);

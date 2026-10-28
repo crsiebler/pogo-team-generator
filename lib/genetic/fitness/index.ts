@@ -5,19 +5,29 @@ import {
   type LineupScoringContext,
   type LineupMovesetPolicy,
 } from './lineupScoring';
+import {
+  evaluateTournamentRoster,
+  type TournamentEvaluation,
+} from './opponentRosterEvaluation';
 import { buildGblLineupRecommendation } from './recommendations';
-import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
+import { scoreFastRosterLineup } from './rosterScoring';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
+import {
+  loadOpponentRosters,
+  type OpponentRosterDataset,
+} from '@/lib/data/opponentRosters';
+import { resolveRankedDefaultRosterMovesetAssignment } from '@/lib/genetic/moveset';
 import { resolveRosterMovesetAssignment } from '@/lib/genetic/moveset';
+import { TOURNAMENT_POLICY } from '@/lib/genetic/paretoSelection';
 import type {
   Chromosome,
-  LineupAwareFitnessConfig,
   OrderedLineup,
   RosterMovesetAssignment,
   TournamentMode,
+  TournamentSelection,
 } from '@/lib/types';
 
 export {
@@ -74,12 +84,7 @@ export {
   calculateTypeEffectivenessMultiplier,
 } from './typeEffectivenessRatios';
 
-const FAST_LINEUP_AWARE_CONFIG: LineupAwareFitnessConfig = {
-  mode: 'fast',
-  includeDiagnostics: false,
-  recommendationLimit: 0,
-};
-const LINEUP_AWARE_CACHE_VERSION = 4;
+const LINEUP_AWARE_CACHE_VERSION = 6;
 
 /** Read-only cache counters for one cache namespace. */
 export interface LineupAwareFitnessCacheStats {
@@ -90,6 +95,11 @@ export interface LineupAwareFitnessCacheStats {
 
 /** Per-run caches and data context for canonical lineup-aware fitness. */
 export interface LineupAwareFitnessContext {
+  evaluateTournament: (
+    roster: readonly string[],
+    assignment?: RosterMovesetAssignment,
+    stage?: TournamentSelection['stage'],
+  ) => TournamentEvaluation;
   scoringContext: LineupScoringContext;
   resolveMovesetAssignment: (
     roster: readonly string[],
@@ -103,6 +113,7 @@ export interface LineupAwareFitnessContext {
     assignment?: RosterMovesetAssignment,
   ) => LineupScoreResult;
   readonly cacheStats: {
+    readonly tournament: LineupAwareFitnessCacheStats;
     readonly lineup: LineupAwareFitnessCacheStats;
     readonly fastLineup: LineupAwareFitnessCacheStats;
   };
@@ -110,6 +121,7 @@ export interface LineupAwareFitnessContext {
 
 /** Injectable boundaries for one lineup-aware fitness run. */
 export interface LineupAwareFitnessDependencies {
+  opponentDataset?: OpponentRosterDataset;
   threatCount?: number;
   resolveMovesetAssignment?: (
     roster: readonly string[],
@@ -133,11 +145,22 @@ export function createLineupAwareFitnessContext(
   };
   const lineupScoreCache = new Map<string, LineupScoreResult>();
   const fastLineupScoreCache = new Map<string, LineupScoreResult>();
+  const tournamentCache = new Map<string, TournamentEvaluation>();
+  let dataset = dependencies.opponentDataset;
+  let tournamentHits = 0;
+  let tournamentMisses = 0;
   let lineupCacheHits = 0;
   let lineupCacheMisses = 0;
   let fastLineupCacheHits = 0;
   let fastLineupCacheMisses = 0;
   const cacheStats = {
+    get tournament(): LineupAwareFitnessCacheStats {
+      return {
+        hits: tournamentHits,
+        misses: tournamentMisses,
+        size: tournamentCache.size,
+      };
+    },
     get lineup(): LineupAwareFitnessCacheStats {
       return {
         hits: lineupCacheHits,
@@ -155,6 +178,36 @@ export function createLineupAwareFitnessContext(
   };
 
   return {
+    evaluateTournament: (roster, assignment, stage = 'search') => {
+      dataset ??= loadOpponentRosters(resolvedFormatId);
+      const fixed =
+        assignment ??
+        resolveRankedDefaultRosterMovesetAssignment(roster, resolvedFormatId);
+      const key = JSON.stringify([
+        TOURNAMENT_POLICY.version,
+        resolvedFormatId,
+        dataset.fingerprint,
+        stage,
+        fixed.fingerprint,
+      ]);
+      const cached = tournamentCache.get(key);
+      if (cached) {
+        tournamentHits++;
+        return cached;
+      }
+      tournamentMisses++;
+      const result = evaluateTournamentRoster(
+        roster,
+        fixed,
+        dataset,
+        scoringContext,
+        stage,
+      );
+      if (tournamentCache.size >= 256)
+        tournamentCache.delete(tournamentCache.keys().next().value!);
+      tournamentCache.set(key, result);
+      return result;
+    },
     scoringContext,
     cacheStats,
     resolveMovesetAssignment:
@@ -215,14 +268,8 @@ export function calculateLineupAwareFitness(
   ),
 ): number {
   if (mode === 'PlayPokemon') {
-    return scorePlayPokemonRoster(
-      chromosome.team,
-      {
-        ...context.scoringContext,
-        scoreLineup: (lineup) => context.scoreFastLineup(lineup),
-      },
-      FAST_LINEUP_AWARE_CONFIG,
-    ).fitness;
+    return context.evaluateTournament(chromosome.team).selection.objectives
+      .typical;
   }
 
   const assignment = context.resolveMovesetAssignment(chromosome.team);
@@ -242,6 +289,12 @@ export function evaluatePopulation(
   ),
 ): void {
   for (const chromosome of population) {
+    if (mode === 'PlayPokemon') {
+      const evidence = context.evaluateTournament(chromosome.team);
+      chromosome.tournamentSelection = evidence.selection;
+      chromosome.fitness = evidence.selection.objectives.typical;
+      continue;
+    }
     chromosome.fitness = calculateLineupAwareFitness(
       chromosome,
       mode,

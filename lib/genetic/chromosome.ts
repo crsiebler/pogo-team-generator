@@ -81,6 +81,13 @@ export function cloneChromosome(chromosome: Chromosome): Chromosome {
     team: [...chromosome.team],
     anchors: chromosome.anchors ? [...chromosome.anchors] : [],
     fitness: chromosome.fitness,
+    tournamentSelection: chromosome.tournamentSelection
+      ? {
+          ...chromosome.tournamentSelection,
+          objectives: { ...chromosome.tournamentSelection.objectives },
+          limitations: [...chromosome.tournamentSelection.limitations],
+        }
+      : undefined,
   };
 }
 

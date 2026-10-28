@@ -31,6 +31,24 @@ vi.mock('@/components/organisms', async () => {
 });
 
 describe('TeamConfigPanel', () => {
+  it('shows only the fixed Pick 6 format for Play Pokemon', () => {
+    render(
+      <TeamConfigPanel
+        pokemonList={[]}
+        selectedFormatId="play-pokemon"
+        onFormatChange={vi.fn()}
+        mode="PlayPokemon"
+        onModeChange={vi.fn()}
+        onAnchorsChange={vi.fn()}
+        onExclusionsChange={vi.fn()}
+        onGenerate={vi.fn()}
+        isGenerating={false}
+      />,
+    );
+    expect(screen.getByText('Pick 6 · Open Sheets')).toBeInTheDocument();
+    expect(screen.queryByText('Mode Selector')).not.toBeInTheDocument();
+  });
+
   it('renders the battle format dropdown with expected options and default value', () => {
     render(
       <TeamConfigPanel

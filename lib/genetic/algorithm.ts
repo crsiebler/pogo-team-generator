@@ -33,6 +33,7 @@ import type {
   GenerationOptions,
   Pokemon,
   RankedPokemon,
+  TournamentObjectives,
 } from '../types';
 import {
   initializePopulation,
@@ -57,8 +58,20 @@ import {
   resolveRankedDefaultRosterMovesetAssignment,
 } from './moveset';
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
+import {
+  compareTournamentFinalists,
+  selectParetoPopulation,
+  tournamentIdentity,
+} from './paretoSelection';
 import { getFinalistLimit } from './searchDepth';
+import { targetRosterMutation } from './targetedRosterMutation';
 import { isTeamLegalForFormat } from './teamLegality';
+
+/** Offline ablation seams; API requests never populate these dependencies. */
+export interface TournamentSearchExperiment {
+  readonly disableTargetedMutation?: boolean;
+  readonly omitObjective?: keyof TournamentObjectives;
+}
 
 function getCanonicalRoster(
   team: readonly string[],
@@ -90,24 +103,17 @@ function retainDefaultScoredFinalists(
     const rosterKey = getCanonicalRosterKey(team, fixedAnchorCount);
     const current = finalistsByRoster.get(rosterKey);
 
-    if (!current || chromosome.fitness > current.fitness) {
+    if (!current) {
       finalistsByRoster.set(rosterKey, {
         team,
         anchors: chromosome.anchors ? [...chromosome.anchors] : [],
         fitness: chromosome.fitness,
+        tournamentSelection: chromosome.tournamentSelection,
       });
     }
   }
 
-  return [...finalistsByRoster.entries()]
-    .sort(([firstKey, first], [secondKey, second]) => {
-      if (first.fitness !== second.fitness) {
-        return second.fitness - first.fitness;
-      }
-      return firstKey < secondKey ? -1 : firstKey > secondKey ? 1 : 0;
-    })
-    .slice(0, finalistLimit)
-    .map(([, chromosome]) => chromosome);
+  return selectParetoPopulation([...finalistsByRoster.values()], finalistLimit);
 }
 
 function hasRequiredAnchors(
@@ -203,6 +209,7 @@ function canBuildLegalUniqueTeam(
  */
 export async function generateTeam(
   options: GenerationOptions,
+  experiment: TournamentSearchExperiment = {},
 ): Promise<Chromosome> {
   const {
     mode,
@@ -309,8 +316,12 @@ export async function generateTeam(
 
   // Evaluate initial population
   evaluatePopulation(population, mode, formatId, fitnessContext);
+  projectExperimentalObjectives(population, mode, experiment);
 
-  let bestOverall = getBestChromosome(population);
+  let bestOverall =
+    mode === 'PlayPokemon'
+      ? selectParetoPopulation(population, 1)[0]
+      : getBestChromosome(population);
   let defaultScoredFinalists =
     mode === 'PlayPokemon'
       ? retainDefaultScoredFinalists(
@@ -338,9 +349,12 @@ export async function generateTeam(
   }
 
   let generationsWithoutImprovement = 0;
+  let completedGenerations = 0;
+  let archiveIdentity = getArchiveIdentity(defaultScoredFinalists);
 
   // Evolution loop
   for (let gen = 0; gen < generations; gen++) {
+    completedGenerations = gen + 1;
     // Calculate diversity
     const diversity = calculateDiversity(population);
 
@@ -348,15 +362,35 @@ export async function generateTeam(
     const mutationRate = getAdaptiveMutationRate(diversity);
 
     // Create next generation
+    const parents = population;
     population = createNextGeneration(population, pokemonPool, mode, {
       mutationRate,
       eliteCount: Math.ceil(populationSize * 0.1),
       crossoverRate: 0.8,
       formatId,
+      targetedMutation:
+        mode === 'PlayPokemon' && !experiment.disableTargetedMutation
+          ? (child, pool) =>
+              targetRosterMutation(child, pool, fitnessContext, formatId)
+          : undefined,
     });
 
     // Evaluate new population
     evaluatePopulation(population, mode, formatId, fitnessContext);
+    projectExperimentalObjectives(population, mode, experiment);
+
+    if (mode === 'PlayPokemon') {
+      population = selectParetoPopulation(
+        [...parents, ...population],
+        populationSize,
+      );
+      while (population.length < populationSize)
+        population.push(
+          cloneChromosome(
+            population[population.length % Math.max(1, population.length)],
+          ),
+        );
+    }
 
     // CRITICAL: Filter out any chromosomes that lost anchors
     if (anchorPokemon.length > 0) {
@@ -411,7 +445,10 @@ export async function generateTeam(
     }
 
     // Track best
-    const currentBest = getBestChromosome(population);
+    const currentBest =
+      mode === 'PlayPokemon'
+        ? selectParetoPopulation(population, 1)[0]
+        : getBestChromosome(population);
 
     // Validate currentBest has anchors before comparing
     let currentBestValid = true;
@@ -427,7 +464,15 @@ export async function generateTeam(
       }
     }
 
-    if (currentBestValid && currentBest.fitness > bestOverall.fitness) {
+    if (mode === 'PlayPokemon') {
+      const nextIdentity = getArchiveIdentity(defaultScoredFinalists);
+      generationsWithoutImprovement =
+        nextIdentity === archiveIdentity
+          ? generationsWithoutImprovement + 1
+          : 0;
+      archiveIdentity = nextIdentity;
+      bestOverall = currentBest;
+    } else if (currentBestValid && currentBest.fitness > bestOverall.fitness) {
       bestOverall = currentBest;
       generationsWithoutImprovement = 0;
     } else {
@@ -435,7 +480,10 @@ export async function generateTeam(
     }
 
     // Early stopping if converged
-    if (hasConverged(population) && generationsWithoutImprovement > 10) {
+    if (
+      (mode === 'PlayPokemon' || hasConverged(population)) &&
+      generationsWithoutImprovement > 10
+    ) {
       console.log(`Converged at generation ${gen + 1}`);
       break;
     }
@@ -482,6 +530,7 @@ export async function generateTeam(
         ? defaultScoredFinalists
         : [bestOverall],
       {
+        evaluateTournament: rerankingContext.evaluateTournament,
         topThreats:
           rerankingContext.scoringContext.topThreats ??
           rerankingContext.scoringContext.threats,
@@ -516,6 +565,10 @@ export async function generateTeam(
       },
     );
     bestOverall = reranking.finalist;
+    if (!reranking.evaluation)
+      throw new Error(
+        'Tournament finalists require scenario selection evidence.',
+      );
     validateFinalTeam(bestOverall, anchorPokemon, formatId);
     const movesetAssignment = reranking.assignment;
     const rosterScore = scorePlayPokemonRoster(
@@ -528,23 +581,37 @@ export async function generateTeam(
         scoreLineup: (lineup) =>
           rerankingContext.scoreLineup(lineup, movesetAssignment),
       },
-      { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
+      { mode: 'full', includeDiagnostics: true, recommendationLimit: 120 },
     );
     const recommendations = buildPlayPokemonRosterRecommendations(
       rosterScore.lineupScores ?? [],
-      { limit: 5 },
+      { limit: 5, plans: reranking.evaluation?.plans },
     );
 
     bestOverall = {
       ...bestOverall,
-      fitness: rosterScore.fitness,
+      fitness:
+        reranking.evaluation?.selection.objectives.typical ??
+        rosterScore.fitness,
+      tournamentSelection: reranking.evaluation?.selection,
+      tournamentSearchStats: {
+        generations: completedGenerations,
+        evaluationCount: fitnessContext.cacheStats.tournament?.misses ?? 0,
+        cacheHits: fitnessContext.cacheStats.tournament?.hits ?? 0,
+        retainedCacheEntries: fitnessContext.cacheStats.tournament?.size ?? 0,
+      },
       defaultScoredFinalists,
       finalistRerankingStats: {
         ...reranking.stats,
         lineupCache: rerankingContext.cacheStats.lineup,
       },
       movesetAssignment,
-      scoreBreakdown: rosterScore.scoreBreakdown,
+      scoreBreakdown: {
+        ...rosterScore.scoreBreakdown,
+        score: reranking.evaluation.selection.objectives.typical,
+        scoreBasis: 'tournament-typical',
+        threatContribution: undefined,
+      },
       recommendedLineups: recommendations.recommendedLineups,
     };
   }
@@ -740,7 +807,9 @@ export async function generateMultipleTeams(
   }
 
   // Sort by fitness
-  return teams.sort((a, b) => b.fitness - a.fitness);
+  return options.mode === 'PlayPokemon'
+    ? teams.sort(compareTournamentFinalists)
+    : teams.sort((a, b) => b.fitness - a.fitness);
 }
 
 /**
@@ -754,4 +823,34 @@ export async function quickGenerateTeam(
     populationSize: 50,
     generations: 30,
   });
+}
+
+function getArchiveIdentity(archive: readonly Chromosome[]): string {
+  return JSON.stringify(
+    archive
+      .map((candidate) => [
+        tournamentIdentity(candidate),
+        candidate.tournamentSelection?.objectives,
+      ])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+  );
+}
+
+function projectExperimentalObjectives(
+  population: Chromosome[],
+  mode: GenerationOptions['mode'],
+  experiment: TournamentSearchExperiment,
+): void {
+  if (mode !== 'PlayPokemon' || !experiment.omitObjective) return;
+  for (const candidate of population)
+    if (candidate.tournamentSelection) {
+      candidate.tournamentSelection = {
+        ...candidate.tournamentSelection,
+        policyVersion: `${candidate.tournamentSelection.policyVersion}:omit-${experiment.omitObjective}`,
+        objectives: {
+          ...candidate.tournamentSelection.objectives,
+          [experiment.omitObjective]: 0,
+        },
+      };
+    }
 }

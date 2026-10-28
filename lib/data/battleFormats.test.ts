@@ -30,7 +30,23 @@ describe('battle format catalog', () => {
       'Battle Frontier (Spectral)',
       'Battle Frontier (Cauldron)',
       'Battle Frontier (Master)',
+      'Play! Pokémon',
+      'Fantasy Cup',
+      'Mega Halloween Cup',
+      'Devon Trail Cup',
+      'Devon Fable Cup',
+      'Gymbreakers Invitational Season 7',
+      'Master Premier Cup',
     ]);
+  });
+
+  it('looks up Play! Pokémon at 1500 CP', () => {
+    expect(getBattleFormatById('play-pokemon')).toEqual({
+      id: 'play-pokemon',
+      label: 'Play! Pokémon',
+      cup: 'playpokemon',
+      cp: 1500,
+    });
   });
 
   it('defaults to Great League', () => {
@@ -55,14 +71,14 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('spectral-cup')).toBe(true);
     expect(isBattleFormatId('cauldron-cup')).toBe(true);
     expect(isBattleFormatId('battle-frontier-master')).toBe(true);
+    expect(isBattleFormatId('master-premier-cup')).toBe(true);
+    expect(isBattleFormatId('fantasy-cup')).toBe(true);
   });
 
   it('rejects unknown format ids', () => {
     expect(isBattleFormatId('kanto-cup')).toBe(false);
     expect(isBattleFormatId('spring-cup')).toBe(false);
     expect(isBattleFormatId('jungle-cup')).toBe(false);
-    expect(isBattleFormatId('master-premier-cup')).toBe(false);
-    expect(isBattleFormatId('fantasy-cup')).toBe(false);
     expect(isBattleFormatId('summer-cup')).toBe(false);
     expect(isBattleFormatId('')).toBe(false);
   });
@@ -140,14 +156,20 @@ describe('battle format catalog', () => {
     expect(getBattleFormatById('kanto-cup')).toBeUndefined();
     expect(getBattleFormatById('spring-cup')).toBeUndefined();
     expect(getBattleFormatById('jungle-cup')).toBeUndefined();
-    expect(getBattleFormatById('master-premier-cup')).toBeUndefined();
+    expect(getBattleFormatById('master-premier-cup')).toMatchObject({
+      cup: 'premier',
+      cp: 10000,
+    });
     expect(getBattleFormatById('retro-cup')).toEqual({
       id: 'retro-cup',
       label: 'Retro Cup',
       cup: 'retro',
       cp: 1500,
     });
-    expect(getBattleFormatById('fantasy-cup')).toBeUndefined();
+    expect(getBattleFormatById('fantasy-cup')).toMatchObject({
+      cup: 'fantasy',
+      cp: 1500,
+    });
     expect(getBattleFormatById('summer-cup')).toBeUndefined();
     expect(getBattleFormatById('naic-2026-championship-cup')).toBeUndefined();
     expect(getBattleFormatById('battle-frontier-bayou-cup')).toBeUndefined();
@@ -187,6 +209,7 @@ describe('battle format catalog', () => {
 
   it('returns selectable formats in PvPoke dropdown order', () => {
     expect(getSelectableBattleFormats().map(({ id }) => id)).toEqual([
+      'play-pokemon',
       'great-league',
       'ultra-league',
       'master-league',
@@ -194,10 +217,16 @@ describe('battle format catalog', () => {
       'mega-ultra-league',
       'mega-master-league',
       'little-cup',
+      'fantasy-cup',
+      'mega-halloween-cup',
       'laic-2027-cup',
       'spectral-cup',
       'cauldron-cup',
       'battle-frontier-master',
+      'devon-trail-cup',
+      'devon-fable-cup',
+      'gymbreakers-season-7',
+      'master-premier-cup',
     ]);
   });
 
@@ -223,6 +252,8 @@ describe('battle format catalog', () => {
     );
     expect(hasOneMegaLimitForFormat('laic-2027-cup')).toBe(true);
     expect(hasOneMegaLimitForFormat('cauldron-cup')).toBe(true);
+    expect(hasOneMegaLimitForFormat('mega-halloween-cup')).toBe(true);
+    expect(hasOneMegaLimitForFormat('fantasy-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-master')).toBe(false);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);

@@ -2,6 +2,11 @@ import type { BattleFormatId } from '@lib/data/battleFormats';
 import { getDexNumber, validateTeamUniqueness } from '@lib/data/pokemon';
 import type { Chromosome, TournamentMode } from '../types';
 import { cloneChromosome, getMutableSlots, isAnchorSlot } from './chromosome';
+import {
+  compareParetoRanks,
+  rankParetoPopulation,
+  selectParetoPopulation,
+} from './paretoSelection';
 import { isTeamLegalForFormat } from './teamLegality';
 
 /**
@@ -10,6 +15,8 @@ import { isTeamLegalForFormat } from './teamLegality';
 export function tournamentSelection(
   population: Chromosome[],
   tournamentSize: number = 3,
+  compare: (a: Chromosome, b: Chromosome) => number = (a, b) =>
+    b.fitness - a.fitness,
 ): Chromosome {
   const tournament: Chromosome[] = [];
 
@@ -19,7 +26,7 @@ export function tournamentSelection(
   }
 
   return tournament.reduce((best, current) =>
-    current.fitness > best.fitness ? current : best,
+    compare(current, best) < 0 ? current : best,
   );
 }
 
@@ -187,8 +194,12 @@ export function mutate(
 export function selectElites(
   population: Chromosome[],
   eliteCount: number,
+  mode: TournamentMode = 'GBL',
 ): Chromosome[] {
-  const sorted = [...population].sort((a, b) => b.fitness - a.fitness);
+  const sorted =
+    mode === 'PlayPokemon'
+      ? selectParetoPopulation(population, eliteCount)
+      : [...population].sort((a, b) => b.fitness - a.fitness);
   return sorted.slice(0, eliteCount).map(cloneChromosome);
 }
 
@@ -204,6 +215,10 @@ export function createNextGeneration(
     crossoverRate?: number;
     mutationRate?: number;
     formatId?: BattleFormatId;
+    targetedMutation?: (
+      chromosome: Chromosome,
+      pool: readonly string[],
+    ) => Chromosome;
   } = {},
 ): Chromosome[] {
   const {
@@ -216,13 +231,18 @@ export function createNextGeneration(
   const nextGeneration: Chromosome[] = [];
 
   // 1. Keep elites
-  const elites = selectElites(population, eliteCount);
+  const ranks =
+    mode === 'PlayPokemon' ? rankParetoPopulation(population) : undefined;
+  const compare = ranks
+    ? (a: Chromosome, b: Chromosome): number => compareParetoRanks(a, b, ranks)
+    : undefined;
+  const elites = selectElites(population, eliteCount, mode);
   nextGeneration.push(...elites);
 
   //2. Fill rest with crossover + mutation
   while (nextGeneration.length < population.length) {
-    const parent1 = tournamentSelection(population);
-    const parent2 = tournamentSelection(population);
+    const parent1 = tournamentSelection(population, 3, compare);
+    const parent2 = tournamentSelection(population, 3, compare);
 
     let child: Chromosome;
 
@@ -232,7 +252,12 @@ export function createNextGeneration(
       child = cloneChromosome(parent1);
     }
 
-    child = mutate(child, pokemonPool, mutationRate, mode, formatId);
+    child =
+      options.targetedMutation && Math.random() < mutationRate * 0.5
+        ? options.targetedMutation(child, pokemonPool)
+        : mutate(child, pokemonPool, mutationRate, mode, formatId);
+    // Offspring evidence belongs to its parents until the new roster is scored.
+    child.tournamentSelection = undefined;
 
     // CRITICAL: Validate child preserves anchors from parent1
     if (parent1.anchors && parent1.anchors.length > 0) {

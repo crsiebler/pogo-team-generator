@@ -1,8 +1,11 @@
+import { getPlayPokemonLineupKey } from './lineupEnumeration';
 import {
+  compareScoredLineups,
   scoreOrderedLineup,
   type LineupScoreResult,
   type LineupScoringContext,
 } from './lineupScoring';
+import type { TournamentPlan } from './opponentRosterEvaluation';
 import { validateTeamUniqueness } from '@/lib/data/pokemon';
 import type { OrderedLineup, RecommendedLineup } from '@/lib/types';
 
@@ -11,6 +14,7 @@ const DEFAULT_RECOMMENDATION_LIMIT = 5;
 /** Options for converting bounded lineup diagnostics into API-ready output. */
 export interface PlayPokemonRosterRecommendationOptions {
   limit?: number;
+  plans?: readonly TournamentPlan[];
 }
 
 /** API-ready lineup recommendations for a PlayPokemon roster. */
@@ -33,8 +37,36 @@ export function buildPlayPokemonRosterRecommendations(
   options: PlayPokemonRosterRecommendationOptions = {},
 ): PlayPokemonRosterRecommendationResult {
   const limit = Math.max(0, options.limit ?? DEFAULT_RECOMMENDATION_LIMIT);
-  const recommendedLineups = lineupScores
-    .toSorted((first, second) => second.score - first.score)
+  const planByOrder = new Map(
+    options.plans?.map((plan) => [getPlayPokemonLineupKey(plan.lineup), plan]),
+  );
+  const sorted = lineupScores.toSorted((a, b) => {
+    if (!options.plans) return compareScoredLineups(a, b);
+    const first = planByOrder.get(getPlayPokemonLineupKey(a.lineup));
+    const second = planByOrder.get(getPlayPokemonLineupKey(b.lineup));
+    return (
+      (second?.lowerTail ?? -1) - (first?.lowerTail ?? -1) ||
+      (second?.typical ?? -1) - (first?.typical ?? -1) ||
+      b.scoreBreakdown.components.role - a.scoreBreakdown.components.role ||
+      getPlayPokemonLineupKey(a.lineup).localeCompare(
+        getPlayPokemonLineupKey(b.lineup),
+      )
+    );
+  });
+  const seen = new Set<string>();
+  const distinct = sorted.filter((score) => {
+    const id = [score.lineup.lead, score.lineup.switch, score.lineup.closer]
+      .sort()
+      .join('|');
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  const selected = new Set(distinct);
+  const recommendedLineups = [
+    ...distinct,
+    ...sorted.filter((score) => !selected.has(score)),
+  ]
     .slice(0, limit)
     .map(toRecommendedLineup);
 
@@ -59,7 +91,7 @@ export function buildGblLineupRecommendation(
   const scoreLineup = createGblLineupScorer(options);
   const bestLineup = enumerateGblOrderedLineups(team)
     .map(scoreLineup)
-    .toSorted((first, second) => second.score - first.score)[0];
+    .toSorted(compareScoredLineups)[0];
 
   return toRecommendedLineup(bestLineup);
 }

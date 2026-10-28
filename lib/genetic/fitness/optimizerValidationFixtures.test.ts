@@ -18,6 +18,31 @@ import type {
 } from '@/lib/types';
 
 describe('optimizer validation fixtures', () => {
+  test.each(['fast', 'full'] as const)(
+    '%s roster selection reduces threat risk even with equal component metrics',
+    (mode) => {
+      const score = (
+        rating: number,
+      ): ReturnType<typeof scorePlayPokemonRoster> =>
+        scorePlayPokemonRoster(
+          validationRoster,
+          createRosterContext({
+            scoreLineup: (lineup) => makeLineupResult(lineup, { score: 0.7 }),
+            getMatchupRating: () => rating,
+            getShieldScenarioMatchupRating: () => 520,
+          }),
+          mode === 'full'
+            ? { mode, includeDiagnostics: true, recommendationLimit: 0 }
+            : { mode, includeDiagnostics: false, recommendationLimit: 0 },
+        );
+      const safer = score(600);
+      const exposed = score(450);
+      expect(safer.scoreBreakdown.components).toEqual(
+        exposed.scoreBreakdown.components,
+      );
+      expect(safer.fitness).toBeGreaterThan(exposed.fitness);
+    },
+  );
   for (const [mode, scoreLineup] of [
     ['full', scoreOrderedLineup],
     ['fast', scoreFastRosterLineup],
@@ -97,7 +122,7 @@ describe('optimizer validation fixtures', () => {
     });
   }
 
-  test('allows synergy to beat slightly better coverage in weighted scoring', () => {
+  test('prefers broader coverage over the former synergy-first winner', () => {
     const synergisticLineup = scoreOrderedLineup(
       { lead: 'ground-anchor', switch: 'water-switch', closer: 'water-closer' },
       createLineupContext({
@@ -131,7 +156,7 @@ describe('optimizer validation fixtures', () => {
     expect(synergisticLineup.scoreBreakdown.components.synergy).toBeGreaterThan(
       coverageFirstLineup.scoreBreakdown.components.synergy,
     );
-    expect(synergisticLineup.score).toBeGreaterThan(coverageFirstLineup.score);
+    expect(coverageFirstLineup.score).toBeGreaterThan(synergisticLineup.score);
   });
 
   test('classifies and scores ABC ABB and ABA structure fixtures', () => {

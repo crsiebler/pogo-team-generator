@@ -7,6 +7,7 @@ import {
   prepareMovesetVariantManifests,
   publishSimulationGeneration,
 } from './movesetVariantManifest';
+import { preparePlayPokemonSource } from './playPokemonSource';
 import { scrapeRankings, type RankingSyncResult } from './rankings';
 import { prepareRuntimeSimulationAssetIndex } from './runtimeSimulationAssetIndex';
 import {
@@ -287,7 +288,14 @@ export async function runSync(options: SyncRunOptions = {}): Promise<void> {
       : null;
     const previousOutputFingerprint = createSyncOutputFingerprint();
 
-    const sourceResolution = resolvePvpokeSourcePath();
+    const originalSourceResolution = resolvePvpokeSourcePath();
+    validatePhase1SourceFiles(originalSourceResolution.sourcePath);
+    const sourceResolution = {
+      ...originalSourceResolution,
+      sourcePath: await preparePlayPokemonSource(
+        originalSourceResolution.sourcePath,
+      ),
+    };
     console.log(
       `[sync] Resolved PvPoke source path (${sourceResolution.sourceType}): ${sourceResolution.sourcePath}`,
     );

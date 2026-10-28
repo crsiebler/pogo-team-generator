@@ -151,7 +151,7 @@ export type LineupRole = 'lead' | 'switch' | 'closer';
 /** Diagnostic label for common PvP lineup structures. */
 export type LineupPatternLabel = 'ABC' | 'ABB' | 'ABA' | 'unknown';
 
-/** Canonical optimizer score components shown in priority order. */
+/** Canonical optimizer components; presentation order is independent of weights. */
 export type OptimizerScoreComponent =
   | 'synergy'
   | 'coverage'
@@ -170,10 +170,14 @@ export type OptimizerScoreWeights = Readonly<OptimizerScoreComponents>;
 
 /** UI/API-ready normalized optimizer score breakdown. */
 export interface OptimizerScoreBreakdown {
+  /** Tournament reporting scores are not reconstructed from diagnostic weights. */
+  scoreBasis?: 'weighted' | 'tournament-typical';
   components: OptimizerScoreComponents;
   weights: OptimizerScoreWeights;
   score: number;
   threatScore?: OptimizerThreatScore;
+  /** Weighted lower-threat contribution; omitted for component-only scoring. */
+  threatContribution?: number;
 }
 
 /** Ranked optimizer threat score entry, where higher threatValue is worse. */
@@ -322,12 +326,60 @@ export interface Chromosome {
   team: string[];
   anchors?: number[];
   fitness: number;
+  /** Authoritative Pick 6 selection evidence; fitness is typical plan quality. */
+  tournamentSelection?: TournamentSelection;
+  tournamentSearchStats?: {
+    readonly generations: number;
+    readonly evaluationCount: number;
+    readonly cacheHits: number;
+    readonly retainedCacheEntries: number;
+  };
   /** Canonical top GA rosters scored with ranked-default movesets. */
   defaultScoredFinalists?: readonly Chromosome[];
   finalistRerankingStats?: FinalistRerankingStats;
   movesetAssignment?: RosterMovesetAssignment;
   scoreBreakdown?: OptimizerScoreBreakdown;
   recommendedLineups?: RecommendedLineup[];
+}
+
+/** All objectives are maximized, finite and normalized to 0..1. */
+export interface TournamentObjectives {
+  coverage: number;
+  redundancy: number;
+  typical: number;
+  lowerTail: number;
+  flexibility: number;
+  independence: number;
+}
+
+/** Direct ranked-field evidence, independent of sampled opponent rosters. */
+export interface TournamentCoverageAudit {
+  readonly threatCount: number;
+  readonly uncoveredCount: number;
+  readonly singleAnswerCount: number;
+  readonly evaluatedPairs: number;
+  readonly backupCoverage: number;
+  readonly pairProtection: number;
+  readonly gaps: readonly {
+    readonly speciesId: string;
+    readonly answers: number;
+    readonly primaryAnswer: string;
+    readonly risk: number;
+  }[];
+}
+
+/** Versioned evidence identity shared by every candidate in a comparison. */
+export interface TournamentSelection {
+  readonly policyVersion: string;
+  readonly datasetFingerprint: string;
+  readonly stage: 'search' | 'selection' | 'held-out';
+  readonly source: 'synthetic' | 'curated' | 'mixed';
+  readonly objectives: TournamentObjectives;
+  readonly coverageAudit?: TournamentCoverageAudit;
+  readonly evaluatedRosters: number;
+  readonly missingCells: number;
+  readonly status: 'complete' | 'insufficient';
+  readonly limitations: readonly string[];
 }
 
 export interface GenerationOptions {

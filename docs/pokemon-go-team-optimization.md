@@ -16,22 +16,16 @@ This document is the main entry point for a project-agnostic Pokemon GO Battle L
 
 In show-6, pick-3 formats, the best roster is not simply the six strongest individual Pokemon. The goal is to build a six-Pokemon roster that produces multiple strong ordered three-Pokemon lineups with complementary coverage, safety, consistency, bulk, typing, and roles.
 
-The optimizer should be a weighted model, not a tiered or lexicographic list where one metric always dominates everything below it. Hard constraints should be limited to validity and legality rules such as duplicate species restrictions, league eligibility, or tournament-specific point caps.
+Tournament selection uses Pareto search over shared opposing-roster scenarios,
+followed by robust finalist ordering. Blind-three GBL retains the existing
+weighted model. See [Robust tournament search](team-optimization/tournament-search.md)
+for the implemented policy and [validation results](team-optimization/tournament-validation.md)
+for measured limits.
 
-## Weighted Priority Order
-
-Use this priority order when choosing weights:
-
-1. Synergy
-2. Coverage
-3. Safety
-4. Consistency
-5. Bulk
-6. Defensive resistances vs weaknesses ratio
-7. Offensive effectiveness vs resistance ratio
-8. Role
-
-Higher-priority categories should have larger weights, but lower-priority categories still contribute. A lineup with slightly worse coverage can be better if it has much stronger synergy and safety. A roster with strong matchup coverage can still be rejected if it relies on fragile lineups or repeated shared weaknesses.
+The tournament objectives are typical plan quality, lower-tail quality, distinct
+viable-trio flexibility, and independent core/pivot options. Threat Score,
+Safety, Consistency, Bulk, and Synergy remain diagnostics or underlying evidence;
+the former 50/20/15/10/5 weighted sum does not choose Pick 6 winners.
 
 ## Optimization Flow
 
@@ -41,8 +35,8 @@ Higher-priority categories should have larger weights, but lower-priority catego
 4. Seed candidate show-6 rosters with elite or preferred anchors, ranked companion pairs, and bounded random diversity.
 5. Enumerate ordered pick-3 lineups from each roster.
 6. Score each lineup as a playable battle plan.
-7. Aggregate lineup scores into a roster score.
-8. Return the best roster and multiple recommended lineups with explanation metrics.
+7. Aggregate hidden opponent choices before choosing friendly plans; compare roster objective vectors through nondominated fronts.
+8. Compare finalists on the broader shared corpus with robust ordering and return distinct useful recommended trios.
 
 PvPoke rankings can seed candidate pools, role assumptions, move choices, and threat weighting. Treat them as a best-estimate resource from simulations, not as fixed truth. Prefer score-based and category-specific signals over raw rank alone. Candidate quality bands must be derived per format from that format's score distribution, rank percentile, score density, meaningful score dropoffs, and bounded candidate counts. Fixed score examples such as 92, 90, 88, and 85 are Great League examples only, not global viability rules.
 
@@ -55,7 +49,7 @@ workflows that generate repository-owned data.
 
 PlayPokemon evolution remains ranked-default-only so variant-aware full scoring
 does not enter the genetic algorithm hot path. Across generations, retain up to
-100 canonical, deduplicated default-scored finalists. This deeper comparison is
+100 canonical, deduplicated ranked-default finalists through Pareto fronts and diversity. This deeper comparison is
 always enabled, with no search-depth control. Population size and generation
 count are unchanged. This is a search bound, not a guarantee of a globally
 optimal roster; fewer distinct legal rosters can yield fewer finalists.
@@ -90,14 +84,12 @@ the requested format and species. Missing, malformed, incompatible, incomplete,
 or unprepared snapshots, mismatched species, and unavailable specific variants
 fail closed instead of becoming ranked fallbacks.
 
-A lightweight aggregate-matrix objective prefilters assignments before full
-lineup scoring. It weights top-meta and full-meta evidence `0.7/0.3` and the best
-three roster answers per threat `0.55/0.30/0.15`. Fully score at most twelve
-assignments per finalist across all 120 ordered lineups. The lightweight result
-is only a work bound. Assignment ties within a finalist use lightweight score,
-fewer alternates, then assignment fingerprint. Selection across finalists uses
-variant-aware full fitness, then default-only finalist fitness, then canonical
-roster key.
+Assignments are shortlisted using scenario objective vectors and Pareto
+diversity. Fully evaluate at most twelve assignments per finalist. Finalists use
+fixed coverage, redundancy and lower-tail bands, then flexibility, independence,
+exact coverage, redundancy, tail quality, typical quality, and canonical ties.
+Coverage and redundancy audit the entire ranked field independently of sampled
+opponent rosters. Legacy scalar fitness cannot override these choices.
 
 The selected immutable assignment is retained for final diagnostics, API output,
 team details, and export. `/api/team-details` first verifies the assignment's
@@ -108,8 +100,7 @@ Manifest authority must match the prepared snapshot policy and one complete
 active variant; fallback authority must match the current Overall ranking default
 and fallback policy. Snapshot preparation occurs only when at least one species
 claims manifest authority. Regular, Elite, event-exclusive, and purified
-acquisition classifications remain informational and do not change weighted
-fitness. See
+acquisition classifications remain informational and do not change selection. See
 [Data Inputs](team-optimization/data-inputs.md) for availability, candidate,
 manifest, publication, and sync semantics.
 
@@ -141,7 +132,7 @@ If a project has enough role data, fully ordered lead/switch/closer scoring is p
 
 ## Key Documents
 
-- [Scoring Model](team-optimization/scoring-model.md): weighted objective design and normalization.
+- [Scoring Model](team-optimization/scoring-model.md): mode-aware selection and diagnostic normalization.
 - [Lineup Structures](team-optimization/lineup-structures.md): ABC, ABB, and ABA concepts.
 - [Coverage And Threat Pools](team-optimization/coverage-threat-pools.md): top-threat and full-meta coverage.
 - [Safety, Consistency, And Bulk](team-optimization/safety-consistency-bulk.md): hard-loss, bait-dependence, and bulk scoring.

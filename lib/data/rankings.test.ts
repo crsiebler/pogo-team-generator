@@ -17,6 +17,41 @@ import {
 } from './rankings';
 
 describe('format-aware rankings loading', () => {
+  it('loads dedicated Play! Pokemon categories with exclusions and legal move overrides', () => {
+    for (const loadRankings of [
+      getOverallRankings,
+      getLeadsRankings,
+      getSwitchesRankings,
+      getClosersRankings,
+      getChargersRankings,
+      getAttackersRankings,
+      getConsistencyRankings,
+    ]) {
+      const rankings = loadRankings('play-pokemon');
+      expect(rankings.length).toBeGreaterThan(150);
+      expect(rankings.every(({ CP }) => CP <= 1500)).toBe(true);
+      const names = rankings.map(({ Pokemon }) => Pokemon);
+      expect(names).toContain('Mewtwo (Shadow)');
+      expect(names).toContain('Tapu Fini');
+      for (const name of [
+        'Mimikyu',
+        'Minior (Meteor)',
+        'Minior (Core)',
+        'Cobalion',
+        'Ponyta (Shadow)',
+        'Rapidash (Shadow)',
+        'Kabuto (Shadow)',
+        'Kabutops (Shadow)',
+      ]) {
+        expect(names).not.toContain(name);
+      }
+      expect(names.some((name) => name.includes('(Mega'))).toBe(false);
+      const porygon = rankings.find(({ Pokemon }) => Pokemon === 'Porygon');
+      expect(porygon?.['Fast Move']).toBe('Tackle');
+      expect(rankings).not.toBe(loadRankings('great-league'));
+    }
+  });
+
   it('supports default and explicit Great League lookups', () => {
     const defaultRankings = getOverallRankings();
     const explicitRankings = getOverallRankings('great-league');

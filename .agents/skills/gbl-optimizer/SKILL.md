@@ -1,153 +1,197 @@
 ---
 name: gbl-optimizer
-description: Use when changing Pokemon GO Battle League optimizer scoring, show-6 pick-3 lineups, PvPoke ranking inputs, type effectiveness, coverage, safety, consistency, bulk, roles, or ABC/ABB/ABA strategy.
+description: Implement or review Pokemon GO show-six/pick-three Pareto optimization, opponent scenarios, robust finalist selection, lineup diagnostics, ranking inputs, or blind-three GBL scoring.
 ---
 
 # GBL Optimizer
 
-Use this skill when implementing, refactoring, reviewing, or planning Pokemon GO Battle League team optimization logic.
+## Authority and scope
 
-## Required Reading
+Use the approved robust tournament roster plan preserved at the repository-relative
+path `archive/2026-10-22T060940732592Z-plan-preservation/PLAN.md` (revision 2,
+October 21, 2026). It supersedes previous weighted-only tournament instructions.
+Read the current implementation and plan acceptance criteria; do not assume a
+planned story is implemented. Preserve existing work and report verified status.
 
-Before changing roster or lineup scoring, read:
+The tournament design applies to `mode: PlayPokemon` across supported formats,
+including Play! Pokémon. Blind-three GBL retains its existing scoring and
+selection behavior. Do not apply a six-member requirement to GBL.
 
-- `docs/pokemon-go-team-optimization.md`
-- `docs/team-optimization/scoring-model.md`
-- `docs/team-optimization/lineup-structures.md`
-- `docs/team-optimization/coverage-threat-pools.md`
-- `docs/team-optimization/safety-consistency-bulk.md`
-- `docs/team-optimization/type-effectiveness.md`
-- `docs/team-optimization/role-scoring.md`
-- `docs/team-optimization/data-inputs.md`
-- `docs/team-optimization/validation.md`
+Read `docs/pokemon-go-team-optimization.md` and the relevant subdocuments under
+`docs/team-optimization/`: `scoring-model.md`, `lineup-structures.md`,
+`coverage-threat-pools.md`, `safety-consistency-bulk.md`, `type-effectiveness.md`,
+`role-scoring.md`, `data-inputs.md`, and `validation.md`. During migration,
+superseded weighted tournament prescriptions in those documents are not design
+authority; reconcile them with the approved plan and actual implementation.
 
-Use `data/type-effectiveness.json` as the source of truth for Pokemon GO type chart values.
+## Tournament objective and selection
 
-## Optimization Principles
+Optimize practical battle plans against representative opposing six-Pokemon
+rosters. Do not preserve a fixed Threat/Safety/Consistency/Bulk/Synergy weighted
+sum or select the strict minimum Threat Score as the tournament objective.
 
-The optimizer should be weighted, not a strict tier list or lexicographic comparator except for validity and legality constraints.
+Use finite normalized objective vectors for full-field coverage, backup/counter-pair
+redundancy, typical best-plan quality, lower-tail best-plan quality, distinct
+viable-trio flexibility, and independent core/pivot options. Audit every eligible
+ranked opponent independently of sampled roster scenarios. Follow the versioned
+formulas in `docs/team-optimization/tournament-search.md`; do not add a shared-type
+cap. Validate objective independence with ablations. Keep
+correlated diagnostics explanatory rather than multiplying rewards for the same
+evidence. Bulk, Consistency, and Threat Score may inform matchup evidence or
+explain results; they are not mandatory independent rewards.
 
-PvPoke behavior is reference-only. Runtime application, component, and optimizer
-code must not import, require, execute, bundle, or runtime-load PvPoke vendor
-JavaScript. Local PvPoke engine execution is allowed only in isolated sync or
-tooling workflows. Preserve the runtime boundary guarded by
-`lib/architecture/pvpokeRuntimeBoundary.test.ts`.
+Use nondominated fronts and deterministic objective-space diversity in parent
+selection, survival, elitism, and the historical archive. Preserve useful
+tradeoffs and objective extremes within the 100-roster archive cap. Handle
+constant objectives, equal vectors, duplicate rosters, and unavailable evidence
+explicitly. Crowding distance is not a quality score.
 
-Weight strategy in this order:
+Replace scalar convergence with front/archive stability while retaining hard
+generation limits. Audit all scalar consumers: population evaluation, parent
+tournaments, elitism, cloning, best tracking, convergence, archive retention,
+moveset prefilters, finalists, recommendations, multiple-team sorting, and API
+serialization. None may silently restore the previous weighted winner.
 
-1. Synergy
-2. Coverage
-3. Safety
-4. Consistency
-5. Bulk
-6. Defensive resistances vs weaknesses ratio
-7. Offensive effectiveness vs resistance ratio
-8. Role
+Fully evaluate finalists on the same broader selection corpus and ranked-field
+audit. Current policy compares fixed coverage, redundancy, and lower-tail bands
+before flexibility and independence; use exact objectives and canonical ties
+as documented. Single-answer exposure and counters to the primary answer must
+affect selection, not only diagnostics or mutation. Avoid
+non-transitive pairwise epsilon comparators. Calibrate tail fractions, bands,
+and sample sizes on tuning data before held-out evaluation; do not derive them
+from historical PvPoke Threat Score numbers.
 
-Score ordered pick-3 lineups as playable battle plans. Then aggregate lineup quality into show-6 roster quality.
+Selection metadata is authoritative for PlayPokemon. If compatibility fields
+`fitness` and `scoreBreakdown.score` remain, keep them equal and document their
+reporting meaning. Never use them to override Pareto or robust ordering. GBL
+retains its existing scalar semantics.
 
-Derive candidate quality bands per format from the selected format's ranking
-score distribution, rank percentile, score density, meaningful score dropoffs,
-and bounded candidate counts. Do not hardcode fixed PvPoke score thresholds such
-as 92, 90, 88, or 85 as global viability rules; those are Great League examples
-only.
+## Opponent scenarios and evidence
 
-Generate teams anchor-first when ranking data is available: seed elite or
-preferred anchors, rank anchor plus companion pairs using candidate profiles,
-expand teams by remaining weaknesses and playable lineup quality, preserve a
-bounded random diversity slice, and then rely on canonical lineup or roster
-scoring for final fitness and diagnostics. Low-ranked specialists should be
-admitted only when simulation-backed evidence shows unique top-meta or
-core-weakness coverage without crowding out safer generalists.
+Load validated, versioned, format-specific opponent rosters through `lib/data`.
+Record species/forms, legal movesets, source, date/context, roster family,
+partition, and dataset/policy fingerprint. Prefer verified relevant tournament
+rosters; old calibration fixtures are not current-meta usage evidence.
 
-Keep Threat Score diagnostic and lower-is-better on
-`OptimizerScoreBreakdown.threatScore`; do not add it to weighted fitness
-components unless a current story explicitly changes optimizer selection
-behavior. Aggregate active `pools.topMeta` and `pools.fullMeta` diagnostics with
-top-meta weighted higher by default through
-`LineupScoringContext.threatScorePoolWeights`.
+When verified rosters are unavailable, construct deterministic format-legal
+synthetic scenarios from synchronized ranked candidates. Freeze the corpus
+independently of candidate search and label it synthetic. Cover varied cores and
+compositions. Never represent synthetic frequencies as tournament usage.
 
-Use `scoreMatchupRating(...)` from
-`lib/genetic/fitness/matchupScoring.ts` when a score should distinguish close,
-neutral, clearly favorable, and clearly unfavorable matchups. Preserve binary
-threshold checks for categorical labels, counts, and display classifications.
+Deduplicate exact and near-duplicate families. Keep families/events out of both
+tuning and held-out partitions. All candidates in a comparison use the same
+scenario sample, weights, and evidence policy. Hold-out data must not select the
+runtime winner or tune the policy. Do not borrow another format's data.
 
-Protect optimizer hot paths. Keep diagnostic-only work out of fast/GA scoring
-paths unless final output requires it. Use per-run lineup-aware fitness caches in
-`lib/genetic/fitness/index.ts`, keep cache keys versioned and format-scoped, and
-validate cache behavior with `cacheStats` counters rather than timing-only
-assertions.
+Only evaluate enemy movesets represented by the matrices. Explicitly label any
+projection to ranked defaults as an adaptation, not an exact tournament replay.
+Missing evidence is unknown, not a measured loss or zero-risk success. Report
+actionable insufficient-data results when fair comparison is not possible.
 
-Keep fast and full scoring aligned through shared quality signals: use format-relative
-ranked Defense * Stamina bulk when available, Switches rankings alongside matchup
-safety, and Consistency exports alongside moveset stability. Follow the formulas
-and fallbacks in `docs/team-optimization/safety-consistency-bulk.md`.
+Require complete 0/1/2-shield evidence for the direct ranked-field audit as well.
+Count a stable answer only when the same assigned member wins all three states;
+ties are not wins. Never count one member twice against simultaneous counters.
+Keep worst-risk aggregation bounded so easy opponents cannot dilute coverage
+holes. Do not call the shared direct audit held-out evidence: only opponent
+composition families are held out. Report any sampled-plan regression alongside
+direct coverage improvement, and do not claim a lower PvPoke Threat Score without
+measuring that separate formula.
 
-For PlayPokemon, retain canonical distinct finalists across generations and use
-the fixed 100-roster limit in `lib/genetic/searchDepth.ts`. Fully compare retained
-finalists after evolution; preserve deterministic ties and report bounded search
-results without claiming global optimality or exact PvPoke Team Builder grades.
+## Battle-plan evaluation
 
-## Domain Checks
+Enumerate all 120 friendly ordered lead/switch/closer lineups and group them into
+20 unordered trio identities. Aggregate hidden opposing-trio/order uncertainty
+before choosing the friendly plan. Do not let the evaluator choose a different
+friendly trio after observing hidden opponent choices.
 
-When changing scoring, check for:
+Count distinct trios rather than permutations for depth, role flexibility, and
+bench appearances. Recommend distinct useful trios with their best supported
+orders before repeating one. Several weak plans must not compensate for no
+usable response through count alone.
 
-- Multiple viable lineups, not one obvious trio.
-- Top-threat coverage separately from full-meta coverage.
-- ABA shared weakness risk, especially when the shared weakness can appear in the lead.
-- ABB lineups that are intentionally baiting or covering a shared weakness.
-- Defensive type exposure weighted by meta relevance.
-- Offensive move coverage using actual selected move types.
-- Safety via overwhelming losses, no-answer threats, and single-answer threats.
-- Consistency via bait dependence, move DPE, shield stability, and PvPoke consistency data when available.
-- Bulk using format-relative ranked Defense * Stamina, with the documented stat-based fallback.
-- Role fit using PvPoke Leads, Switches, Closers, Chargers, Attackers, and Consistency exports when available.
-- Lower-is-better Threat Score diagnostics from weighted top-meta and full-meta threat pools.
-- Dynamic per-meta ranking bands, ranked anchor-companion pairs, and specialist gating before broad generation.
-- Soft matchup quality for scoring, while preserving categorical coverage and weakness labels.
-- Performance effects of any diagnostic added to lineup-aware hot paths.
+Evaluate all 15 friendly pairs for complementary coverage, shared counters,
+third-member protection, and practical answer redundancy. Discount options that
+collapse to the same opposing combination. Two answers is a strategic
+preference, not a legality requirement.
 
-## Architecture Boundaries
+Use assigned matchup/shield evidence and Switches context for pivot quality.
+Average Switches rank alone cannot establish independent options. Evaluate bad
+leads, plausible counter-switches, and remaining-partner coverage within legal
+enemy rosters. Cover supported ABB plans, fragile ABA shared weaknesses, and
+ABA shared strengths in controlled tests. Do not infer behavioral baiting or
+actual shield advantage from equal-shield cells.
 
-- Keep optimizer scoring logic in `lib/genetic/fitness`.
-- Keep shared generation and lineup-aware contracts in `lib/types.ts`.
-- Keep API routes and UI components as thin adapters that pass through optimizer diagnostics instead of recomputing scores.
-- Keep data loading and file parsing behind existing `lib/data` loaders and `lib/sync` adapter utilities.
-- Inject scoring dependencies through contexts instead of reading files directly from scoring functions.
-- Keep Great League Show-6 Pick-3 calibration fixtures in
-  `data/calibration/great-league-show6-pick3.json` and load them through
-  `lib/data/calibrationFixtures.ts`.
-- Treat calibration fixtures as broad regression inputs only; do not hardcode
-  exact optimizer winners, exact scores, or runtime scoring shortcuts from them.
-- Keep Summary Statistics display-only: A-F grades only, no plus/minus modifiers,
-  no `elite`/`strong`/`neutral`/`weak` quality pills in component cards, and
-  lower-is-better Threat Score when present.
-- Keep Threat Score display-only in UI: it owns the one team-level threat profile
-  pill, shows readable threat names, and does not expose raw Overall, Top Meta,
-  Full Meta, rank, answer count, risk, or threat value metadata. Backend threat
-  fields may remain available for sorting, diagnostics, calibration, and tests.
-- Keep Recommended Lineup cards display-only with blue diagnostic styling and
-  ordered lead, switch, closer, and semantic weakness lists. Do not render
-  lineup quality pills or numeric lineup scores there; keep score metadata
-  internal unless a future UI contract explicitly reintroduces a display
-  consumer.
+Measure marginal bench value by removing a member from the available plan set,
+not by returning an illegal five-member team. Capture lost scenario answers,
+protected cores, and pivot alternatives. A rarely selected specialist can be
+useful; appearances alone cannot prove usefulness. Do not award fictional
+opponent deterrence or best-of-three adaptation bonuses.
 
-## Testing Expectations
+Static matrix evaluation is an approximation, not battle win probability. Do
+not invent energy/HP carryover, switch-lock state, shield decisions, or opponent
+decision frequencies. More detailed simulations and behavioral modeling remain
+deferred unless separately authorized.
 
-For scoring changes, add or update tests first when practical.
+## Construction, legality, and performance
 
-Cover:
+Reuse format-relative ranking bands, complementary core seeding, and existing
+simulation-backed specialist admission. Target mutations at exposed scenarios,
+correlated counters, or missing independent pivots. Use marginal contribution to
+identify replaceable non-anchors and retain bounded random exploration.
 
-- Controlled lineup scoring edge cases.
-- ABC, ABB, and ABA behavior.
-- Shared weakness penalties and shared strength rewards.
-- Top-threat vs full-meta coverage weighting.
-- Lower-is-better Threat Score ordering and pool diagnostics.
-- Soft matchup scoring with close-matchup fixtures.
-- Cache key determinism, format scoping, and cache-stat behavior for performance safeguards.
-- Calibration fixture validation and broad scoring invariants.
-- Type effectiveness dual-type multiplication.
-- Deterministic optimizer output for fixed seeds.
-- Regression cases where paper coverage differs from playable pick-3 synergy.
+Preserve legal species/forms, user anchors and exclusions, format rules,
+duplicate-base-species limits, and immutable roster movesets. Open-sheet
+assumptions prohibit secret-move bonuses. Keep assignments authoritative for
+diagnostics, API output, details, and export.
 
-Run focused Vitest files first, then `npx tsc --noEmit` and `npm run lint`. Run `npm test` for non-trivial optimizer changes.
+Cache bounded primitives and evaluations by format, moveset assignment, dataset,
+shared sample, and policy identity. Avoid unbounded population-by-roster-by-
+120-by-120 tensors. Measure evaluation counts, cache behavior, memory, and
+runtime. Preserve the representative under-one-minute gate and measure default
+generation separately.
+
+## Runtime and UI boundaries
+
+Core logic stays in `lib/genetic/fitness`; typed data loading stays in
+`lib/data`; shared contracts stay in `lib/types.ts`. UI and API adapters must
+not reconstruct a scalar winner.
+
+Runtime application, components, and optimizer code must never execute, import,
+bundle, or load PvPoke vendor JavaScript. Vendor execution is isolated sync
+tooling only. Consume validated local normalized rankings and compact simulation
+snapshots, with no per-matchup network access. Preserve exact runtime asset
+tracing and deployment size limits.
+
+Use `scoreMatchupRating` for continuous matchup quality. Keep explicit
+thresholds for categorical diagnostics. Type calculations use
+`data/type-effectiveness.json`, including dual-type multiplication.
+
+Preserve Overview component meanings and display-only A/B/C/D/F grades. Threat
+Score remains lower-is-better and owns the single team-level profile pill.
+Recommended Lineups retain blue diagnostic styling, ordered roles, and semantic
+weakness lists, with no numeric lineup score or quality pills. Internal
+selection evidence does not mandate new UI.
+
+## Verification and claims
+
+Write meaningful failing behavioral tests before new logic. Test dominance,
+tradeoffs, deterministic ordering, shared samples, missing evidence, hidden-trio
+oracle rejection, distinct-trio counting, core/pivot independence, marginal
+specialists, cache scope, immutable movesets, legality, and GBL preservation.
+
+Compare paired seeds and comparable budgets against the captured weighted
+baseline in Play! Pokémon, Great League Pick 6, another supported format, and a
+GBL control. Freeze policy before held-out evaluation. Report per-opponent and
+lower-tail results, flexibility, redundancy, unknown evidence, and costs. Run
+ablations and policy-sensitivity checks. Do not claim better tournament teams
+from training scores alone; scrimmage evidence remains external.
+
+Run focused tests, typecheck, lint, full tests, changed-file formatting, build,
+and exact route-trace verification. Verify real local generation, API metadata,
+assignment authority, and distinct recommendations in the rendered app. Record
+actual results and remaining limitations; never mark incomplete plan criteria
+complete or report a proposed skill as activated before its file is updated.
+
+The PvPoke tournament guide (updated March 25, 2022) motivates cores, redundancy,
+flexibility, and preparation for unfavorable leads. Pareto selection and the
+mathematical policies here are project decisions, not claims made by the guide.

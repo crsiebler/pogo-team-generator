@@ -27,6 +27,30 @@ import {
 import { parseVariantSimulationFilename } from '@/lib/sync/simulationProjection';
 
 describe('format-aware simulation loading', () => {
+  it('loads Play! Pokemon defaults and all shield scenarios without banned opponents', () => {
+    ensureSimulationDataAvailable('play-pokemon');
+    const matrix = getMatchupMatrix('play-pokemon');
+    expect(matrix.size).toBe(150);
+    const matchups = matrix.get('corviknight');
+    expect(matchups).toBeDefined();
+    expect(matchups?.has('mimikyu')).toBe(false);
+    expect(matchups?.has('minior_meteor')).toBe(false);
+    expect(matchups?.has('mewtwo_shadow')).toBe(true);
+    for (const shields of [0, 1, 2] as const) {
+      const rating = getShieldScenarioMatchupResult(
+        'corviknight',
+        'tinkaton',
+        shields,
+        'play-pokemon',
+      );
+      expect(rating).toBeGreaterThanOrEqual(0);
+      expect(rating).toBeLessThanOrEqual(1000);
+    }
+    expect(
+      getActiveMovesetVariants('corviknight', 'play-pokemon'),
+    ).toHaveLength(1);
+  });
+
   beforeAll(() => {
     for (const format of getBattleFormats()) {
       ensureSimulationDataAvailable(format.id);

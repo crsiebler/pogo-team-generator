@@ -1,21 +1,27 @@
-# Weighted Scoring Model
+# Mode-aware Scoring Model
 
-The optimizer should use a weighted objective function. Do not implement a strict tier list or lexicographic comparison where one metric fully determines the result before later metrics are considered.
+PlayPokemon uses Pareto search and robust finalist selection described in
+[tournament-search.md](tournament-search.md). All fixed-weight formulas below
+apply to blind-three GBL and legacy diagnostic/calibration helpers, not to
+production Pick 6 selection.
+
+For PlayPokemon, `tournamentSelection` is authoritative.
+`fitness === scoreBreakdown.score` reports typical scenario plan quality, with
+`scoreBasis: tournament-typical`. Diagnostic component weights do not reconstruct
+this reporting score. Threat Score cannot override scenario robustness.
+The previous weighted 0.55 cutoff is not the new plan viability rule.
 
 ## Priority Order
 
 Use this order to set relative weights:
 
-1. Synergy
-2. Coverage
-3. Safety
-4. Consistency
-5. Bulk
-6. Defensive resistances vs weaknesses ratio
-7. Offensive effectiveness vs resistance ratio
-8. Role
+1. Lower Threat Score
+2. Safety
+3. Consistency
+4. Bulk
+5. Synergy
 
-## Roster Score
+## Legacy Diagnostic Roster Score
 
 Normalize each component before combining. A recommended normalized range is `0.0` for poor and `1.0` for excellent.
 
@@ -31,32 +37,56 @@ roster_score =
   role_weight * role_score
 ```
 
-Threat Score is intentionally not listed as a weighted fitness component. It is
-a lower-is-better diagnostic that describes vulnerability to meta threats after
-the weighted roster or lineup score has been calculated, unless a project
-explicitly chooses to change optimizer selection behavior.
-
-Example starting weights:
+The component score is the quality average. Combine it with threat resilience:
 
 ```text
-synergy: 0.24
-coverage: 0.21
-safety: 0.17
-consistency: 0.13
-bulk: 0.10
-defensive_ratio: 0.07
-offensive_ratio: 0.05
-role: 0.03
+quality = 0.40 * safety + 0.30 * consistency + 0.20 * bulk + 0.10 * synergy
+fitness = clamp01(0.50 * (1 - threatRisk) + 0.50 * quality)
 ```
 
-These values are starting points, not fixed requirements. Tune them against known good teams, known bad teams, and real meta results.
+`threatRisk` uses the same normalized calculation and top-meta/full-meta weights
+as the displayed Threat Score. With no evaluated threats, or a non-finite risk,
+selection awards zero threat contribution. Missing matchups within a pool are
+still excluded rather than invented; this policy does not establish full
+matchup coverage. `scoreBreakdown.threatContribution` records the weighted contribution,
+and `scoreBreakdown.score` remains the authoritative final fitness.
+
+Fast scoring computes scalar risk without labels or sorted threat lists. Full
+diagnostics reuse the same risk definition. Disabling diagnostics must never
+change the objective. GBL and legacy weighted diagnostic helpers use this contract. The per-run lineup cache version changes when the objective changes.
+
+The viable-lineup cutoff of `0.55` applies to the quality average before the
+threat blend, so changing the threat weight does not redefine battle-plan
+viability. Lineup ranking still uses final fitness. Equal-fitness lineup
+recommendations prefer role fit, then lead-aware coverage, preserving useful
+lead/switch/closer ordering without overriding the weighted objective.
+
+Current quality weights (normalized within the quality half of fitness):
+
+```text
+coverage: 0
+safety: 0.40
+consistency: 0.30
+bulk: 0.20
+synergy: 0.10
+defensive_ratio: 0
+offensive_ratio: 0
+role: 0
+```
+
+Effective total weights are lower Threat Score 50%, Safety 20%, Consistency 15%,
+Bulk 10%, and Synergy 5%. This is a weighted tradeoff, not a hard minimum-threat
+filter. Coverage, type ratios, and role retain their diagnostics and upstream
+candidate/battle-plan uses without a separate final weight. Component-only
+helpers with no threat input return the normalized quality average; weighted
+lineup and diagnostic roster scoring supply threat evidence, even when unavailable.
 
 ## Lineup Score
 
 Each ordered pick-3 lineup should have its own weighted score. Score the lineup as a battle plan, not as three independent Pokemon.
 
 ```text
-lineup_score =
+lineup_quality =
   synergy_weight * three_member_synergy +
   coverage_weight * lineup_coverage +
   safety_weight * lineup_safety +
@@ -65,6 +95,8 @@ lineup_score =
   defensive_ratio_weight * lineup_defensive_ratio +
   offensive_ratio_weight * lineup_offensive_ratio +
   role_weight * lead_switch_closer_fit
+
+lineup_score = 0.50 * (1 - lineup_threatRisk) + 0.50 * lineup_quality
 ```
 
 Roster score should aggregate lineup quality:

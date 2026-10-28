@@ -1,7 +1,51 @@
-import { describe, expect, test } from 'vitest';
-import { calculateOptimizerThreatScore } from './threatScore';
+import { describe, expect, test, vi } from 'vitest';
+import {
+  calculateOptimizerThreatRisk,
+  calculateOptimizerThreatScore,
+} from './threatScore';
 
 describe('calculateOptimizerThreatScore', () => {
+  test.each([
+    undefined,
+    { topMeta: 0.85, fullMeta: 0.15 },
+    { topMeta: 0.2, fullMeta: 0.8 },
+  ])(
+    'matches scalar selection risk to diagnostic risk with pool weights %j',
+    (poolWeights) => {
+      const speciesIds = ['alpha', 'bravo', 'charlie'];
+      const context = createContext({
+        topThreats: ['top', 'top'],
+        fullMetaThreats: ['top', 'rare', 'missing'],
+        ratings: {
+          alpha: { top: 550, rare: 610 },
+          bravo: { top: 400, rare: 600 },
+          charlie: { top: 450, rare: 520 },
+        },
+      });
+      const expected = calculateOptimizerThreatScore(speciesIds, context, {
+        poolWeights,
+      });
+      const getMatchupRating = vi.fn(context.getMatchupRating);
+      const actual = calculateOptimizerThreatRisk(
+        speciesIds,
+        { ...context, getMatchupRating },
+        { poolWeights },
+      );
+      expect(actual.score).toBeCloseTo(expected.score, 12);
+      expect(actual.evaluatedCount).toBe(expected.evaluatedCount);
+      expect(getMatchupRating).toHaveBeenCalledTimes(9);
+    },
+  );
+
+  test('does not label missing matchup evidence as evaluated scalar risk', () => {
+    expect(
+      calculateOptimizerThreatRisk(['alpha'], {
+        topThreats: ['missing'],
+        fullMetaThreats: ['missing'],
+        getMatchupRating: () => null,
+      }),
+    ).toEqual({ score: 0, evaluatedCount: 0 });
+  });
   test('returns a lower score for teams with more answers to meta threats', () => {
     const safeResult = calculateOptimizerThreatScore(
       ['safe-a', 'safe-b', 'safe-c'],

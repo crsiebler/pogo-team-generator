@@ -1,6 +1,9 @@
 # Safety, Consistency, And Bulk
 
-Safety, consistency, and bulk measure how reliable a team is when battles are imperfect. They should support synergy and coverage, not replace them.
+Safety, consistency, and bulk measure how reliable a team is when battles are
+imperfect. The formulas below preserve diagnostic meaning and the GBL path.
+Pick 6 uses scenario objectives and robust selection; these are not independent
+mandatory weighted rewards. See [Scoring Model](scoring-model.md).
 
 ## Safety
 
@@ -89,4 +92,4 @@ Safety, consistency, and bulk are related but distinct:
 - A safe switch can be low-bulk if its typing and moves give broad neutral play.
 - A consistent Pokemon can be fragile if it wins quickly or applies reliable shield pressure.
 
-The optimizer should score these as separate components and combine them with weights.
+Keep these as separate diagnostic components. GBL retains its weighted combination; Pick 6 selection uses the tournament scenario policy.

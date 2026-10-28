@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { generateTeam } from './algorithm';
+import { createLineupAwareFitnessContext } from './fitness';
 import {
   getAssignedMovesetVariantId,
   getRecommendedMovesetForPokemon,
 } from './moveset';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
 import { getOverallRankings, getRankedPokemonNames } from '@/lib/data/rankings';
+import { ensureSimulationDataAvailable } from '@/lib/data/simulations';
 
 function createSeededRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -17,6 +19,34 @@ function createSeededRandom(seed: number): () => number {
 }
 
 describe('generateTeam performance safeguards', () => {
+  it('caches fixed-assignment scenario evidence while separating stages and formats', () => {
+    ensureSimulationDataAvailable('great-league');
+    const roster = [
+      'clodsire',
+      'lanturn',
+      'azumarill',
+      'umbreon',
+      'altaria',
+      'skarmory',
+    ];
+    const context = createLineupAwareFitnessContext('great-league');
+    const first = context.evaluateTournament(roster);
+    expect(context.evaluateTournament([...roster].reverse())).toBe(first);
+    expect(context.cacheStats.tournament).toEqual({
+      hits: 1,
+      misses: 1,
+      size: 1,
+    });
+    const selection = context.evaluateTournament(
+      roster,
+      undefined,
+      'selection',
+    );
+    expect(selection.selection.stage).toBe('selection');
+    expect(context.cacheStats.tournament.misses).toBe(2);
+    const second = createLineupAwareFitnessContext('great-league');
+    expect(second.cacheStats.tournament.size).toBe(0);
+  });
   it('generates with an unsupported explicit anchor and manifest-backed teammates', async () => {
     const result = await generateTeam({
       mode: 'GBL',
@@ -75,6 +105,18 @@ describe('generateTeam performance safeguards', () => {
 
     expect(result.team).toHaveLength(6);
     expect(result.fitness).toBeGreaterThan(0);
+    expect(result.tournamentSelection?.status).toBe('complete');
+    expect(result.scoreBreakdown?.scoreBasis).toBe('tournament-typical');
+    expect(
+      result.tournamentSearchStats?.retainedCacheEntries,
+    ).toBeLessThanOrEqual(256);
+    expect(
+      new Set(
+        result.recommendedLineups?.map(({ lineup }) =>
+          [lineup.lead, lineup.switch, lineup.closer].sort().join('|'),
+        ),
+      ).size,
+    ).toBe(5);
     expect(result.scoreBreakdown?.score).toBe(result.fitness);
     expect(result.finalistRerankingStats).toBeDefined();
     const stats = result.finalistRerankingStats!;

@@ -41,7 +41,7 @@ interface MockResultsPanelProps {
 }
 
 const movesetAssignment: RosterMovesetAssignment = {
-  formatId: 'great-league',
+  formatId: 'play-pokemon',
   authorityBySpeciesId: {
     azumarill: {
       source: 'manifest',
@@ -86,6 +86,9 @@ vi.mock('@/components/organisms', () => ({
         </button>
         <button type="button" onClick={() => onModeChange('GBL')}>
           Set GBL Mode
+        </button>
+        <button type="button" onClick={() => onFormatChange('play-pokemon')}>
+          Set Play Pokemon
         </button>
         <button
           type="button"
@@ -232,7 +235,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -257,8 +260,9 @@ describe('TeamManager', () => {
     render(<TeamManager />);
 
     expect(
-      screen.getByText('Selected Format: great-league'),
+      screen.getByText('Selected Format: play-pokemon'),
     ).toBeInTheDocument();
+    expect(screen.getByText('Selected Mode: PlayPokemon')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Set Ultra League'));
 
@@ -273,6 +277,8 @@ describe('TeamManager', () => {
     'generates %s without a search-depth option',
     async (choice) => {
       render(<TeamManager />);
+      if (choice === 'GBL')
+        fireEvent.click(screen.getByText('Set Ultra League'));
       await waitFor(() =>
         expect(teamConfigPanelProps.at(-1)?.pokemonList).toContain('Azumarill'),
       );
@@ -293,6 +299,18 @@ describe('TeamManager', () => {
     },
   );
 
+  it('switches from Pick 3 to Pick 6 when selecting Play Pokemon', async () => {
+    render(<TeamManager />);
+    fireEvent.click(screen.getByText('Set Ultra League'));
+    fireEvent.click(screen.getByText('Set GBL Mode'));
+    expect(screen.getByText('Selected Mode: GBL')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Set Play Pokemon'));
+    expect(screen.getByText('Selected Mode: PlayPokemon')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Set Ultra League'));
+    fireEvent.click(screen.getByText('Set GBL Mode'));
+    expect(screen.getByText('Selected Mode: GBL')).toBeInTheDocument();
+  });
+
   it('forces PlayPokemon mode for Battle Frontier formats', async () => {
     render(<TeamManager />);
 
@@ -302,6 +320,7 @@ describe('TeamManager', () => {
       ).toBeInTheDocument();
     });
 
+    fireEvent.click(screen.getByText('Set Ultra League'));
     fireEvent.click(screen.getByText('Set GBL Mode'));
 
     await waitFor(() => {
@@ -338,7 +357,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -446,7 +465,7 @@ describe('TeamManager', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       if (
         typeof input === 'string' &&
-        input.startsWith('/api/pokemon-list?formatId=great-league')
+        input.startsWith('/api/pokemon-list?formatId=play-pokemon')
       ) {
         return Promise.resolve({
           ok: true,
@@ -469,7 +488,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -479,7 +498,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(showToastMock).toHaveBeenCalledWith(
-        'Selected anchor is not eligible for great-league: Marowak',
+        'Selected anchor is not eligible for play-pokemon: Marowak',
         'error',
       );
     });
@@ -497,7 +516,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -516,7 +535,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -537,7 +556,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -558,7 +577,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -593,7 +612,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=great-league',
+        '/api/pokemon-list?formatId=play-pokemon',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });

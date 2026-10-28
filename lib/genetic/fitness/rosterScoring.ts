@@ -1,5 +1,6 @@
 import { enumeratePlayPokemonLineups } from './lineupEnumeration';
 import {
+  compareScoredLineups,
   getAssignedMatchupRating,
   getAssignedShieldScenarioMatchupRating,
   scoreOrderedLineup,
@@ -19,6 +20,7 @@ import {
 } from './qualitySignals';
 import {
   createNormalizedScoreBreakdown,
+  aggregateWeightedScore,
   type OptimizerScoreBreakdown,
   type OptimizerScoreComponents,
 } from './scoreBreakdown';
@@ -29,7 +31,10 @@ import {
 import { DEFAULT_BATTLE_FORMAT_ID } from '@/lib/data/battleFormats';
 import { normalizeToChoosableSpeciesId } from '@/lib/data/pokemon';
 import { MissingRankingDataError } from '@/lib/data/rankings';
-import { calculateOptimizerThreatScore } from '@/lib/genetic/fitness/threatScore';
+import {
+  calculateOptimizerThreatRisk,
+  calculateOptimizerThreatScore,
+} from '@/lib/genetic/fitness/threatScore';
 import type {
   BenchUtility,
   LineupAwareFitnessConfig,
@@ -102,9 +107,12 @@ export function scorePlayPokemonRoster(
   validateRosterMovesetAssignment(roster, context);
   const scoredLineups = enumeratePlayPokemonLineups(roster)
     .map((lineup) => scoreRosterLineup(lineup, context, config))
-    .toSorted((first, second) => second.score - first.score);
+    .toSorted(compareScoredLineups);
+  // Viability measures battle-plan quality independently of the threat blend.
   const viableLineups = scoredLineups.filter(
-    (lineup) => lineup.score >= DEFAULT_VIABLE_LINEUP_SCORE,
+    (lineup) =>
+      aggregateWeightedScore(lineup.scoreBreakdown.components) >=
+      DEFAULT_VIABLE_LINEUP_SCORE,
   );
   const metrics = buildRosterMetrics(roster, scoredLineups, viableLineups);
   const scoreBreakdown = createRosterScoreBreakdown(
@@ -280,33 +288,48 @@ export function scoreFastRosterLineup(
     shieldReliability: 0.5,
   };
   const typeRatios = calculateFastLineupTypeRatios(speciesIds, context);
-  const scoreBreakdown = createNormalizedScoreBreakdown({
-    synergy: clamp01(
-      componentScores.typeSynergy * 0.4 +
-        componentScores.typeDiversity * 0.25 +
-        componentScores.singleAnswerReliability * 0.2 +
-        componentScores.coreBreakerReliability * 0.15,
-    ),
-    coverage: componentScores.matchupCoverage,
-    safety: calculateTeamSafety(
-      speciesIds,
-      context,
-      clamp01(
-        componentScores.singleAnswerReliability * 0.4 +
-          componentScores.coreBreakerReliability * 0.4 +
-          overwhelmingReliability * 0.2,
+  const scoreBreakdown = createNormalizedScoreBreakdown(
+    {
+      synergy: clamp01(
+        componentScores.typeSynergy * 0.4 +
+          componentScores.typeDiversity * 0.25 +
+          componentScores.singleAnswerReliability * 0.2 +
+          componentScores.coreBreakerReliability * 0.15,
       ),
-    ),
-    consistency: calculateTeamConsistency(
-      speciesIds,
-      context,
-      () => componentScores.rankingQuality,
-    ),
-    bulk: componentScores.statBalance,
-    defensiveRatio: typeRatios.defensive,
-    offensiveRatio: typeRatios.offensive,
-    role: componentScores.roleStrength,
-  });
+      coverage: componentScores.matchupCoverage,
+      safety: calculateTeamSafety(
+        speciesIds,
+        context,
+        clamp01(
+          componentScores.singleAnswerReliability * 0.4 +
+            componentScores.coreBreakerReliability * 0.4 +
+            overwhelmingReliability * 0.2,
+        ),
+      ),
+      consistency: calculateTeamConsistency(
+        speciesIds,
+        context,
+        () => componentScores.rankingQuality,
+      ),
+      bulk: componentScores.statBalance,
+      defensiveRatio: typeRatios.defensive,
+      offensiveRatio: typeRatios.offensive,
+      role: componentScores.roleStrength,
+    },
+    undefined,
+    {
+      threatRisk: calculateOptimizerThreatRisk(
+        speciesIds,
+        {
+          topThreats,
+          fullMetaThreats,
+          getMatchupRating: (id, threat) =>
+            getAssignedMatchupRating(id, threat, context),
+        },
+        { poolWeights: context.threatScorePoolWeights },
+      ),
+    },
+  );
 
   return {
     lineup,
@@ -713,29 +736,27 @@ function createRosterScoreBreakdown(
     role: calculateRosterRoleComponent(roster, context),
   };
 
-  return createNormalizedScoreBreakdown(
-    components,
-    undefined,
-    includeThreatScore
-      ? {
-          threatScore: calculateOptimizerThreatScore(
-            roster,
-            createThreatScoreContext(
-              context,
-              sanitizeThreatPool(
-                context.topThreats ?? context.threats,
-                MAX_TOP_THREAT_POOL_SIZE,
-              ),
-              sanitizeThreatPool(
-                context.fullMetaThreats ?? context.threats,
-                MAX_FULL_META_THREAT_POOL_SIZE,
-              ),
-            ),
-            { poolWeights: context.threatScorePoolWeights },
-          ),
-        }
-      : {},
+  const threatContext = createThreatScoreContext(
+    context,
+    sanitizeThreatPool(
+      context.topThreats ?? context.threats,
+      MAX_TOP_THREAT_POOL_SIZE,
+    ),
+    sanitizeThreatPool(
+      context.fullMetaThreats ?? context.threats,
+      MAX_FULL_META_THREAT_POOL_SIZE,
+    ),
   );
+  const options = { poolWeights: context.threatScorePoolWeights };
+  const threatScore = includeThreatScore
+    ? calculateOptimizerThreatScore(roster, threatContext, options)
+    : undefined;
+  return createNormalizedScoreBreakdown(components, undefined, {
+    threatRisk:
+      threatScore ??
+      calculateOptimizerThreatRisk(roster, threatContext, options),
+    ...(threatScore ? { threatScore } : {}),
+  });
 }
 
 function createThreatScoreContext(
