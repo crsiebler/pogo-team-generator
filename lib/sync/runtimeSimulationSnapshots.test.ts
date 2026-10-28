@@ -491,6 +491,9 @@ describe('runtime simulation snapshot preparation', () => {
     ).toThrow(/alternate opponents must match the default/i);
   });
 
+  // This is full-catalog byte parity, not a runtime performance benchmark.
+  // V8 coverage takes about 26 seconds for the current 18-format corpus;
+  // retain a bounded deadline with headroom for instrumentation and CI I/O.
   it('keeps every checked-in format snapshot synchronized with active CSVs', () => {
     const pokemonData = JSON.parse(
       readFileSync('data/pokemon.json', 'utf8'),
@@ -509,5 +512,5 @@ describe('runtime simulation snapshot preparation', () => {
     for (const snapshot of snapshots) {
       expect(readFileSync(snapshot.targetPath, 'utf8')).toBe(snapshot.contents);
     }
-  }, 15_000);
+  }, 60_000);
 });

@@ -12,6 +12,7 @@ import {
 import {
   getAverageRankingScore,
   getOverallRankings,
+  getRankedSpeciesIds,
   getRankingScore,
   MissingRankingDataError,
 } from '@/lib/data/rankings';
@@ -41,6 +42,7 @@ import {
   type OptimizerScoreComponents,
 } from '@/lib/genetic/fitness/scoreBreakdown';
 import {
+  calculateOptimizerThreatRisk,
   calculateOptimizerThreatScore,
   type OptimizerThreatScorePoolWeights,
 } from '@/lib/genetic/fitness/threatScore';
@@ -115,6 +117,8 @@ export interface LineupScoringContext {
   threats: string[];
   topThreats?: string[];
   fullMetaThreats?: string[];
+  /** All eligible ranked opponents; never truncated to the scenario corpus. */
+  tournamentThreats?: readonly string[];
   formatId?: BattleFormatId;
   movesetAssignment?: RosterMovesetAssignment;
   getPokemon: (speciesId: string) => Pokemon | undefined;
@@ -237,6 +241,9 @@ export function createDefaultLineupScoringContext(
     threats: fullMetaThreats,
     topThreats,
     fullMetaThreats,
+    get tournamentThreats(): readonly string[] {
+      return [...getRankedSpeciesIds(formatId)];
+    },
     formatId,
     getPokemon: getPokemonBySpeciesId,
     getBulkScore: (speciesId) =>
@@ -356,6 +363,20 @@ function getCachedValue<T>(
   const value = load();
   cache.set(key, value);
   return value;
+}
+
+/** Orders equal-fitness lineups by role fit, then lead-aware coverage. */
+export function compareScoredLineups(
+  first: LineupScoreResult,
+  second: LineupScoreResult,
+): number {
+  return (
+    second.score - first.score ||
+    second.scoreBreakdown.components.role -
+      first.scoreBreakdown.components.role ||
+    second.scoreBreakdown.components.coverage -
+      first.scoreBreakdown.components.coverage
+  );
 }
 
 /** Scores one ordered pick-3 lineup while preserving legacy quality signals. */
@@ -483,19 +504,21 @@ function createLineupScoreBreakdown(
     role: componentScores.roleStrength,
   };
 
-  return createNormalizedScoreBreakdown(
-    components,
-    undefined,
-    includeThreatScore
-      ? {
-          threatScore: calculateOptimizerThreatScore(
-            [lineup.lead, lineup.switch, lineup.closer],
-            createThreatScoreContext(context, topThreats, fullMetaThreats),
-            { poolWeights: context.threatScorePoolWeights },
-          ),
-        }
-      : {},
+  const threatContext = createThreatScoreContext(
+    context,
+    topThreats,
+    fullMetaThreats,
   );
+  const options = { poolWeights: context.threatScorePoolWeights };
+  const threatScore = includeThreatScore
+    ? calculateOptimizerThreatScore(speciesIds, threatContext, options)
+    : undefined;
+  return createNormalizedScoreBreakdown(components, undefined, {
+    threatRisk:
+      threatScore ??
+      calculateOptimizerThreatRisk(speciesIds, threatContext, options),
+    ...(threatScore ? { threatScore } : {}),
+  });
 }
 
 function createThreatScoreContext(

@@ -1055,6 +1055,20 @@ describe('POST /api/generate-team', () => {
     expect(generateTeam).not.toHaveBeenCalled();
   });
 
+  it('rejects Pick 3 requests for Play Pokemon before generation', async () => {
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'GBL', formatId: 'play-pokemon' }),
+    });
+    const response = await POST(request as NextRequest);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: 'Play! Pokémon only supports Pick 6 team generation.',
+    });
+    expect(generateTeam).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when Battle Frontier requests use GBL mode', async () => {
     const request = new Request('http://localhost/api/generate-team', {
       method: 'POST',

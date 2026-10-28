@@ -21,7 +21,7 @@ const roster = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot'];
 describe('scorePlayPokemonRoster', () => {
   test('evaluates exactly 120 enumerated lineups for a PlayPokemon roster', () => {
     const scoreLineup = vi.fn((lineup: OrderedLineup) =>
-      makeLineupResult(lineup, { score: 0.6 }),
+      makeLineupResult(lineup, { score: 0.7 }),
     );
 
     const result = scorePlayPokemonRoster(
@@ -33,6 +33,37 @@ describe('scorePlayPokemonRoster', () => {
     expect(scoreLineup).toHaveBeenCalledTimes(120);
     expect(result.evaluatedLineupCount).toBe(120);
     expect(result.metrics.viableLineupCount).toBe(120);
+  });
+
+  test('counts lineup viability using quality independently of threat-weighted fitness', () => {
+    const score = (quality: number, risk: number) =>
+      scorePlayPokemonRoster(
+        roster,
+        createContext({
+          scoreLineup: (lineup) => {
+            const result = makeLineupResult(lineup, { score: quality });
+            const scoreBreakdown = createNormalizedScoreBreakdown(
+              {
+                ...result.scoreBreakdown.components,
+                safety: quality,
+                consistency: quality,
+                bulk: quality,
+                synergy: quality,
+              },
+              undefined,
+              { threatRisk: { score: risk, evaluatedCount: 10 } },
+            );
+            return { ...result, scoreBreakdown, score: scoreBreakdown.score };
+          },
+        }),
+        { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
+      );
+    const strongButThreatened = score(0.8, 0.9);
+    const weakButUnthreatened = score(0.3, 0);
+    expect(strongButThreatened.metrics.topLineupQuality).toBeLessThan(0.55);
+    expect(strongButThreatened.metrics.viableLineupCount).toBe(120);
+    expect(weakButUnthreatened.metrics.topLineupQuality).toBeGreaterThan(0.55);
+    expect(weakButUnthreatened.metrics.viableLineupCount).toBe(0);
   });
 
   test('uses one fixed assignment throughout all 120 ordered lineups', () => {
@@ -894,7 +925,9 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness);
+    expect(broadResult.scoreBreakdown.components.coverage).toBeGreaterThan(
+      redundantResult.scoreBreakdown.components.coverage,
+    );
   });
 
   test('weights offensive and defensive coverage against injected meta threats', () => {
@@ -932,7 +965,9 @@ describe('scorePlayPokemonRoster', () => {
       recommendationLimit: 0,
     });
 
-    expect(metaFocusedResult.fitness).toBeGreaterThan(offMetaResult.fitness);
+    expect(
+      metaFocusedResult.scoreBreakdown.components.coverage,
+    ).toBeGreaterThan(offMetaResult.scoreBreakdown.components.coverage);
   });
 
   test('uses Pokemon typing for roster coverage when move metadata is unavailable', () => {
@@ -974,7 +1009,9 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness);
+    expect(broadResult.scoreBreakdown.components.coverage).toBeGreaterThan(
+      redundantResult.scoreBreakdown.components.coverage,
+    );
   });
 
   test('falls back to each Pokemon typing when only partial move metadata resolves', () => {
@@ -1026,7 +1063,9 @@ describe('scorePlayPokemonRoster', () => {
       recommendationLimit: 0,
     });
 
-    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness + 0.1);
+    expect(broadResult.scoreBreakdown.components.coverage).toBeGreaterThan(
+      redundantResult.scoreBreakdown.components.coverage + 0.1,
+    );
   });
 
   test('keeps Pokemon typing when one recommended charged move is unresolved', () => {
@@ -1075,8 +1114,10 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(partialMoveResult.fitness).toBeGreaterThan(
-      resolvedMoveResult.fitness,
+    expect(
+      partialMoveResult.scoreBreakdown.components.offensiveRatio,
+    ).toBeGreaterThan(
+      resolvedMoveResult.scoreBreakdown.components.offensiveRatio,
     );
   });
 
@@ -1174,8 +1215,10 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(frequentGroundResult.fitness).toBeGreaterThan(
-      rareElectricResult.fitness,
+    expect(
+      frequentGroundResult.scoreBreakdown.components.defensiveRatio,
+    ).toBeGreaterThan(
+      rareElectricResult.scoreBreakdown.components.defensiveRatio,
     );
   });
 
@@ -1225,8 +1268,10 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(frequentGroundResult.fitness).toBeGreaterThan(
-      rareElectricResult.fitness,
+    expect(
+      frequentGroundResult.scoreBreakdown.components.defensiveRatio,
+    ).toBeGreaterThan(
+      rareElectricResult.scoreBreakdown.components.defensiveRatio,
     );
   });
 
@@ -1275,7 +1320,11 @@ describe('scorePlayPokemonRoster', () => {
       },
     );
 
-    expect(waterFastResult.fitness).toBeGreaterThan(neutralFastResult.fitness);
+    expect(
+      waterFastResult.scoreBreakdown.components.offensiveRatio,
+    ).toBeGreaterThan(
+      neutralFastResult.scoreBreakdown.components.offensiveRatio,
+    );
   });
 
   test('exposes normalized safety consistency and bulk components before aggregation', () => {
@@ -1990,7 +2039,7 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(waterPressureResult.metrics.topLineupQuality).toBeGreaterThan(
+    expect(waterPressureResult.metrics.topLineupQuality).toBe(
       resistedPressureResult.metrics.topLineupQuality,
     );
     expect(
@@ -2195,7 +2244,9 @@ describe('scorePlayPokemonRoster', () => {
       { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
     );
 
-    expect(broadResult.fitness).toBeGreaterThan(redundantResult.fitness);
+    expect(broadResult.scoreBreakdown.components.coverage).toBeGreaterThan(
+      redundantResult.scoreBreakdown.components.coverage,
+    );
   });
 
   test('keeps primary redundancy scoring stable when tied top lineups reorder appearances', () => {

@@ -8,7 +8,7 @@ import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
 import {
   getSelectableBattleFormats,
-  isBattleFrontierFormatId,
+  isPickSixOnlyFormat,
   isBattleFormatId,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
@@ -65,8 +65,7 @@ export function TeamConfigPanel({
     [onFormatChange],
   );
 
-  const showTournamentFormatSelector =
-    !isBattleFrontierFormatId(selectedFormatId);
+  const showTournamentFormatSelector = !isPickSixOnlyFormat(selectedFormatId);
 
   return (
     <div
@@ -113,6 +112,11 @@ export function TeamConfigPanel({
       ) : null}
 
       {/* Tournament Mode Selection */}
+      {selectedFormatId === 'play-pokemon' ? (
+        <p className="mb-6 text-sm font-semibold text-gray-800 sm:mb-8 dark:text-gray-300">
+          Pick 6 · Open Sheets
+        </p>
+      ) : null}
       {showTournamentFormatSelector ? (
         <div className="mb-6 sm:mb-8">
           <span

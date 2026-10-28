@@ -1,9 +1,16 @@
 import { scoreMatchupRating } from './matchupScoring';
+import type { TournamentEvaluation } from './opponentRosterEvaluation';
 import type { PlayPokemonRosterScoreResult } from './rosterScoring';
+import { OpponentRosterDataError } from '@/lib/data/opponentRosters';
 import {
   getAssignedMovesetVariantId,
   MAX_ROSTER_MOVESET_ASSIGNMENTS,
 } from '@/lib/genetic/moveset';
+import {
+  compareTournamentFinalists,
+  hasTournamentEvidence,
+  selectParetoPopulation,
+} from '@/lib/genetic/paretoSelection';
 import type {
   Chromosome,
   FinalistRerankingStats,
@@ -16,6 +23,11 @@ export const MAX_FULLY_SCORED_ASSIGNMENTS_PER_FINALIST = 12;
 
 /** Injectable boundaries for deterministic finalist assignment reranking. */
 export interface FinalistRerankingDependencies {
+  evaluateTournament?: (
+    roster: readonly string[],
+    assignment: RosterMovesetAssignment,
+    stage: 'search' | 'selection',
+  ) => TournamentEvaluation;
   readonly topThreats: readonly string[];
   readonly fullMetaThreats: readonly string[];
   getAssignments: (
@@ -36,6 +48,7 @@ export interface FinalistRerankingDependencies {
 
 /** Selected finalist, fixed assignment, full score, and bounded-work counters. */
 export interface FinalistRerankingResult {
+  readonly evaluation?: TournamentEvaluation;
   readonly finalist: Chromosome;
   readonly assignment: RosterMovesetAssignment;
   readonly score: PlayPokemonRosterScoreResult;
@@ -43,6 +56,7 @@ export interface FinalistRerankingResult {
 }
 
 interface PrefilteredAssignment {
+  readonly evaluation?: TournamentEvaluation;
   readonly assignment: RosterMovesetAssignment;
   readonly lightweightScore: number;
 }
@@ -134,29 +148,66 @@ export function rerankRosterFinalists(
         return rating;
       };
 
-    const prefiltered = assignments
-      .map((assignment): PrefilteredAssignment => {
-        assignmentEvaluationCount++;
-        return {
+    const prefiltered = assignments.map((assignment): PrefilteredAssignment => {
+      assignmentEvaluationCount++;
+      return {
+        assignment,
+        evaluation: dependencies.evaluateTournament?.(
+          finalist.team,
           assignment,
-          lightweightScore: scoreLightweightRosterAssignment(
-            assignment,
-            dependencies.topThreats,
-            dependencies.fullMetaThreats,
-            getCachedMatchupRating,
-          ),
-        };
-      })
-      .toSorted(comparePrefilteredAssignments)
-      .slice(0, MAX_FULLY_SCORED_ASSIGNMENTS_PER_FINALIST);
+          'search',
+        ),
+        lightweightScore: dependencies.evaluateTournament
+          ? 0
+          : scoreLightweightRosterAssignment(
+              assignment,
+              dependencies.topThreats,
+              dependencies.fullMetaThreats,
+              getCachedMatchupRating,
+            ),
+      };
+    });
+    const shortlisted = dependencies.evaluateTournament
+      ? selectParetoPopulation(
+          prefiltered.map((candidate) => ({
+            ...finalist,
+            movesetAssignment: candidate.assignment,
+            tournamentSelection: candidate.evaluation!.selection,
+          })),
+          MAX_FULLY_SCORED_ASSIGNMENTS_PER_FINALIST,
+        ).map(
+          (selected) =>
+            prefiltered.find(
+              (candidate) =>
+                candidate.assignment.fingerprint ===
+                selected.movesetAssignment!.fingerprint,
+            )!,
+        )
+      : prefiltered
+          .toSorted(comparePrefilteredAssignments)
+          .slice(0, MAX_FULLY_SCORED_ASSIGNMENTS_PER_FINALIST);
 
-    const fullyScored = prefiltered.map((candidate) => {
+    const fullyScored = shortlisted.map((candidate) => {
       fullScoreCount++;
       const score = dependencies.scoreAssignment(
         finalist,
         candidate.assignment,
         candidate.lightweightScore,
       );
+      const evaluation = dependencies.evaluateTournament?.(
+        finalist.team,
+        candidate.assignment,
+        'selection',
+      );
+      if (evaluation) {
+        score.fitness = evaluation.selection.objectives.typical;
+        score.scoreBreakdown = {
+          ...score.scoreBreakdown,
+          score: score.fitness,
+          scoreBasis: 'tournament-typical',
+          threatContribution: undefined,
+        };
+      }
       if (
         !Number.isFinite(score.fitness) ||
         score.fitness !== score.scoreBreakdown.score ||
@@ -166,14 +217,31 @@ export function rerankRosterFinalists(
           'Variant-aware finalist fitness must equal its score breakdown and must evaluate all 120 ordered lineups.',
         );
       }
-      return { ...candidate, finalist, score };
+      return {
+        ...candidate,
+        evaluation,
+        finalist: evaluation
+          ? {
+              ...finalist,
+              movesetAssignment: candidate.assignment,
+              tournamentSelection: evaluation.selection,
+            }
+          : finalist,
+        score,
+      };
     });
     scoredFinalists.push(
-      fullyScored.toSorted(compareAssignmentsByFullScore)[0],
+      fullyScored.toSorted((a, b) =>
+        dependencies.evaluateTournament
+          ? compareTournamentFinalists(a.finalist, b.finalist)
+          : compareAssignmentsByFullScore(a, b),
+      )[0],
     );
   }
 
   const winner = scoredFinalists.toSorted((first, second) => {
+    if (dependencies.evaluateTournament)
+      return compareTournamentFinalists(first.finalist, second.finalist);
     if (first.score.fitness !== second.score.fitness) {
       return second.score.fitness - first.score.fitness;
     }
@@ -184,11 +252,19 @@ export function rerankRosterFinalists(
       .getCanonicalRosterKey(first.finalist.team)
       .localeCompare(dependencies.getCanonicalRosterKey(second.finalist.team));
   })[0];
+  if (
+    dependencies.evaluateTournament &&
+    !hasTournamentEvidence(winner.finalist)
+  )
+    throw new OpponentRosterDataError(
+      'No finalist has complete tournament scenario evidence. Synchronize missing matchup matrices or revise unavailable anchors.',
+    );
 
   return {
     finalist: winner.finalist,
     assignment: winner.assignment,
     score: winner.score,
+    evaluation: winner.evaluation,
     stats: {
       finalistCount: finalists.length,
       assignmentEvaluationCount,

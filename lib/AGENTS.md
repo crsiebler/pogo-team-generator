@@ -130,17 +130,17 @@ For lineup resource path metrics, use shield-specific matchup lookup (`getShield
 
 For PlayPokemon roster scoring in `lib/genetic/fitness/rosterScoring.ts`, inject cached lineup scoring through `PlayPokemonRosterScoringContext.scoreLineup` when evaluating many rosters, and use full `LineupAwareFitnessConfig` diagnostics only for finalists or recommendation output.
 
-For PlayPokemon roster diversity scoring, keep bring-6 type redundancy and coverage weighting in `lib/genetic/fitness/rosterScoring.ts`; use context-injected expected-meta Pokemon and move metadata for offensive and frequency-preserving defensive coverage, fall back to each Pokemon's own typing when its move metadata is missing or unresolved, penalize redundant primary typings through top-lineup appearances, and avoid blanket penalties for useful shared secondary typings.
+For PlayPokemon structural selection evidence, use `rosterFlexibility.ts`: useful coexisting protected cores, independent pivot counter profiles, and marginal loss of plans/core protection. Appearance-only/type-redundancy metrics in `rosterScoring.ts` are diagnostics, not independent tournament penalties.
 
 For PlayPokemon recommendation output in `lib/genetic/fitness/recommendations.ts`, pass bounded full-mode `LineupScoreResult[]` into `buildPlayPokemonRosterRecommendations(...)`; do not re-enumerate all 120 lineups in API/UI adapters, and keep removed bench-utility warning generation out of recommendation output unless a current display/API consumer is reintroduced.
 
 For GBL recommendation output in `lib/genetic/fitness/recommendations.ts`, pass exactly three unique species ids and use `buildGblLineupRecommendation(...)` to evaluate the six ordered lead/switch/closer permutations with canonical lineup scoring and return only the single best recommendation.
 
-For GA evaluation in `lib/genetic/fitness/index.ts`, call `evaluatePopulation(population, mode, formatId)` without an algorithm selector. It creates a per-run `LineupAwareFitnessContext`, caches `scoreFastRosterLineup(...)` for hot PlayPokemon evaluation, and leaves full PlayPokemon diagnostics to the final output pass in `lib/genetic/algorithm.ts`.
+For GA evaluation in `lib/genetic/fitness/index.ts`, use mode-aware per-run contexts. PlayPokemon evaluates fixed ranked-default assignments against the shared opponent corpus and attaches objective vectors. GBL retains weighted lineup evaluation. Keep diagnostic-only work out of tournament search.
 
-Keep only PlayPokemon evolution ranked-default-only: do not resolve or bind simulation-backed moveset assignments in fast population scoring, while GBL evolution remains team-aware. Retain up to 100 canonical default-scored rosters across generations by preserving explicit anchor order, sorting flexible members, deduplicating canonical identities, and using lexical roster keys after fitness for deterministic ties; assignment-aware full scoring belongs after evolution.
+Keep PlayPokemon evolution ranked-default-only with immutable assignments. Retain up to 100 canonical rosters using nondominated fronts and objective-space diversity. Preserve anchors, legality, and explicit assignment identity; scalar fitness is not a tournament comparator.
 
-After PlayPokemon evolution, enumerate at most three active variants per roster member (729 assignments), prefilter assignments with cached aggregate top-meta/full-meta matchup evidence, and fully score at most twelve assignments per finalist across all 120 ordered lineups. Select finalists by variant-aware fitness, then default-only fitness, then canonical roster key, and reuse assignment-fingerprinted lineup cache entries for final diagnostics.
+After PlayPokemon evolution, shortlist at most twelve of the bounded 729 moveset assignments by scenario vectors and Pareto diversity. Evaluate finalists on the broader common corpus and select through transitive lower-tail bands, flexibility, independence, and deterministic ties. Legacy scalar prefilters and default fitness must not override this policy.
 
 Lineup-aware fitness caches in `lib/genetic/fitness/index.ts` are per-run context caches; keep cache keys versioned and format-scoped, and use `cacheStats` counters in tests when validating cache behavior instead of timing-only assertions.
 
@@ -156,9 +156,9 @@ Retain the final scored `RosterMovesetAssignment` for both PlayPokemon and GBL o
 
 Team export must read move IDs and preferred charged-move order directly from the scored `RosterMovesetAssignment`. Pass validated acquisition requirements as an informational sidecar, omit regular requirements from text, and never reconstruct or select export moves from display data.
 
-In `lib/genetic/algorithm.ts`, keep returned `Chromosome.fitness` synchronized with the final diagnostics attached to the chromosome. PlayPokemon finalists should use recomputed full `scorePlayPokemonRoster(...).fitness`; GBL finalists should use the final lineup recommendation score so `fitness` matches `scoreBreakdown.score` before `generateMultipleTeams(...)` sorts results.
+In `lib/genetic/algorithm.ts`, PlayPokemon `fitness` and `scoreBreakdown.score` both report typical scenario quality with `scoreBasis: tournament-typical`; `tournamentSelection` is authoritative. GBL retains its final lineup score. Multiple tournament teams use robust ordering, never reporting-fitness sorting.
 
-For optimizer weighted scoring, import the canonical score contract from `lib/genetic/fitness/scoreBreakdown.ts`; keep components normalized to 0..1 before aggregation and treat only validity or legality as hard constraints.
+For GBL and legacy diagnostic weighted scoring, use `lib/genetic/fitness/scoreBreakdown.ts`. PlayPokemon selection follows `docs/team-optimization/tournament-search.md` and the revised gbl-optimizer skill. Keep normalized diagnostics distinct from scenario objectives.
 
 For optimizer paper diagnostics, use `lib/genetic/fitness/moveDiagnostics.ts` to
 resolve synchronized fixed Mega moves and apply the Level 4 power bonus. Keep
@@ -177,7 +177,7 @@ Threat Score aggregate weighting is split between `pools.topMeta` and `pools.ful
 
 For PlayPokemon roster scoring, `scorePlayPokemonRoster(...)` returns a normalized `scoreBreakdown` alongside `fitness`; keep safety, consistency, bulk, defensive ratio, offensive ratio, role, coverage, and synergy components normalized before aggregation, and keep `scoreFastRosterLineup(...)` component semantics aligned with full lineup scoring even when using lightweight hot-path diagnostics, including sanitized and bounded split threat pools.
 
-For role scoring in `lib/genetic/fitness`, treat Leads, Switches, and Closers rankings as primary role-fit signals; use Chargers, Attackers, and Consistency only as supporting inputs, and keep role fit subordinate to the canonical weighted score contract.
+For role diagnostics in `lib/genetic/fitness`, Leads, Switches, and Closers remain primary ranking signals. Tournament pivot independence requires matchup evidence; role ranking alone cannot establish independent options.
 
 Optimizer validation fixtures live in `lib/genetic/fitness/optimizerValidationFixtures.test.ts`; add deterministic injected-context regressions there for documented tradeoffs before changing scoring weights, type-effectiveness behavior, lineup structures, threat-pool weighting, or roster aggregation.
 
@@ -201,3 +201,13 @@ Explicit return/param types for exports; JSDoc/TSDoc required. CamelCase for fun
 
 Write tests before implementation; run `npm test` on changes. Coverage cannot regress.
 For type-only contract tests, run `npx tsc --noEmit`; Vitest transpiles type-only imports and may not fail on missing exported types.
+
+## Tournament scenario authority
+
+Follow `docs/team-optimization/tournament-search.md` and the installed revised
+gbl-optimizer skill. Opponent corpora are format-specific, provenance-labeled,
+deduplicated, and separated into selection/held-out families. Synthetic
+compositions are not usage data. Missing evidence cannot earn success credit.
+Preserve immutable movesets, shared samples, bounded caches, runtime/vendor
+separation, and the existing display-only UI contract. Use static matchup
+approximations honestly; do not claim full battle or behavioral simulation.

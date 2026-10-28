@@ -4,7 +4,7 @@ import {
   scoreOrderedLineup,
 } from './lineupScoring';
 import { buildGblLineupRecommendation } from './recommendations';
-import { scoreFastRosterLineup, scorePlayPokemonRoster } from './rosterScoring';
+import { scorePlayPokemonRoster } from './rosterScoring';
 import {
   calculateLineupAwareFitness,
   bindRosterMovesetAssignment,
@@ -144,54 +144,27 @@ describe('lineup-aware fitness entry point', () => {
     vi.clearAllMocks();
   });
 
-  it('scores PlayPokemon chromosomes through default-only fast roster scoring', () => {
+  it('reports typical plan quality without invoking weighted roster fitness', () => {
     const chromosome = createChromosome(['a', 'b', 'c', 'd', 'e', 'f']);
-    const assignment = createAssignment('assignment-a');
-    const resolveMovesetAssignment = vi.fn(() => assignment);
     const context = createLineupAwareFitnessContext(
       'battle-frontier-tsuki-cup',
-      'ranked-default',
-      { resolveMovesetAssignment },
     );
-
-    const fitness = calculateLineupAwareFitness(
-      chromosome,
-      'PlayPokemon',
-      'battle-frontier-tsuki-cup',
-      context,
-    );
-
-    expect(fitness).toBe(0.91);
-    expect(createDefaultLineupScoringContext).toHaveBeenCalledWith(
-      'battle-frontier-tsuki-cup',
-      50,
-      'ranked-default',
-    );
-    expect(resolveMovesetAssignment).not.toHaveBeenCalled();
-    expect(scorePlayPokemonRoster).toHaveBeenCalledWith(
-      chromosome.team,
-      expect.objectContaining({
-        scoreLineup: expect.any(Function),
-      }),
-      { mode: 'fast', includeDiagnostics: false, recommendationLimit: 0 },
-    );
+    context.evaluateTournament = vi.fn(() => tournamentEvaluation());
     expect(
-      vi.mocked(scorePlayPokemonRoster).mock.calls[0]?.[1],
-    ).not.toHaveProperty('movesetAssignment');
-    expect(scoreFastRosterLineup).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.not.objectContaining({ movesetAssignment: expect.anything() }),
-    );
-    expect(scoreFastRosterLineup).toHaveBeenCalledTimes(1);
-    expect(scoreOrderedLineup).not.toHaveBeenCalled();
-    expect(context.cacheStats.fastLineup.size).toBe(1);
-    expect(context.cacheStats.fastLineup.hits).toBe(1);
-    expect(context.cacheStats.fastLineup.misses).toBe(1);
+      calculateLineupAwareFitness(
+        chromosome,
+        'PlayPokemon',
+        'battle-frontier-tsuki-cup',
+        context,
+      ),
+    ).toBe(0.61);
+    expect(context.evaluateTournament).toHaveBeenCalledWith(chromosome.team);
+    expect(scorePlayPokemonRoster).not.toHaveBeenCalled();
   });
 
   it('builds deterministic format-scoped cache keys for lineup scoring', () => {
     const lineup = { lead: 'a', switch: 'b', closer: 'c' };
-    expect(JSON.parse(getLineupAwareFitnessCacheKey(lineup))[0]).toBe(4);
+    expect(JSON.parse(getLineupAwareFitnessCacheKey(lineup))[0]).toBe(6);
 
     expect(
       getLineupAwareFitnessCacheKey(lineup, 'battle-frontier-tsuki-cup'),
@@ -433,6 +406,7 @@ describe('lineup-aware fitness entry point', () => {
       },
     );
 
+    context.evaluateTournament = vi.fn(() => tournamentEvaluation());
     evaluatePopulation(
       population,
       'PlayPokemon',
@@ -441,8 +415,40 @@ describe('lineup-aware fitness entry point', () => {
     );
 
     expect(population.map((chromosome) => chromosome.fitness)).toEqual([
-      0.91, 0.91,
+      0.61, 0.61,
     ]);
-    expect(scorePlayPokemonRoster).toHaveBeenCalledTimes(2);
+    expect(scorePlayPokemonRoster).not.toHaveBeenCalled();
+    expect(
+      population.every(
+        (candidate) =>
+          candidate.tournamentSelection?.objectives.lowerTail === 0.4,
+      ),
+    ).toBe(true);
   });
 });
+
+function tournamentEvaluation(): import('./opponentRosterEvaluation').TournamentEvaluation {
+  return {
+    selection: {
+      policyVersion: 'test',
+      datasetFingerprint: 'shared',
+      stage: 'search',
+      source: 'synthetic',
+      status: 'complete',
+      objectives: {
+        typical: 0.61,
+        lowerTail: 0.4,
+        flexibility: 0.2,
+        independence: 0.3,
+        coverage: 0.5,
+        redundancy: 0.5,
+      },
+      evaluatedRosters: 8,
+      missingCells: 0,
+      limitations: [],
+    },
+    plans: [],
+    rosterQualities: [],
+    marginalValue: {},
+  };
+}

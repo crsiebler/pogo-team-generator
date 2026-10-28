@@ -2,6 +2,7 @@ export interface BattleFormat {
   id: BattleFormatId;
   label: string;
   cup:
+    | 'playpokemon'
     | 'all'
     | 'copadiluvio'
     | 'tsuki'
@@ -14,7 +15,13 @@ export interface BattleFormat {
     | 'little'
     | 'spectral'
     | 'cauldron'
-    | 'battlefrontiermaster';
+    | 'battlefrontiermaster'
+    | 'fantasy'
+    | 'halloweenmega'
+    | 'trail'
+    | 'fable'
+    | 'gymbreakers'
+    | 'premier';
   cp: 500 | 1500 | 2500 | 10000;
   /** Blocks runtime use while keeping metadata available to sync tooling. */
   unavailableReason?: string;
@@ -24,6 +31,7 @@ export interface BattleFormat {
  * Supported battle format identifiers.
  */
 export type BattleFormatId =
+  | 'play-pokemon'
   | 'great-league'
   | 'little-cup'
   | 'mega-great-league'
@@ -40,7 +48,13 @@ export type BattleFormatId =
   | 'spectral-cup'
   | 'cauldron-cup'
   | 'battle-frontier-master'
-  | 'willpower-cup';
+  | 'willpower-cup'
+  | 'fantasy-cup'
+  | 'mega-halloween-cup'
+  | 'devon-trail-cup'
+  | 'devon-fable-cup'
+  | 'gymbreakers-season-7'
+  | 'master-premier-cup';
 
 /**
  * Catalog of supported battle formats.
@@ -148,6 +162,33 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cup: 'battlefrontiermaster',
     cp: 10000,
   },
+  {
+    id: 'play-pokemon',
+    label: 'Play! Pokémon',
+    cup: 'playpokemon',
+    cp: 1500,
+  },
+  { id: 'fantasy-cup', label: 'Fantasy Cup', cup: 'fantasy', cp: 1500 },
+  {
+    id: 'mega-halloween-cup',
+    label: 'Mega Halloween Cup',
+    cup: 'halloweenmega',
+    cp: 1500,
+  },
+  { id: 'devon-trail-cup', label: 'Devon Trail Cup', cup: 'trail', cp: 1500 },
+  { id: 'devon-fable-cup', label: 'Devon Fable Cup', cup: 'fable', cp: 1500 },
+  {
+    id: 'gymbreakers-season-7',
+    label: 'Gymbreakers Invitational Season 7',
+    cup: 'gymbreakers',
+    cp: 1500,
+  },
+  {
+    id: 'master-premier-cup',
+    label: 'Master Premier Cup',
+    cup: 'premier',
+    cp: 10000,
+  },
 ];
 
 /**
@@ -162,9 +203,11 @@ const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
   'battle-frontier-coupe-du-sillage',
   'laic-2027-cup',
   'cauldron-cup',
+  'mega-halloween-cup',
 ]);
 
 const selectableBattleFormatIds: readonly BattleFormatId[] = [
+  'play-pokemon',
   'great-league',
   'ultra-league',
   'master-league',
@@ -172,10 +215,16 @@ const selectableBattleFormatIds: readonly BattleFormatId[] = [
   'mega-ultra-league',
   'mega-master-league',
   'little-cup',
+  'fantasy-cup',
+  'mega-halloween-cup',
   'laic-2027-cup',
   'spectral-cup',
   'cauldron-cup',
   'battle-frontier-master',
+  'devon-trail-cup',
+  'devon-fable-cup',
+  'gymbreakers-season-7',
+  'master-premier-cup',
 ];
 
 const battleFormatLookup: ReadonlyMap<BattleFormatId, BattleFormat> = new Map(
@@ -264,4 +313,9 @@ export function isBattleFrontierFormatId(formatId: BattleFormatId): boolean {
     formatId === 'spectral-cup' ||
     formatId === 'cauldron-cup'
   );
+}
+
+/** Returns whether the format only supports six-Pokemon roster generation. */
+export function isPickSixOnlyFormat(formatId: BattleFormatId): boolean {
+  return formatId === 'play-pokemon' || isBattleFrontierFormatId(formatId);
 }

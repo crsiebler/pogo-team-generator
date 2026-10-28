@@ -8,6 +8,32 @@ import { createNormalizedScoreBreakdown } from '@/lib/genetic/fitness/scoreBreak
 import type { OrderedLineup, Pokemon } from '@/lib/types';
 
 describe('buildPlayPokemonRosterRecommendations', () => {
+  test('uses scenario quality and emits distinct trios before repeating permutations', () => {
+    const orders = [
+      { lead: 'a', switch: 'b', closer: 'c' },
+      { lead: 'c', switch: 'b', closer: 'a' },
+      { lead: 'd', switch: 'e', closer: 'f' },
+    ];
+    const results = orders.map((order, i) =>
+      makeLineupResult(order, 1 - i * 0.1),
+    );
+    const plans = orders.map((lineup, i) => ({
+      lineup,
+      trioId: [lineup.lead, lineup.switch, lineup.closer].sort().join('|'),
+      typical: [0.6, 0.7, 0.8][i],
+      lowerTail: [0.6, 0.7, 0.8][i],
+      qualityByRoster: [0.6],
+    }));
+    const output = buildPlayPokemonRosterRecommendations(results, {
+      plans,
+      limit: 3,
+    }).recommendedLineups;
+    expect(output.map((r) => r.lineup)).toEqual([
+      orders[2],
+      orders[1],
+      orders[0],
+    ]);
+  });
   test('returns the top five recommended lineups by default with diagnostics', () => {
     const result = buildPlayPokemonRosterRecommendations([
       makeLineupResult(

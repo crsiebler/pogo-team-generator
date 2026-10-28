@@ -9,7 +9,9 @@ import {
   isBattleFrontierFormatId,
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
+  isPickSixOnlyFormat,
 } from '@/lib/data/battleFormats';
+import { OpponentRosterDataError } from '@/lib/data/opponentRosters';
 import {
   isBattleFrontierBannedSpeciesId,
   normalizeToChoosableSpeciesId,
@@ -94,11 +96,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (isBattleFrontierFormatId(resolvedFormatId) && mode !== 'PlayPokemon') {
+    if (isPickSixOnlyFormat(resolvedFormatId) && mode !== 'PlayPokemon') {
       return NextResponse.json(
         {
           error:
-            'Battle Frontier formats only support Play! Pokemon team generation.',
+            resolvedFormatId === 'play-pokemon'
+              ? 'Play! Pokémon only supports Pick 6 team generation.'
+              : 'Battle Frontier formats only support Play! Pokemon team generation.',
         },
         { status: 400 },
       );
@@ -215,6 +219,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       team: result.team,
       fitness: result.fitness,
+      tournamentSelection: result.tournamentSelection,
       recommendedLineups: resolveRecommendedLineupLabels(
         result.recommendedLineups,
       ),
@@ -226,7 +231,8 @@ export async function POST(request: NextRequest) {
     if (
       error instanceof BattleFormatUnavailableError ||
       error instanceof MissingRankingDataError ||
-      error instanceof MissingSimulationDataError
+      error instanceof MissingSimulationDataError ||
+      error instanceof OpponentRosterDataError
     ) {
       return NextResponse.json(
         { error: error instanceof Error ? error.message : 'Invalid data' },

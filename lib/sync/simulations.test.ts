@@ -6,6 +6,7 @@ import {
   generateSimulations,
   type SimulationSyncOptions,
 } from './simulations';
+import { getBattleFormats, type BattleFormat } from '@/lib/data/battleFormats';
 import { extractSpeciesNameFromSimulationCell } from '@/lib/data/simulations';
 
 const VALID_SIMULATION_CSV =
@@ -786,20 +787,7 @@ describe('generateSimulations', () => {
 
   it('generates simulations for every supported format and scenario', async () => {
     const generatedCalls: Array<{
-      cup:
-        | 'all'
-        | 'copadiluvio'
-        | 'tsuki'
-        | 'ligaultra'
-        | 'coupedusillage'
-        | 'willpower'
-        | 'mega'
-        | 'laic2027'
-        | 'retro'
-        | 'little'
-        | 'spectral'
-        | 'cauldron'
-        | 'battlefrontiermaster';
+      cup: BattleFormat['cup'];
       cp: 500 | 1500 | 2500 | 10000;
       speciesId: string;
       shields: number;
@@ -853,7 +841,12 @@ describe('generateSimulations', () => {
       },
     );
 
-    expect(generatedCalls).toHaveLength(51);
+    expect(generatedCalls).toHaveLength(getBattleFormats().length * 3);
+    expect(generatedCalls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ cup: 'playpokemon', cp: 1500, shields: 1 }),
+      ]),
+    );
     for (const shields of [0, 1, 2]) {
       expect(generatedCalls).toContainEqual({
         cup: 'little',

@@ -1,0 +1,132 @@
+{
+  "name": "custom",
+  "title": "Play! Pokemon Championship Series (2026-10-21)",
+  "league": 1500,
+  "levelCap": 50,
+  "useDefaultMovesets": 1,
+  "include": [
+    {
+      "filterType": "type",
+      "name": "Type",
+      "values": [
+        "bug",
+        "dark",
+        "dragon",
+        "electric",
+        "fairy",
+        "fighting",
+        "fire",
+        "flying",
+        "ghost",
+        "grass",
+        "ground",
+        "ice",
+        "normal",
+        "poison",
+        "psychic",
+        "rock",
+        "steel",
+        "water"
+      ]
+    },
+    {
+      "filterType": "id",
+      "name": "Pokemon",
+      "values": [
+        "landorus_incarnate_shadow",
+        "groudon_shadow",
+        "kyogre_shadow",
+        "dialga_shadow",
+        "palkia_shadow",
+        "thundurus_incarnate_shadow",
+        "tornadus_incarnate_shadow",
+        "mewtwo_shadow"
+      ]
+    }
+  ],
+  "exclude": [
+    {
+      "filterType": "tag",
+      "name": "Tag",
+      "values": ["mega"]
+    },
+    {
+      "filterType": "dex",
+      "name": "Pokedex Number",
+      "values": [
+        132, 132, 292, 292, 638, 640, 643, 644, 646, 646, 716, 717, 721, 721,
+        749, 750, 774, 774, 778, 778, 785, 787, 791, 792, 888, 889, 905, 905
+      ]
+    },
+    {
+      "filterType": "id",
+      "name": "Pokemon",
+      "values": [
+        "landorus_incarnate",
+        "landorus_therian",
+        "groudon",
+        "kyogre",
+        "dialga",
+        "dialga_origin",
+        "palkia",
+        "palkia_origin",
+        "thundurus_incarnate",
+        "thundurus_therian",
+        "tornadus_incarnate",
+        "tornadus_therian",
+        "mewtwo",
+        "ponyta_shadow",
+        "rapidash_shadow",
+        "kabuto_shadow",
+        "kabutops_shadow"
+      ]
+    }
+  ],
+  "overrides": [
+    {
+      "speciesId": "grimer",
+      "fastMove": "POISON_JAB",
+      "chargedMoves": ["SLUDGE", "MUD_BOMB"]
+    },
+    {
+      "speciesId": "muk",
+      "fastMove": "POISON_JAB",
+      "chargedMoves": ["THUNDER_PUNCH", "DARK_PULSE"]
+    },
+    {
+      "speciesId": "koffing",
+      "fastMove": "INFESTATION",
+      "chargedMoves": ["SLUDGE", "DARK_PULSE"]
+    },
+    {
+      "speciesId": "weezing",
+      "fastMove": "ROLLOUT",
+      "chargedMoves": ["SLUDGE_BOMB", "DARK_PULSE"]
+    },
+    {
+      "speciesId": "chansey",
+      "fastMove": "ZEN_HEADBUTT",
+      "chargedMoves": ["DAZZLING_GLEAM", "PSYCHIC"]
+    },
+    {
+      "speciesId": "staryu",
+      "fastMove": "WATER_GUN",
+      "chargedMoves": ["BUBBLE_BEAM", "POWER_GEM"]
+    },
+    {
+      "speciesId": "starmie",
+      "fastMove": "PSYWAVE",
+      "chargedMoves": ["AQUA_JET", "POWER_GEM"]
+    },
+    {
+      "speciesId": "porygon",
+      "fastMove": "TACKLE",
+      "chargedMoves": ["DISCHARGE", "HYPER_BEAM"]
+    },
+    {
+      "speciesId": "pichu",
+      "fastMove": "THUNDER_SHOCK",
+      "chargedMoves": ["THUNDER_PUNCH", "DISARMING_VOICE"]
+    }
+  ]
+}

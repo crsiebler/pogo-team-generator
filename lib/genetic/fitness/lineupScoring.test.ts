@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
   calculateLineupPatternLabel,
+  compareScoredLineups,
   createDefaultLineupScoringContext,
   scoreOrderedLineup,
   type LineupScoringContext,
@@ -233,7 +234,7 @@ describe('createDefaultLineupScoringContext', () => {
 });
 
 describe('scoreOrderedLineup', () => {
-  test('lead-specific matchup data changes score for the same three Pokemon', () => {
+  test('lead-specific matchup data changes coverage while equal quality and threat retain equal fitness', () => {
     const lineupA: OrderedLineup = {
       lead: 'bulky',
       switch: 'balanced',
@@ -252,10 +253,14 @@ describe('scoreOrderedLineup', () => {
       },
     });
 
-    const scoreA = scoreOrderedLineup(lineupA, context).score;
-    const scoreB = scoreOrderedLineup(lineupB, context).score;
+    const scoreA = scoreOrderedLineup(lineupA, context);
+    const scoreB = scoreOrderedLineup(lineupB, context);
 
-    expect(scoreA).toBeGreaterThan(scoreB);
+    expect(scoreA.scoreBreakdown.components.coverage).toBeGreaterThan(
+      scoreB.scoreBreakdown.components.coverage,
+    );
+    expect(scoreA.score).toBe(scoreB.score);
+    expect(compareScoredLineups(scoreA, scoreB)).toBeLessThan(0);
   });
 
   test('retains a bulk and stat-balance quality signal', () => {

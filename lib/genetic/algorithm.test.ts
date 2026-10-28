@@ -175,6 +175,8 @@ function createChromosomeWithTeam(
     team,
     anchors: [],
     fitness,
+    tournamentSelection:
+      team.length === 6 ? tournamentEvaluation(fitness).selection : undefined,
   };
 }
 
@@ -234,6 +236,7 @@ describe('generateTeam format-aware candidate selection', () => {
       return {
         finalist,
         assignment,
+        evaluation: tournamentEvaluation(0.9),
         score: {
           roster: finalist.team,
           fitness: 0.9,
@@ -1082,10 +1085,11 @@ describe('generateTeam format-aware candidate selection', () => {
           fingerprint: `assignment:${result.team.join(',')}`,
         }),
       }),
-      { mode: 'full', includeDiagnostics: true, recommendationLimit: 5 },
+      { mode: 'full', includeDiagnostics: true, recommendationLimit: 120 },
     );
     expect(buildPlayPokemonRosterRecommendations).toHaveBeenCalledWith([], {
       limit: 5,
+      plans: [],
     });
     expect(result.recommendedLineups).toEqual([
       expect.objectContaining({
@@ -1099,7 +1103,7 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(result).not.toHaveProperty('benchUtility');
   });
 
-  it('returns final PlayPokemon fitness from recomputed full roster diagnostics', async () => {
+  it('reports tournament typical quality even when weighted diagnostics differ', async () => {
     vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
@@ -1142,8 +1146,9 @@ describe('generateTeam format-aware candidate selection', () => {
       generations: 0,
     });
 
-    expect(result.fitness).toBe(0.91);
-    expect(result.scoreBreakdown?.score).toBe(0.91);
+    expect(result.fitness).toBe(0.9);
+    expect(result.scoreBreakdown?.score).toBe(0.9);
+    expect(result.tournamentSelection?.objectives.typical).toBe(0.9);
     expect(result.fitness).toBe(result.scoreBreakdown?.score);
   });
 
@@ -1202,6 +1207,7 @@ describe('generateTeam format-aware candidate selection', () => {
     const selectedAssignment = createTestAssignment(lowerDefault);
     vi.mocked(rerankRosterFinalists).mockImplementationOnce((finalists) => ({
       finalist: finalists.find(({ team }) => team[0] === 'g')!,
+      evaluation: tournamentEvaluation(0.95),
       assignment: selectedAssignment,
       score: {
         roster: lowerDefault,
@@ -1339,7 +1345,7 @@ describe('generateTeam format-aware candidate selection', () => {
           { length: 6 },
           (_unused, memberIndex) => `team_${index}_member_${memberIndex}`,
         ),
-        index === 118 ? 119 : index,
+        (index === 118 ? 119 : index) / 120,
       ),
     );
     configurePlayPokemonPool(population.flatMap(({ team }) => team));
@@ -1369,9 +1375,9 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(first.defaultScoredFinalists).toHaveLength(limit);
     expect(first.defaultScoredFinalists?.map(({ fitness }) => fitness)).toEqual(
       [
-        119,
-        119,
-        ...Array.from({ length: limit - 2 }, (_, index) => 117 - index),
+        119 / 120,
+        119 / 120,
+        ...Array.from({ length: limit - 2 }, (_, index) => (117 - index) / 120),
       ],
     );
     expect(
@@ -1420,7 +1426,7 @@ describe('generateTeam format-aware candidate selection', () => {
     expect(result.fitness).toBe(result.scoreBreakdown?.score);
   });
 
-  it('sorts multiple teams by recomputed final fitness', async () => {
+  it('sorts multiple teams by robustness even when reporting fitness prefers another', async () => {
     vi.mocked(getAutomaticCandidatePokemonNames).mockReturnValue(
       new Set(['Mew', 'Mewtwo', 'Dragonite', 'Lugia', 'Ho-Oh', 'Rayquaza']),
     );
@@ -1481,6 +1487,17 @@ describe('generateTeam format-aware candidate selection', () => {
         lineupScores: [],
       });
 
+    const rerank = vi.mocked(rerankRosterFinalists).getMockImplementation()!;
+    vi.mocked(rerankRosterFinalists)
+      .mockImplementationOnce((...args) => ({
+        ...rerank(...args),
+        evaluation: tournamentEvaluation(0.61, 0.8),
+      }))
+      .mockImplementationOnce((...args) => ({
+        ...rerank(...args),
+        evaluation: tournamentEvaluation(0.82, 0.6),
+      }));
+
     const results = await generateMultipleTeams(
       {
         mode: 'PlayPokemon',
@@ -1491,9 +1508,9 @@ describe('generateTeam format-aware candidate selection', () => {
       2,
     );
 
-    expect(results.map((result) => result.fitness)).toEqual([0.82, 0.61]);
+    expect(results.map((result) => result.fitness)).toEqual([0.61, 0.82]);
     expect(results.map((result) => result.scoreBreakdown?.score)).toEqual([
-      0.82, 0.61,
+      0.61, 0.82,
     ]);
   });
 
@@ -1541,3 +1558,32 @@ describe('generateTeam format-aware candidate selection', () => {
     );
   });
 });
+
+function tournamentEvaluation(
+  typical: number,
+  lowerTail = typical,
+): import('./fitness/opponentRosterEvaluation').TournamentEvaluation {
+  return {
+    selection: {
+      policyVersion: 'test',
+      datasetFingerprint: 'shared',
+      stage: 'selection',
+      source: 'synthetic',
+      status: 'complete',
+      objectives: {
+        typical,
+        lowerTail,
+        flexibility: typical,
+        independence: typical,
+        coverage: 0.5,
+        redundancy: 0.5,
+      },
+      evaluatedRosters: 16,
+      missingCells: 0,
+      limitations: [],
+    },
+    plans: [],
+    rosterQualities: [],
+    marginalValue: {},
+  };
+}

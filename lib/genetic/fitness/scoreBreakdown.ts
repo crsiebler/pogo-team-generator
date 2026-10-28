@@ -16,18 +16,21 @@ export type {
 
 export type OptimizerHardConstraintCategory = 'validity' | 'legality';
 
-/** Starting normalized optimizer weights from the GBL optimizer model. */
+/** Relative quality weights, before combining with lower-is-better threat risk. */
 export const OPTIMIZER_SCORE_COMPONENT_WEIGHTS: OptimizerScoreWeights =
   Object.freeze({
-    synergy: 0.24,
-    coverage: 0.21,
-    safety: 0.17,
-    consistency: 0.13,
-    bulk: 0.1,
-    defensiveRatio: 0.07,
-    offensiveRatio: 0.05,
-    role: 0.03,
+    synergy: 0.1,
+    coverage: 0,
+    safety: 0.4,
+    consistency: 0.3,
+    bulk: 0.2,
+    defensiveRatio: 0,
+    offensiveRatio: 0,
+    role: 0,
   });
+
+/** Share of total fitness awarded for lower normalized threat risk. */
+export const OPTIMIZER_THREAT_WEIGHT = 0.5;
 
 /** Strategic scoring hard constraints are limited to validity and legality. */
 export const OPTIMIZER_HARD_CONSTRAINT_CATEGORIES: readonly OptimizerHardConstraintCategory[] =
@@ -37,14 +40,30 @@ export const OPTIMIZER_HARD_CONSTRAINT_CATEGORIES: readonly OptimizerHardConstra
 export function createNormalizedScoreBreakdown(
   components: OptimizerScoreComponents,
   weights: OptimizerScoreWeights = OPTIMIZER_SCORE_COMPONENT_WEIGHTS,
-  diagnostics: { threatScore?: OptimizerThreatScore } = {},
+  diagnostics: {
+    threatScore?: OptimizerThreatScore;
+    threatRisk?: Pick<OptimizerThreatScore, 'score' | 'evaluatedCount'>;
+  } = {},
 ): OptimizerScoreBreakdown {
   const normalizedComponents = normalizeScoreComponents(components);
+  const risk = diagnostics.threatRisk ?? diagnostics.threatScore;
+  // No evaluated matchups must not be interpreted as a proven zero-risk team.
+  const threatContribution = risk
+    ? OPTIMIZER_THREAT_WEIGHT *
+      (risk.evaluatedCount > 0 && Number.isFinite(risk.score)
+        ? 1 - clamp01(risk.score)
+        : 0)
+    : 0;
 
   return {
     components: normalizedComponents,
     weights,
-    score: aggregateWeightedScore(normalizedComponents, weights),
+    score: clamp01(
+      aggregateWeightedScore(normalizedComponents, weights) *
+        (risk ? 1 - OPTIMIZER_THREAT_WEIGHT : 1) +
+        threatContribution,
+    ),
+    ...(risk ? { threatContribution } : {}),
     ...(diagnostics.threatScore
       ? { threatScore: diagnostics.threatScore }
       : {}),

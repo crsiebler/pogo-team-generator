@@ -9,7 +9,8 @@ import {
 } from '@/components/organisms';
 import {
   DEFAULT_BATTLE_FORMAT_ID,
-  isBattleFrontierFormatId,
+  getSelectableBattleFormats,
+  isPickSixOnlyFormat,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
 import { useToast } from '@/lib/hooks/useToast';
@@ -49,7 +50,7 @@ export function TeamManager({
   const [isLoadingPokemonList, setIsLoadingPokemonList] = useState(false);
   const [currentMode, setCurrentMode] = useState<TournamentMode>('PlayPokemon');
   const [currentFormatId, setCurrentFormatId] = useState<BattleFormatId>(
-    DEFAULT_BATTLE_FORMAT_ID,
+    () => getSelectableBattleFormats()[0]?.id ?? DEFAULT_BATTLE_FORMAT_ID,
   );
   const [eligiblePokemonList, setEligiblePokemonList] =
     useState<string[]>(pokemonList);
@@ -125,16 +126,21 @@ export function TeamManager({
     };
   }, [currentFormatId, showToast]);
 
-  const handleModeChange = useCallback((mode: TournamentMode) => {
-    setCurrentMode(mode);
-    setAnchorPokemon([]);
-    setExcludedPokemon([]);
-    setGenerationError(null);
-  }, []);
+  const handleModeChange = useCallback(
+    (mode: TournamentMode) => {
+      setCurrentMode(
+        isPickSixOnlyFormat(currentFormatId) ? 'PlayPokemon' : mode,
+      );
+      setAnchorPokemon([]);
+      setExcludedPokemon([]);
+      setGenerationError(null);
+    },
+    [currentFormatId],
+  );
 
   const handleFormatChange = useCallback((formatId: BattleFormatId) => {
     setCurrentFormatId(formatId);
-    if (isBattleFrontierFormatId(formatId)) {
+    if (isPickSixOnlyFormat(formatId)) {
       setCurrentMode('PlayPokemon');
     }
     setAnchorPokemon([]);

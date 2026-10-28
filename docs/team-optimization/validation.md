@@ -2,7 +2,20 @@
 
 Validate the optimizer with known battle concepts, known meta teams, and controlled edge cases.
 
-## Required Checks
+## Tournament search checks
+
+Production Pick 6 must satisfy [the tournament policy](tournament-search.md):
+dominance and diversity, shared samples, unknown evidence, no hidden-trio oracle,
+distinct trios, protected cores, independent pivots, marginal bench value, fixed
+movesets, robust transitive ordering, and GBL preservation. Use paired seeds,
+selection-only policy sweeps, held-out evaluation, ablations, cache counts,
+default and representative runtime measurements, API and rendered checks.
+See [recorded results](tournament-validation.md).
+
+The weighted checks below remain for GBL and diagnostic helpers; they must not
+be used to restore weighted selection in production Pick 6.
+
+## Required diagnostic and GBL checks
 
 - Dual-type effectiveness multiplication is correct.
 - Pokemon GO immunity-style interactions use `0.39x`.
@@ -11,9 +24,13 @@ Validate the optimizer with known battle concepts, known meta teams, and control
 - Lower-is-better Threat Score ranking is deterministic for equivalent inputs.
 - Soft matchup scoring distinguishes close, neutral, clearly favorable, and clearly unfavorable ratings where scores need intermediate values.
 - Weighted scoring allows tradeoffs instead of acting like a tier list.
-- Synergy is weighted above coverage.
-- Coverage is weighted above safety.
+- Lower Threat Score, Safety, Consistency, Bulk, and Synergy receive effective weights of 50%, 20%, 15%, 10%, and 5%.
+- Coverage, defensive/offensive ratios, and role retain diagnostics without separate fitness weights.
 - Role scoring does not dominate the result.
+- Equal component metrics prefer lower Threat Score in fast and full selection.
+- Scalar threat risk matches diagnostic risk, including duplicate threats and missing pools.
+- Disabling diagnostics does not disable the threat contribution or alter fitness.
+- No evaluated threat evidence does not receive zero-risk credit.
 - ABB and ABA structures can score well when strategically coherent.
 - ABA shared weakness is penalized when it creates lead-alignment fragility.
 - ABA shared strength can be rewarded when it creates redundant answers.

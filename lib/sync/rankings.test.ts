@@ -942,13 +942,17 @@ describe('rankings local sync', () => {
     expect(readMovesetOverridesJson).toHaveBeenCalledTimes(
       getBattleFormats().length,
     );
-    expect(result.rankings).toHaveLength(363);
+    expect(result.rankings).toHaveLength(getBattleFormats().length * 21 + 6);
     expect(result.categoryEvidence).toHaveLength(
       getBattleFormats().length * categories.length,
     );
     expect(result.overrideEvidence).toHaveLength(getBattleFormats().length);
-    expect(result.aggregatedEvidence).toHaveLength(53);
-    expect(result.candidateSets).toHaveLength(53);
+    expect(result.aggregatedEvidence).toHaveLength(
+      getBattleFormats().length * 3 + 2,
+    );
+    expect(result.candidateSets).toHaveLength(
+      getBattleFormats().length * 3 + 2,
+    );
     expect(result.simulationSpeciesIdsByFormatId.get('great-league')).toEqual([
       'bulbasaur',
       'golisopod',

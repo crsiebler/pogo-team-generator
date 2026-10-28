@@ -20,6 +20,7 @@ const RANKING_CATEGORIES = [
   'consistency',
 ] as const;
 const RANKING_CUPS = [
+  'playpokemon',
   'all',
   'copadiluvio',
   'tsuki',
@@ -33,12 +34,29 @@ const RANKING_CUPS = [
   'spectral',
   'cauldron',
   'battlefrontiermaster',
+  'fantasy',
+  'halloweenmega',
+  'trail',
+  'fable',
+  'gymbreakers',
+  'premier',
 ] as const;
 
 export type RankingCategory = (typeof RANKING_CATEGORIES)[number];
 export type RankingCup = (typeof RANKING_CUPS)[number];
 
+/** Local source paths needed to generate an isolated ranking overlay. */
+export interface RankingGenerationPaths {
+  dataDirectory: string;
+  scriptDirectory: string;
+  gamemasterFile: string;
+  rankingDirectory: string;
+  overridesDirectory: string;
+}
+
 export interface PvpokeAdapter {
+  getRankingGenerationPaths(): RankingGenerationPaths;
+  readCombinedGamemasterJson<T>(): Promise<T>;
   getRequiredGamemasterRelativePaths(): readonly string[];
   getGamemasterRelativePaths(): { pokemon: string; moves: string };
   getGamemasterFilePaths(): { pokemon: string; moves: string };
@@ -101,6 +119,18 @@ export function createPvpokeAdapter(
   };
 
   return {
+    getRankingGenerationPaths(): RankingGenerationPaths {
+      return {
+        dataDirectory: resolveUnderSource('src/data'),
+        scriptDirectory: resolveUnderSource('src/js'),
+        gamemasterFile: resolveUnderSource('src/data/gamemaster.json'),
+        rankingDirectory: resolveUnderSource('src/data/rankings'),
+        overridesDirectory: resolveUnderSource('src/data/overrides'),
+      };
+    },
+    readCombinedGamemasterJson<T>(): Promise<T> {
+      return readJsonFile<T>('src/data/gamemaster.json');
+    },
     getRequiredGamemasterRelativePaths(): readonly string[] {
       return [
         GAMEMASTER_RELATIVE_PATHS.pokemon,

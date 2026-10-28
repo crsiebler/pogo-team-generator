@@ -19,6 +19,12 @@ A Next.js app that builds competitive Pokemon GO PvP teams with a format-aware g
 
 Each runtime-ready format uses its own ranking CSVs, simulation data, and eligible Pokemon pool.
 
+**Play! Pokémon** appears first in the selector at 1,500 CP and uses the official
+Championship Series ban list checked on October 21, 2026. See the
+[custom meta rules and generation workflow](docs/metas/play-pokemon.md), including
+Shadow exceptions, move restrictions, and the importable PvPoke preset. Regenerate
+its dedicated rankings and simulations with `bun run lib/scripts/syncPlayPokemon.ts`.
+
 ## What It Does
 
 - Generates teams for both `PlayPokemon` (6 Pokemon) and `GBL` (3 Pokemon)

@@ -6,6 +6,14 @@ describe('createPvpokeAdapter', () => {
   it('resolves gamemaster and rankings file paths', () => {
     const adapter = createPvpokeAdapter({ sourcePath: '/source/pvpoke' });
 
+    expect(adapter.getRankingGenerationPaths()).toEqual({
+      dataDirectory: '/source/pvpoke/src/data',
+      scriptDirectory: '/source/pvpoke/src/js',
+      gamemasterFile: '/source/pvpoke/src/data/gamemaster.json',
+      rankingDirectory: '/source/pvpoke/src/data/rankings',
+      overridesDirectory: '/source/pvpoke/src/data/overrides',
+    });
+
     expect(adapter.getRequiredGamemasterRelativePaths()).toEqual([
       'src/data/gamemaster/pokemon.json',
       'src/data/gamemaster/moves.json',
@@ -21,6 +29,9 @@ describe('createPvpokeAdapter', () => {
       moves: '/source/pvpoke/src/data/gamemaster/moves.json',
     });
 
+    expect(adapter.getRankingFilePath('overall', 1500, 'playpokemon')).toBe(
+      '/source/pvpoke/src/data/rankings/playpokemon/overall/rankings-1500.json',
+    );
     expect(adapter.getRankingFilePath('overall', 1500)).toBe(
       '/source/pvpoke/src/data/rankings/all/overall/rankings-1500.json',
     );
@@ -212,12 +223,9 @@ describe('createPvpokeAdapter', () => {
     expect(() =>
       adapter.getRankingFilePath('overall', 1500, 'kanto' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: kanto');
-    expect(() =>
-      adapter.getRankingFilePath('overall', 10000, 'premier' as never),
-    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: premier');
-    expect(() =>
-      adapter.getRankingFilePath('overall', 2500, 'fantasy' as never),
-    ).toThrow('[pvpoke-adapter] Unsupported ranking cup: fantasy');
+    expect(adapter.getRankingFilePath('overall', 10000, 'premier')).toBe(
+      '/source/pvpoke/src/data/rankings/premier/overall/rankings-10000.json',
+    );
     expect(() =>
       adapter.getRankingFilePath('overall', 1500, 'summer' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: summer');
@@ -233,6 +241,19 @@ describe('createPvpokeAdapter', () => {
     expect(() =>
       adapter.getRankingFilePath('overall', 2500, 'bfretro' as never),
     ).toThrow('[pvpoke-adapter] Unsupported ranking cup: bfretro');
+  });
+
+  it.each([
+    'fantasy',
+    'halloweenmega',
+    'trail',
+    'fable',
+    'gymbreakers',
+  ] as const)('resolves %s rankings', (cup) => {
+    const adapter = createPvpokeAdapter({ sourcePath: '/source/pvpoke' });
+    expect(adapter.getRankingFilePath('overall', 1500, cup)).toBe(
+      `/source/pvpoke/src/data/rankings/${cup}/overall/rankings-1500.json`,
+    );
   });
 
   it('reads new Battle Frontier rankings JSON files', async () => {

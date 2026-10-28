@@ -37,6 +37,48 @@ export interface OptimizerThreatScoreOptions {
   poolWeights?: Partial<OptimizerThreatScorePoolWeights>;
 }
 
+/** Calculate the same threat risk as diagnostics without labels or sorted lists. */
+export function calculateOptimizerThreatRisk(
+  speciesIds: string[],
+  context: Pick<
+    OptimizerThreatScoreContext,
+    'topThreats' | 'fullMetaThreats' | 'getMatchupRating'
+  >,
+  options: OptimizerThreatScoreOptions = {},
+): Pick<OptimizerThreatScore, 'score' | 'evaluatedCount'> {
+  const values = new Map<string, number>();
+  for (const threat of uniquePreservingOrder([
+    ...context.topThreats,
+    ...context.fullMetaThreats,
+  ])) {
+    const matchup = evaluateThreatMatchup(
+      speciesIds,
+      threat,
+      context.getMatchupRating,
+    );
+    if (matchup) values.set(threat, matchup.threatValue);
+  }
+  const poolScore = (threats: string[]): number | undefined => {
+    const risks = uniquePreservingOrder(threats).flatMap((threat) => {
+      const value = values.get(threat);
+      return value === undefined ? [] : [value];
+    });
+    return risks.length > 0 ? average(risks) : undefined;
+  };
+  const topMeta = poolScore(context.topThreats);
+  const fullMeta = poolScore(context.fullMetaThreats);
+  const weights = normalizeThreatPoolWeights(
+    resolvePoolWeights(options.poolWeights),
+    { topMeta, fullMeta },
+  );
+  return {
+    score: clamp01(
+      (topMeta ?? 0) * weights.topMeta + (fullMeta ?? 0) * weights.fullMeta,
+    ),
+    evaluatedCount: values.size,
+  };
+}
+
 /**
  * Calculates lower-is-better threat diagnostics for one team or lineup.
  */
@@ -145,23 +187,16 @@ function calculateThreatEntries(
   context: OptimizerThreatScoreContext,
 ): OptimizerThreatScoreEntry[] {
   return uniquePreservingOrder(threats).flatMap((threatSpeciesId) => {
-    const ratings = speciesIds
-      .map((speciesId) => context.getMatchupRating(speciesId, threatSpeciesId))
-      .filter((rating): rating is number => rating !== null);
-    if (ratings.length === 0) {
+    const matchup = evaluateThreatMatchup(
+      speciesIds,
+      threatSpeciesId,
+      context.getMatchupRating,
+    );
+    if (!matchup) {
       return [];
     }
-
-    const teamAnswers = ratings.filter(
-      (rating) => rating > MATCHUP_WIN_THRESHOLD,
-    ).length;
-    const answerQuality = ratings.reduce(
-      (total, rating) => total + scoreMatchupRating(rating),
-      0,
-    );
-    const averageTeamRating = average(ratings);
+    const { teamAnswers, threatValue } = matchup;
     const rank = Math.max(1, context.getThreatRank(threatSpeciesId));
-    const threatValue = calculateThreatValue(answerQuality, averageTeamRating);
 
     return [
       {
@@ -174,6 +209,25 @@ function calculateThreatEntries(
       },
     ];
   });
+}
+
+function evaluateThreatMatchup(
+  speciesIds: string[],
+  threatSpeciesId: string,
+  getMatchupRating: OptimizerThreatScoreContext['getMatchupRating'],
+): { teamAnswers: number; threatValue: number } | undefined {
+  const ratings = speciesIds
+    .map((id) => getMatchupRating(id, threatSpeciesId))
+    .filter((rating): rating is number => rating !== null);
+  if (ratings.length === 0) return undefined;
+  return {
+    teamAnswers: ratings.filter((rating) => rating > MATCHUP_WIN_THRESHOLD)
+      .length,
+    threatValue: calculateThreatValue(
+      ratings.reduce((total, rating) => total + scoreMatchupRating(rating), 0),
+      average(ratings),
+    ),
+  };
 }
 
 function calculateThreatValue(
