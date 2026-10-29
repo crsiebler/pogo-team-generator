@@ -7,18 +7,19 @@
 - Sources: [requirements revision 1](tasks/prd-single-request-team-generation.md),
   FR-1 through FR-6, and the inspected repository paths below.
 - Plan revision: 4 — October 21, 2026; requirements scope remains revision 1.
-- Status: ready for implementation handoff; all stories remain unstarted.
+- Status: complete; all three stories delivered through verified local commits.
 - Authorization: the user requested archival of the completed optimizer plan
-  and preparation of this API plan. This turn is planning only.
+  and preparation of this API plan; baseline checkpoint and team execution were
+  subsequently authorized explicitly. Execution evidence is in progress.md.
 - Scope baseline: HEAD `0156aa54eb612ac9fe84ad0204c10d14aaf02421` plus the
   existing uncommitted application/optimizer work inspected during preparation.
   Preserve that work; do not reset the checkout to HEAD.
-- Working branch: `main`. Branch/worktree preparation remains an execution-time
-  decision under repository rules; no branch changes are part of preparation.
+- Working branch: `codex/single-request-generation`, in the isolated integration
+  worktree. The original `main` checkout and its uncommitted work remain preserved.
 - Assumptions / open questions: no unresolved product decision or acceptance gap.
   The canonical plan-path conflict is resolved by verified preservation below.
 - Verification: repository-native commands and real Strict Mode browser/network
-  checks are specified below; no application tests are run during preparation.
+  checks are specified below; execution results are recorded in progress.md.
 
 ## Previous-plan preservation
 
@@ -62,6 +63,8 @@ or configuration changes are performed or granted by this planning document.
 Preserve unrelated working-tree changes throughout later execution.
 
 ## Approach and dependencies
+
+The following describes the inspected pre-implementation baseline:
 
 - `TeamManager.tsx` sends the generation request and stores the scored team and
   assignment, but the response has no display-ready Pokémon records.
@@ -128,7 +131,7 @@ final verification story does not defer all testing until integration.
 
 ### API-001 — Return complete details with the generation response
 
-- [ ] Story complete
+- [x] Story complete
 - Priority: 1
 - Depends on: none
 - Phase / requirements: FR-1 (one generation, no internal HTTP details call),
@@ -143,27 +146,27 @@ final verification story does not defer all testing until integration.
 
 #### Acceptance criteria
 
-- [ ] Add failing route/helper regressions before changing production behavior.
-- [ ] Successful Pick 6 and GBL responses include respectively six and three
+- [x] Add failing route/helper regressions before changing production behavior.
+- [x] Successful Pick 6 and GBL responses include respectively six and three
       ordered display records with moves and acquisition requirements matching the
       returned assignment. Cover manifest and supported ranked-default authorities.
-- [ ] Species IDs, count, ordering, variant properties, authority metadata, and
+- [x] Species IDs, count, ordering, variant properties, authority metadata, and
       acquisition requirements agree with the assignment; there are no missing,
       duplicate, or additional display records. The scored assignment is unchanged.
-- [ ] Generation executes once and obtains details through the shared helper;
+- [x] Generation executes once and obtains details through the shared helper;
       it does not call the details route over HTTP or run moveset selection again.
-- [ ] Missing records or invalid/inconsistent assignments fail explicitly before
+- [x] Missing records or invalid/inconsistent assignments fail explicitly before
       a successful response is returned. Preserve existing format and dataset errors.
-- [ ] `/api/team-details` retains its public contract, bounded request handling,
+- [x] `/api/team-details` retains its public contract, bounded request handling,
       structural parsing, and current authority validation. Both routes produce
       equivalent display records for the same valid team and assignment.
-- [ ] Existing generation response fields, meanings, mode-specific optionality,
+- [x] Existing generation response fields, meanings, mode-specific optionality,
       and diagnostic labels remain intact. Shared response types make required
       display details explicit without making previously optional diagnostics mandatory.
 
 ### UI-002 — Render the generation payload without a details request
 
-- [ ] Story complete
+- [x] Story complete
 - Priority: 1
 - Depends on: API-001
 - Phase / requirements: FR-1 (one browser request), FR-2 (consume the complete
@@ -176,29 +179,29 @@ final verification story does not defer all testing until integration.
 
 #### Acceptance criteria
 
-- [ ] Write failing request-count and response-consistency regressions first.
-- [ ] `TeamManager` validates and stores `pokemon` with the scored result and
+- [x] Write failing request-count and response-consistency regressions first.
+- [x] `TeamManager` validates and stores `pokemon` with the scored result and
       passes it through `ResultsPanel` to `TeamDisplay` without changing movesets.
-- [ ] `TeamDisplay` renders from props; remove its details-fetch effect, local
+- [x] `TeamDisplay` renders from props; remove its details-fetch effect, local
       fetched-data state, and separate details-loading stage. Keep Strict Mode enabled.
-- [ ] Cards, acquisition labels, exports, statistics, and analysis reflect the
+- [x] Cards, acquisition labels, exports, statistics, and analysis reflect the
       same response. Export retains the exact assigned moves and acquisition notes.
-- [ ] A malformed, incomplete, out-of-order, or mismatched payload produces the
+- [x] A malformed, incomplete, out-of-order, or mismatched payload produces the
       existing error experience, with no fallback request and no partial export.
-- [ ] Starting a new generation clears the previous result. Request failure or
+- [x] Starting a new generation clears the previous result. Request failure or
       response validation failure permits an explicit retry without stale details
       or acquisition notes. Existing format and dataset error messages are preserved.
-- [ ] Re-rendering and remounting the result do not send network requests.
+- [x] Re-rendering and remounting the result do not send network requests.
       Repeated explicit generation actions each send one request and display their
       own complete results. The existing in-flight Generate control remains disabled.
-- [ ] Format selection and its Pokémon-list loading continue to work independently.
-- [ ] Client validation and display do not import server-owned data loaders or
+- [x] Format selection and its Pokémon-list loading continue to work independently.
+- [x] Client validation and display do not import server-owned data loaders or
       derive replacement movesets. Update the scoped component instructions to
       describe the consolidated response without weakening assignment preservation.
 
 ### VERIFY-003 — Verify the integrated one-request flow and runtime boundaries
 
-- [ ] Story complete
+- [x] Story complete
 - Priority: 1
 - Depends on: UI-002
 - Phase / requirements: integrated acceptance owner for FR-1 through FR-6 and
@@ -212,27 +215,27 @@ final verification story does not defer all testing until integration.
 
 #### Acceptance criteria
 
-- [ ] Use a Strict Mode integration test that mounts the real `ResultsPanel`
+- [x] Use a Strict Mode integration test that mounts the real `ResultsPanel`
       and `TeamDisplay`; existing manager tests mock these children and cannot alone
       detect their follow-up fetches. Intercept the network boundary, not the behavior
       being tested. Fail if any generation-triggered request targets `/api/team-details`.
-- [ ] After configuration has loaded, one Generate interaction produces exactly
+- [x] After configuration has loaded, one Generate interaction produces exactly
       one generation POST, complete cards, working export, and populated analysis.
       Exercise both Play! Pokémon Pick 6 and a supported GBL format.
-- [ ] Verify failure followed by an explicit successful retry, and a second
+- [x] Verify failure followed by an explicit successful retry, and a second
       successful generation, without stale cards, wrong acquisition notes, or extra
       details requests. Preserve ordinary setup requests in the request assertions.
-- [ ] Cover both HTTP failure and malformed successful responses. Verify that
+- [x] Cover both HTTP failure and malformed successful responses. Verify that
       the previous result clears when generation starts and the Generate control
       stays disabled in flight. Result re-renders and remounts issue no requests.
-- [ ] Confirm the retained details endpoint still enforces its request and
+- [x] Confirm the retained details endpoint still enforces its request and
       authority protections and returns the same display records as generation for
       the same valid team/assignment, including supported ranked-default fallback.
-- [ ] In the rendered development app with Strict Mode enabled, inspect the
+- [x] In the rendered development app with Strict Mode enabled, inspect the
       network log for the same one-request behavior and verify card/export parity
       with the returned assignment. Record generation and total display time without
       promising an optimizer speedup.
-- [ ] Focused and full tests, typecheck, lint, changed-file formatting, coverage,
+- [x] Focused and full tests, typecheck, lint, changed-file formatting, coverage,
       build, and production trace checks satisfy repository requirements. Keep
       existing assertions and runtime/vendor rules. An unresolved required failure
       leaves this acceptance item incomplete and is reported as a handoff gap;
@@ -287,16 +290,12 @@ dependencies, background mechanisms, or timing target. Implementation details
 serve the documented outcomes rather than creating additional product scope.
 
 No product clarification or acceptance-coverage gap blocks this plan. The
-dependency order is API-001, UI-002, VERIFY-003. Recommended expertise remains
-backend-developer, frontend-developer, and test-automator; execution can be
-sequential without delegation. All completion markers remain unchecked.
+dependency order remains API-001, UI-002, VERIFY-003, with completion recorded
+by the story checklists above. Recommended expertise remains backend-developer,
+frontend-developer, and test-automator. The authorized execution uses isolated
+worktrees and sequential admission because each story depends on its predecessor.
 
-The root plan location and previous-plan preservation are resolved. Application
-implementation has not started. Execution requires the user's implementation
-instruction and any specifically required runtime permissions. No service,
-branch, configuration, dependency, or external-state changes are implied by
-this preparation. The compatibility endpoint is intentionally retained.
-
-This revision preserves the three existing story IDs and dependency edges.
-All completion markers remain unchecked. Recommended agents describe expertise
-only; the plan can be executed sequentially without delegation.
+The root plan location and previous-plan preservation are resolved. User
+authorization and actual execution evidence are recorded in progress.md. The
+compatibility endpoint is intentionally retained. This revision preserves the
+three existing story IDs, dependency edges, requirements, and acceptance criteria.

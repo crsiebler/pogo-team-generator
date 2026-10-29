@@ -3,9 +3,12 @@ import { afterEach, vi } from 'vitest';
 import { TeamManager } from './TeamManager';
 import { type BattleFormatId } from '@/lib/data/battleFormats';
 import type {
+  GenerationResponse,
   OptimizerScoreBreakdown,
+  PokemonWithMoves,
   RecommendedLineup,
   RosterMovesetAssignment,
+  TournamentMode,
 } from '@/lib/types';
 
 const showToastMock = vi.fn();
@@ -36,30 +39,134 @@ interface MockAnalysisPanelProps {
 interface MockResultsPanelProps {
   generatedTeam: {
     team?: string[];
+    mode?: TournamentMode;
     movesetAssignment?: RosterMovesetAssignment;
+    pokemon?: PokemonWithMoves[];
   } | null;
 }
 
-const movesetAssignment: RosterMovesetAssignment = {
-  formatId: 'play-pokemon',
-  authorityBySpeciesId: {
-    azumarill: {
-      source: 'manifest',
-      schemaVersion: 1,
-      policyVersion: 'ranking-evidence-v1',
+const pickSix = [
+  'azumarill',
+  'skarmory',
+  'registeel',
+  'garchomp',
+  'lanturn',
+  'decidueye',
+];
+
+function makeResponse(
+  formatId: BattleFormatId,
+  mode: TournamentMode,
+): GenerationResponse {
+  const team = mode === 'GBL' ? pickSix.slice(0, 3) : pickSix;
+  const authority = {
+    source: 'manifest' as const,
+    schemaVersion: 1,
+    policyVersion: 'ranking-evidence-v1',
+  };
+  const variant = {
+    id: 'bubble--ice_beam--play_rough' as const,
+    fastMove: 'BUBBLE',
+    chargedMove1: 'ICE_BEAM',
+    chargedMove2: 'PLAY_ROUGH',
+    isDefault: true,
+  };
+  const movesetAssignment: RosterMovesetAssignment = {
+    formatId,
+    authorityBySpeciesId: Object.fromEntries(
+      team.map((speciesId) => [speciesId, authority]),
+    ),
+    variantsBySpeciesId: Object.fromEntries(
+      team.map((speciesId) => [speciesId, variant]),
+    ),
+    fingerprint: 'team-manager-assignment',
+  };
+  const pokemon: PokemonWithMoves[] = team.map((speciesId, index) => ({
+    dex: index + 1,
+    speciesName: speciesId,
+    speciesId,
+    baseStats: { atk: 100, def: 100, hp: 100 },
+    types: ['water'],
+    fastMoves: ['BUBBLE'],
+    chargedMoves: ['ICE_BEAM', 'PLAY_ROUGH'],
+    tags: [],
+    defaultIVs: {},
+    buddyDistance: 3,
+    thirdMoveCost: 10000,
+    released: true,
+    recommendedMoveset: {
+      ...variant,
+      authority,
+      acquisitionRequirements: {
+        fastMove: { kind: 'regular' },
+        chargedMove1: { kind: 'elite' },
+        chargedMove2: { kind: 'regular' },
+      },
     },
-  },
-  variantsBySpeciesId: {
-    azumarill: {
-      id: 'bubble--play_rough--ice_beam',
-      fastMove: 'BUBBLE',
-      chargedMove1: 'ICE_BEAM',
-      chargedMove2: 'PLAY_ROUGH',
-      isDefault: true,
+  }));
+
+  return {
+    team,
+    fitness: 0.75,
+    movesetAssignment,
+    analysis: {
+      mode,
+      teamSize: team.length,
+      generatedAt: '2026-03-15T00:00:00.000Z',
+      threats: { evaluatedCount: 0, entries: [] },
+      coreBreakers: { threshold: 0, entries: [] },
+      shieldScenarios: {
+        '0-0': { coveredThreats: 0, evaluatedThreats: 0, coverageRate: 0 },
+        '1-1': { coveredThreats: 0, evaluatedThreats: 0, coverageRate: 0 },
+        '2-2': { coveredThreats: 0, evaluatedThreats: 0, coverageRate: 0 },
+      },
+      pokemonContributions: { entries: [] },
     },
-  },
-  fingerprint: 'team-manager-assignment',
-};
+    pokemon,
+    recommendedLineups: [
+      {
+        lineup: {
+          lead: 'azumarill',
+          switch: 'skarmory',
+          closer: 'registeel',
+        },
+        score: 0.82,
+        coverageMetrics: {
+          coverageRate: 0.7,
+          dominatingMatchupCount: 5,
+          overwhelmingLossCount: 2,
+          singleAnswerThreatCount: 1,
+        },
+        coveredThreats: [],
+        weaknesses: [],
+        diagnosticLabel: 'ABC',
+      },
+    ],
+    scoreBreakdown: {
+      components: {
+        synergy: 0.91,
+        coverage: 0.82,
+        safety: 0.68,
+        consistency: 0.57,
+        bulk: 0.44,
+        defensiveRatio: 0.72,
+        offensiveRatio: 0.61,
+        role: 0.38,
+      },
+      weights: {
+        synergy: 0.24,
+        coverage: 0.21,
+        safety: 0.17,
+        consistency: 0.13,
+        bulk: 0.1,
+        defensiveRatio: 0.07,
+        offensiveRatio: 0.05,
+        role: 0.03,
+      },
+      score: 0.74,
+    },
+  };
+}
 
 vi.mock('@/components/organisms', () => ({
   TeamConfigPanel: (
@@ -122,6 +229,11 @@ vi.mock('@/components/organisms', () => ({
     <div>
       Results team {generatedTeam?.team?.join(', ') ?? 'none'} assignment{' '}
       {generatedTeam?.movesetAssignment?.fingerprint ?? 'none'}
+      {' details '}
+      {generatedTeam?.pokemon?.map(({ speciesId }) => speciesId).join(', ') ??
+        'none'}
+      {' mode '}
+      {generatedTeam?.mode ?? 'none'}
     </div>
   ),
   AnalysisPanel: ({
@@ -162,63 +274,30 @@ describe('TeamManager', () => {
     vi.clearAllMocks();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
-      if (typeof input === 'string' && input.startsWith('/api/pokemon-list')) {
-        return Promise.resolve(pokemonListResponse);
-      }
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((input: RequestInfo | URL, options?: RequestInit) => {
+        if (
+          typeof input === 'string' &&
+          input.startsWith('/api/pokemon-list')
+        ) {
+          return Promise.resolve(pokemonListResponse);
+        }
 
-      return Promise.resolve({
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          team: ['Azumarill'],
-          fitness: 0.75,
-          recommendedLineups: [
-            {
-              lineup: {
-                lead: 'azumarill',
-                switch: 'skarmory',
-                closer: 'registeel',
-              },
-              score: 0.82,
-              coverageMetrics: {
-                coverageRate: 0.7,
-                dominatingMatchupCount: 5,
-                overwhelmingLossCount: 2,
-                singleAnswerThreatCount: 1,
-              },
-              coveredThreats: [],
-              weaknesses: [],
-              diagnosticLabel: 'ABC',
-            },
-          ],
-          scoreBreakdown: {
-            components: {
-              synergy: 0.91,
-              coverage: 0.82,
-              safety: 0.68,
-              consistency: 0.57,
-              bulk: 0.44,
-              defensiveRatio: 0.72,
-              offensiveRatio: 0.61,
-              role: 0.38,
-            },
-            weights: {
-              synergy: 0.24,
-              coverage: 0.21,
-              safety: 0.17,
-              consistency: 0.13,
-              bulk: 0.1,
-              defensiveRatio: 0.07,
-              offensiveRatio: 0.05,
-              role: 0.03,
-            },
-            score: 0.74,
-          },
-          analysis: { generatedAt: '2026-03-15T00:00:00.000Z' },
-          movesetAssignment,
-        }),
+        const requestBody = JSON.parse(options?.body as string) as {
+          formatId: BattleFormatId;
+          mode: TournamentMode;
+        };
+
+        return Promise.resolve({
+          ok: true,
+          json: vi
+            .fn()
+            .mockResolvedValue(
+              makeResponse(requestBody.formatId, requestBody.mode),
+            ),
+        });
       });
-    });
 
     vi.stubGlobal('fetch', fetchMock);
   });
@@ -296,6 +375,17 @@ describe('TeamManager', () => {
       const payload = JSON.parse(call![1]!.body as string);
       expect(payload.mode).toBe(choice);
       expect(payload).not.toHaveProperty('searchDepth');
+      const expectedTeam = choice === 'GBL' ? pickSix.slice(0, 3) : pickSix;
+      await waitFor(() =>
+        expect(
+          screen.getByText(new RegExp(`details ${expectedTeam.join(', ')}`)),
+        ).toBeInTheDocument(),
+      );
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.filter(([url]) => url === '/api/generate-team'),
+      ).toHaveLength(1);
     },
   );
 
@@ -587,10 +677,72 @@ describe('TeamManager', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          /Results team Azumarill assignment team-manager-assignment/,
+          new RegExp(
+            `Results team ${pickSix.join(', ')} assignment team-manager-assignment details ${pickSix.join(', ')}`,
+          ),
         ),
       ).toBeInTheDocument();
     });
+  });
+
+  it('rejects incomplete response details and allows an explicit retry', async () => {
+    const validResponse = makeResponse('play-pokemon', 'PlayPokemon');
+    const incompleteResponse = {
+      ...validResponse,
+      pokemon: validResponse.pokemon.slice(0, -1),
+    };
+    let generationResponse: unknown = validResponse;
+    const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
+      if (typeof input === 'string' && input.startsWith('/api/pokemon-list')) {
+        return Promise.resolve(pokemonListResponse);
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: vi
+          .fn()
+          .mockImplementation(() => Promise.resolve(generationResponse)),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<TeamManager />);
+    await waitFor(() =>
+      expect(teamConfigPanelProps.at(-1)?.pokemonList).toContain('Azumarill'),
+    );
+
+    fireEvent.click(screen.getByText('Generate Team'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/details azumarill, skarmory/),
+      ).toBeInTheDocument(),
+    );
+
+    generationResponse = incompleteResponse;
+    fireEvent.click(screen.getByText('Generate Team'));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Generation response is invalid. Please try again.',
+      ),
+    );
+    expect(
+      screen.getByText(/Results team none assignment none details none/),
+    ).toBeInTheDocument();
+
+    generationResponse = validResponse;
+    fireEvent.click(screen.getByText('Generate Team'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(new RegExp(`details ${pickSix.join(', ')}`)),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === '/api/generate-team'),
+    ).toHaveLength(3);
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/team-details',
+      expect.anything(),
+    );
   });
 
   it('shows generation API failures to the user for Battle Frontier formats', async () => {

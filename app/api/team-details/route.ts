@@ -5,13 +5,12 @@ import {
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
 } from '@/lib/data/battleFormats';
-import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
 import {
-  getAssignedMovesetDetails,
   parseRosterMovesetAssignment,
   RosterMovesetAssignmentValidationError,
   validateRosterMovesetAssignmentAuthority,
 } from '@/lib/genetic/moveset';
+import { getTeamDetails } from '@/lib/teamDetails';
 
 const MAX_TEAM_DETAILS_REQUEST_BYTES = 16_384;
 
@@ -101,28 +100,7 @@ export async function POST(request: NextRequest) {
     const assignment =
       validateRosterMovesetAssignmentAuthority(parsedAssignment);
 
-    console.log('Team details requested for:', team);
-    console.log('Team size:', team.length);
-
-    const pokemonData = team
-      .map((speciesId) => {
-        const pokemon = getPokemonBySpeciesId(speciesId);
-        if (!pokemon) {
-          console.warn(`Pokemon not found: ${speciesId}`);
-          return null;
-        }
-
-        return {
-          ...pokemon,
-          recommendedMoveset: getAssignedMovesetDetails(
-            assignment,
-            pokemon.speciesId,
-          ),
-        };
-      })
-      .filter(Boolean);
-
-    console.log('Returning pokemon data, count:', pokemonData.length);
+    const pokemonData = getTeamDetails(team, assignment);
 
     return NextResponse.json({
       pokemon: pokemonData,

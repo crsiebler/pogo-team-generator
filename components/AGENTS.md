@@ -22,7 +22,9 @@ Moveset variant simulation is tooling and programmatic API functionality only. D
 
 Lineup-aware result UI should pass `recommendedLineups` from the generate-team response through `TeamManager` into `AnalysisPanel`; frontend adapters should display these diagnostics in the analysis column rather than recomputing lineup scoring or rendering them inside generated-team cards.
 
-Keep the scored `RosterMovesetAssignment` in `TeamManager` result state and pass it unchanged through `ResultsPanel` and `TeamDisplay` to `/api/team-details`; client components must not derive or select replacement movesets.
+Keep the scored `RosterMovesetAssignment` and validated `pokemon` records together in `TeamManager` result state, then pass both unchanged through `ResultsPanel` into `TeamDisplay`. `TeamDisplay` renders those response props directly and must not request `/api/team-details`; client components must not derive or select replacement movesets.
+
+Validate the complete `/api/generate-team` payload at the `TeamManager` boundary before storing it. Require the mode-specific team size, ordered unique species records, request format and mode agreement, display-ready Pokémon fields, assigned moveset/authority agreement, and acquisition requirements. Keep optional optimizer diagnostics optional. Invalid payloads use the existing generation error and retry flow without a details-request fallback.
 
 Recommended Lineups should render as an `AnalysisPanel` accordion section immediately after Summary Statistics. Keep it in the shared rendered-section list so accordion keyboard navigation follows the visible section order.
 

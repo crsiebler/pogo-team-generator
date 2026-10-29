@@ -13,11 +13,14 @@ import {
   isPickSixOnlyFormat,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
+import { parseGenerationResponse } from '@/lib/generationResponse';
 import { useToast } from '@/lib/hooks/useToast';
 import type {
+  GenerationResponse,
   GenerationAnalysis,
   OptimizerScoreBreakdown,
   RecommendedLineup,
+  PokemonWithMoves,
   RosterMovesetAssignment,
   TournamentMode,
 } from '@/lib/types';
@@ -29,7 +32,9 @@ interface TeamManagerProps {
 interface GeneratedTeamResult {
   team: string[];
   formatId: BattleFormatId;
+  mode: TournamentMode;
   movesetAssignment: RosterMovesetAssignment;
+  pokemon: PokemonWithMoves[];
   recommendedLineups?: RecommendedLineup[];
   scoreBreakdown?: OptimizerScoreBreakdown;
 }
@@ -241,18 +246,17 @@ export function TeamManager({
         throw new Error(errorData?.error ?? 'Failed to generate team');
       }
 
-      const data = (await response.json()) as {
-        team: string[];
-        fitness?: number;
-        recommendedLineups?: RecommendedLineup[];
-        scoreBreakdown?: OptimizerScoreBreakdown;
-        analysis?: GenerationAnalysis;
-        movesetAssignment: RosterMovesetAssignment;
-      };
+      const data: GenerationResponse = parseGenerationResponse(
+        await response.json(),
+        currentFormatId,
+        currentMode,
+      );
       setGeneratedTeam({
         team: data.team,
         formatId: currentFormatId,
+        mode: data.analysis.mode,
         movesetAssignment: data.movesetAssignment,
+        pokemon: data.pokemon,
         recommendedLineups: data.recommendedLineups,
         scoreBreakdown: data.scoreBreakdown,
       });
@@ -286,11 +290,7 @@ export function TeamManager({
         onGenerate={handleGenerate}
         isGenerating={isGenerating}
       />
-      <ResultsPanel
-        generatedTeam={generatedTeam}
-        mode={currentMode}
-        isGenerating={isGenerating}
-      />
+      <ResultsPanel generatedTeam={generatedTeam} isGenerating={isGenerating} />
       <AnalysisPanel
         generatedTeam={generatedTeam}
         isGenerating={isGenerating}

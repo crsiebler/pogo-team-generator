@@ -22,7 +22,8 @@ import {
 } from '@/lib/data/rankings';
 import { MissingSimulationDataError } from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
-import type { RosterMovesetAssignment } from '@/lib/types';
+import { getTeamDetails } from '@/lib/teamDetails';
+import type { PokemonWithMoves, RosterMovesetAssignment } from '@/lib/types';
 
 const movesetAssignment: RosterMovesetAssignment = {
   formatId: 'great-league',
@@ -102,6 +103,10 @@ vi.mock('@/lib/data/pokemon', async () => {
 
 vi.mock('@/lib/genetic/algorithm', () => ({
   generateTeam: vi.fn(),
+}));
+
+vi.mock('@/lib/teamDetails', () => ({
+  getTeamDetails: vi.fn(),
 }));
 
 vi.mock('@/lib/data/rankings', async () => {
@@ -211,6 +216,46 @@ describe('POST /api/generate-team', () => {
       },
       movesetAssignment: gblMovesetAssignment,
     });
+    vi.mocked(getTeamDetails).mockImplementation((team, assignment) =>
+      team.map((speciesId) => {
+        const variant = assignment.variantsBySpeciesId[speciesId];
+        const authority = assignment.authorityBySpeciesId[speciesId];
+
+        return {
+          speciesId,
+          speciesName: speciesId,
+          dex: 1,
+          baseStats: { atk: 1, def: 1, hp: 1 },
+          types: ['normal'],
+          fastMoves: ['TACKLE'],
+          chargedMoves: ['BODY_SLAM', 'EARTHQUAKE'],
+          tags: [],
+          defaultIVs: {},
+          buddyDistance: 3,
+          thirdMoveCost: 10000,
+          released: true,
+          recommendedMoveset: {
+            ...(variant ?? {
+              id: 'tackle--body_slam--earthquake',
+              fastMove: 'TACKLE',
+              chargedMove1: 'BODY_SLAM',
+              chargedMove2: 'EARTHQUAKE',
+              isDefault: true,
+            }),
+            authority: authority ?? {
+              source: 'ranked-default-fallback',
+              schemaVersion: 0,
+              policyVersion: 'ranked-default-v1',
+            },
+            acquisitionRequirements: {
+              fastMove: { kind: 'regular' },
+              chargedMove1: { kind: 'elite' },
+              chargedMove2: { kind: 'regular' },
+            },
+          },
+        } satisfies PokemonWithMoves;
+      }),
+    );
     vi.mocked(buildThreatAnalysis).mockReturnValue({
       evaluatedCount: 50,
       entries: [
@@ -283,6 +328,7 @@ describe('POST /api/generate-team', () => {
     const response = await POST(request as NextRequest);
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toHaveProperty('pokemon');
     expect(generateTeam).toHaveBeenCalledWith(
       expect.objectContaining({ formatId: 'ultra-league' }),
     );
@@ -567,6 +613,7 @@ describe('POST /api/generate-team', () => {
       };
       recommendedLineups: unknown[];
       movesetAssignment: RosterMovesetAssignment;
+      pokemon: PokemonWithMoves[];
       analysis: {
         mode: string;
         teamSize: number;
@@ -621,6 +668,24 @@ describe('POST /api/generate-team', () => {
 
     expect(response.status).toBe(200);
     expect(payload.team).toEqual(['lanturn', 'dewgong', 'annihilape']);
+    expect(payload.pokemon.map(({ speciesId }) => speciesId)).toEqual([
+      'lanturn',
+      'dewgong',
+      'annihilape',
+    ]);
+    expect(payload.pokemon[0]?.recommendedMoveset).toMatchObject({
+      fastMove: 'SPARK',
+      chargedMove1: 'SURF',
+      chargedMove2: 'THUNDERBOLT',
+      authority: gblMovesetAssignment.authorityBySpeciesId.lanturn,
+      acquisitionRequirements: {
+        fastMove: { kind: 'regular' },
+        chargedMove1: { kind: 'elite' },
+        chargedMove2: { kind: 'regular' },
+      },
+    });
+    expect(generateTeam).toHaveBeenCalledTimes(1);
+    expect(getTeamDetails).toHaveBeenCalledTimes(1);
     expect(payload.fitness).toBe(0.8123);
     expect(payload.recommendedLineups).toEqual([
       {
@@ -848,6 +913,92 @@ describe('POST /api/generate-team', () => {
     expect(
       Object.keys(payload.movesetAssignment.variantsBySpeciesId).toSorted(),
     ).toEqual(['annihilape', 'dewgong', 'lanturn']);
+  });
+
+  it('does not return a successful response when team details are incomplete', async () => {
+    vi.mocked(getTeamDetails).mockImplementationOnce(() => {
+      throw new Error('Missing team member details.');
+    });
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'PlayPokemon' }),
+    });
+
+    const response = await POST(request as NextRequest);
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Failed to generate team',
+    });
+    expect(generateTeam).toHaveBeenCalledTimes(1);
+    expect(getTeamDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns six ordered Pick 6 display records with each scored authority', async () => {
+    const team = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'];
+    const assignment: RosterMovesetAssignment = {
+      formatId: 'play-pokemon',
+      authorityBySpeciesId: Object.fromEntries(
+        team.map((speciesId, index) => [
+          speciesId,
+          index % 2 === 0
+            ? {
+                source: 'manifest',
+                schemaVersion: 1,
+                policyVersion: 'ranking-evidence-v1',
+              }
+            : {
+                source: 'ranked-default-fallback',
+                schemaVersion: 0,
+                policyVersion: 'ranked-default-v1',
+              },
+        ]),
+      ),
+      variantsBySpeciesId: Object.fromEntries(
+        team.map((speciesId) => [
+          speciesId,
+          {
+            id: 'tackle--body_slam--earthquake',
+            fastMove: 'TACKLE',
+            chargedMove1: 'BODY_SLAM',
+            chargedMove2: 'EARTHQUAKE',
+            isDefault: true,
+          },
+        ]),
+      ),
+      fingerprint: 'pick-six-assignment',
+    };
+    vi.mocked(generateTeam).mockResolvedValueOnce({
+      team,
+      fitness: 0.8,
+      anchors: [],
+      movesetAssignment: assignment,
+    } as Awaited<ReturnType<typeof generateTeam>>);
+    const request = new Request('http://localhost/api/generate-team', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'PlayPokemon', formatId: 'play-pokemon' }),
+    });
+
+    const response = await POST(request as NextRequest);
+    const payload = (await response.json()) as {
+      team: string[];
+      pokemon: PokemonWithMoves[];
+      movesetAssignment: RosterMovesetAssignment;
+    };
+
+    expect(response.status).toBe(200);
+    expect(payload.team).toEqual(team);
+    expect(payload.pokemon.map(({ speciesId }) => speciesId)).toEqual(team);
+    expect(payload.pokemon).toHaveLength(6);
+    expect(payload.movesetAssignment).toEqual(assignment);
+    for (const pokemon of payload.pokemon) {
+      expect(pokemon.recommendedMoveset).toMatchObject({
+        ...assignment.variantsBySpeciesId[pokemon.speciesId],
+        authority: assignment.authorityBySpeciesId[pokemon.speciesId],
+      });
+    }
   });
 
   it('passes no algorithm into canonical team generation', async () => {
