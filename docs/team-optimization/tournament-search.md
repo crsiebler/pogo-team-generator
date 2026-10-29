@@ -105,8 +105,11 @@ third member** in a useful plan against that particular opposing roster.
 Different unavailable third members cannot jointly protect a core. Pivot options
 must participate in useful plans; their matrix counter profiles determine
 complementarity. Identical vulnerable pivots do not get independent coverage
-credit. Switches/role rankings remain supporting ordering evidence, not a
-substitute for matchup-backed pivot coverage.
+credit. Pivot complementarity is the largest fraction of opposing matchups
+covered by exactly one of two viable pivots; overlap does not add independent
+protection. This correction is policy `roster-plans-v5`; the recorded v4
+calibration predates it. Switches/role rankings remain supporting ordering
+evidence, not a substitute for matchup-backed pivot coverage.
 
 Marginal member value compares best available plans with plans excluding that
 member, plus loss of unique core protection among members of useful plans.
