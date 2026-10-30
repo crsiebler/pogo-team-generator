@@ -9,7 +9,7 @@ export const TOURNAMENT_OBJECTIVE_KEYS = [
   'independence',
 ] as const;
 export const TOURNAMENT_POLICY = {
-  version: 'roster-plans-v4',
+  version: 'roster-plans-v5',
   opponentCandidateCount: 120,
   tailFraction: 0.25,
   equivalenceBand: 0.025,

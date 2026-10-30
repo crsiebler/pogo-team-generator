@@ -18,6 +18,18 @@ function plan(
 }
 
 describe('practical roster flexibility', () => {
+  it('does not credit identical vulnerable pivots as independent', () => {
+    const roster = ['a', 'b', 'c', 'd', 'e', 'f'];
+    const plans = [plan('a', 'b', 'c'), plan('a', 'd', 'e')];
+    const profiles = roster.map(() => [1, 1, 1, 1, 1, 1]);
+    profiles[1] = [0, 1, 1, 1, 1, 1];
+    profiles[3] = [0, 1, 1, 1, 1, 1];
+
+    const result = evaluateRosterFlexibility(roster, plans, [0.7], profiles);
+    expect(result.independentPivotCount).toBe(1);
+    expect(result.independence).toBe(0);
+  });
+
   it('values pivots with different counters above two copies of the same vulnerability', () => {
     const roster = ['a', 'b', 'c', 'd', 'e', 'f'];
     const plans = [plan('a', 'b', 'c'), plan('a', 'd', 'e')];
@@ -28,9 +40,10 @@ describe('practical roster flexibility', () => {
     independent[3] = [1, 1, 0, 0, 1, 1];
     expect(
       evaluateRosterFlexibility(roster, plans, [0.7], independent).independence,
-    ).toBeGreaterThan(
+    ).toBeCloseTo(4 / 6);
+    expect(
       evaluateRosterFlexibility(roster, plans, [0.7], shared).independence,
-    );
+    ).toBe(0);
   });
   it('cannot protect a core with answers from different unavailable third members', () => {
     const roster = ['a', 'b', 'c', 'd', 'e', 'f'];

@@ -64,15 +64,21 @@ export function evaluateRosterFlexibility(
         ),
     ),
   );
-  const complementarity = (profiles: boolean[][]): number => {
+  const optionCoverage = (
+    profiles: boolean[][],
+    requireMarginalProtection: boolean,
+  ): number => {
     if (!profiles.length || !profiles[0].length) return 0;
     if (profiles.length === 1) return 0;
     let best = 0;
     for (let a = 0; a < profiles.length; a++)
       for (let b = a + 1; b < profiles.length; b++) {
         const coverage =
-          profiles[a].filter((value, i) => value || profiles[b][i]).length /
-          profiles[a].length;
+          profiles[a].filter((value, i) =>
+            requireMarginalProtection
+              ? value !== profiles[b][i]
+              : value || profiles[b][i],
+          ).length / profiles[a].length;
         best = Math.max(best, coverage);
       }
     return best;
@@ -120,8 +126,8 @@ export function evaluateRosterFlexibility(
   );
   return {
     independence: Math.min(
-      complementarity(coreProfiles),
-      complementarity(pivotProfiles),
+      optionCoverage(coreProfiles, false),
+      optionCoverage(pivotProfiles, true),
     ),
     protectedCoreCount: coreProfiles.length,
     independentPivotCount: new Set(
