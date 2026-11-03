@@ -314,7 +314,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -339,7 +339,7 @@ describe('TeamManager', () => {
     render(<TeamManager />);
 
     expect(
-      screen.getByText('Selected Format: play-pokemon'),
+      screen.getByText('Selected Format: great-league'),
     ).toBeInTheDocument();
     expect(screen.getByText('Selected Mode: PlayPokemon')).toBeInTheDocument();
 
@@ -447,7 +447,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -555,7 +555,7 @@ describe('TeamManager', () => {
     const fetchMock = vi.fn().mockImplementation((input: RequestInfo | URL) => {
       if (
         typeof input === 'string' &&
-        input.startsWith('/api/pokemon-list?formatId=play-pokemon')
+        input.startsWith('/api/pokemon-list?formatId=great-league')
       ) {
         return Promise.resolve({
           ok: true,
@@ -578,7 +578,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -588,7 +588,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(showToastMock).toHaveBeenCalledWith(
-        'Selected anchor is not eligible for play-pokemon: Marowak',
+        'Selected anchor is not eligible for great-league: Marowak',
         'error',
       );
     });
@@ -606,7 +606,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -625,7 +625,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -646,7 +646,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -667,7 +667,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -686,7 +686,7 @@ describe('TeamManager', () => {
   });
 
   it('rejects incomplete response details and allows an explicit retry', async () => {
-    const validResponse = makeResponse('play-pokemon', 'PlayPokemon');
+    const validResponse = makeResponse('great-league', 'PlayPokemon');
     const incompleteResponse = {
       ...validResponse,
       pokemon: validResponse.pokemon.slice(0, -1),
@@ -764,7 +764,7 @@ describe('TeamManager', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/pokemon-list?formatId=play-pokemon',
+        '/api/pokemon-list?formatId=great-league',
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });

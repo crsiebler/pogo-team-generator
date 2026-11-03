@@ -9,7 +9,7 @@ import tseslint from 'typescript-eslint';
 
 export default [
   {
-    ignores: ['.next/**', 'node_modules/**', 'vendor/**'],
+    ignores: ['.next/**', 'node_modules/**', 'vendor/**', 'build/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

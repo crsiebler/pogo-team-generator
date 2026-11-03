@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   BATTLE_FORMATS,
   DEFAULT_BATTLE_FORMAT_ID,
@@ -209,14 +211,12 @@ describe('battle format catalog', () => {
 
   it('returns selectable formats in PvPoke dropdown order', () => {
     expect(getSelectableBattleFormats().map(({ id }) => id)).toEqual([
-      'play-pokemon',
       'great-league',
       'ultra-league',
       'master-league',
       'mega-great-league',
       'mega-ultra-league',
       'mega-master-league',
-      'little-cup',
       'fantasy-cup',
       'mega-halloween-cup',
       'laic-2027-cup',
@@ -226,8 +226,38 @@ describe('battle format catalog', () => {
       'devon-trail-cup',
       'devon-fable-cup',
       'gymbreakers-season-7',
-      'master-premier-cup',
     ]);
+  });
+
+  it('matches the fixed formats in the vendored PvPoke rankings selector', () => {
+    const source: Array<{
+      cup: string;
+      cp: number;
+      showFormat: boolean;
+      hideRankings?: boolean;
+    }> = JSON.parse(
+      readFileSync(
+        path.join(
+          process.cwd(),
+          'vendor/pvpoke/src/data/gamemaster/formats.json',
+        ),
+        'utf8',
+      ),
+    );
+    const pvpokeFormats = [
+      { cup: 'all', cp: 1500 },
+      { cup: 'all', cp: 2500 },
+      { cup: 'all', cp: 10000 },
+      ...source
+        .filter(
+          ({ cup, showFormat, hideRankings }) =>
+            showFormat && !hideRankings && cup !== 'custom',
+        )
+        .map(({ cup, cp }) => ({ cup, cp })),
+    ];
+    expect(
+      getSelectableBattleFormats().map(({ cup, cp }) => ({ cup, cp })),
+    ).toEqual(pvpokeFormats);
   });
 
   it('identifies Battle Frontier formats', () => {

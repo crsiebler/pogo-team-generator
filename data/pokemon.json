@@ -37411,6 +37411,9 @@
       "DAZZLING_GLEAM",
       "DRAIN_PUNCH"
     ],
+    "extraChargedMoves": [
+      "NIGHT_SHADE_PLUS"
+    ],
     "defaultIVs": {
       "cp500": [
         9.5,
@@ -37434,7 +37437,8 @@
     "level25CP": 1158,
     "tags": [
       "shadoweligible",
-      "mega"
+      "mega",
+      "supermega"
     ],
     "buddyDistance": 5,
     "thirdMoveCost": 75000,
@@ -69127,6 +69131,74 @@
     "level25CP": 2030,
     "tags": [
       "shadoweligible"
+    ]
+  },
+  {
+    "dex": 609,
+    "speciesId": "chandelure_mega",
+    "speciesName": "Chandelure (Mega)",
+    "baseStats": {
+      "atk": 335,
+      "def": 227,
+      "hp": 155
+    },
+    "types": [
+      "ghost",
+      "fire"
+    ],
+    "fastMoves": [
+      "HEX",
+      "FIRE_SPIN",
+      "INCINERATE",
+      "ASTONISH"
+    ],
+    "chargedMoves": [
+      "ENERGY_BALL",
+      "SHADOW_BALL",
+      "OVERHEAT",
+      "FLAME_CHARGE",
+      "POLTERGEIST"
+    ],
+    "eliteMoves": [
+      "POLTERGEIST"
+    ],
+    "extraChargedMoves": [
+      "OMINOUS_WIND_PLUS"
+    ],
+    "defaultIVs": {
+      "cp500": [
+        4.5,
+        4,
+        9,
+        10
+      ],
+      "cp1500": [
+        12.5,
+        4,
+        7,
+        13
+      ],
+      "cp2500": [
+        20.5,
+        4,
+        13,
+        14
+      ]
+    },
+    "buddyDistance": 5,
+    "thirdMoveCost": 75000,
+    "released": true,
+    "family": {
+      "id": "FAMILY_LITWICK",
+      "parent": "lampent"
+    },
+    "level25CP": 2030,
+    "tags": [
+      "shadoweligible",
+      "mega",
+      "supermega",
+      "include1500",
+      "include2500"
     ]
   },
   {

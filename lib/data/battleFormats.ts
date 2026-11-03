@@ -207,14 +207,12 @@ const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
 ]);
 
 const selectableBattleFormatIds: readonly BattleFormatId[] = [
-  'play-pokemon',
   'great-league',
   'ultra-league',
   'master-league',
   'mega-great-league',
   'mega-ultra-league',
   'mega-master-league',
-  'little-cup',
   'fantasy-cup',
   'mega-halloween-cup',
   'laic-2027-cup',
@@ -224,7 +222,6 @@ const selectableBattleFormatIds: readonly BattleFormatId[] = [
   'devon-trail-cup',
   'devon-fable-cup',
   'gymbreakers-season-7',
-  'master-premier-cup',
 ];
 
 const battleFormatLookup: ReadonlyMap<BattleFormatId, BattleFormat> = new Map(

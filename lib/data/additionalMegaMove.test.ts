@@ -10,6 +10,7 @@ import type { Move } from '@/lib/types';
 
 const eligibleMegaMoves = {
   beedrill_mega: 'FELL_STINGER_PLUS',
+  chandelure_mega: 'OMINOUS_WIND_PLUS',
   chesnaught_mega: 'SEED_BOMB_PLUS',
   delphox_mega: 'MYSTICAL_FIRE_PLUS',
   dragonite_mega: 'OUTRAGE_PLUS',
@@ -21,6 +22,7 @@ const eligibleMegaMoves = {
   mewtwo_mega_y: 'FUTURE_SIGHT_PLUS',
   raichu_mega_x: 'VOLT_TACKLE_PLUS',
   raichu_mega_y: 'ZAP_CANNON_PLUS',
+  sableye_mega: 'NIGHT_SHADE_PLUS',
   skarmory_mega: 'DRILL_PECK_PLUS',
   starmie_mega: 'LIQUIDATION_PLUS',
   staraptor_mega: 'BRAVE_BIRD_PLUS',
