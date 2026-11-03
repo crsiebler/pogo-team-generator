@@ -141,8 +141,8 @@ function expectedExport(team: readonly string[], fresh: boolean): string {
 
 describe.each([
   {
-    label: 'Play! Pokémon Pick 6',
-    formatId: 'play-pokemon',
+    label: 'Great League Pick 6',
+    formatId: 'great-league',
     mode: 'PlayPokemon',
   },
   { label: 'Great League GBL', formatId: 'great-league', mode: 'GBL' },

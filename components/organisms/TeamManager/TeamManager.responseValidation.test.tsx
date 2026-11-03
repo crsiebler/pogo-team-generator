@@ -31,7 +31,7 @@ function makeGenerationResponse(): GenerationResponse {
     isDefault: true,
   };
   const movesetAssignment: RosterMovesetAssignment = {
-    formatId: 'play-pokemon',
+    formatId: 'great-league',
     authorityBySpeciesId: Object.fromEntries(
       team.map((speciesId) => [speciesId, authority]),
     ),

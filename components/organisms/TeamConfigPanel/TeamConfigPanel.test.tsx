@@ -80,9 +80,7 @@ describe('TeamConfigPanel', () => {
     );
     expect(optionLabels).not.toContain('Scroll Cup');
     expect(optionLabels).not.toContain('Retro Cup');
-    expect(screen.getByRole('option', { name: 'Little Cup' })).toHaveValue(
-      'little-cup',
-    );
+    expect(screen.queryByRole('option', { name: 'Little Cup' })).toBeNull();
     expect(
       screen.getByRole('option', { name: 'Battle Frontier (Master)' }),
     ).toHaveValue('battle-frontier-master');
@@ -106,10 +104,10 @@ describe('TeamConfigPanel', () => {
     );
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Battle Format' }), {
-      target: { value: 'little-cup' },
+      target: { value: 'fantasy-cup' },
     });
 
-    expect(onFormatChange).toHaveBeenCalledWith('little-cup');
+    expect(onFormatChange).toHaveBeenCalledWith('fantasy-cup');
   });
 
   it('resets anchor selection UI when the selected format changes', () => {
