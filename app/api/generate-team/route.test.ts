@@ -105,6 +105,8 @@ vi.mock('@/lib/genetic/algorithm', () => ({
   generateTeam: vi.fn(),
 }));
 
+vi.mock('@/lib/genetic/pregeneratedTeams', () => ({ pregeneratedPools: [] }));
+
 vi.mock('@/lib/teamDetails', () => ({
   getTeamDetails: vi.fn(),
 }));

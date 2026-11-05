@@ -52,6 +52,7 @@ export interface FinalistRerankingResult {
   readonly finalist: Chromosome;
   readonly assignment: RosterMovesetAssignment;
   readonly score: PlayPokemonRosterScoreResult;
+  readonly rankedFinalists?: readonly ScoredFinalistAssignment[];
   readonly stats: Omit<FinalistRerankingStats, 'lineupCache'>;
 }
 
@@ -239,7 +240,7 @@ export function rerankRosterFinalists(
     );
   }
 
-  const winner = scoredFinalists.toSorted((first, second) => {
+  const rankedFinalists = scoredFinalists.toSorted((first, second) => {
     if (dependencies.evaluateTournament)
       return compareTournamentFinalists(first.finalist, second.finalist);
     if (first.score.fitness !== second.score.fitness) {
@@ -251,7 +252,8 @@ export function rerankRosterFinalists(
     return dependencies
       .getCanonicalRosterKey(first.finalist.team)
       .localeCompare(dependencies.getCanonicalRosterKey(second.finalist.team));
-  })[0];
+  });
+  const winner = rankedFinalists[0];
   if (
     dependencies.evaluateTournament &&
     !hasTournamentEvidence(winner.finalist)
@@ -265,6 +267,7 @@ export function rerankRosterFinalists(
     assignment: winner.assignment,
     score: winner.score,
     evaluation: winner.evaluation,
+    rankedFinalists,
     stats: {
       finalistCount: finalists.length,
       assignmentEvaluationCount,

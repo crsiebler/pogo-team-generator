@@ -19,6 +19,7 @@ import type {
   TournamentMode,
 } from '@/lib/types';
 
+vi.mock('@/lib/genetic/pregeneratedTeams', () => ({ pregeneratedPools: [] }));
 vi.mock('@/lib/genetic/algorithm', () => ({
   generateTeam: vi.fn(),
 }));
