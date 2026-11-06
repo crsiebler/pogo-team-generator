@@ -5,9 +5,11 @@ import {
   getAssignedMovesetVariantId,
   getRecommendedMovesetForPokemon,
 } from './moveset';
+import { dominates } from './paretoSelection';
 import { getPokemonBySpeciesId } from '@/lib/data/pokemon';
 import { getOverallRankings, getRankedPokemonNames } from '@/lib/data/rankings';
 import { ensureSimulationDataAvailable } from '@/lib/data/simulations';
+import type { Chromosome } from '@/lib/types';
 
 function createSeededRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -19,6 +21,114 @@ function createSeededRandom(seed: number): () => number {
 }
 
 describe('generateTeam performance safeguards', () => {
+  it('collects distinct scored GBL alternatives without changing the winner', async () => {
+    const random = vi.spyOn(Math, 'random');
+    const alternatives: Chromosome[] = [];
+    const options = {
+      mode: 'GBL' as const,
+      formatId: 'great-league' as const,
+      populationSize: 12,
+      generations: 2,
+    };
+    try {
+      random.mockImplementation(createSeededRandom(20));
+      const baseline = await generateTeam(options);
+      random.mockImplementation(createSeededRandom(20));
+      const measured = await generateTeam(options, {
+        collectFinalists: (teams) => alternatives.push(...teams),
+      });
+      expect(measured.team).toEqual(baseline.team);
+      expect(alternatives.length).toBeGreaterThan(1);
+      expect(
+        new Set(alternatives.map(({ team }) => [...team].sort().join('|')))
+          .size,
+      ).toBe(alternatives.length);
+      for (const candidate of alternatives) {
+        expect(candidate.team).toHaveLength(3);
+        expect(candidate.movesetAssignment).toBeDefined();
+        expect(candidate.recommendedLineups).toHaveLength(1);
+        expect(candidate.scoreBreakdown?.score).toBe(candidate.fitness);
+      }
+    } finally {
+      random.mockRestore();
+    }
+  }, 70_000);
+  it('exposes fully evaluated offline alternatives without changing the winner', async () => {
+    const random = vi.spyOn(Math, 'random');
+    const alternatives: Chromosome[] = [];
+    const options = {
+      mode: 'PlayPokemon' as const,
+      formatId: 'great-league' as const,
+      populationSize: 3,
+      generations: 1,
+    };
+    try {
+      random.mockImplementation(createSeededRandom(20));
+      const baseline = await generateTeam(options);
+      random.mockImplementation(createSeededRandom(20));
+      const measured = await generateTeam(options, {
+        collectFinalists: (teams) => alternatives.push(...teams),
+      });
+      expect(measured.team).toEqual(baseline.team);
+      expect(measured.fitness).toBe(baseline.fitness);
+      expect(measured.tournamentSelection).toEqual(
+        baseline.tournamentSelection,
+      );
+      expect(alternatives.length).toBeGreaterThan(0);
+      expect(alternatives[0].team).toEqual(baseline.team);
+      expect(
+        new Set(alternatives.map(({ team }) => [...team].sort().join('|')))
+          .size,
+      ).toBe(alternatives.length);
+      for (const team of alternatives) {
+        expect(team.tournamentSelection?.stage).toBe('selection');
+        expect(team.movesetAssignment).toBeDefined();
+        expect(team.scoreBreakdown?.score).toBe(team.fitness);
+        expect(team.recommendedLineups?.length).toBeGreaterThan(0);
+        for (const other of alternatives) {
+          if (other !== team)
+            expect(
+              dominates(
+                other.tournamentSelection!.objectives,
+                team.tournamentSelection!.objectives,
+              ),
+            ).toBe(false);
+        }
+      }
+    } finally {
+      random.mockRestore();
+    }
+  }, 70_000);
+  it('reports opt-in phases without changing seeded generation', async () => {
+    const random = vi.spyOn(Math, 'random');
+    const phases: string[] = [];
+    const options = {
+      mode: 'PlayPokemon' as const,
+      formatId: 'great-league' as const,
+      populationSize: 2,
+      generations: 1,
+    };
+    try {
+      random.mockImplementation(createSeededRandom(20));
+      const baseline = await generateTeam(options);
+      random.mockImplementation(createSeededRandom(20));
+      const measured = await generateTeam(options, {}, (phase, elapsedMs) => {
+        phases.push(phase);
+        expect(elapsedMs).toBeGreaterThanOrEqual(0);
+      });
+      expect(phases).toEqual([
+        'data',
+        'setup',
+        'search',
+        'finalists',
+        'diagnostics',
+      ]);
+      expect(measured.team).toEqual(baseline.team);
+      expect(measured.fitness).toBe(baseline.fitness);
+    } finally {
+      random.mockRestore();
+    }
+  }, 70_000);
   it('caches fixed-assignment scenario evidence while separating stages and formats', () => {
     ensureSimulationDataAvailable('great-league');
     const roster = [

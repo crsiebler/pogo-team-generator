@@ -60,6 +60,7 @@ import {
 import { createNextGeneration, getAdaptiveMutationRate } from './operators';
 import {
   compareTournamentFinalists,
+  rankParetoPopulation,
   selectParetoPopulation,
   tournamentIdentity,
 } from './paretoSelection';
@@ -71,7 +72,14 @@ import { isTeamLegalForFormat } from './teamLegality';
 export interface TournamentSearchExperiment {
   readonly disableTargetedMutation?: boolean;
   readonly omitObjective?: keyof TournamentObjectives;
+  readonly collectFinalists?: (teams: readonly Chromosome[]) => void;
 }
+
+/** Optional observer for consecutive generation phases, in milliseconds. */
+export type GenerationPhaseObserver = (
+  phase: 'data' | 'setup' | 'search' | 'finalists' | 'diagnostics',
+  elapsedMs: number,
+) => void;
 
 function getCanonicalRoster(
   team: readonly string[],
@@ -210,7 +218,16 @@ function canBuildLegalUniqueTeam(
 export async function generateTeam(
   options: GenerationOptions,
   experiment: TournamentSearchExperiment = {},
+  observePhase?: GenerationPhaseObserver,
 ): Promise<Chromosome> {
+  let phaseStarted = observePhase ? performance.now() : 0;
+  const finishPhase = (phase: Parameters<GenerationPhaseObserver>[0]): void => {
+    if (observePhase) {
+      const now = performance.now();
+      observePhase(phase, now - phaseStarted);
+      phaseStarted = now;
+    }
+  };
   const {
     mode,
     anchorPokemon = [],
@@ -225,6 +242,7 @@ export async function generateTeam(
   assertBattleFormatAvailable(formatId);
   const teamSize = mode === 'GBL' ? 3 : 6;
   ensureSimulationDataAvailable(formatId);
+  finishPhase('data');
   const movesetPolicy =
     mode === 'GBL' && simulateMovesetVariants ? 'team-aware' : 'ranked-default';
   const fitnessContext =
@@ -301,6 +319,8 @@ export async function generateTeam(
       `Too many anchor Pokémon (${anchorPokemon.length}) for ${mode} mode (max ${teamSize})`,
     );
   }
+
+  finishPhase('setup');
 
   // Initialize population
   let population = initializeAnchorFirstPopulation(
@@ -498,7 +518,9 @@ export async function generateTeam(
     }
   }
 
+  finishPhase('search');
   if (mode === 'GBL') {
+    finishPhase('finalists');
     validateFinalTeam(bestOverall, anchorPokemon, formatId);
     const movesetAssignment = fitnessContext.resolveMovesetAssignment(
       bestOverall.team,
@@ -519,6 +541,38 @@ export async function generateTeam(
       scoreBreakdown: recommendedLineup.scoreBreakdown,
       recommendedLineups: [recommendedLineup],
     };
+    if (experiment.collectFinalists) {
+      const alternatives: Chromosome[] = [bestOverall];
+      const seen = new Set([JSON.stringify([...bestOverall.team].sort())]);
+      for (const candidate of population.toSorted(
+        (a, b) => b.fitness - a.fitness,
+      )) {
+        const key = JSON.stringify([...candidate.team].sort());
+        if (seen.has(key) || !hasRequiredAnchors(candidate, anchorPokemon))
+          continue;
+        validateFinalTeam(candidate, anchorPokemon, formatId);
+        const assignment = fitnessContext.resolveMovesetAssignment(
+          candidate.team,
+        );
+        const context = bindRosterMovesetAssignment(
+          fitnessContext.scoringContext,
+          assignment,
+        );
+        const lineup = buildGblLineupRecommendation(candidate.team, {
+          scoreLineup: (members) => scoreOrderedLineup(members, context),
+        });
+        alternatives.push({
+          ...candidate,
+          fitness: lineup.scoreBreakdown?.score ?? lineup.score,
+          movesetAssignment: assignment,
+          scoreBreakdown: lineup.scoreBreakdown,
+          recommendedLineups: [lineup],
+        });
+        seen.add(key);
+        if (alternatives.length >= 4) break;
+      }
+      experiment.collectFinalists(alternatives);
+    }
   } else {
     const rerankingContext = createLineupAwareFitnessContext(
       formatId,
@@ -564,6 +618,7 @@ export async function generateTeam(
           getCanonicalRosterKey(roster, anchorPokemon.length),
       },
     );
+    finishPhase('finalists');
     bestOverall = reranking.finalist;
     if (!reranking.evaluation)
       throw new Error(
@@ -614,7 +669,54 @@ export async function generateTeam(
       },
       recommendedLineups: recommendations.recommendedLineups,
     };
+    if (experiment.collectFinalists) {
+      const ranked = reranking.rankedFinalists ?? [];
+      const fronts = rankParetoPopulation(
+        ranked.map(({ finalist }) => finalist),
+      );
+      const alternatives: Chromosome[] = [bestOverall];
+      for (const candidate of ranked.slice(1)) {
+        const evaluation = candidate.evaluation;
+        if (!evaluation || fronts.get(candidate.finalist)?.front !== 0)
+          continue;
+        validateFinalTeam(candidate.finalist, anchorPokemon, formatId);
+        const assignment = candidate.assignment;
+        const score = scorePlayPokemonRoster(
+          candidate.finalist.team,
+          {
+            ...bindRosterMovesetAssignment(
+              rerankingContext.scoringContext,
+              assignment,
+            ),
+            scoreLineup: (lineup) =>
+              rerankingContext.scoreLineup(lineup, assignment),
+          },
+          { mode: 'full', includeDiagnostics: true, recommendationLimit: 120 },
+        );
+        const lineups = buildPlayPokemonRosterRecommendations(
+          score.lineupScores ?? [],
+          { limit: 5, plans: evaluation.plans },
+        );
+        alternatives.push({
+          ...candidate.finalist,
+          fitness: evaluation.selection.objectives.typical,
+          tournamentSelection: evaluation.selection,
+          movesetAssignment: assignment,
+          scoreBreakdown: {
+            ...score.scoreBreakdown,
+            score: evaluation.selection.objectives.typical,
+            scoreBasis: 'tournament-typical',
+            threatContribution: undefined,
+          },
+          recommendedLineups: lineups.recommendedLineups,
+        });
+        if (alternatives.length >= 4) break;
+      }
+      experiment.collectFinalists(alternatives);
+    }
   }
+
+  finishPhase('diagnostics');
 
   console.log('=== FINAL BEST TEAM ===');
   console.log('Team:', bestOverall.team);

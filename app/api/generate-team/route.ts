@@ -23,8 +23,16 @@ import {
   getRankedSpeciesIds,
   MissingRankingDataError,
 } from '@/lib/data/rankings';
-import { MissingSimulationDataError } from '@/lib/data/simulations';
+import {
+  ensureSimulationDataAvailable,
+  MissingSimulationDataError,
+} from '@/lib/data/simulations';
 import { generateTeam } from '@/lib/genetic/algorithm';
+import {
+  getPregeneratedFingerprint,
+  selectPregeneratedTeam,
+} from '@/lib/genetic/pregeneratedPool';
+import { pregeneratedPools } from '@/lib/genetic/pregeneratedTeams';
 import { getTeamDetails } from '@/lib/teamDetails';
 import type {
   GenerationAnalysis,
@@ -181,7 +189,7 @@ export async function POST(request: NextRequest) {
 
     const teamSize = mode === 'GBL' ? 3 : 6;
 
-    const result = await generateTeam({
+    const generationOptions = {
       formatId: resolvedFormatId,
       mode,
       simulateMovesetVariants: simulateMovesetVariants ?? false,
@@ -189,7 +197,33 @@ export async function POST(request: NextRequest) {
       excludedPokemon: excludedSpeciesIds,
       populationSize: 150,
       generations: 75,
-    });
+    };
+    const pool = pregeneratedPools.find(
+      (entry) =>
+        entry.formatId === resolvedFormatId &&
+        entry.mode === mode &&
+        entry.anchorSpeciesId === anchorSpeciesIds[0],
+    );
+    const usePool =
+      pool &&
+      !simulateMovesetVariants &&
+      anchorSpeciesIds.length <= 1 &&
+      excludedSpeciesIds.length === 0;
+    let pooled;
+    if (usePool) {
+      try {
+        pooled = selectPregeneratedTeam(
+          pool,
+          generationOptions,
+          getPregeneratedFingerprint(resolvedFormatId),
+          Math.random(),
+        );
+      } catch {
+        console.warn('Pregenerated team unavailable; using live generation.');
+      }
+    }
+    if (pooled) ensureSimulationDataAvailable(resolvedFormatId);
+    const result = pooled ?? (await generateTeam(generationOptions));
     if (!result.movesetAssignment) {
       throw new Error(
         'Generated team is missing its scored moveset assignment.',
