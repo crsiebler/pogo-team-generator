@@ -204,9 +204,14 @@ selector while its catalog entry and existing datasets remain available.
 
 The selector follows the current vendored PvPoke formats. Fantasy Cup and Mega
 Halloween Cup remain in the catalog with their checked-in data, but are no longer
-in the current selector. LAIC 2027 Cup (GBL) is registered as sync-ready and stays
-unavailable until its own rankings and simulations have been synchronized; it does
-not reuse the Championship Series cup's data.
+in the current selector. LAIC 2027 Cup (GBL) uses its own synchronized rankings,
+three shield-scenario simulation sets, and runtime snapshot; it does not reuse the
+Championship Series cup's data. To refresh just one format without rebuilding
+shared gamemaster files or other formats, run
+`bun run lib/scripts/syncBattleFormat.ts laic-2027-gbl-cup`. A scoped sync requires
+the checked-in shared gamemaster data to match the local PvPoke source.
+Play! Pokémon requires its custom source overlay; refresh it with the full
+`npm run sync` command instead of the scoped command.
 
 ### Simulations
 

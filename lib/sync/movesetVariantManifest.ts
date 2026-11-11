@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { getSyncBattleFormats } from './battleFormats';
 import {
   getBattleFormatById,
-  getBattleFormats,
   type BattleFormat,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
@@ -126,6 +126,7 @@ export interface MovesetVariantManifestSelection extends ActiveMovesetVariantSel
 
 /** Inputs required to prepare every supported format manifest in memory. */
 export interface PrepareMovesetVariantManifestsInput {
+  readonly formatIds?: readonly BattleFormatId[];
   readonly pokemonSource: string | Uint8Array;
   readonly movesSource: string | Uint8Array;
   readonly candidateSets: readonly DerivedMovesetCandidateSet[];
@@ -714,7 +715,7 @@ export function prepareMovesetVariantManifests(
     selectionsByKey.set(key, selection);
   }
 
-  return getBattleFormats().map((format) => {
+  return getSyncBattleFormats(input.formatIds).map((format) => {
     const formatSelections = [...selectionsByKey.values()]
       .filter(({ formatId }) => formatId === format.id)
       .sort((left, right) => compareAscii(left.speciesId, right.speciesId));

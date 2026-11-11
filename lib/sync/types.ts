@@ -1,3 +1,4 @@
+import type { BattleFormatId } from '@/lib/data/battleFormats';
 import type { Move } from '@/lib/types';
 
 // TypeScript types for the sync module
@@ -12,6 +13,7 @@ export interface SyncConfig {
 }
 
 export interface SyncRunOptions {
+  formatIds?: readonly BattleFormatId[];
   resume?: boolean;
   sourcePath?: string;
   includeMovesetVariants?: boolean;

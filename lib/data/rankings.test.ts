@@ -17,6 +17,22 @@ import {
 } from './rankings';
 
 describe('format-aware rankings loading', () => {
+  it('loads independent LAIC GBL rankings without Championship-only Mega eligibility', () => {
+    const rankings = getOverallRankings('laic-2027-gbl-cup');
+    expect(rankings.length).toBeGreaterThan(150);
+    expect(rankings).not.toBe(getOverallRankings('laic-2027-cup'));
+    for (const ranking of rankings) {
+      const pokemon = getPokemonBySpeciesName(ranking.Pokemon);
+      expect(pokemon, ranking.Pokemon).toBeDefined();
+      expect(pokemon?.tags ?? []).not.toContain('mega');
+      expect(
+        pokemon?.types.some((type) =>
+          ['fire', 'dark', 'steel', 'fairy'].includes(type),
+        ),
+      ).toBe(false);
+      expect(ranking.CP).toBeLessThanOrEqual(1500);
+    }
+  });
   it('loads dedicated Play! Pokemon categories with exclusions and legal move overrides', () => {
     for (const loadRankings of [
       getOverallRankings,

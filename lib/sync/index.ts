@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import { createHash } from 'node:crypto';
 import * as path from 'path';
+import { getSyncBattleFormats } from './battleFormats';
 import { syncConfig } from './config';
 import { fetchPokemonData, fetchMovesData } from './gamemaster';
 import {
@@ -33,6 +34,80 @@ import {
   getBattleFormats,
 } from '@/lib/data/battleFormats';
 import { createMoveAvailabilityResolver } from '@/lib/data/moveAvailability';
+import { getMovesetVariantManifestPath } from '@/lib/data/movesetVariantManifest';
+
+/** Sync one format while retaining other formats and shared gamemaster data. */
+export async function runScopedSync(options: SyncRunOptions): Promise<void> {
+  const formats = getSyncBattleFormats(options.formatIds);
+  if (formats.length !== 1) {
+    throw new Error('Scoped sync requires exactly one format.');
+  }
+  const format = formats[0]!;
+  if (format.id === 'play-pokemon') {
+    throw new Error(
+      'Play! Pokemon requires a full sync to prepare its custom source overlay. Run npm run sync.',
+    );
+  }
+  const sourcePath = options.sourcePath ?? resolvePvpokeSourcePath().sourcePath;
+  validatePhase1SourceFiles(sourcePath);
+  const verifySharedSource = async (
+    filePath: string,
+    contents: string,
+  ): Promise<void> => {
+    if (fs.readFileSync(filePath, 'utf8') !== contents) {
+      throw new Error(
+        `Shared gamemaster data differs at ${filePath}; run a full sync first.`,
+      );
+    }
+  };
+  const sharedDependencies = {
+    mkdir: async (): Promise<void> => {},
+    writeFile: verifySharedSource,
+  };
+  const pokemonData = await fetchPokemonData(sourcePath, sharedDependencies, {
+    quiet: true,
+  });
+  await fetchMovesData(sourcePath, sharedDependencies, { quiet: true });
+  const rankingSyncResult = await scrapeRankings({ ...options, sourcePath });
+  const existingManifests = getBattleFormats()
+    .filter(
+      (candidate) => candidate.id !== format.id && !candidate.unavailableReason,
+    )
+    .map((candidate) => ({
+      formatId: candidate.id,
+      targetPath: getMovesetVariantManifestPath(candidate),
+      contents: fs.readFileSync(
+        getMovesetVariantManifestPath(candidate),
+        'utf8',
+      ),
+    }));
+  await completeSimulationManifestSync(
+    {
+      options,
+      sourcePath,
+      rankingSyncResult,
+      pokemonData,
+      pokemonSource: fs.readFileSync(
+        path.join(syncConfig.outputDir, 'pokemon.json'),
+      ),
+      movesSource: fs.readFileSync(
+        path.join(syncConfig.outputDir, 'moves.json'),
+      ),
+    },
+    {
+      prepare: (input) => [
+        ...existingManifests,
+        ...prepareMovesetVariantManifests(input),
+      ],
+      cleanup: (manifests, cleanupOptions) =>
+        deleteStaleVariantSimulationFiles(
+          manifests.filter((manifest) => manifest.formatId === format.id),
+          cleanupOptions,
+        ),
+    },
+  );
+  console.log(`[sync] Completed scoped sync for ${format.id}`);
+}
 
 /** Inputs for the validation, simulation, and manifest publication phases. */
 export interface CompleteSimulationManifestSyncInput {
@@ -132,6 +207,7 @@ export async function completeSimulationManifestSync(
     deferPublication: true,
   });
   const preparedManifests = resolvedDependencies.prepare({
+    ...(input.options.formatIds ? { formatIds: input.options.formatIds } : {}),
     pokemonSource: input.pokemonSource,
     movesSource: input.movesSource,
     candidateSets,
@@ -276,6 +352,10 @@ function writeSyncMetadata(contents: string): void {
  * Run the complete data sync pipeline
  */
 export async function runSync(options: SyncRunOptions = {}): Promise<void> {
+  if (options.formatIds !== undefined) {
+    await runScopedSync(options);
+    return;
+  }
   try {
     console.log('[sync] Starting data sync pipeline');
 

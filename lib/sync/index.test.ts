@@ -6,6 +6,7 @@ import {
   createSyncOutputFingerprint,
   resolveCompletedSyncMetadata,
   resolveSuccessfulSyncMetadata,
+  runSync,
   type CompleteSimulationManifestSyncInput,
 } from './index';
 import type { DerivedMovesetCandidateSet } from '@/lib/sync/movesetCandidates';
@@ -23,6 +24,17 @@ const input: CompleteSimulationManifestSyncInput = {
   pokemonSource: 'pokemon bytes',
   movesSource: 'move bytes',
 };
+
+describe('scoped sync source requirements', () => {
+  it('rejects the custom Play! Pokemon format before accessing the raw source', async () => {
+    await expect(
+      runSync({
+        formatIds: ['play-pokemon'],
+        sourcePath: '/source/without-custom-overlay',
+      }),
+    ).rejects.toThrow('Play! Pokemon requires a full sync');
+  });
+});
 
 describe('completeSimulationManifestSync', () => {
   const candidateSet: DerivedMovesetCandidateSet = {

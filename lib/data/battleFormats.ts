@@ -145,8 +145,6 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     label: 'LAIC 2027 Cup (GBL)',
     cup: 'laic2027gbl',
     cp: 1500,
-    unavailableReason:
-      'LAIC 2027 Cup (GBL) is sync-ready. Synchronize its rankings and simulations before generating teams.',
   },
   {
     id: 'retro-cup',
