@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import { promises as fsAsync } from 'fs';
 import * as path from 'path';
 import vm from 'vm';
+import { getSyncBattleFormats } from './battleFormats';
 import { syncConfig } from './config';
 import { resolvePvpokeSourcePath } from './source';
 import { SyncRunOptions, SimulationData, SimulationsCsv } from './types';
@@ -13,11 +14,7 @@ import {
   moveNameToMoveId,
   normalizeToChoosableSpeciesId,
 } from '@/lib/data/aliases';
-import {
-  BattleFormat,
-  BattleFormatId,
-  getBattleFormats,
-} from '@/lib/data/battleFormats';
+import { BattleFormat, BattleFormatId } from '@/lib/data/battleFormats';
 import { createMoveAvailabilityResolver } from '@/lib/data/moveAvailability';
 import {
   MAX_MOVESET_CANDIDATES,
@@ -1094,7 +1091,7 @@ export async function generateSimulations(
       options.sourcePath ?? resolvePvpokeSourcePath().sourcePath;
     const runtime = resolvedDependencies.getRuntime(resolvedSourcePath);
 
-    const battleFormats = getBattleFormats();
+    const battleFormats = getSyncBattleFormats(options.formatIds);
 
     const missingOverallRankings = battleFormats.filter((format) => {
       return !resolvedDependencies.fileExists(getOverallRankingsPath(format));

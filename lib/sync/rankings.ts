@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { createPvpokeAdapter, RankingCategory, RankingCup } from './adapter';
+import { getSyncBattleFormats } from './battleFormats';
 import { syncConfig } from './config';
 import {
   deriveMovesetCandidates,
@@ -21,10 +22,7 @@ import {
   resolveSpeciesAlias,
   type SpeciesAliasKind,
 } from '@/lib/data/aliases';
-import {
-  getBattleFormats,
-  type BattleFormatId,
-} from '@/lib/data/battleFormats';
+import { type BattleFormatId } from '@/lib/data/battleFormats';
 import { createMoveAvailabilityResolver } from '@/lib/data/moveAvailability';
 
 /** One move-usage value retained from a PvPoke ranking entry. */
@@ -1140,13 +1138,15 @@ export async function scrapeRankings(
     });
 
     const adapter = resolvedDependencies.createAdapter(sourcePath);
-    const rankingFormats = getBattleFormats().map((format) => {
-      return {
-        formatId: format.id,
-        cup: format.cup,
-        cp: format.cp,
-      };
-    });
+    const rankingFormats = getSyncBattleFormats(options.formatIds).map(
+      (format) => {
+        return {
+          formatId: format.id,
+          cup: format.cup,
+          cp: format.cp,
+        };
+      },
+    );
 
     for (const format of rankingFormats) {
       const overrideSource = await adapter.readMovesetOverridesJson<unknown>(

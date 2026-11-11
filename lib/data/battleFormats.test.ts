@@ -220,6 +220,7 @@ describe('battle format catalog', () => {
       'mega-great-league',
       'mega-ultra-league',
       'mega-master-league',
+      'laic-2027-gbl-cup',
       'laic-2027-cup',
       'spectral-cup',
       'cauldron-cup',
@@ -230,16 +231,15 @@ describe('battle format catalog', () => {
     ]);
   });
 
-  it('keeps LAIC GBL sync-ready until its own runtime data exists', () => {
+  it('enables LAIC GBL with its own synchronized runtime data', () => {
     expect(getBattleFormatById('laic-2027-gbl-cup')).toMatchObject({
       cup: 'laic2027gbl',
       cp: 1500,
-      unavailableReason: expect.stringContaining('Synchronize'),
     });
-    expect(() => assertBattleFormatAvailable('laic-2027-gbl-cup')).toThrow(
-      'Synchronize its rankings and simulations',
-    );
-    expect(getSelectableBattleFormats().map(({ id }) => id)).not.toContain(
+    expect(() =>
+      assertBattleFormatAvailable('laic-2027-gbl-cup'),
+    ).not.toThrow();
+    expect(getSelectableBattleFormats().map(({ id }) => id)).toContain(
       'laic-2027-gbl-cup',
     );
   });
