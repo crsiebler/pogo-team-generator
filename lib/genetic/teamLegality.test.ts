@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isTeamLegalForFormat } from './teamLegality';
 
 describe('format team legality', () => {
-  it('allows Battle Frontier Master without historical point or Mega limits', () => {
+  it('allows one Mega without historical Battle Frontier Master point limits', () => {
     expect(
       isTeamLegalForFormat(
         ['palkia_origin', 'eternatus', 'swampert_mega'],
@@ -11,10 +11,10 @@ describe('format team legality', () => {
     ).toBe(true);
     expect(
       isTeamLegalForFormat(
-        ['swampert_mega', 'gallade_mega', 'mewtwo'],
+        ['ampharos_mega', 'chandelure_mega', 'mewtwo'],
         'battle-frontier-master',
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('enforces one Mega for Mega-enabled cup formats', () => {

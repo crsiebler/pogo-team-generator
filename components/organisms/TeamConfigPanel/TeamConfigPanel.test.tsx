@@ -104,10 +104,10 @@ describe('TeamConfigPanel', () => {
     );
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Battle Format' }), {
-      target: { value: 'fantasy-cup' },
+      target: { value: 'laic-2027-cup' },
     });
 
-    expect(onFormatChange).toHaveBeenCalledWith('fantasy-cup');
+    expect(onFormatChange).toHaveBeenCalledWith('laic-2027-cup');
   });
 
   it('resets anchor selection UI when the selected format changes', () => {

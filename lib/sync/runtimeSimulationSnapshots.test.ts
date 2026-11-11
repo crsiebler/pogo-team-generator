@@ -498,11 +498,13 @@ describe('runtime simulation snapshot preparation', () => {
     const pokemonData = JSON.parse(
       readFileSync('data/pokemon.json', 'utf8'),
     ) as PokemonData[];
-    const manifests = getBattleFormats().map((format) => ({
-      formatId: format.id,
-      targetPath: getMovesetVariantManifestPath(format),
-      contents: readFileSync(getMovesetVariantManifestPath(format), 'utf8'),
-    }));
+    const manifests = getBattleFormats()
+      .filter((format) => !format.unavailableReason)
+      .map((format) => ({
+        formatId: format.id,
+        targetPath: getMovesetVariantManifestPath(format),
+        contents: readFileSync(getMovesetVariantManifestPath(format), 'utf8'),
+      }));
     const snapshots = prepareRuntimeSimulationSnapshots(manifests, [], {
       readText: (filePath) => readFileSync(filePath, 'utf8'),
       resolveOpponentSpeciesId:

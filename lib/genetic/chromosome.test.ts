@@ -109,14 +109,18 @@ describe('createRandomChromosome legality checks', () => {
     ]);
   });
 
-  it('keeps random Battle Frontier Coupe du Sillage teams to one Mega Pokemon', () => {
+  it.each([
+    'battle-frontier-coupe-du-sillage',
+    'battle-frontier-master',
+    'battle-frontier-liga-ultra',
+  ] as const)('keeps random %s teams to one Mega Pokemon', (formatId) => {
     mockRandomSequence([0, 0.26, 0.26, 0.26, 0, 0.51, 0.51, 0.51]);
 
     const chromosome = createRandomChromosome(
       ['eternatus', 'mewtwo', 'swampert_mega', 'dragonite'],
       3,
       ['charizard_mega_y'],
-      'battle-frontier-coupe-du-sillage',
+      formatId,
     );
 
     expect(chromosome.team).toEqual([

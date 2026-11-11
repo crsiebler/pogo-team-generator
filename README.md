@@ -202,6 +202,12 @@ eligible charged moves, so single-move species such as Wynaut are omitted from
 the optimizer's Overall candidate pool. Retro Cup is hidden from the format
 selector while its catalog entry and existing datasets remain available.
 
+The selector follows the current vendored PvPoke formats. Fantasy Cup and Mega
+Halloween Cup remain in the catalog with their checked-in data, but are no longer
+in the current selector. LAIC 2027 Cup (GBL) is registered as sync-ready and stays
+unavailable until its own rankings and simulations have been synchronized; it does
+not reuse the Championship Series cup's data.
+
 ### Simulations
 
 Simulation CSVs are stored at:

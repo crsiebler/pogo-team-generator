@@ -485,20 +485,29 @@ export function prepareRuntimeSimulationSnapshots(
       );
     }
   }
-  return getBattleFormats().map((format) => {
-    const manifest = manifestByFormatId.get(format.id);
-    if (!manifest) {
-      throw new Error(
-        `[sync-runtime-snapshot] Missing manifest for ${format.id}`,
+  return getBattleFormats()
+    .filter(
+      (format) =>
+        !format.unavailableReason || manifestByFormatId.has(format.id),
+    )
+    .map((format) => {
+      const manifest = manifestByFormatId.get(format.id);
+      if (!manifest) {
+        throw new Error(
+          `[sync-runtime-snapshot] Missing manifest for ${format.id}`,
+        );
+      }
+      const snapshot = buildSnapshot(
+        manifest,
+        preparedCsvByTarget,
+        dependencies,
       );
-    }
-    const snapshot = buildSnapshot(manifest, preparedCsvByTarget, dependencies);
-    return {
-      formatId: format.id,
-      targetPath: getRuntimeSimulationSnapshotPath(format),
-      contents: serializeRuntimeSimulationSnapshot(snapshot),
-    };
-  });
+      return {
+        formatId: format.id,
+        targetPath: getRuntimeSimulationSnapshotPath(format),
+        contents: serializeRuntimeSimulationSnapshot(snapshot),
+      };
+    });
 }
 
 /** Default filesystem reader for production snapshot preparation. */

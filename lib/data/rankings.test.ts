@@ -74,7 +74,9 @@ describe('format-aware rankings loading', () => {
   });
 
   it('loads overall rankings for all supported battle formats', () => {
-    for (const format of getBattleFormats()) {
+    for (const format of getBattleFormats().filter(
+      (format) => !format.unavailableReason,
+    )) {
       expect(getOverallRankings(format.id).length).toBeGreaterThan(0);
     }
   });
@@ -249,52 +251,54 @@ describe('getOptimalMoveset', () => {
   });
 
   it('keeps every checked-in Overall moveset eligible', () => {
-    const rejectedMoves = getBattleFormats().flatMap((format) => {
-      return getOverallRankings(format.id).flatMap((ranking) => {
-        const pokemon = getPokemonBySpeciesName(ranking.Pokemon);
-        if (!pokemon) {
-          return [
-            {
-              formatId: format.id,
-              speciesId: ranking.Pokemon,
-              reason: 'Pokemon does not resolve',
-            },
-          ];
-        }
-
-        const moveset = getOptimalMoveset(ranking.Pokemon, format.id);
-        return [
-          moveset.fastMove,
-          moveset.chargedMove1,
-          moveset.chargedMove2,
-        ].flatMap((moveId) => {
-          if (!moveId) {
+    const rejectedMoves = getBattleFormats()
+      .filter((format) => !format.unavailableReason)
+      .flatMap((format) => {
+        return getOverallRankings(format.id).flatMap((ranking) => {
+          const pokemon = getPokemonBySpeciesName(ranking.Pokemon);
+          if (!pokemon) {
             return [
               {
                 formatId: format.id,
-                speciesId: pokemon.speciesId,
-                reason: 'Moveset is incomplete',
+                speciesId: ranking.Pokemon,
+                reason: 'Pokemon does not resolve',
               },
             ];
           }
-          const availability = getMoveAvailability(
-            pokemon.speciesId,
-            moveId,
-            format.id,
-          );
-          return availability.kind === 'excluded'
-            ? [
+
+          const moveset = getOptimalMoveset(ranking.Pokemon, format.id);
+          return [
+            moveset.fastMove,
+            moveset.chargedMove1,
+            moveset.chargedMove2,
+          ].flatMap((moveId) => {
+            if (!moveId) {
+              return [
                 {
                   formatId: format.id,
                   speciesId: pokemon.speciesId,
-                  moveId,
-                  reason: availability.reason,
+                  reason: 'Moveset is incomplete',
                 },
-              ]
-            : [];
+              ];
+            }
+            const availability = getMoveAvailability(
+              pokemon.speciesId,
+              moveId,
+              format.id,
+            );
+            return availability.kind === 'excluded'
+              ? [
+                  {
+                    formatId: format.id,
+                    speciesId: pokemon.speciesId,
+                    moveId,
+                    reason: availability.reason,
+                  },
+                ]
+              : [];
+          });
         });
       });
-    });
 
     expect(rejectedMoves).toEqual([]);
   });

@@ -845,6 +845,7 @@ describe('generateSimulations', () => {
     expect(generatedCalls).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ cup: 'playpokemon', cp: 1500, shields: 1 }),
+        expect.objectContaining({ cup: 'laic2027gbl', cp: 1500, shields: 1 }),
       ]),
     );
     for (const shields of [0, 1, 2]) {

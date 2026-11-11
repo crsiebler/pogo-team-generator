@@ -946,6 +946,16 @@ describe('rankings local sync', () => {
     expect(result.categoryEvidence).toHaveLength(
       getBattleFormats().length * categories.length,
     );
+    expect(result.categoryEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          formatId: 'laic-2027-gbl-cup',
+          cup: 'laic2027gbl',
+          cp: 1500,
+          category: 'overall',
+        }),
+      ]),
+    );
     expect(result.overrideEvidence).toHaveLength(getBattleFormats().length);
     expect(result.aggregatedEvidence).toHaveLength(
       getBattleFormats().length * 3 + 2,
