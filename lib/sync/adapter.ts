@@ -29,6 +29,7 @@ const RANKING_CUPS = [
   'willpower',
   'mega',
   'laic2027',
+  'laic2027gbl',
   'retro',
   'little',
   'spectral',

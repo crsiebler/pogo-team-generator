@@ -11,6 +11,7 @@ export interface BattleFormat {
     | 'willpower'
     | 'mega'
     | 'laic2027'
+    | 'laic2027gbl'
     | 'retro'
     | 'little'
     | 'spectral'
@@ -44,6 +45,7 @@ export type BattleFormatId =
   | 'battle-frontier-liga-ultra'
   | 'battle-frontier-coupe-du-sillage'
   | 'laic-2027-cup'
+  | 'laic-2027-gbl-cup'
   | 'retro-cup'
   | 'spectral-cup'
   | 'cauldron-cup'
@@ -139,6 +141,14 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
     cp: 1500,
   },
   {
+    id: 'laic-2027-gbl-cup',
+    label: 'LAIC 2027 Cup (GBL)',
+    cup: 'laic2027gbl',
+    cp: 1500,
+    unavailableReason:
+      'LAIC 2027 Cup (GBL) is sync-ready. Synchronize its rankings and simulations before generating teams.',
+  },
+  {
     id: 'retro-cup',
     label: 'Retro Cup',
     cup: 'retro',
@@ -197,6 +207,7 @@ export const BATTLE_FORMATS: readonly BattleFormat[] = [
 export const DEFAULT_BATTLE_FORMAT_ID: BattleFormatId = 'great-league';
 
 const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
+  'battle-frontier-liga-ultra',
   'mega-great-league',
   'mega-ultra-league',
   'mega-master-league',
@@ -204,6 +215,7 @@ const oneMegaLimitFormatIds: ReadonlySet<BattleFormatId> = new Set([
   'laic-2027-cup',
   'cauldron-cup',
   'mega-halloween-cup',
+  'battle-frontier-master',
 ]);
 
 const selectableBattleFormatIds: readonly BattleFormatId[] = [
@@ -213,8 +225,7 @@ const selectableBattleFormatIds: readonly BattleFormatId[] = [
   'mega-great-league',
   'mega-ultra-league',
   'mega-master-league',
-  'fantasy-cup',
-  'mega-halloween-cup',
+  'laic-2027-gbl-cup',
   'laic-2027-cup',
   'spectral-cup',
   'cauldron-cup',

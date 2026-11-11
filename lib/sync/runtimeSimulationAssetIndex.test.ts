@@ -216,11 +216,13 @@ describe('runtime simulation asset index preparation', () => {
   });
 
   it('keeps the checked-in index synchronized with every checked-in manifest', () => {
-    const manifests = getBattleFormats().map((format) => ({
-      formatId: format.id,
-      targetPath: getMovesetVariantManifestPath(format),
-      contents: readFileSync(getMovesetVariantManifestPath(format), 'utf8'),
-    }));
+    const manifests = getBattleFormats()
+      .filter((format) => !format.unavailableReason)
+      .map((format) => ({
+        formatId: format.id,
+        targetPath: getMovesetVariantManifestPath(format),
+        contents: readFileSync(getMovesetVariantManifestPath(format), 'utf8'),
+      }));
     const expected = prepareRuntimeSimulationAssetIndex(manifests);
 
     expect(readFileSync(expected.targetPath, 'utf8')).toBe(expected.contents);

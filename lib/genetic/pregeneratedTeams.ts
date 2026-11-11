@@ -3,7 +3,7 @@ import type { PregeneratedPool } from './pregeneratedPool';
 
 /** Source digest for the generated pool's verification test. */
 export const pregeneratedSourceFingerprint =
-  '446732468e83b5acd9aac4b821c2be870c59bfbbc06b8725258facdbd748114a';
+  '2588eda17daaaa00c7890c9b838d8ac7f1b7ac83911d5479db10a13093a88199';
 
 /** Generated from typed results; pool integration tests validate the serialized artifact. */
 export const pregeneratedPools: readonly PregeneratedPool[] = JSON.parse(

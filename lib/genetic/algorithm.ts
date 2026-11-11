@@ -158,21 +158,6 @@ function canBuildLegalUniqueTeam(
     return false;
   }
 
-  if (formatId === 'battle-frontier-master') {
-    const legalCandidates = pokemonPool.filter((candidate) => {
-      if (usedDexNumbers.has(candidate.dex)) {
-        return false;
-      }
-
-      return isTeamLegalForFormat(
-        [...currentTeam, candidate.speciesId],
-        formatId,
-      );
-    });
-
-    return currentTeam.length + legalCandidates.length >= teamSize;
-  }
-
   let legalNonMegaCount = 0;
   let hasLegalMega = false;
 

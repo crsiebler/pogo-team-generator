@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   BATTLE_FORMATS,
+  assertBattleFormatAvailable,
   DEFAULT_BATTLE_FORMAT_ID,
   getBattleFormatById,
   getBattleFormats,
@@ -28,6 +29,7 @@ describe('battle format catalog', () => {
       'Battle Frontier (Liga Ultra)',
       'Battle Frontier (Coupe du Sillage)',
       'LAIC 2027 Championship Series Cup',
+      'LAIC 2027 Cup (GBL)',
       'Retro Cup',
       'Battle Frontier (Spectral)',
       'Battle Frontier (Cauldron)',
@@ -69,6 +71,7 @@ describe('battle format catalog', () => {
     expect(isBattleFormatId('battle-frontier-liga-ultra')).toBe(true);
     expect(isBattleFormatId('battle-frontier-coupe-du-sillage')).toBe(true);
     expect(isBattleFormatId('laic-2027-cup')).toBe(true);
+    expect(isBattleFormatId('laic-2027-gbl-cup')).toBe(true);
     expect(isBattleFormatId('retro-cup')).toBe(true);
     expect(isBattleFormatId('spectral-cup')).toBe(true);
     expect(isBattleFormatId('cauldron-cup')).toBe(true);
@@ -217,8 +220,6 @@ describe('battle format catalog', () => {
       'mega-great-league',
       'mega-ultra-league',
       'mega-master-league',
-      'fantasy-cup',
-      'mega-halloween-cup',
       'laic-2027-cup',
       'spectral-cup',
       'cauldron-cup',
@@ -227,6 +228,20 @@ describe('battle format catalog', () => {
       'devon-fable-cup',
       'gymbreakers-season-7',
     ]);
+  });
+
+  it('keeps LAIC GBL sync-ready until its own runtime data exists', () => {
+    expect(getBattleFormatById('laic-2027-gbl-cup')).toMatchObject({
+      cup: 'laic2027gbl',
+      cp: 1500,
+      unavailableReason: expect.stringContaining('Synchronize'),
+    });
+    expect(() => assertBattleFormatAvailable('laic-2027-gbl-cup')).toThrow(
+      'Synchronize its rankings and simulations',
+    );
+    expect(getSelectableBattleFormats().map(({ id }) => id)).not.toContain(
+      'laic-2027-gbl-cup',
+    );
   });
 
   it('matches the fixed formats in the vendored PvPoke rankings selector', () => {
@@ -257,7 +272,15 @@ describe('battle format catalog', () => {
     ];
     expect(
       getSelectableBattleFormats().map(({ cup, cp }) => ({ cup, cp })),
-    ).toEqual(pvpokeFormats);
+    ).toEqual(
+      pvpokeFormats.filter(({ cup, cp }) => {
+        const format = BATTLE_FORMATS.find(
+          (candidate) => candidate.cup === cup && candidate.cp === cp,
+        );
+        // Unavailable catalog entries retain sync metadata but cannot generate.
+        return !format?.unavailableReason;
+      }),
+    );
   });
 
   it('identifies Battle Frontier formats', () => {
@@ -274,6 +297,7 @@ describe('battle format catalog', () => {
   });
 
   it('identifies formats with a one-Mega team limit', () => {
+    expect(hasOneMegaLimitForFormat('battle-frontier-liga-ultra')).toBe(true);
     expect(hasOneMegaLimitForFormat('mega-great-league')).toBe(true);
     expect(hasOneMegaLimitForFormat('mega-ultra-league')).toBe(true);
     expect(hasOneMegaLimitForFormat('mega-master-league')).toBe(true);
@@ -285,7 +309,7 @@ describe('battle format catalog', () => {
     expect(hasOneMegaLimitForFormat('mega-halloween-cup')).toBe(true);
     expect(hasOneMegaLimitForFormat('fantasy-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat('master-league')).toBe(false);
-    expect(hasOneMegaLimitForFormat('battle-frontier-master')).toBe(false);
+    expect(hasOneMegaLimitForFormat('battle-frontier-master')).toBe(true);
     expect(hasOneMegaLimitForFormat('battle-frontier-tsuki-cup')).toBe(false);
     expect(hasOneMegaLimitForFormat(undefined)).toBe(false);
   });

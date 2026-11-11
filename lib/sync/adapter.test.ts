@@ -244,6 +244,7 @@ describe('createPvpokeAdapter', () => {
   });
 
   it.each([
+    'laic2027gbl',
     'fantasy',
     'halloweenmega',
     'trail',

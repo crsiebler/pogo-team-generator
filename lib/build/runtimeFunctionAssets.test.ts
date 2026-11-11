@@ -13,8 +13,29 @@ import { getBattleFormats } from '@/lib/data/battleFormats';
 import { RUNTIME_SIMULATION_ASSET_INDEX_PATH } from '@/lib/data/runtimeSimulationAssetIndex';
 
 describe('runtime function assets', () => {
+  it('omits unavailable formats from every runtime route asset plan', () => {
+    const plan = createRuntimeFunctionAssetPlan([
+      {
+        id: 'laic-2027-gbl-cup',
+        label: 'LAIC 2027 Cup (GBL)',
+        cup: 'laic2027gbl',
+        cp: 1500,
+        unavailableReason: 'Awaiting synchronized data',
+      },
+    ]);
+    expect(plan.generateTeam).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('laic2027gbl')]),
+    );
+    expect(plan.teamDetails).toEqual(['data/moves.json', 'data/pokemon.json']);
+    expect(plan.pokemonList).toEqual(['data/pokemon.json']);
+    expect(plan.pokemonListExcludes).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('laic2027gbl')]),
+    );
+  });
   it('derives compact route assets from the format catalog', () => {
-    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
+    const plan = createRuntimeFunctionAssetPlan(
+      getBattleFormats().filter((format) => !format.unavailableReason),
+    );
 
     expect(plan.generateTeam).toContain(
       'data/simulations/cp1500/all/runtime-snapshot.json',
@@ -23,6 +44,13 @@ describe('runtime function assets', () => {
       'data/simulations/**/*.csv',
       'data/simulations/**/moveset-variants.json',
       RUNTIME_SIMULATION_ASSET_INDEX_PATH,
+      'data/battle-frontier-master-points.csv',
+      'data/calibration/great-league-show6-pick3.json',
+      'data/play-pokemon-rankings.json',
+      'data/simulations/cp1500/evolution/runtime-snapshot.json',
+      'data/simulations/cp1500/weather/runtime-snapshot.json',
+      'data/sync-metadata.json',
+      'data/typechart.png',
     ]);
     expect(plan.generateTeam).toContain('data/moves.json');
     expect(plan.generateTeam).toContain('data/type-effectiveness.json');
@@ -30,21 +58,26 @@ describe('runtime function assets', () => {
       [
         'data/moves.json',
         'data/pokemon.json',
-        ...getBattleFormats().flatMap((format) => [
-          `data/rankings/cp${format.cp}/${format.cup}/overall_rankings.csv`,
-          `data/simulations/cp${format.cp}/${format.cup}/runtime-snapshot.json`,
-        ]),
+        ...getBattleFormats()
+          .filter((format) => !format.unavailableReason)
+          .flatMap((format) => [
+            `data/rankings/cp${format.cp}/${format.cup}/overall_rankings.csv`,
+            `data/simulations/cp${format.cp}/${format.cup}/runtime-snapshot.json`,
+          ]),
       ].sort(),
     );
     expect(plan.teamDetailsExcludes).toEqual([
       ...plan.generateTeamExcludes,
-      ...plan.pokemonListExcludes,
+      ...plan.pokemonListExcludes.filter((asset) =>
+        asset.startsWith('data/rankings/'),
+      ),
       'data/type-effectiveness.json',
     ]);
     expect(plan.pokemonList).toEqual(
       [
         'data/pokemon.json',
         ...getBattleFormats()
+          .filter((format) => !format.unavailableReason)
           .map(
             (format) =>
               `data/rankings/cp${format.cp}/${format.cup}/overall_rankings.csv`,
@@ -53,7 +86,9 @@ describe('runtime function assets', () => {
       ].sort(),
     );
     expect(plan.pokemonListExcludes).toHaveLength(
-      getBattleFormats().length * 6,
+      getBattleFormats().filter((format) => !format.unavailableReason).length *
+        6 +
+        10,
     );
     expect(
       plan.pokemonListExcludes.some((asset) =>
@@ -61,7 +96,9 @@ describe('runtime function assets', () => {
       ),
     ).toBe(false);
 
-    for (const format of getBattleFormats()) {
+    for (const format of getBattleFormats().filter(
+      (format) => !format.unavailableReason,
+    )) {
       for (const category of [
         'overall',
         'leads',
@@ -80,14 +117,20 @@ describe('runtime function assets', () => {
     expect(plan.generateTeam.every((asset) => !asset.includes('*'))).toBe(true);
     expect(plan.teamDetails.every((asset) => !asset.includes('*'))).toBe(true);
     expect(plan.pokemonList.every((asset) => !asset.includes('*'))).toBe(true);
-    expect(plan.generateTeamExcludes).toHaveLength(3);
-    expect(
-      plan.pokemonListExcludes.every((asset) => !asset.includes('*')),
-    ).toBe(true);
+    expect(plan.generateTeamExcludes).toHaveLength(10);
+    expect(plan.pokemonListExcludes).toEqual(
+      expect.arrayContaining([
+        'data/simulations/**/*',
+        'data/moves.json',
+        'data/type-effectiveness.json',
+      ]),
+    );
   });
 
   it('accepts traces containing exactly the planned data assets', () => {
-    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
+    const plan = createRuntimeFunctionAssetPlan(
+      getBattleFormats().filter((format) => !format.unavailableReason),
+    );
 
     expect(() =>
       validateRuntimeFunctionTraceAssets({
@@ -115,7 +158,9 @@ describe('runtime function assets', () => {
   });
 
   it('rejects missing snapshots and any simulation CSV', () => {
-    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
+    const plan = createRuntimeFunctionAssetPlan(
+      getBattleFormats().filter((format) => !format.unavailableReason),
+    );
     const withoutActiveAsset = plan.generateTeam.filter(
       (asset) => asset !== 'data/simulations/cp1500/all/runtime-snapshot.json',
     );
@@ -203,7 +248,9 @@ describe('runtime function assets', () => {
   });
 
   it('rejects unrelated pokemon-list data and oversized generate-team traces', () => {
-    const plan = createRuntimeFunctionAssetPlan(getBattleFormats());
+    const plan = createRuntimeFunctionAssetPlan(
+      getBattleFormats().filter((format) => !format.unavailableReason),
+    );
 
     expect(() =>
       validateRuntimeFunctionTraceAssets({
@@ -267,7 +314,9 @@ describe('runtime function assets', () => {
       expect(existsSync(path.resolve(process.cwd(), asset)), asset).toBe(true);
     }
 
-    for (const format of getBattleFormats()) {
+    for (const format of getBattleFormats().filter(
+      (format) => !format.unavailableReason,
+    )) {
       expect(generateTeamAssets).toContain(
         `data/simulations/cp${format.cp}/${format.cup}/runtime-snapshot.json`,
       );

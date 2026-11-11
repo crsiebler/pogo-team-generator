@@ -52,7 +52,9 @@ describe('format-aware simulation loading', () => {
   });
 
   beforeAll(() => {
-    for (const format of getBattleFormats()) {
+    for (const format of getBattleFormats().filter(
+      (format) => !format.unavailableReason,
+    )) {
       ensureSimulationDataAvailable(format.id);
     }
   });
@@ -70,7 +72,9 @@ describe('format-aware simulation loading', () => {
   });
 
   it('ensures simulation data exists for all supported battle formats', () => {
-    for (const format of getBattleFormats()) {
+    for (const format of getBattleFormats().filter(
+      (format) => !format.unavailableReason,
+    )) {
       expect(() => ensureSimulationDataAvailable(format.id)).not.toThrow();
     }
   }, 15000);
@@ -170,7 +174,9 @@ describe('format-aware simulation loading', () => {
     let eliteDefaultCount = 0;
     let eventExclusiveMoveCount = 0;
 
-    for (const format of getBattleFormats()) {
+    for (const format of getBattleFormats().filter(
+      (format) => !format.unavailableReason,
+    )) {
       const manifestResourcePath = getMovesetVariantManifestPath(format);
       const manifest = parseMovesetVariantManifestJson(
         readFileSync(path.join(process.cwd(), manifestResourcePath), 'utf8'),

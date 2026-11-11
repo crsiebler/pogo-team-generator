@@ -57,6 +57,9 @@ export function prepareRuntimeSimulationAssetIndex(
 
   const assets = new Set<string>();
   for (const format of getBattleFormats()) {
+    if (format.unavailableReason && !manifestsByFormatId.has(format.id)) {
+      continue;
+    }
     const preparedManifest = manifestsByFormatId.get(format.id);
     if (!preparedManifest) {
       throw new Error(

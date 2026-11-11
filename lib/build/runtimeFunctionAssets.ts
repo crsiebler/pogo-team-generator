@@ -15,10 +15,20 @@ const GENERATE_TEAM_STATIC_DATA_ASSETS = [
   'data/pokemon.json',
   'data/type-effectiveness.json',
 ] as const;
+const LEGACY_DATA_EXCLUDES = [
+  'data/battle-frontier-master-points.csv',
+  'data/calibration/great-league-show6-pick3.json',
+  'data/play-pokemon-rankings.json',
+  'data/simulations/cp1500/evolution/runtime-snapshot.json',
+  'data/simulations/cp1500/weather/runtime-snapshot.json',
+  'data/sync-metadata.json',
+  'data/typechart.png',
+] as const;
 const GENERATE_TEAM_SIMULATION_EXCLUDES = [
   'data/simulations/**/*.csv',
   'data/simulations/**/moveset-variants.json',
   'data/simulations/runtime-asset-index.json',
+  ...LEGACY_DATA_EXCLUDES,
 ] as const;
 const TEAM_DETAILS_STATIC_DATA_ASSETS = [
   'data/moves.json',
@@ -161,18 +171,21 @@ function validateTraceByteTotal(
 export function createRuntimeFunctionAssetPlan(
   formats: readonly BattleFormat[],
 ): RuntimeFunctionAssetPlan {
-  const generateTeamRankings = formats.flatMap((format) =>
+  const availableFormats = formats.filter(
+    (format) => !format.unavailableReason,
+  );
+  const generateTeamRankings = availableFormats.flatMap((format) =>
     RANKING_CATEGORIES.map((category) => getRankingAsset(format, category)),
   );
-  const pokemonListRankings = formats.map((format) =>
+  const pokemonListRankings = availableFormats.map((format) =>
     getRankingAsset(format, 'overall'),
   );
-  const pokemonListExcludes = formats.flatMap((format) =>
+  const pokemonListExcludes = availableFormats.flatMap((format) =>
     RANKING_CATEGORIES.filter((category) => category !== 'overall').map(
       (category) => getRankingAsset(format, category),
     ),
   );
-  const runtimeSnapshots = formats.map(getRuntimeSnapshotAsset);
+  const runtimeSnapshots = availableFormats.map(getRuntimeSnapshotAsset);
 
   return {
     generateTeam: uniqueSorted([
@@ -192,7 +205,13 @@ export function createRuntimeFunctionAssetPlan(
       'data/type-effectiveness.json',
     ],
     pokemonList: uniqueSorted(['data/pokemon.json', ...pokemonListRankings]),
-    pokemonListExcludes: uniqueSorted(pokemonListExcludes),
+    pokemonListExcludes: uniqueSorted([
+      ...pokemonListExcludes,
+      ...LEGACY_DATA_EXCLUDES,
+      'data/simulations/**/*',
+      'data/moves.json',
+      'data/type-effectiveness.json',
+    ]),
   };
 }
 

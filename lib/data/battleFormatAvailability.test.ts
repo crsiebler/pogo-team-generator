@@ -14,24 +14,24 @@ describe('Battle Frontier Master without point tiers', () => {
     );
   });
 
-  it('allows current-cycle rosters without historical point or Mega limits', () => {
+  it('allows current-cycle rosters without historical point limits', () => {
     expect(() =>
       assertBattleFormatAvailable('battle-frontier-master'),
     ).not.toThrow();
     expect(
       isTeamLegalForFormat(
-        ['palkia_origin', 'eternatus', 'swampert_mega', 'aggron_mega'],
+        ['palkia_origin', 'eternatus', 'swampert_mega', 'aggron'],
         'battle-frontier-master',
       ),
     ).toBe(true);
   });
 
-  it('generates a roster that exceeds the historical point and Mega limits', async () => {
+  it('generates a one-Mega roster that exceeds the historical point limits', async () => {
     const anchors = [
       'kyurem_black',
       'giratina_altered',
       'ampharos_mega',
-      'blastoise_mega',
+      'dragonite',
       'mewtwo',
       'zekrom',
     ];
@@ -48,12 +48,24 @@ describe('Battle Frontier Master without point tiers', () => {
     expect(result.movesetAssignment?.formatId).toBe('battle-frontier-master');
   });
 
+  it('rejects anchors containing Ampharos Mega and Chandelure Mega', async () => {
+    await expect(
+      generateTeam({
+        mode: 'PlayPokemon',
+        formatId: 'battle-frontier-master',
+        anchorPokemon: ['ampharos_mega', 'chandelure_mega'],
+        populationSize: 2,
+        generations: 1,
+      }),
+    ).rejects.toThrow('Not enough legal unique Pokemon');
+  });
+
   it('reports legal anchors with missing simulations as unavailable evidence', async () => {
     const anchors = [
       'palkia_origin',
       'eternatus',
       'swampert_mega',
-      'aggron_mega',
+      'aggron',
       'xerneas',
       'reshiram',
     ];
