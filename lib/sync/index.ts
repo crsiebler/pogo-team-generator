@@ -68,7 +68,27 @@ export async function runScopedSync(options: SyncRunOptions): Promise<void> {
     quiet: true,
   });
   await fetchMovesData(sourcePath, sharedDependencies, { quiet: true });
-  const rankingSyncResult = await scrapeRankings({ ...options, sourcePath });
+  const previousOverallRankingsByFormatId = new Map<BattleFormatId, string>();
+  if (options.resume) {
+    const overallRankingsPath = path.join(
+      syncConfig.outputDir,
+      'rankings',
+      `cp${format.cp}`,
+      format.cup,
+      'overall_rankings.csv',
+    );
+    if (fs.existsSync(overallRankingsPath)) {
+      previousOverallRankingsByFormatId.set(
+        format.id,
+        fs.readFileSync(overallRankingsPath, 'utf8'),
+      );
+    }
+  }
+  const rankingSyncResult = await scrapeRankings({
+    ...options,
+    sourcePath,
+    ...(options.resume ? { previousOverallRankingsByFormatId } : {}),
+  });
   const existingManifests = getBattleFormats()
     .filter(
       (candidate) => candidate.id !== format.id && !candidate.unavailableReason,
