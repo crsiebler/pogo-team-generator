@@ -46,6 +46,7 @@ describe('TeamConfigPanel', () => {
       />,
     );
     expect(screen.getByText('Pick 6 · Open Sheets')).toBeInTheDocument();
+    expect(screen.getByText(/Best Buddy CP boost/)).toBeInTheDocument();
     expect(screen.queryByText('Mode Selector')).not.toBeInTheDocument();
   });
 
@@ -79,6 +80,7 @@ describe('TeamConfigPanel', () => {
       getSelectableBattleFormats().map((format) => format.label),
     );
     expect(optionLabels).not.toContain('Scroll Cup');
+    expect(optionLabels).toContain('Play! Pokémon');
     expect(optionLabels).not.toContain('Retro Cup');
     expect(screen.queryByRole('option', { name: 'Little Cup' })).toBeNull();
     expect(

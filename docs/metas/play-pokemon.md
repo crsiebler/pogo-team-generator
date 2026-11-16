@@ -3,7 +3,9 @@
 The [custom settings](play-pokemon-2026-10-21.json) target standard 1,500 CP
 Championship Series play, using the
 [official banned list](https://www.pokemon.com/us/play-pokemon/about/play-pokemon-pokemon-go-championship-series-banned-pokemon-list)
-read on October 21, 2026. This is a dated rules snapshot, not an automatically
+read on October 21, 2026. [Mimikyu becomes eligible on November 16, 2026](https://www.pokemon.com/us/news/battle-with-mimikyu-in-the-play-pokemon-pokemon-go-championship-series);
+the checked-in rankings and simulations still exclude it and must be regenerated
+for events on or after that date. This is a dated rules snapshot, not an automatically
 updated tournament eligibility service or the separate LAIC 2027 cup.
 
 ## Import into PvPoke
@@ -15,10 +17,10 @@ updated tournament eligibility service or the separate LAIC 2027 cup.
 
 PvPoke custom rankings are scenario-specific estimates. Importing this file does
 not publish a named cup on PvPoke. The app separately exposes **Play! Pokémon**
-first in the format selector, with ID `play-pokemon`, cup `playpokemon`, and
+in the format selector, with ID `play-pokemon`, cup `playpokemon`, and
 a 1,500 CP cap. This meta only supports Pick 6 (open sheets); selecting it
 switches the roster mode to six Pokemon, and Pick 3 API requests are rejected.
-The app initially selects the first available format, currently Play! Pokémon.
+The app initially selects Great League.
 
 ## Generate app data
 
@@ -73,6 +75,11 @@ Mega evolutions are excluded for standard Championship Series play, consistent
 with the vendored `championshipseries` definition; this is a separate format
 restriction from the linked species list. PvPoke tags Primal forms as Mega.
 Event-specific formats may differ.
+
+The optimizer enforces unique National Pokédex numbers. The simulations use a
+level 50 cap and do not model or assign a Best Buddy CP boost. Players may use
+at most one boost and must keep it on the same Pokémon throughout an event;
+Best Buddy ribbons alone are unrestricted.
 
 ## Move and acquisition restrictions
 
