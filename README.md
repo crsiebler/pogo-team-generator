@@ -19,6 +19,15 @@ A Next.js app that builds competitive Pokemon GO PvP teams with a format-aware g
 
 Each runtime-ready format uses its own ranking CSVs, simulation data, and eligible Pokemon pool.
 
+Tournament mode is fixed for Play! Pokémon Championship Series, Battle Frontier,
+Devon Cup, and Gymbreakers formats: **Show 6 Pick 3**. This policy applies to
+future cups and seasons in those series. LAIC 2027 Championship Series Cup follows
+that policy; LAIC 2027 Cup (GBL) supports **Pick 3** only. The shared restrictions in
+`lib/tournamentModes.ts` govern both the configuration UI and generation API.
+New catalog entries must preserve the series ID prefixes (`play-pokemon`,
+`battle-frontier-`, `devon-`, `gymbreakers-`) or the Championship Series label so
+the ongoing policy is applied automatically.
+
 **Play! Pokémon** appears in the selector at 1,500 CP and uses the official
 Championship Series ban list checked on November 16, 2026, including Mimikyu eligibility. See the
 [custom meta rules and generation workflow](docs/metas/play-pokemon.md), including

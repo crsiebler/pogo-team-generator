@@ -8,10 +8,10 @@ import { ModeSelector } from '@/components/molecules';
 import { TeamGenerator } from '@/components/organisms';
 import {
   getSelectableBattleFormats,
-  isPickSixOnlyFormat,
   isBattleFormatId,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
+import { getRequiredTournamentMode } from '@/lib/tournamentModes';
 import type { TournamentMode } from '@/lib/types';
 
 interface TeamConfigPanelProps {
@@ -65,7 +65,8 @@ export function TeamConfigPanel({
     [onFormatChange],
   );
 
-  const showTournamentFormatSelector = !isPickSixOnlyFormat(selectedFormatId);
+  const showTournamentFormatSelector =
+    !getRequiredTournamentMode(selectedFormatId);
 
   return (
     <div
@@ -112,9 +113,17 @@ export function TeamConfigPanel({
       ) : null}
 
       {/* Tournament Mode Selection */}
+      {getRequiredTournamentMode(selectedFormatId) &&
+      selectedFormatId !== 'play-pokemon' ? (
+        <p className="mb-6 text-sm font-semibold text-gray-800 sm:mb-8 dark:text-gray-300">
+          {getRequiredTournamentMode(selectedFormatId) === 'GBL'
+            ? 'Pick 3'
+            : 'Show 6 Pick 3'}
+        </p>
+      ) : null}
       {selectedFormatId === 'play-pokemon' ? (
         <div className="mb-6 text-sm text-gray-800 sm:mb-8 dark:text-gray-300">
-          <p className="font-semibold">Pick 6 · Open Sheets</p>
+          <p className="font-semibold">Show 6 Pick 3 · Open Sheets</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>Rankings use rules checked November 16, 2026.</li>
             <li>

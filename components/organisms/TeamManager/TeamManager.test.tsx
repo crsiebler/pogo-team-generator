@@ -188,11 +188,31 @@ vi.mock('@/components/organisms', () => ({
       <div>
         <div>Selected Format: {selectedFormatId}</div>
         <div>Selected Mode: {mode}</div>
+        {(
+          [
+            'laic-2027-cup',
+            'laic-2027-gbl-cup',
+            'devon-trail-cup',
+            'devon-fable-cup',
+            'gymbreakers-season-7',
+          ] as const
+        ).map((formatId) => (
+          <button
+            key={formatId}
+            type="button"
+            onClick={() => onFormatChange(formatId)}
+          >
+            Set {formatId}
+          </button>
+        ))}
         <button type="button" onClick={() => onFormatChange('ultra-league')}>
           Set Ultra League
         </button>
         <button type="button" onClick={() => onModeChange('GBL')}>
           Set GBL Mode
+        </button>
+        <button type="button" onClick={() => onModeChange('PlayPokemon')}>
+          Set PlayPokemon Mode
         </button>
         <button type="button" onClick={() => onFormatChange('play-pokemon')}>
           Set Play Pokemon
@@ -400,6 +420,33 @@ describe('TeamManager', () => {
     fireEvent.click(screen.getByText('Set GBL Mode'));
     expect(screen.getByText('Selected Mode: GBL')).toBeInTheDocument();
   });
+
+  it.each([
+    ['laic-2027-gbl-cup', 'GBL'],
+    ['laic-2027-cup', 'PlayPokemon'],
+    ['devon-trail-cup', 'PlayPokemon'],
+    ['devon-fable-cup', 'PlayPokemon'],
+    ['gymbreakers-season-7', 'PlayPokemon'],
+  ])(
+    'enforces the required mode after switching to %s',
+    async (formatId, mode) => {
+      render(<TeamManager />);
+      await waitFor(() =>
+        expect(
+          screen.getByText('Selected Mode: PlayPokemon'),
+        ).toBeInTheDocument(),
+      );
+      fireEvent.click(screen.getByText('Set GBL Mode'));
+      fireEvent.click(screen.getByText(`Set ${formatId}`));
+      expect(screen.getByText(`Selected Mode: ${mode}`)).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByText(
+          mode === 'GBL' ? 'Set PlayPokemon Mode' : 'Set GBL Mode',
+        ),
+      );
+      expect(screen.getByText(`Selected Mode: ${mode}`)).toBeInTheDocument();
+    },
+  );
 
   it('forces PlayPokemon mode for Battle Frontier formats', async () => {
     render(<TeamManager />);
