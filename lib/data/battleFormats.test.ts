@@ -217,6 +217,7 @@ describe('battle format catalog', () => {
       'great-league',
       'ultra-league',
       'master-league',
+      'play-pokemon',
       'mega-great-league',
       'mega-ultra-league',
       'mega-master-league',
@@ -271,7 +272,9 @@ describe('battle format catalog', () => {
         .map(({ cup, cp }) => ({ cup, cp })),
     ];
     expect(
-      getSelectableBattleFormats().map(({ cup, cp }) => ({ cup, cp })),
+      getSelectableBattleFormats()
+        .filter(({ id }) => id !== 'play-pokemon')
+        .map(({ cup, cp }) => ({ cup, cp })),
     ).toEqual(
       pvpokeFormats.filter(({ cup, cp }) => {
         const format = BATTLE_FORMATS.find(

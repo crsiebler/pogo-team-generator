@@ -220,6 +220,7 @@ const selectableBattleFormatIds: readonly BattleFormatId[] = [
   'great-league',
   'ultra-league',
   'master-league',
+  'play-pokemon',
   'mega-great-league',
   'mega-ultra-league',
   'mega-master-league',

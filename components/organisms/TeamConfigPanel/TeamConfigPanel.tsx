@@ -113,9 +113,20 @@ export function TeamConfigPanel({
 
       {/* Tournament Mode Selection */}
       {selectedFormatId === 'play-pokemon' ? (
-        <p className="mb-6 text-sm font-semibold text-gray-800 sm:mb-8 dark:text-gray-300">
-          Pick 6 · Open Sheets
-        </p>
+        <div className="mb-6 text-sm text-gray-800 sm:mb-8 dark:text-gray-300">
+          <p className="font-semibold">Pick 6 · Open Sheets</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Rankings use rules checked November 16, 2026.</li>
+            <li>
+              Mimikyu is eligible and included in these rankings. Hisuian
+              Sliggoo and Hisuian Goodra remain banned.
+            </li>
+            <li>
+              Use at most one Best Buddy CP boost and keep it on the same
+              Pokémon throughout the tournament.
+            </li>
+          </ul>
+        </div>
       ) : null}
       {showTournamentFormatSelector ? (
         <div className="mb-6 sm:mb-8">

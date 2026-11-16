@@ -1,9 +1,15 @@
 # Play! Pokemon custom PvPoke meta
 
-The [custom settings](play-pokemon-2026-10-21.json) target standard 1,500 CP
+The [custom settings](play-pokemon-2026-11-16.json) target standard 1,500 CP
 Championship Series play, using the
 [official banned list](https://www.pokemon.com/us/play-pokemon/about/play-pokemon-pokemon-go-championship-series-banned-pokemon-list)
-read on October 21, 2026. This is a dated rules snapshot, not an automatically
+checked on November 16, 2026. [Mimikyu is eligible from November 16, 2026](https://www.pokemon.com/us/news/battle-with-mimikyu-in-the-play-pokemon-pokemon-go-championship-series)
+and is included in the regenerated rankings and simulations. The current list
+adds Hisuian Sliggoo and Hisuian Goodra; both remain excluded despite being
+marked released in PvPoke. Shadow Reshiram and Shadow Zekrom are explicitly
+permitted by the official footnote and are no longer blocked by the preset.
+The other species and restricted-move entries match the prior snapshot. This
+is a dated rules snapshot, not an automatically
 updated tournament eligibility service or the separate LAIC 2027 cup.
 
 ## Import into PvPoke
@@ -15,10 +21,10 @@ updated tournament eligibility service or the separate LAIC 2027 cup.
 
 PvPoke custom rankings are scenario-specific estimates. Importing this file does
 not publish a named cup on PvPoke. The app separately exposes **Play! Pokémon**
-first in the format selector, with ID `play-pokemon`, cup `playpokemon`, and
+in the format selector, with ID `play-pokemon`, cup `playpokemon`, and
 a 1,500 CP cap. This meta only supports Pick 6 (open sheets); selecting it
 switches the roster mode to six Pokemon, and Pick 3 API requests are rejected.
-The app initially selects the first available format, currently Play! Pokémon.
+The app initially selects Great League.
 
 ## Generate app data
 
@@ -54,15 +60,15 @@ is needed for local generation.
 
 ## Rules encoded
 
-The exclusions cover Minior and Mimikyu (including battle-state forms), Cobalion,
-Terrakion, Virizion, Reshiram, Zekrom, both Landorus formes, every Kyurem form,
+The exclusions cover Hisuian Sliggoo, Hisuian Goodra, Minior (including
+battle-state forms), Cobalion, Terrakion, Virizion, ordinary Reshiram and Zekrom, both Landorus formes, every Kyurem form,
 Tapu Koko, Tapu Lele, Tapu Bulu, Solgaleo, Lunala, every Zacian and Zamazenta form,
 both Enamorus formes, Groudon, Kyogre, both Dialga and Palkia formes, both
 Thundurus and Tornadus formes, ordinary Mewtwo, Shadow Ponyta, Shadow Rapidash,
 Shadow Kabuto, Shadow Kabutops, Volcanion, Ditto, Shedinja, Xerneas, Yveltal,
 Mudbray, and Mudsdale. Tapu Fini remains eligible.
 
-The official footnote permits the Shadow variants of Landorus Incarnate,
+The official footnote permits the Shadow variants of Reshiram, Zekrom, Landorus Incarnate,
 Groudon, Kyogre, ordinary Dialga, ordinary Palkia, Thundurus Incarnate,
 Tornadus Incarnate, and Mewtwo. An explicit include-ID exception preserves
 these because PvPoke's exclude-ID filter otherwise also excludes Shadows.
@@ -73,6 +79,11 @@ Mega evolutions are excluded for standard Championship Series play, consistent
 with the vendored `championshipseries` definition; this is a separate format
 restriction from the linked species list. PvPoke tags Primal forms as Mega.
 Event-specific formats may differ.
+
+The optimizer enforces unique National Pokédex numbers. The simulations use a
+level 50 cap and do not model or assign a Best Buddy CP boost. Players may use
+at most one boost and must keep it on the same Pokémon throughout an event;
+Best Buddy ribbons alone are unrestricted.
 
 ## Move and acquisition restrictions
 
@@ -108,8 +119,21 @@ not calculate that window, validate acquisition history, or enforce roster-wide
 rules. Recheck the official list and event rules before tournament registration.
 
 The current vendored Pokemon schema contains a `released` boolean, but neither
-Pokemon nor move records provide structured release dates. Following the task's
-October 21 clarification, no additional release-window exclusions are applied.
+Pokemon nor move records provide structured release dates. No additional release-window exclusions are inferred from that boolean.
 Future temporary exclusions require an explicit maintained list with dates;
 the boolean alone cannot establish tournament eligibility. Update the preset
 and regenerate both rankings and simulations when eligibility changes.
+
+## November 16 regeneration
+
+The source is PvPoke upstream `master` at `2ad2682e6`. The Play! Pokémon-only
+refresh retains the checked-in shared Pokémon and move snapshots and other
+formats' rankings and simulations. New upstream Hisuian releases are explicitly
+banned here, and new unreleased Mega species and moves are outside this meta.
+The earlier October 21 JSON is retained as a historical snapshot.
+
+The refreshed field reverses the pair-protection comparison for the historical
+complementary-roster fixture, even though its coverage and redundancy still
+improve on the shared-counter roster. The current-field regression replaces
+Araquanid with newly eligible Mimikyu and retains all strict comparisons; no
+optimizer scoring or selection policy changed.

@@ -41,15 +41,10 @@ describe('direct tournament coverage', () => {
       undefined,
       source,
     );
+    // Refresh the complementary roster for the November 16 Mimikyu field.
+    // Keep every strict coverage, redundancy, and pair-protection comparison.
     const protectedTeam = evaluateTournamentCoverage(
-      [
-        'araquanid',
-        'carbink',
-        'clodsire',
-        'corviknight',
-        'medicham',
-        'umbreon',
-      ],
+      ['mimikyu', 'carbink', 'clodsire', 'corviknight', 'medicham', 'umbreon'],
       undefined,
       source,
     );

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import preset from '../../docs/metas/play-pokemon-2026-10-21.json';
+import preset from '../../docs/metas/play-pokemon-2026-11-16.json';
 import { createPvpokeAdapter } from './adapter';
 import { readPlayPokemonRankingExports } from './playPokemonSource';
 import { getMoveAvailability } from '@/lib/data/moveAvailability';
@@ -75,6 +75,14 @@ describe('Play! Pokemon preset in the native PvPoke filter', () => {
     expect(Object.keys(rankings)).toHaveLength(7);
     for (const entries of Object.values(rankings)) {
       expect(entries.length).toBeGreaterThan(150);
+      expect(entries.some(({ speciesId }) => speciesId === 'mimikyu')).toBe(
+        true,
+      );
+      expect(
+        entries.some(({ speciesId }) =>
+          ['sliggoo_hisuian', 'goodra_hisuian'].includes(speciesId),
+        ),
+      ).toBe(false);
       expect(new Set(entries.map((entry) => entry.speciesId)).size).toBe(
         entries.length,
       );
@@ -92,8 +100,8 @@ describe('Play! Pokemon preset in the native PvPoke filter', () => {
     for (const id of [
       'minior_meteor',
       'minior_core',
-      'mimikyu',
-      'mimikyu_busted',
+      'sliggoo_hisuian',
+      'goodra_hisuian',
       'cobalion',
       'terrakion',
       'virizion',
@@ -129,6 +137,11 @@ describe('Play! Pokemon preset in the native PvPoke filter', () => {
     }
     for (const id of [
       'tapu_fini',
+      'mimikyu',
+      'reshiram_shadow',
+      'zekrom_shadow',
+      'sliggoo',
+      'goodra',
       'giratina_altered',
       'giratina_altered_shadow',
       'ponyta',
