@@ -10,11 +10,11 @@ import {
 import {
   DEFAULT_BATTLE_FORMAT_ID,
   getSelectableBattleFormats,
-  isPickSixOnlyFormat,
   type BattleFormatId,
 } from '@/lib/data/battleFormats';
 import { parseGenerationResponse } from '@/lib/generationResponse';
 import { useToast } from '@/lib/hooks/useToast';
+import { getRequiredTournamentMode } from '@/lib/tournamentModes';
 import type {
   GenerationResponse,
   GenerationAnalysis,
@@ -133,9 +133,7 @@ export function TeamManager({
 
   const handleModeChange = useCallback(
     (mode: TournamentMode) => {
-      setCurrentMode(
-        isPickSixOnlyFormat(currentFormatId) ? 'PlayPokemon' : mode,
-      );
+      setCurrentMode(getRequiredTournamentMode(currentFormatId) ?? mode);
       setAnchorPokemon([]);
       setExcludedPokemon([]);
       setGenerationError(null);
@@ -145,9 +143,7 @@ export function TeamManager({
 
   const handleFormatChange = useCallback((formatId: BattleFormatId) => {
     setCurrentFormatId(formatId);
-    if (isPickSixOnlyFormat(formatId)) {
-      setCurrentMode('PlayPokemon');
-    }
+    setCurrentMode((mode) => getRequiredTournamentMode(formatId) ?? mode);
     setAnchorPokemon([]);
     setExcludedPokemon([]);
     setGenerationError(null);

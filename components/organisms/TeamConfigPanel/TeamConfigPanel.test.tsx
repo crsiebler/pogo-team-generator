@@ -45,7 +45,7 @@ describe('TeamConfigPanel', () => {
         isGenerating={false}
       />,
     );
-    expect(screen.getByText('Pick 6 · Open Sheets')).toBeInTheDocument();
+    expect(screen.getByText('Show 6 Pick 3 · Open Sheets')).toBeInTheDocument();
     expect(screen.getByText(/Best Buddy CP boost/)).toBeInTheDocument();
     expect(
       screen.getByText(/Mimikyu is eligible and included/),
@@ -173,11 +173,18 @@ describe('TeamConfigPanel', () => {
     expect(screen.getByText('Mode Selector')).toBeInTheDocument();
   });
 
-  it('hides the tournament format selector for Battle Frontier formats', () => {
+  it.each([
+    'battle-frontier-tsuki-cup',
+    'laic-2027-cup',
+    'laic-2027-gbl-cup',
+    'devon-trail-cup',
+    'devon-fable-cup',
+    'gymbreakers-season-7',
+  ] as const)('hides the tournament format selector for %s', (formatId) => {
     render(
       <TeamConfigPanel
         pokemonList={[]}
-        selectedFormatId="battle-frontier-tsuki-cup"
+        selectedFormatId={formatId}
         onFormatChange={vi.fn()}
         mode="PlayPokemon"
         onModeChange={vi.fn()}

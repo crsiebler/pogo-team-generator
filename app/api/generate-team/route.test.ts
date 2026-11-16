@@ -362,7 +362,7 @@ describe('POST /api/generate-team', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          mode: 'PlayPokemon',
+          mode: formatId === 'laic-2027-gbl-cup' ? 'GBL' : 'PlayPokemon',
           formatId,
         }),
       });
@@ -1207,6 +1207,29 @@ describe('POST /api/generate-team', () => {
     expect(responseBody.error).toBe(`Invalid battle format: ${formatId}`);
     expect(generateTeam).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['laic-2027-gbl-cup', 'PlayPokemon', 'Pick 3'],
+    ['laic-2027-cup', 'GBL', 'Show 6 Pick 3'],
+    ['devon-trail-cup', 'GBL', 'Show 6 Pick 3'],
+    ['devon-fable-cup', 'GBL', 'Show 6 Pick 3'],
+    ['gymbreakers-season-7', 'GBL', 'Show 6 Pick 3'],
+  ])(
+    'rejects incompatible %s mode before generation',
+    async (formatId, mode, format) => {
+      const request = new Request('http://localhost/api/generate-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode, formatId }),
+      });
+      const response = await POST(request as NextRequest);
+      expect(response.status).toBe(400);
+      expect((await response.json()).error).toContain(
+        `only supports ${format}`,
+      );
+      expect(generateTeam).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects Pick 3 requests for Play Pokemon before generation', async () => {
     const request = new Request('http://localhost/api/generate-team', {

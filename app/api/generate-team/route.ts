@@ -9,7 +9,7 @@ import {
   isBattleFrontierFormatId,
   DEFAULT_BATTLE_FORMAT_ID,
   isBattleFormatId,
-  isPickSixOnlyFormat,
+  getBattleFormatById,
 } from '@/lib/data/battleFormats';
 import { OpponentRosterDataError } from '@/lib/data/opponentRosters';
 import {
@@ -34,6 +34,7 @@ import {
 } from '@/lib/genetic/pregeneratedPool';
 import { pregeneratedPools } from '@/lib/genetic/pregeneratedTeams';
 import { getTeamDetails } from '@/lib/teamDetails';
+import { getRequiredTournamentMode } from '@/lib/tournamentModes';
 import type {
   GenerationAnalysis,
   GenerationResponse,
@@ -106,13 +107,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (isPickSixOnlyFormat(resolvedFormatId) && mode !== 'PlayPokemon') {
+    const requiredMode = getRequiredTournamentMode(resolvedFormatId);
+    if (requiredMode && mode !== requiredMode) {
       return NextResponse.json(
         {
           error:
             resolvedFormatId === 'play-pokemon'
               ? 'Play! Pokémon only supports Pick 6 team generation.'
-              : 'Battle Frontier formats only support Play! Pokemon team generation.',
+              : isBattleFrontierFormatId(resolvedFormatId)
+                ? 'Battle Frontier formats only support Play! Pokemon team generation.'
+                : `${getBattleFormatById(resolvedFormatId)?.label} only supports ${requiredMode === 'GBL' ? 'Pick 3' : 'Show 6 Pick 3'} team generation.`,
         },
         { status: 400 },
       );
