@@ -49,8 +49,10 @@ describe('format-aware rankings loading', () => {
       const names = rankings.map(({ Pokemon }) => Pokemon);
       expect(names).toContain('Mewtwo (Shadow)');
       expect(names).toContain('Tapu Fini');
+      expect(names).toContain('Mimikyu');
       for (const name of [
-        'Mimikyu',
+        'Sliggoo (Hisuian)',
+        'Goodra (Hisuian)',
         'Minior (Meteor)',
         'Minior (Core)',
         'Cobalion',

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
-import preset from '../../docs/metas/play-pokemon-2026-10-21.json';
+import preset from '../../docs/metas/play-pokemon-2026-11-16.json';
 import { createPvpokeAdapter, type RankingCategory } from './adapter';
 import { parseRankingSourceEntries, type RankingSourceEntry } from './rankings';
 import { validatePokemonJson } from './validation';
@@ -321,7 +321,7 @@ export async function preparePlayPokemonSource(
   }
   await fs.writeFile(
     metadataPath,
-    JSON.stringify({ fingerprint, rulesCheckedAt: '2026-10-21' }, null, 2),
+    JSON.stringify({ fingerprint, rulesCheckedAt: '2026-11-16' }, null, 2),
   );
   await saveRankingExports(outputPath, fingerprint);
   return outputPath;

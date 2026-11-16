@@ -47,6 +47,9 @@ describe('TeamConfigPanel', () => {
     );
     expect(screen.getByText('Pick 6 · Open Sheets')).toBeInTheDocument();
     expect(screen.getByText(/Best Buddy CP boost/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Mimikyu is eligible and included/),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Mode Selector')).not.toBeInTheDocument();
   });
 

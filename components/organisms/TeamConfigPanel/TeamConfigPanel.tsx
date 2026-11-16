@@ -116,10 +116,10 @@ export function TeamConfigPanel({
         <div className="mb-6 text-sm text-gray-800 sm:mb-8 dark:text-gray-300">
           <p className="font-semibold">Pick 6 · Open Sheets</p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            <li>Rankings use rules checked October 21, 2026.</li>
+            <li>Rankings use rules checked November 16, 2026.</li>
             <li>
-              Mimikyu becomes legal November 16, 2026; these rankings do not yet
-              include it.
+              Mimikyu is eligible and included in these rankings. Hisuian
+              Sliggoo and Hisuian Goodra remain banned.
             </li>
             <li>
               Use at most one Best Buddy CP boost and keep it on the same
